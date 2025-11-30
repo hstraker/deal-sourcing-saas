@@ -1,0 +1,370 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  sourcer
+  investor
+}
+
+enum DealStatus {
+  new
+  review
+  in_progress
+  ready
+  listed
+  reserved
+  sold
+  archived
+}
+
+enum PackTier {
+  basic
+  standard
+  premium
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  refunded
+}
+
+enum CommunicationType {
+  email
+  sms
+  call
+  note
+}
+
+enum DocumentType {
+  epc
+  floorplan
+  title
+  survey
+  pack
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String?  @map("password_hash")
+  role          UserRole
+  firstName     String?  @map("first_name")
+  lastName      String?  @map("last_name")
+  phone         String?
+  profilePictureS3Key String? @map("profile_picture_s3_key")
+  createdAt     DateTime @default(now()) @map("created_at")
+  lastLogin     DateTime? @map("last_login")
+  isActive      Boolean  @default(true) @map("is_active")
+
+  // Relations
+  dealsCreated  Deal[]          @relation("DealCreator")
+  dealsAssigned Deal[]          @relation("DealAssignee")
+  investor      Investor?
+  communicationsSent Communication[] @relation("CommunicationSender")
+
+  @@map("users")
+  @@index([email])
+  @@index([role])
+}
+
+model Investor {
+  id              String   @id @default(uuid())
+  userId          String   @unique @map("user_id")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Investment Criteria
+  preferredAreas  String[] @map("preferred_areas") // PostgreSQL array
+  minBudget       Int?     @map("min_budget")
+  maxBudget       Int?     @map("max_budget")
+  minYield        Decimal? @map("min_yield") @db.Decimal(5, 2)
+  minBmv          Decimal? @map("min_bmv") @db.Decimal(5, 2)
+  strategy        String[] // ['BRRRR', 'BTL', 'Flip']
+
+  // Profile
+  experienceLevel String?  @map("experience_level") // 'beginner', 'intermediate', 'advanced'
+  financingStatus String?  @map("financing_status") // 'cash', 'mortgage', 'both'
+
+  // Stats
+  dealsPurchased  Int      @default(0) @map("deals_purchased")
+  totalSpent      Decimal  @default(0) @map("total_spent") @db.Decimal(10, 2)
+
+  // Communication
+  emailAlerts     Boolean  @default(true) @map("email_alerts")
+  smsAlerts       Boolean  @default(false) @map("sms_alerts")
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  dealsSold       Deal[]
+  purchases       Purchase[]
+  favorites       Favorite[]
+  dealViews       DealView[]
+  communications  Communication[]
+  alerts          Alert[]
+
+  @@map("investors")
+  @@index([userId])
+}
+
+model Deal {
+  id                  String     @id @default(uuid())
+  
+  // Property Details
+  address             String
+  postcode            String?
+  latitude            Decimal?   @db.Decimal(10, 8)
+  longitude           Decimal?   @db.Decimal(11, 8)
+  propertyType        String?    @map("property_type") // 'terraced', 'semi', 'detached', 'flat'
+  bedrooms            Int?
+  bathrooms           Int?
+  squareFeet          Int?       @map("square_feet")
+  
+  // Pricing
+  askingPrice         Decimal    @map("asking_price") @db.Decimal(10, 2)
+  marketValue         Decimal?   @map("market_value") @db.Decimal(10, 2)
+  estimatedRefurbCost Decimal?   @map("estimated_refurb_cost") @db.Decimal(10, 2)
+  afterRefurbValue    Decimal?   @map("after_refurb_value") @db.Decimal(10, 2)
+  estimatedMonthlyRent Decimal?  @map("estimated_monthly_rent") @db.Decimal(10, 2)
+  
+  // Metrics
+  bmvPercentage       Decimal?   @map("bmv_percentage") @db.Decimal(5, 2)
+  grossYield          Decimal?   @map("gross_yield") @db.Decimal(5, 2)
+  netYield            Decimal?   @map("net_yield") @db.Decimal(5, 2)
+  roi                 Decimal?   @db.Decimal(5, 2)
+  roce                Decimal?   @db.Decimal(5, 2)
+  dealScore           Int?       @map("deal_score") // 0-100
+  dealScoreBreakdown  Json?      @map("deal_score_breakdown")
+  
+  // Deal Info
+  status              DealStatus @default(new)
+  statusUpdatedAt     DateTime?  @default(now()) @map("status_updated_at")
+  statusHistory       Json?      @map("status_history")
+  packTier            PackTier?  @map("pack_tier")
+  packPrice           Decimal?   @map("pack_price") @db.Decimal(10, 2)
+  
+  // Source
+  dataSource          String?    @map("data_source") // 'propertydata', 'manual', 'rightmove'
+  externalId          String?    @map("external_id")
+  agentName           String?    @map("agent_name")
+  agentPhone          String?    @map("agent_phone")
+  listingUrl          String?    @map("listing_url") @db.Text
+  
+  // Team
+  assignedToId        String?    @map("assigned_to")
+  assignedTo          User?      @relation("DealAssignee", fields: [assignedToId], references: [id])
+  createdById         String?    @map("created_by")
+  createdBy           User?      @relation("DealCreator", fields: [createdById], references: [id])
+  
+  // Sale Details
+  soldToId            String?    @map("sold_to")
+  soldTo              Investor?  @relation(fields: [soldToId], references: [id])
+  soldAt              DateTime?  @map("sold_at")
+  soldPrice           Decimal?   @map("sold_price") @db.Decimal(10, 2)
+  
+  // Tracking
+  viewsCount          Int        @default(0) @map("views_count")
+  favoritesCount      Int        @default(0) @map("favorites_count")
+  
+  // Timestamps
+  createdAt           DateTime   @default(now()) @map("created_at")
+  updatedAt           DateTime   @updatedAt @map("updated_at")
+  listedAt            DateTime?  @map("listed_at")
+  archivedAt          DateTime?  @map("archived_at")
+
+  // Relations
+  photos              DealPhoto[]
+  documents           DealDocument[]
+  comparables         Comparable[]
+  purchases           Purchase[]
+  favorites           Favorite[]
+  dealViews           DealView[]
+  communications      Communication[]
+
+  @@map("deals")
+  @@index([status])
+  @@index([postcode])
+  @@index([dealScore])
+  @@index([createdAt])
+  @@index([assignedToId])
+}
+
+model DealPhoto {
+  id          String   @id @default(uuid())
+  dealId      String   @map("deal_id")
+  deal        Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  s3Key       String   @map("s3_key") @db.VarChar(500)
+  s3Url       String   @map("s3_url") @db.Text
+  caption     String?  @db.Text
+  isCover     Boolean  @default(false) @map("is_cover")
+  sortOrder   Int      @default(0) @map("sort_order")
+  uploadedAt  DateTime @default(now()) @map("uploaded_at")
+
+  @@map("deal_photos")
+  @@index([dealId])
+}
+
+model DealDocument {
+  id            String       @id @default(uuid())
+  dealId        String       @map("deal_id")
+  deal          Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  documentType  DocumentType @map("document_type")
+  s3Key         String       @map("s3_key") @db.VarChar(500)
+  s3Url         String       @map("s3_url") @db.Text
+  filename      String?
+  fileSize      Int?         @map("file_size")
+  uploadedAt    DateTime     @default(now()) @map("uploaded_at")
+
+  @@map("deal_documents")
+  @@index([dealId])
+  @@index([documentType])
+}
+
+model Comparable {
+  id            String   @id @default(uuid())
+  dealId        String   @map("deal_id")
+  deal          Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  address       String?
+  postcode      String?
+  salePrice     Decimal? @map("sale_price") @db.Decimal(10, 2)
+  saleDate      DateTime? @map("sale_date") @db.Date
+  bedrooms      Int?
+  propertyType  String?  @map("property_type")
+  distanceKm    Decimal? @map("distance_km") @db.Decimal(5, 2)
+  source        String?  // 'propertydata', 'land_registry'
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("comparables")
+  @@index([dealId])
+}
+
+model Purchase {
+  id                String        @id @default(uuid())
+  dealId            String        @map("deal_id")
+  deal              Deal          @relation(fields: [dealId], references: [id])
+  investorId        String        @map("investor_id")
+  investor          Investor      @relation(fields: [investorId], references: [id])
+  
+  // Payment
+  amount            Decimal       @db.Decimal(10, 2)
+  stripePaymentId   String?       @map("stripe_payment_id")
+  stripeInvoiceId   String?       @map("stripe_invoice_id")
+  paymentStatus     PaymentStatus @map("payment_status") @default(pending)
+  
+  // Access
+  packDownloaded    Boolean       @default(false) @map("pack_downloaded")
+  downloadCount     Int           @default(0) @map("download_count")
+  firstDownloadAt   DateTime?     @map("first_download_at")
+  
+  // Follow-up
+  investorProceeded Boolean?      @map("investor_proceeded")
+  feedbackRating    Int?          @map("feedback_rating") // 1-5 stars
+  feedbackComment   String?       @map("feedback_comment") @db.Text
+  
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  @@map("purchases")
+  @@index([dealId])
+  @@index([investorId])
+  @@index([paymentStatus])
+}
+
+model Favorite {
+  id          String   @id @default(uuid())
+  investorId  String   @map("investor_id")
+  investor    Investor @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  dealId      String   @map("deal_id")
+  deal        Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([investorId, dealId])
+  @@map("favorites")
+  @@index([investorId])
+  @@index([dealId])
+}
+
+model DealView {
+  id          String   @id @default(uuid())
+  dealId      String   @map("deal_id")
+  deal        Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  investorId  String?  @map("investor_id")
+  investor    Investor? @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  viewedAt    DateTime @default(now()) @map("viewed_at")
+
+  @@map("deal_views")
+  @@index([dealId])
+  @@index([investorId])
+  @@index([viewedAt])
+}
+
+model Communication {
+  id            String            @id @default(uuid())
+  investorId    String            @map("investor_id")
+  investor      Investor          @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  dealId        String?           @map("deal_id")
+  deal          Deal?             @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  
+  type          CommunicationType
+  subject       String?
+  message       String?           @db.Text
+  
+  // Email specific
+  emailSent     Boolean           @default(false) @map("email_sent")
+  emailOpened   Boolean           @default(false) @map("email_opened")
+  emailClicked  Boolean           @default(false) @map("email_clicked")
+  
+  sentById      String?           @map("sent_by")
+  sentBy        User?             @relation("CommunicationSender", fields: [sentById], references: [id])
+  sentAt        DateTime          @default(now()) @map("sent_at")
+
+  @@map("communications")
+  @@index([investorId])
+  @@index([dealId])
+  @@index([type])
+}
+
+model Alert {
+  id            String   @id @default(uuid())
+  investorId    String   @map("investor_id")
+  investor      Investor @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  
+  name          String
+  criteria      Json     // Store filter criteria as JSONB in PostgreSQL
+  
+  isActive      Boolean  @default(true) @map("is_active")
+  lastTriggered DateTime? @map("last_triggered")
+  
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("alerts")
+  @@index([investorId])
+  @@index([isActive])
+}
+
+model PropertyDataCache {
+  id            String   @id @default(uuid())
+  address       String
+  postcode      String?
+  data          Json     // Full PropertyData API response
+  creditsUsed   Int      @default(1) @map("credits_used")
+  fetchedAt     DateTime @default(now()) @map("fetched_at")
+  expiresAt     DateTime @map("expires_at") // Cache for 30 days
+  
+  @@unique([address, postcode])
+  @@map("property_data_cache")
+  @@index([address])
+  @@index([postcode])
+  @@index([expiresAt])
+}
+

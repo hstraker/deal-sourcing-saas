@@ -1,0 +1,57 @@
+# DealStack Property Sourcing SaaS
+
+## Project Context
+Read PROJECT_BRIEF.md for complete specifications.
+
+This is a B2B SaaS platform where a small team (2-5 people) sources property investment deals, packages them professionally, and sells them to investors for £3,000-£5,000 per deal.
+
+## Tech Stack
+- Frontend: Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui
+- Backend: Next.js API Routes (migrate to FastAPI later if needed)
+- Database: PostgreSQL (Prisma ORM)
+- Auth: NextAuth.js
+- Storage: AWS S3 (photos, PDFs)
+- Payments: Stripe
+- Email: AWS SES
+- Hosting: Vercel (frontend), AWS RDS (database)
+
+## Code Standards
+- TypeScript strict mode
+- Use Prisma for all database operations
+- Follow Next.js 14 App Router conventions
+- Use Server Components by default, Client Components only when needed
+- Tailwind CSS for styling (use shadcn/ui components)
+- Error handling: try/catch with proper logging
+- API routes: return proper HTTP status codes
+- Validate all inputs with Zod
+- Use environment variables for all secrets
+
+## Database
+- PostgreSQL via Prisma ORM
+- See PROJECT_BRIEF.md for complete schema
+- Always use UUID for primary keys
+- Add indexes on frequently queried fields
+- Use transactions for multi-table operations
+
+## File Organization
+/app - Next.js app router pages & API routes
+/components - Reusable React components
+/lib - Utility functions, database, auth helpers
+/prisma - Database schema and migrations
+/public - Static assets
+/types - TypeScript type definitions
+
+## Important Constraints
+- AWS S3 for file storage (never local filesystem in production)
+- PropertyData API: 2,000 credits/month limit (cache aggressively)
+- Multi-tenant: Row-level security for investors
+- Before purchase: Show partial address only
+- After purchase: Reveal full details
+
+## When Making Changes
+1. Reference PROJECT_BRIEF.md for context
+2. Update database via Prisma migrations (never manual SQL)
+3. Add proper TypeScript types
+4. Consider AWS costs (optimize S3 uploads, database queries)
+5. Test authentication & authorization
+6. Ensure mobile responsive
