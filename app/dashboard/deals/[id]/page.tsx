@@ -14,6 +14,8 @@ import { CoverPhotoViewerWithGallery } from "@/components/deals/cover-photo-view
 import { DeleteDealButton } from "@/components/deals/delete-deal-button"
 import { QuickAssignUser } from "@/components/deals/quick-assign-user"
 import { PropertyAnalysisPanel } from "@/components/deals/property-analysis-panel"
+import { VendorSection } from "@/components/vendors/vendor-section"
+import { ReservationList } from "@/components/reservations/reservation-list"
 import { Decimal } from "@prisma/client/runtime/library"
 
 export const dynamic = "force-dynamic"
@@ -53,6 +55,36 @@ export default async function DealDetailPage({ params }: DealDetailPageProps) {
           firstName: true,
           lastName: true,
           email: true,
+        },
+      },
+      vendor: {
+        include: {
+          _count: {
+            select: {
+              offers: true,
+              aiConversations: true,
+            },
+          },
+        },
+      },
+      investorReservations: {
+        include: {
+          investor: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  firstName: true,
+                  lastName: true,
+                  phone: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
         },
       },
       photos: {
@@ -903,6 +935,18 @@ export default async function DealDetailPage({ params }: DealDetailPageProps) {
             address={deal.address}
             postcode={deal.postcode}
             askingPrice={Number(deal.askingPrice)}
+          />
+
+          {/* Vendor Information */}
+          <VendorSection dealId={deal.id} vendorId={deal.vendor?.id} />
+
+          {/* Investor Reservations */}
+          <ReservationList
+            dealId={deal.id}
+            initialReservations={deal.investorReservations.map((r) => ({
+              ...r,
+              reservationFee: Number(r.reservationFee),
+            })) as any}
           />
         </div>
         </div>

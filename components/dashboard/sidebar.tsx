@@ -10,6 +10,7 @@ import {
   Settings,
   LogOut,
   KanbanSquare,
+  Building2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { signOut } from "next-auth/react"
@@ -28,6 +29,16 @@ const navigation = [
   {
     name: "Pipeline",
     href: "/dashboard/deals/pipeline",
+    icon: KanbanSquare,
+  },
+  {
+    name: "Vendors",
+    href: "/dashboard/vendors",
+    icon: Building2,
+  },
+  {
+    name: "Vendor Pipeline",
+    href: "/dashboard/vendors/pipeline",
     icon: KanbanSquare,
   },
   {

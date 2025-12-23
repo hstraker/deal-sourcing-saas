@@ -12,6 +12,7 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "seed:admin": "tsx scripts/seed-admin.ts",
+    "seed:vendors": "tsx scripts/seed-vendors.ts",
     "recalculate:metrics": "tsx scripts/recalculate-deal-metrics.ts",
     "check:rent": "tsx scripts/check-deal-rent-data.ts",
     "verify:aws": "node scripts/verify-aws-env.js",
@@ -22,6 +23,7 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.3",
     "@aws-sdk/client-s3": "^3.654.0",
     "@aws-sdk/s3-request-presigner": "^3.654.0",
     "@hello-pangea/dnd": "^18.0.1",
@@ -36,18 +38,22 @@
     "@radix-ui/react-select": "^2.1.1",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-tabs": "^1.1.0",
+    "@radix-ui/react-tooltip": "^1.1.1",
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "lucide-react": "^0.446.0",
     "next": "^14.2.15",
     "next-auth": "^4.24.7",
+    "openai": "^6.15.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.53.0",
     "recharts": "^2.15.4",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "twilio": "^5.11.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {

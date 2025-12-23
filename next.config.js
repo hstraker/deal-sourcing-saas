@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  swcMinify: true,
+  compiler: {
+    // Keep SWC but try to handle edge cases better
+    removeConsole: false,
+  },
   images: {
     remotePatterns: [
       {
