@@ -629,7 +629,7 @@ export function VendorPipelineKanbanBoard() {
                                     </div>
                                   </div>
                                 </Card>
-                              )} # Henry fix
+                              )} 
                           </Draggable>
                           ))}
                           {provided.placeholder}
@@ -638,7 +638,7 @@ export function VendorPipelineKanbanBoard() {
                               No leads in this stage
                             </div>
                           )}
-                        </div>/
+                        </div>
                       </div>
                     )}
                   </Droppable>
