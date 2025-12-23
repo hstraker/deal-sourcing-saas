@@ -81,79 +81,79 @@ const PIPELINE_COLUMNS: Array<{
   description: string
   color: string
 }> = [
-  { 
-    id: "NEW_LEAD", 
-    title: "New Leads", 
-    description: "Fresh leads from ads",
-    color: "border-l-slate-400"
-  },
-  { 
-    id: "AI_CONVERSATION", 
-    title: "In Conversation", 
-    description: "AI gathering details",
-    color: "border-l-blue-500"
-  },
-  { 
-    id: "DEAL_VALIDATION", 
-    title: "Validating", 
-    description: "BMV analysis in progress",
-    color: "border-l-amber-500"
-  },
-  { 
-    id: "OFFER_MADE", 
-    title: "Offer Made", 
-    description: "Waiting for response",
-    color: "border-l-yellow-500"
-  },
-  { 
-    id: "VIDEO_SENT", 
-    title: "Video Sent", 
-    description: "Following up",
-    color: "border-l-purple-500"
-  },
-  { 
-    id: "RETRY_1", 
-    title: "Retry 1", 
-    description: "First retry attempt",
-    color: "border-l-orange-500"
-  },
-  { 
-    id: "RETRY_2", 
-    title: "Retry 2", 
-    description: "Second retry attempt",
-    color: "border-l-red-500"
-  },
-  { 
-    id: "RETRY_3", 
-    title: "Retry 3", 
-    description: "Final retry attempt",
-    color: "border-l-rose-500"
-  },
-  { 
-    id: "OFFER_ACCEPTED", 
-    title: "Accepted", 
-    description: "Offer accepted!",
-    color: "border-l-green-600"
-  },
-  { 
-    id: "PAPERWORK_SENT", 
-    title: "Paperwork", 
-    description: "Lock-out sent",
-    color: "border-l-indigo-500"
-  },
-  { 
-    id: "READY_FOR_INVESTORS", 
-    title: "Ready", 
-    description: "Live for investors",
-    color: "border-l-emerald-600"
-  },
-  { 
-    id: "DEAD_LEAD", 
-    title: "Dead", 
-    description: "No longer active",
-    color: "border-l-gray-400"
-  },
-]
+    {
+      id: "NEW_LEAD",
+      title: "New Leads",
+      description: "Fresh leads from ads",
+      color: "border-l-slate-400"
+    },
+    {
+      id: "AI_CONVERSATION",
+      title: "In Conversation",
+      description: "AI gathering details",
+      color: "border-l-blue-500"
+    },
+    {
+      id: "DEAL_VALIDATION",
+      title: "Validating",
+      description: "BMV analysis in progress",
+      color: "border-l-amber-500"
+    },
+    {
+      id: "OFFER_MADE",
+      title: "Offer Made",
+      description: "Waiting for response",
+      color: "border-l-yellow-500"
+    },
+    {
+      id: "VIDEO_SENT",
+      title: "Video Sent",
+      description: "Following up",
+      color: "border-l-purple-500"
+    },
+    {
+      id: "RETRY_1",
+      title: "Retry 1",
+      description: "First retry attempt",
+      color: "border-l-orange-500"
+    },
+    {
+      id: "RETRY_2",
+      title: "Retry 2",
+      description: "Second retry attempt",
+      color: "border-l-red-500"
+    },
+    {
+      id: "RETRY_3",
+      title: "Retry 3",
+      description: "Final retry attempt",
+      color: "border-l-rose-500"
+    },
+    {
+      id: "OFFER_ACCEPTED",
+      title: "Accepted",
+      description: "Offer accepted!",
+      color: "border-l-green-600"
+    },
+    {
+      id: "PAPERWORK_SENT",
+      title: "Paperwork",
+      description: "Lock-out sent",
+      color: "border-l-indigo-500"
+    },
+    {
+      id: "READY_FOR_INVESTORS",
+      title: "Ready",
+      description: "Live for investors",
+      color: "border-l-emerald-600"
+    },
+    {
+      id: "DEAD_LEAD",
+      title: "Dead",
+      description: "No longer active",
+      color: "border-l-gray-400"
+    },
+  ]
 
 const formatCurrency = (amount: number | null) => {
   if (!amount) return "—"
@@ -192,7 +192,7 @@ export function VendorPipelineKanbanBoard() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedLead, setSelectedLead] = useState<VendorLead | null>(null)
   const [refreshing, setRefreshing] = useState(false)
-  
+
   // View and filter state
   const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban")
   const [stageFilter, setStageFilter] = useState<string>("all")
@@ -263,7 +263,7 @@ export function VendorPipelineKanbanBoard() {
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {
       if (stageFilter !== "all" && lead.pipelineStage !== stageFilter) return false
-      
+
       if (motivationFilter !== "all") {
         const score = lead.motivationScore
         if (!score) return false
@@ -271,18 +271,18 @@ export function VendorPipelineKanbanBoard() {
         if (motivationFilter === "medium" && (score < 5 || score >= 8)) return false
         if (motivationFilter === "low" && score >= 5) return false
       }
-      
+
       if (dateFrom) {
         const fromDate = new Date(dateFrom)
         if (lead.createdAt < fromDate) return false
       }
-      
+
       if (dateTo) {
         const toDate = new Date(dateTo)
         toDate.setHours(23, 59, 59, 999)
         if (lead.createdAt > toDate) return false
       }
-      
+
       return true
     })
   }, [leads, stageFilter, motivationFilter, dateFrom, dateTo])
@@ -355,308 +355,308 @@ export function VendorPipelineKanbanBoard() {
 
   return (
     <>
-    <div className="space-y-6">
-      <PipelineStatsCards stats={stats} refreshing={refreshing} onRefresh={fetchData} />
+      <div className="space-y-6">
+        <PipelineStatsCards stats={stats} refreshing={refreshing} onRefresh={fetchData} />
 
-      {/* Filters and View Controls */}
-      <Card className="p-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Filters:</span>
-          </div>
+        {/* Filters and View Controls */}
+        <Card className="p-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Filters:</span>
+            </div>
 
-          <Select value={stageFilter} onValueChange={setStageFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All Stages" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Stages</SelectItem>
-              {PIPELINE_COLUMNS.map((col) => (
-                <SelectItem key={col.id} value={col.id}>
-                  {col.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select value={stageFilter} onValueChange={setStageFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All Stages" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Stages</SelectItem>
+                {PIPELINE_COLUMNS.map((col) => (
+                  <SelectItem key={col.id} value={col.id}>
+                    {col.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select value={motivationFilter} onValueChange={setMotivationFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All Motivation" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Motivation</SelectItem>
-              <SelectItem value="high">High (8-10)</SelectItem>
-              <SelectItem value="medium">Medium (5-7)</SelectItem>
-              <SelectItem value="low">Low (1-4)</SelectItem>
-            </SelectContent>
-          </Select>
+            <Select value={motivationFilter} onValueChange={setMotivationFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All Motivation" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Motivation</SelectItem>
+                <SelectItem value="high">High (8-10)</SelectItem>
+                <SelectItem value="medium">Medium (5-7)</SelectItem>
+                <SelectItem value="low">Low (1-4)</SelectItem>
+              </SelectContent>
+            </Select>
 
-          <Input
-            type="date"
-            placeholder="From Date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="w-[150px]"
-          />
+            <Input
+              type="date"
+              placeholder="From Date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-[150px]"
+            />
 
-          <Input
-            type="date"
-            placeholder="To Date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="w-[150px]"
-          />
+            <Input
+              type="date"
+              placeholder="To Date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-[150px]"
+            />
 
-          <div className="flex-1" />
+            <div className="flex-1" />
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant={viewMode === "kanban" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setViewMode("kanban")}
-            >
-              <Kanban className="h-4 w-4 mr-2" />
-              Kanban
-            </Button>
-            <Button
-              variant={viewMode === "table" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setViewMode("table")}
-            >
-              <Table2 className="h-4 w-4 mr-2" />
-              Table
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleExport}>
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      {/* Table View */}
-      {viewMode === "table" && (
-        <Card>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead>Property</TableHead>
-                  <TableHead>Stage</TableHead>
-                  <TableHead>Motivation</TableHead>
-                  <TableHead>Asking Price</TableHead>
-                  <TableHead>BMV Score</TableHead>
-                  <TableHead>Offer</TableHead>
-                  <TableHead>Last Contact</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredLeads.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                      No leads found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredLeads.map((lead) => (
-                    <TableRow key={lead.id} className="cursor-pointer" onClick={() => setSelectedLead(lead)}>
-                      <TableCell className="font-medium">{lead.vendorName}</TableCell>
-                      <TableCell>
-                        {lead.propertyAddress ? (
-                          <div className="text-sm">
-                            <div>{lead.propertyAddress}</div>
-                            {lead.propertyPostcode && (
-                              <div className="text-muted-foreground">{lead.propertyPostcode}</div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{lead.pipelineStage}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {lead.motivationScore !== null ? (
-                          <Badge className={motivationBadgeColor(lead.motivationScore)}>
-                            {lead.motivationScore}/10
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{formatCurrency(lead.askingPrice)}</TableCell>
-                      <TableCell>
-                        {lead.bmvScore !== null ? (
-                          <span className="text-green-600 font-medium">
-                            {lead.bmvScore.toFixed(1)}%
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {lead.offerAmount ? formatCurrency(lead.offerAmount) : "—"}
-                      </TableCell>
-                      <TableCell>{formatTimeAgo(lead.lastContactAt)}</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setSelectedLead(lead)
-                          }}
-                        >
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={viewMode === "kanban" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("kanban")}
+              >
+                <Kanban className="h-4 w-4 mr-2" />
+                Kanban
+              </Button>
+              <Button
+                variant={viewMode === "table" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("table")}
+              >
+                <Table2 className="h-4 w-4 mr-2" />
+                Table
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExport}>
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </div>
           </div>
         </Card>
-      )}
 
-      {/* Kanban View */}
-      {viewMode === "kanban" && (
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="flex gap-4 overflow-x-auto pb-4">
-            {PIPELINE_COLUMNS.map((column) => {
-              const columnLeads = leadsByStage[column.id]
-
-              return (
-                <Droppable key={column.id} droppableId={column.id}>
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className={cn(
-                        "flex-shrink-0 w-80",
-                        snapshot.isDraggingOver && "bg-muted/50 rounded-lg p-2"
-                      )}
-                    >
-                      <div className="mb-2">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-semibold text-sm">{column.title}</h3>
-                          <Badge variant="secondary" className="text-xs">
-                            {columnLeads.length}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {column.description}
-                        </p>
-                      </div>
-
-                      <div className="space-y-3">
-                        {columnLeads.map((lead, index) => (
-                          <Draggable key={lead.id} draggableId={lead.id} index={index}>
-                            {(provided, snapshot) => (
-                              <Card
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className={cn(
-                                  "cursor-pointer hover:shadow-md transition-shadow border-l-4",
-                                  column.color,
-                                  snapshot.isDragging && "shadow-lg rotate-2"
-                                )}
-                                onClick={() => setSelectedLead(lead)}
-                              >
-                    <div className="p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm mb-1 truncate">
-                            {lead.vendorName}
-                          </div>
-                          {lead.propertyAddress && (
-                            <div className="text-xs text-muted-foreground mb-2 truncate">
-                              <MapPin className="h-3 w-3 inline mr-1" />
-                              {lead.propertyAddress}
+        {/* Table View */}
+        {viewMode === "table" && (
+          <Card>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Vendor</TableHead>
+                    <TableHead>Property</TableHead>
+                    <TableHead>Stage</TableHead>
+                    <TableHead>Motivation</TableHead>
+                    <TableHead>Asking Price</TableHead>
+                    <TableHead>BMV Score</TableHead>
+                    <TableHead>Offer</TableHead>
+                    <TableHead>Last Contact</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredLeads.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                        No leads found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredLeads.map((lead) => (
+                      <TableRow key={lead.id} className="cursor-pointer" onClick={() => setSelectedLead(lead)}>
+                        <TableCell className="font-medium">{lead.vendorName}</TableCell>
+                        <TableCell>
+                          {lead.propertyAddress ? (
+                            <div className="text-sm">
+                              <div>{lead.propertyAddress}</div>
+                              {lead.propertyPostcode && (
+                                <div className="text-muted-foreground">{lead.propertyPostcode}</div>
+                              )}
                             </div>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
                           )}
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Phone className="h-3 w-3" />
-                            <span className="truncate">{lead.vendorPhone}</span>
-                          </div>
-                        </div>
-                        {lead.motivationScore !== null && (
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "ml-2 text-xs",
-                              motivationBadgeColor(lead.motivationScore)
-                            )}
-                          >
-                            {lead.motivationScore}/10
-                          </Badge>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 mt-2 pt-2 border-t">
-                        {lead.askingPrice && (
-                          <div className="text-xs">
-                            <span className="text-muted-foreground">Ask: </span>
-                            <span className="font-medium">
-                              {formatCurrency(lead.askingPrice)}
-                            </span>
-                          </div>
-                        )}
-                        {lead.bmvScore !== null && (
-                          <div className="text-xs">
-                            <span className="text-muted-foreground">BMV: </span>
-                            <span className="font-medium text-green-600">
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{lead.pipelineStage}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          {lead.motivationScore !== null ? (
+                            <Badge className={motivationBadgeColor(lead.motivationScore)}>
+                              {lead.motivationScore}/10
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>{formatCurrency(lead.askingPrice)}</TableCell>
+                        <TableCell>
+                          {lead.bmvScore !== null ? (
+                            <span className="text-green-600 font-medium">
                               {lead.bmvScore.toFixed(1)}%
                             </span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex items-center justify-between mt-2 pt-2 border-t text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <MessageSquare className="h-3 w-3" />
-                          <span>{lead._count.smsMessages} msgs</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          <span>{formatTimeAgo(lead.lastContactAt)}</span>
-                        </div>
-                      </div>
-                              </div>
-                            </Card>
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                        {columnLeads.length === 0 && (
-                          <div className="text-center py-8 text-muted-foreground text-sm border-2 border-dashed rounded-lg">
-                            No leads in this stage
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {lead.offerAmount ? formatCurrency(lead.offerAmount) : "—"}
+                        </TableCell>
+                        <TableCell>{formatTimeAgo(lead.lastContactAt)}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedLead(lead)
+                            }}
+                          >
+                            View
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
                   )}
-                </Droppable>
-              )
-            })}
-          </div>
-        </DragDropContext>
-      )}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+        )}
 
-      {selectedLead && (
-        <VendorLeadDetailModal
-          lead={selectedLead}
-          open={!!selectedLead}
-          onOpenChange={(open) => !open && setSelectedLead(null)}
-          onUpdate={fetchData}
-        />
-      )}
-    </div>
+        {/* Kanban View */}
+        {viewMode === "kanban" && (
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <div className="flex gap-4 overflow-x-auto pb-4">
+              {PIPELINE_COLUMNS.map((column) => {
+                const columnLeads = leadsByStage[column.id]
+
+                return (
+                  <Droppable key={column.id} droppableId={column.id}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className={cn(
+                          "flex-shrink-0 w-80",
+                          snapshot.isDraggingOver && "bg-muted/50 rounded-lg p-2"
+                        )}
+                      >
+                        <div className="mb-2">
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-semibold text-sm">{column.title}</h3>
+                            <Badge variant="secondary" className="text-xs">
+                              {columnLeads.length}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {column.description}
+                          </p>
+                        </div>
+
+                        <div className="space-y-3">
+                          {columnLeads.map((lead, index) => (
+                            <Draggable key={lead.id} draggableId={lead.id} index={index}>
+                              {(provided, snapshot) => (
+                                <Card
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className={cn(
+                                    "cursor-pointer hover:shadow-md transition-shadow border-l-4",
+                                    column.color,
+                                    snapshot.isDragging && "shadow-lg rotate-2"
+                                  )}
+                                  onClick={() => setSelectedLead(lead)}
+                                >
+                                  <div className="p-4">
+                                    <div className="flex items-start justify-between mb-2">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="font-medium text-sm mb-1 truncate">
+                                          {lead.vendorName}
+                                        </div>
+                                        {lead.propertyAddress && (
+                                          <div className="text-xs text-muted-foreground mb-2 truncate">
+                                            <MapPin className="h-3 w-3 inline mr-1" />
+                                            {lead.propertyAddress}
+                                          </div>
+                                        )}
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                          <Phone className="h-3 w-3" />
+                                          <span className="truncate">{lead.vendorPhone}</span>
+                                        </div>
+                                      </div>
+                                      {lead.motivationScore !== null && (
+                                        <Badge
+                                          variant="outline"
+                                          className={cn(
+                                            "ml-2 text-xs",
+                                            motivationBadgeColor(lead.motivationScore)
+                                          )}
+                                        >
+                                          {lead.motivationScore}/10
+                                        </Badge>
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center gap-2 mt-2 pt-2 border-t">
+                                      {lead.askingPrice && (
+                                        <div className="text-xs">
+                                          <span className="text-muted-foreground">Ask: </span>
+                                          <span className="font-medium">
+                                            {formatCurrency(lead.askingPrice)}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {lead.bmvScore !== null && (
+                                        <div className="text-xs">
+                                          <span className="text-muted-foreground">BMV: </span>
+                                          <span className="font-medium text-green-600">
+                                            {lead.bmvScore.toFixed(1)}%
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center justify-between mt-2 pt-2 border-t text-xs text-muted-foreground">
+                                      <div className="flex items-center gap-1">
+                                        <MessageSquare className="h-3 w-3" />
+                                        <span>{lead._count.smsMessages} msgs</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        <span>{formatTimeAgo(lead.lastContactAt)}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </Card>
+                              )} # Henry fix
+                          </Draggable>
+                          ))}
+                          {provided.placeholder}
+                          {columnLeads.length === 0 && (
+                            <div className="text-center py-8 text-muted-foreground text-sm border-2 border-dashed rounded-lg">
+                              No leads in this stage
+                            </div>
+                          )}
+                        </div>/
+                      </div>
+                    )}
+                  </Droppable>
+                )
+              })}
+            </div>
+          </DragDropContext>
+        )}
+
+        {selectedLead && (
+          <VendorLeadDetailModal
+            lead={selectedLead}
+            open={!!selectedLead}
+            onOpenChange={(open) => !open && setSelectedLead(null)}
+            onUpdate={fetchData}
+          />
+        )}
+      </div>
     </>
   )
 }
-
