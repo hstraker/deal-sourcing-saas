@@ -87,6 +87,60 @@ export async function GET(request: NextRequest) {
           }, 0) / conversations.length
         : 0
 
+    // Calculate average time from conversation start to offer sent
+    const leadsWithOfferTiming = await prisma.vendorLead.findMany({
+      where: {
+        offerSentAt: { not: null },
+        conversationStartedAt: { not: null },
+      },
+      select: {
+        conversationStartedAt: true,
+        offerSentAt: true,
+      },
+    })
+
+    const avgTimeToOffer =
+      leadsWithOfferTiming.length > 0
+        ? leadsWithOfferTiming.reduce((sum, lead) => {
+            if (lead.conversationStartedAt && lead.offerSentAt) {
+              const duration =
+                (new Date(lead.offerSentAt).getTime() -
+                  new Date(lead.conversationStartedAt).getTime()) /
+                (1000 * 60 * 60) // Convert to hours
+              return sum + duration
+            }
+            return sum
+          }, 0) / leadsWithOfferTiming.length
+        : 0
+
+    // Calculate average time from offer accepted to deal closed
+    const leadsWithCloseTiming = await prisma.vendorLead.findMany({
+      where: {
+        offerAcceptedAt: { not: null },
+      },
+      select: {
+        offerAcceptedAt: true,
+        dealClosedAt: true,
+      },
+    })
+
+    const avgTimeToClose =
+      leadsWithCloseTiming.length > 0
+        ? leadsWithCloseTiming.reduce((sum, lead) => {
+            if (lead.offerAcceptedAt) {
+              // If dealClosedAt exists, use it; otherwise use current time
+              const closeTime = lead.dealClosedAt
+                ? new Date(lead.dealClosedAt).getTime()
+                : Date.now()
+              const duration =
+                (closeTime - new Date(lead.offerAcceptedAt).getTime()) /
+                (1000 * 60 * 60 * 24) // Convert to days
+              return sum + duration
+            }
+            return sum
+          }, 0) / leadsWithCloseTiming.length
+        : 0
+
     // Financial metrics
     const offers = await prisma.vendorLead.findMany({
       where: {
@@ -127,8 +181,8 @@ export async function GET(request: NextRequest) {
         },
         avgTimes: {
           conversationDurationHours: Math.round(avgConversationDuration * 100) / 100,
-          timeToOfferHours: 0, // TODO: Calculate from offerSentAt
-          timeToCloseDays: 0, // TODO: Calculate from dealClosedAt
+          timeToOfferHours: Math.round(avgTimeToOffer * 100) / 100,
+          timeToCloseDays: Math.round(avgTimeToClose * 100) / 100,
         },
         financial: {
           totalOffersMade: Math.round(totalOffersMade),
