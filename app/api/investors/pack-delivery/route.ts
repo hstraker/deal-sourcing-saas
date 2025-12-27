@@ -46,20 +46,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Deal not found" }, { status: 404 })
     }
 
-    // Create delivery record (or update if exists)
+    // Create or generate pack record first if needed
+    let packGenerationId = generationId
+
+    if (!packGenerationId) {
+      // Create a generation record for this pack delivery
+      const generation = await prisma.investorPackGeneration.create({
+        data: {
+          dealId,
+          propertyAddress: deal.address,
+          askingPrice: deal.askingPrice,
+          generatedById: session.user.id,
+        },
+      })
+      packGenerationId = generation.id
+    }
+
+    // Create delivery record (or update if exists with same generation)
     const delivery = await prisma.investorPackDelivery.upsert({
       where: {
         investorId_dealId_generationId_partNumber: {
           investorId,
           dealId,
-          generationId: generationId || null,
+          generationId: packGenerationId,
           partNumber: partNumber || null,
         },
       },
       create: {
         investorId,
         dealId,
-        generationId,
+        generationId: packGenerationId,
         partNumber: partNumber || null,
         deliveryMethod: deliveryMethod || "email",
         recipientEmail: recipientEmail || investor.user.email,
