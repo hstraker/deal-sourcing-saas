@@ -137,7 +137,6 @@ export async function POST(
         // Fetch PropertyData valuation if we have enough data - 1 credit
         // Only call if we have square footage (required for valuation API)
         // For now, skip valuation API and use comparables only
-        // TODO: Add square footage field to VendorLead model for better valuation
 
         // Fetch rental data from PropertyData API if we don't already have it
         if (monthlyRent === 0 || rentalDataSource === "none") {
