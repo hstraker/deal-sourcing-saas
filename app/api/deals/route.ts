@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status")
     const postcode = searchParams.get("postcode")
     const assignedToId = searchParams.get("assignedToId")
+    const hasInvestorPack = searchParams.get("hasInvestorPack")
 
     const where: any = {}
 
@@ -39,6 +40,10 @@ export async function GET(request: NextRequest) {
 
     if (assignedToId) {
       where.assignedToId = assignedToId
+    }
+
+    if (hasInvestorPack === "true") {
+      where.investorPackSent = true
     }
 
     // Sourcers can only see their own deals or unassigned deals
@@ -85,7 +90,7 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(deals)
+    return NextResponse.json({ deals })
   } catch (error) {
     console.error("Error fetching deals:", error)
     return NextResponse.json(
@@ -182,7 +187,7 @@ export async function POST(request: NextRequest) {
         roi: finalMetrics.roi,
         roce: finalMetrics.roce,
         dealScore: finalMetrics.dealScore,
-        dealScoreBreakdown: calculatedMetrics.dealScoreBreakdown,
+        dealScoreBreakdown: calculatedMetrics.dealScoreBreakdown as any,
         status: nextStatus,
         statusUpdatedAt: now,
         statusHistory: [statusHistoryEntry],

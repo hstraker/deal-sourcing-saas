@@ -9,6 +9,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { PipelineStage } from "@prisma/client"
+import { estimateRentalIncome, estimateSquareFeet, calculateRentPerSqFt } from "@/lib/rental-estimator"
 
 // GET /api/vendor-pipeline/leads/[id]
 export async function GET(
@@ -81,6 +82,41 @@ export async function PATCH(
 
     if (!currentLead) {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 })
+    }
+
+    // Auto-estimate rental data if asking price is present and rental data is not provided
+    const askingPrice = body.askingPrice !== undefined ? body.askingPrice : currentLead.askingPrice
+    const propertyType = body.propertyType !== undefined ? body.propertyType : currentLead.propertyType
+    const bedrooms = body.bedrooms !== undefined ? body.bedrooms : currentLead.bedrooms
+    const postcode = body.propertyPostcode !== undefined ? body.propertyPostcode : currentLead.propertyPostcode
+
+    if (askingPrice && !body.estimatedMonthlyRent && !currentLead.estimatedMonthlyRent) {
+      const rental = estimateRentalIncome(
+        Number(askingPrice),
+        propertyType,
+        bedrooms,
+        postcode
+      )
+
+      body.estimatedMonthlyRent = rental.monthlyRent
+      body.estimatedAnnualRent = rental.annualRent
+      body.rentConfidence = rental.confidence
+
+      console.log(`[Rental Estimator] Auto-estimated rent for lead ${params.id}: £${rental.monthlyRent}/mo (${rental.estimatedYield.toFixed(1)}% yield)`)
+    }
+
+    // Auto-estimate square footage if bedrooms are present and square footage is not
+    if (bedrooms && !body.squareFeet && !currentLead.squareFeet) {
+      const estimatedSqFt = estimateSquareFeet(propertyType, bedrooms)
+      if (estimatedSqFt) {
+        body.squareFeet = estimatedSqFt
+        console.log(`[Rental Estimator] Auto-estimated square footage for lead ${params.id}: ${estimatedSqFt} sq ft`)
+      }
+    }
+
+    // Calculate rent per sq ft if we have both values
+    if (body.estimatedMonthlyRent && body.squareFeet) {
+      body.rentPerSqFt = calculateRentPerSqFt(Number(body.estimatedMonthlyRent), Number(body.squareFeet))
     }
 
     // If pipeline stage is changing, log event

@@ -12,6 +12,7 @@ import type { DealScoreBreakdown } from "@/lib/deal-scoring"
 import { getSignedDownloadUrl } from "@/lib/s3"
 import { CoverPhotoViewerWithGallery } from "@/components/deals/cover-photo-viewer-with-gallery"
 import { DeleteDealButton } from "@/components/deals/delete-deal-button"
+import { GenerateInvestorPackButton } from "@/components/deals/generate-investor-pack-button"
 import { QuickAssignUser } from "@/components/deals/quick-assign-user"
 import { PropertyAnalysisPanel } from "@/components/deals/property-analysis-panel"
 import { VendorSection } from "@/components/vendors/vendor-section"
@@ -184,6 +185,7 @@ export default async function DealDetailPage({ params }: DealDetailPageProps) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <GenerateInvestorPackButton dealId={deal.id} dealAddress={deal.address} />
           <Link href={`/dashboard/deals/${deal.id}/edit`}>
             <Button>
               <Edit className="mr-2 h-4 w-4" />

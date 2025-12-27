@@ -21,7 +21,7 @@ async function testAIConversation() {
     console.log("1. Creating test vendor lead...")
     const lead = await prisma.vendorLead.create({
       data: {
-        vendorName: "John Smith",
+        vendorName: "Henry Bloggs03",
         vendorPhone: "+447700900123",
         vendorEmail: "john.smith@example.com",
         propertyAddress: "123 High Street, London",

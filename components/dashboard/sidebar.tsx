@@ -14,6 +14,8 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { signOut } from "next-auth/react"
+import { useState, useEffect } from "react"
+import Image from "next/image"
 
 const navigation = [
   {
@@ -37,11 +39,6 @@ const navigation = [
     icon: Building2,
   },
   {
-    name: "Vendor Pipeline",
-    href: "/dashboard/vendors/pipeline",
-    icon: KanbanSquare,
-  },
-  {
     name: "Investors",
     href: "/dashboard/investors",
     icon: Users,
@@ -53,13 +50,61 @@ const navigation = [
   },
 ]
 
+interface CompanyProfile {
+  companyName: string
+  logoUrl: string | null
+  primaryColor: string
+  secondaryColor: string
+}
+
 export function Sidebar() {
   const pathname = usePathname()
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null)
+
+  useEffect(() => {
+    // Fetch company profile for logo and branding
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch("/api/company-profile")
+        if (response.ok) {
+          const data = await response.json()
+          if (data.profile) {
+            setCompanyProfile(data.profile)
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching company profile:", error)
+      }
+    }
+
+    fetchProfile()
+
+    // Listen for profile updates
+    const handleProfileUpdate = () => {
+      fetchProfile()
+    }
+    window.addEventListener("company-profile-updated", handleProfileUpdate)
+    return () => {
+      window.removeEventListener("company-profile-updated", handleProfileUpdate)
+    }
+  }, [])
 
   return (
     <div className="flex h-full w-64 flex-col border-r border-border bg-card text-card-foreground dark:bg-slate-950">
-      <div className="flex h-16 items-center border-b border-border px-6">
-        <h1 className="text-xl font-bold">DealStack</h1>
+      <div className="flex h-16 items-center border-b border-border px-6 gap-3">
+        {companyProfile?.logoUrl ? (
+          <div className="relative w-10 h-10 flex-shrink-0">
+            <Image
+              src={companyProfile.logoUrl}
+              alt={companyProfile.companyName}
+              fill
+              className="object-contain"
+            />
+          </div>
+        ) : null}
+        <h1 className="text-xl font-bold truncate">
+          {companyProfile?.companyName || "DealStack"}
+        </h1>
       </div>
       
       <nav className="flex-1 space-y-1 px-3 py-4">

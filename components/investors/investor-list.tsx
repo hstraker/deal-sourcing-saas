@@ -20,10 +20,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Loader2, Search, Mail, Phone, PoundSterling, Plus, Edit, Trash2 } from "lucide-react"
+import { Loader2, Search, Mail, Phone, PoundSterling, Plus, Edit, Trash2, Send, FileCheck } from "lucide-react"
 import Link from "next/link"
 import { format } from "date-fns"
 import { InvestorForm } from "./investor-form"
+import { SendPackModal } from "./send-pack-modal"
+import { ReservationModal } from "./reservation-modal"
 
 interface Investor {
   id: string
@@ -36,6 +38,7 @@ interface Investor {
   }
   minBudget: number | null
   maxBudget: number | null
+  preferredAreas: string[]
   strategy: string[]
   experienceLevel: string | null
   financingStatus: string | null
@@ -43,6 +46,7 @@ interface Investor {
   smsAlerts: boolean
   dealsPurchased: number
   totalSpent: number
+  pipelineStage?: string
   createdAt: string
   _count?: {
     reservations: number
@@ -72,12 +76,41 @@ const strategyColors: Record<string, string> = {
   Flip: "bg-orange-100 text-orange-800 border-orange-200",
 }
 
+const pipelineStageLabels: Record<string, string> = {
+  LEAD: "Lead",
+  CONTACTED: "Contacted",
+  QUALIFIED: "Qualified",
+  VIEWING_DEALS: "Viewing Deals",
+  RESERVED: "Reserved",
+  PURCHASED: "Purchased",
+  INACTIVE: "Inactive",
+}
+
+const pipelineStageColors: Record<string, string> = {
+  LEAD: "bg-gray-100 text-gray-700 border-gray-200",
+  CONTACTED: "bg-blue-100 text-blue-700 border-blue-200",
+  QUALIFIED: "bg-green-100 text-green-700 border-green-200",
+  VIEWING_DEALS: "bg-purple-100 text-purple-700 border-purple-200",
+  RESERVED: "bg-yellow-100 text-yellow-700 border-yellow-200",
+  PURCHASED: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  INACTIVE: "bg-red-100 text-red-700 border-red-200",
+}
+
 export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
   const [investors, setInvestors] = useState<Investor[]>(initialInvestors)
   const [isLoading, setIsLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingInvestor, setEditingInvestor] = useState<Investor | null>(null)
+  const [isMounted, setIsMounted] = useState(false)
+
+  // Send pack modal state
+  const [isSendPackOpen, setIsSendPackOpen] = useState(false)
+  const [selectedInvestorForPack, setSelectedInvestorForPack] = useState<Investor | null>(null)
+
+  // Reservation modal state
+  const [isReservationOpen, setIsReservationOpen] = useState(false)
+  const [selectedInvestorForReservation, setSelectedInvestorForReservation] = useState<Investor | null>(null)
 
   const fetchInvestors = async () => {
     setIsLoading(true)
@@ -85,7 +118,7 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
       const response = await fetch("/api/investors")
       if (response.ok) {
         const data = await response.json()
-        setInvestors(data)
+        setInvestors(data.investors || [])
       }
     } catch (error) {
       console.error("Error fetching investors:", error)
@@ -95,6 +128,7 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
   }
 
   useEffect(() => {
+    setIsMounted(true)
     if (initialInvestors.length === 0) {
       fetchInvestors()
     }
@@ -158,6 +192,24 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
     fetchInvestors()
   }
 
+  const handleSendPack = (investor: Investor) => {
+    setSelectedInvestorForPack(investor)
+    setIsSendPackOpen(true)
+  }
+
+  const handleCreateReservation = (investor: Investor) => {
+    setSelectedInvestorForReservation(investor)
+    setIsReservationOpen(true)
+  }
+
+  const handlePackSent = () => {
+    fetchInvestors()
+  }
+
+  const handleReservationCreated = () => {
+    fetchInvestors()
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -200,13 +252,10 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Investor</TableHead>
-                  <TableHead>Contact</TableHead>
+                  <TableHead>Pipeline Stage</TableHead>
                   <TableHead>Budget</TableHead>
                   <TableHead>Strategy</TableHead>
-                  <TableHead>Experience</TableHead>
-                  <TableHead>Financing</TableHead>
-                  <TableHead>Deals Purchased</TableHead>
-                  <TableHead>Total Spent</TableHead>
+                  <TableHead>Stats</TableHead>
                   <TableHead>Joined</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -221,30 +270,37 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
                           <Mail className="h-3 w-3" />
                           {investor.user.email}
                         </div>
+                        {investor.user.phone && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                            <Phone className="h-3 w-3" />
+                            {investor.user.phone}
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      {investor.user.phone ? (
-                        <div className="flex items-center gap-1 text-sm">
-                          <Phone className="h-3 w-3" />
-                          {investor.user.phone}
-                        </div>
+                      {investor.pipelineStage ? (
+                        <Badge
+                          variant="outline"
+                          className={`text-xs ${
+                            pipelineStageColors[investor.pipelineStage] ||
+                            "bg-gray-100 text-gray-800 border-gray-200"
+                          }`}
+                        >
+                          {pipelineStageLabels[investor.pipelineStage] || investor.pipelineStage}
+                        </Badge>
                       ) : (
-                        <span className="text-muted-foreground text-sm">—</span>
+                        <Badge variant="outline" className="text-xs bg-gray-100 text-gray-700 border-gray-200">
+                          Lead
+                        </Badge>
                       )}
                     </TableCell>
                     <TableCell>
                       {investor.minBudget || investor.maxBudget ? (
                         <div className="text-sm">
-                          £
-                          {investor.minBudget
-                            ? investor.minBudget.toLocaleString()
-                            : "—"}
+                          £{investor.minBudget ? investor.minBudget.toLocaleString() : "—"}
                           {" - "}
-                          £
-                          {investor.maxBudget
-                            ? investor.maxBudget.toLocaleString()
-                            : "—"}
+                          £{investor.maxBudget ? investor.maxBudget.toLocaleString() : "—"}
                         </div>
                       ) : (
                         <span className="text-muted-foreground text-sm">—</span>
@@ -253,7 +309,7 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {investor.strategy && investor.strategy.length > 0 ? (
-                          investor.strategy.map((s) => (
+                          investor.strategy.slice(0, 2).map((s) => (
                             <Badge
                               key={s}
                               variant="outline"
@@ -267,58 +323,50 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
                         ) : (
                           <span className="text-muted-foreground text-sm">—</span>
                         )}
+                        {investor.strategy && investor.strategy.length > 2 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{investor.strategy.length - 2}
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      {investor.experienceLevel ? (
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${
-                            experienceColors[investor.experienceLevel] ||
-                            "bg-gray-100 text-gray-800 border-gray-200"
-                          }`}
-                        >
-                          {investor.experienceLevel.charAt(0).toUpperCase() +
-                            investor.experienceLevel.slice(1)}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {investor.financingStatus ? (
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${
-                            financingColors[investor.financingStatus] ||
-                            "bg-gray-100 text-gray-800 border-gray-200"
-                          }`}
-                        >
-                          {investor.financingStatus.charAt(0).toUpperCase() +
-                            investor.financingStatus.slice(1)}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-medium">{investor.dealsPurchased}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <PoundSterling className="h-3 w-3" />
-                        {Number(investor.totalSpent).toLocaleString()}
+                      <div className="text-sm space-y-1">
+                        <div className="flex items-center gap-1">
+                          <PoundSterling className="h-3 w-3 text-muted-foreground" />
+                          <span className="font-medium">{Number(investor.totalSpent).toLocaleString()}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {investor.dealsPurchased} deals
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {format(new Date(investor.createdAt), "MMM d, yyyy")}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSendPack(investor)}
+                          title="Send Investor Pack"
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCreateReservation(investor)}
+                          title="Create Reservation"
+                        >
+                          <FileCheck className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleEdit(investor)}
+                          title="Edit Investor"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -326,6 +374,7 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDelete(investor.id)}
+                          title="Delete Investor"
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -361,6 +410,33 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Send Pack Modal */}
+      <SendPackModal
+        open={isSendPackOpen && !!selectedInvestorForPack}
+        onOpenChange={(open) => {
+          setIsSendPackOpen(open)
+          if (!open) {
+            setSelectedInvestorForPack(null)
+          }
+        }}
+        investorId={selectedInvestorForPack?.id || ""}
+        investorName={selectedInvestorForPack ? getInvestorName(selectedInvestorForPack) : ""}
+        onSuccess={handlePackSent}
+      />
+
+      {/* Reservation Modal */}
+      <ReservationModal
+        open={isReservationOpen && !!selectedInvestorForReservation}
+        onOpenChange={(open) => {
+          setIsReservationOpen(open)
+          if (!open) {
+            setSelectedInvestorForReservation(null)
+          }
+        }}
+        investorId={selectedInvestorForReservation?.id}
+        onSuccess={handleReservationCreated}
+      />
     </Card>
   )
 }

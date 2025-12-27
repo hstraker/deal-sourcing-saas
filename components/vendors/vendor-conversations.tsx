@@ -308,7 +308,7 @@ export function VendorConversations({ vendorId }: VendorConversationsProps) {
       <CardContent>
         {conversations.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            No conversations recorded yet. Click "Add Conversation" to log one.
+            No conversations recorded yet. Click &quot;Add Conversation&quot; to log one.
           </div>
         ) : (
           <div className="space-y-4">

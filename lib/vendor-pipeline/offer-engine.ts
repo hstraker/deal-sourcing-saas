@@ -9,9 +9,8 @@ import { aiSMSAgent } from "./ai-sms-agent"
 import {
   OfferCalculationInput,
   OfferCalculationResult,
-  PropertyCondition,
 } from "@/types/vendor-pipeline"
-import { SMSDirection, PipelineStage } from "@prisma/client"
+import { SMSDirection, PipelineStage, PropertyCondition } from "@prisma/client"
 import { getPipelineConfig } from "./config"
 import { getRetryDelayDays } from "@/types/vendor-pipeline"
 
@@ -53,42 +52,87 @@ export class OfferEngine {
   }
 
   /**
-   * Calculate offer amount based on multiple factors
+   * Calculate offer amount based on multiple factors with sophisticated pricing strategy
    */
   private calculateOfferAmount(input: OfferCalculationInput): OfferCalculationResult {
-    // Base offer: 80% of market value
+    // 1. Base offer: 80% of market value (configurable)
     const baseOffer = input.marketValue * (this.config.offerBasePercentage / 100)
 
-    // Condition adjustment: subtract renovation costs
+    // 2. Condition adjustment: subtract estimated renovation costs
     const conditionAdjustment = -(input.estimatedRefurbCost || 0)
 
-    // Motivation bonus: up to £10k extra for highly motivated vendors
-    const motivationBonus = input.motivationScore
-      ? Math.min(input.motivationScore * 1000, 10000)
-      : 0
+    // 3. Motivation-based pricing strategy
+    let motivationBonus = 0
+    if (input.motivationScore) {
+      if (input.motivationScore >= 9) {
+        // Highly motivated: up to £10k bonus (be competitive)
+        motivationBonus = 10000
+      } else if (input.motivationScore >= 7) {
+        // Motivated: up to £7k bonus
+        motivationBonus = 7000
+      } else if (input.motivationScore >= 5) {
+        // Moderately motivated: up to £3k bonus
+        motivationBonus = 3000
+      } else {
+        // Low motivation: minimal bonus (£1k)
+        motivationBonus = 1000
+      }
+    }
 
-    // Calculate final offer
-    let finalOffer = baseOffer + conditionAdjustment + motivationBonus
+    // 4. Deal attractiveness multiplier
+    // Better deals (higher BMV) get slightly higher offers to secure them
+    const askingToMarketRatio = input.askingPrice / input.marketValue
+    let attractivenessBonus = 0
 
-    // Never offer more than 85% of asking price
-    const maxOffer = input.askingPrice * (this.config.offerMaxPercentage / 100)
-    finalOffer = Math.min(finalOffer, maxOffer)
+    if (askingToMarketRatio <= 0.75) {
+      // Excellent deal (25%+ BMV) - be more aggressive
+      attractivenessBonus = 5000
+    } else if (askingToMarketRatio <= 0.85) {
+      // Good deal (15%+ BMV) - moderate bonus
+      attractivenessBonus = 2000
+    }
 
-    // Never offer more than asking price
-    finalOffer = Math.min(finalOffer, input.askingPrice)
+    // 5. Calculate provisional offer
+    let provisionalOffer = baseOffer + conditionAdjustment + motivationBonus + attractivenessBonus
 
-    // Ensure offer is positive
-    finalOffer = Math.max(finalOffer, 0)
+    // 6. Apply strategic caps and floors
+
+    // Cap: Never exceed 85% of asking price (configurable)
+    const maxOfferPercentage = input.askingPrice * (this.config.offerMaxPercentage / 100)
+    provisionalOffer = Math.min(provisionalOffer, maxOfferPercentage)
+
+    // Cap: Never exceed asking price
+    provisionalOffer = Math.min(provisionalOffer, input.askingPrice)
+
+    // Floor: Minimum profit margin check
+    // Ensure at least £30k profit after all costs
+    const minimumProfitRequired = 30000
+    const estimatedTotalCosts = provisionalOffer + (input.estimatedRefurbCost || 0) + (provisionalOffer * 0.05) // 5% transaction costs
+    const potentialProfit = input.marketValue - estimatedTotalCosts
+
+    if (potentialProfit < minimumProfitRequired) {
+      // Adjust offer down to maintain minimum profit
+      const maxAffordableOffer = input.marketValue - minimumProfitRequired - (input.estimatedRefurbCost || 0) - (provisionalOffer * 0.05)
+      provisionalOffer = Math.min(provisionalOffer, maxAffordableOffer)
+    }
+
+    // Ensure offer is positive and reasonable
+    const finalOffer = Math.max(provisionalOffer, 0)
+
+    // Round to nearest £1000 for cleaner offers
+    const roundedOffer = Math.round(finalOffer / 1000) * 1000
 
     return {
-      offerAmount: Math.round(finalOffer),
-      offerPercentage: (finalOffer / input.askingPrice) * 100,
-      offerPercentageOfMarket: (finalOffer / input.marketValue) * 100,
+      offerAmount: Math.round(roundedOffer),
+      offerPercentage: (roundedOffer / input.askingPrice) * 100,
+      offerPercentageOfMarket: (roundedOffer / input.marketValue) * 100,
       calculationBreakdown: {
         baseOffer: Math.round(baseOffer),
         conditionAdjustment: Math.round(conditionAdjustment),
         motivationBonus: Math.round(motivationBonus),
-        finalOffer: Math.round(finalOffer),
+        attractivenessBonus: Math.round(attractivenessBonus),
+        provisionalOffer: Math.round(provisionalOffer),
+        finalOffer: Math.round(roundedOffer),
       },
     }
   }
@@ -220,8 +264,6 @@ export class OfferEngine {
         toNumber: lead.vendorPhone,
         messageBody: message,
         aiGenerated: false,
-        videoSent: true,
-        videoUrl: videoUrl || undefined,
       },
     })
 

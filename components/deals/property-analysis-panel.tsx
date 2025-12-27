@@ -25,6 +25,7 @@ import {
   PoundSterling,
   Calendar,
 } from "lucide-react"
+import { formatCurrency } from "@/lib/format"
 
 interface PropertyAnalysisPanelProps {
   dealId: string
@@ -122,14 +123,6 @@ export function PropertyAnalysisPanel({
     // Auto-fetch on mount
     fetchData()
   }, [address, postcode])
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-GB", {
-      style: "currency",
-      currency: "GBP",
-      maximumFractionDigits: 0,
-    }).format(amount)
-  }
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-GB", {

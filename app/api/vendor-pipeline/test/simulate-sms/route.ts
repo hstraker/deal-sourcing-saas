@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: "SMS simulated and processed",
       vendorLeadId,
-      message,
+      sentMessage: message,
     })
   } catch (error: any) {
     if (error instanceof z.ZodError) {

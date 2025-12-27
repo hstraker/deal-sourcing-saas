@@ -91,6 +91,10 @@ export interface ConversationState {
   lastQuestionAsked?: string
   messagesExchanged?: number
   conversationComplete?: boolean
+  lastIntent?: "question" | "providing_info" | "showing_interest" | "hesitation" | "objection" | "ready_to_proceed"
+  lastConversationQuality?: number // 1-10 scale
+  nextQuestionType?: "address" | "price" | "condition" | "reason" | "timeline" | "competing_offers" | "wrap_up" | "none"
+  validationErrors?: string[]
 }
 
 // ============================================================================
@@ -173,6 +177,8 @@ export interface OfferCalculationResult {
     baseOffer: number // 80% of market value
     conditionAdjustment: number // -renovation costs
     motivationBonus: number // Based on motivation score
+    attractivenessBonus?: number // Based on BMV quality
+    provisionalOffer?: number // Before rounding
     finalOffer: number
   }
 }

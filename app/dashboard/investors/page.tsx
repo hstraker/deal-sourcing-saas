@@ -1,9 +1,11 @@
+import { Suspense } from "react"
 import { getServerSession } from "next-auth"
 import { redirect } from "next/navigation"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { InvestorList } from "@/components/investors/investor-list"
 import { ReservationOverview } from "@/components/investors/reservation-overview"
+import { InvestorManagementDashboard } from "@/components/settings/investor-management-dashboard"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export const dynamic = "force-dynamic"
@@ -19,7 +21,7 @@ export default async function InvestorsPage() {
     redirect("/dashboard")
   }
 
-  // Fetch investors with reservation counts
+  // Fetch investors with reservation counts and pipeline info
   const investors = await prisma.investor.findMany({
     include: {
       user: {
@@ -38,7 +40,7 @@ export default async function InvestorsPage() {
       },
     },
     orderBy: {
-      createdAt: "desc",
+      lastActivityAt: "desc",
     },
   })
 
@@ -71,12 +73,13 @@ export default async function InvestorsPage() {
     },
   })
 
-  // Convert Decimal fields to numbers
+  // Convert Decimal fields to numbers and include all fields
   const investorsForClient = investors.map((investor) => ({
     ...investor,
     minBudget: investor.minBudget ? Number(investor.minBudget) : null,
     maxBudget: investor.maxBudget ? Number(investor.maxBudget) : null,
     totalSpent: Number(investor.totalSpent),
+    pipelineStage: investor.pipelineStage,
     _count: investor._count,
   }))
 
@@ -90,24 +93,30 @@ export default async function InvestorsPage() {
   }))
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Investors</h1>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold">Investor Management</h1>
         <p className="text-muted-foreground">
-          Manage investor profiles and track reservations
+          Track investor activities, pipeline stages, and performance metrics
         </p>
       </div>
 
       <Tabs defaultValue="investors" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="investors">Investors</TabsTrigger>
           <TabsTrigger value="reservations">Reservations</TabsTrigger>
+          <TabsTrigger value="statistics">Statistics</TabsTrigger>
         </TabsList>
         <TabsContent value="investors" className="mt-6">
           <InvestorList initialInvestors={investorsForClient as any} />
         </TabsContent>
         <TabsContent value="reservations" className="mt-6">
           <ReservationOverview initialReservations={reservationsForClient as any} />
+        </TabsContent>
+        <TabsContent value="statistics" className="mt-6">
+          <Suspense fallback={<div>Loading statistics...</div>}>
+            <InvestorManagementDashboard />
+          </Suspense>
         </TabsContent>
       </Tabs>
     </div>
