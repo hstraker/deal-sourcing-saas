@@ -23,9 +23,11 @@ import {
 } from "@/components/ui/table"
 import { PipelineStage } from "@prisma/client"
 import { cn } from "@/lib/utils"
-import { MessageSquare, Phone, MapPin, Clock, Filter, Download, Table2, Kanban } from "lucide-react"
+import { MessageSquare, Phone, MapPin, Clock, Filter, Download, Table2, Kanban, FileDown, Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import { VendorLeadDetailModal } from "./vendor-lead-detail-modal"
 import { PipelineStatsCards } from "./pipeline-stats-cards"
+import { formatCurrency } from "@/lib/format"
 
 interface VendorLead {
   id: string
@@ -42,6 +44,10 @@ interface VendorLead {
   propertyType: string | null
   bedrooms: number | null
   bathrooms: number | null
+  squareFeet: number | null
+  estimatedMonthlyRent: number | null
+  estimatedAnnualRent: number | null
+  condition: string | null
   pipelineStage: PipelineStage
   motivationScore: number | null
   urgencyLevel: string | null
@@ -53,16 +59,22 @@ interface VendorLead {
   estimatedRefurbCost: number | null
   profitPotential: number | null
   validationPassed: boolean | null
+  validationNotes: string | null
+  validatedAt: Date | null
   offerAmount: number | null
   offerPercentage: number | null
   offerSentAt: Date | null
   offerAcceptedAt: Date | null
   offerRejectedAt: Date | null
+  rejectionReason: string | null
   retryCount: number
+  videoSent: boolean
+  videoUrl: string | null
   createdAt: Date
   updatedAt: Date
   lastContactAt: Date | null
   conversationStartedAt: Date | null
+  dealId: string | null
   smsMessages: Array<{
     id: string
     direction: string
@@ -155,16 +167,6 @@ const PIPELINE_COLUMNS: Array<{
     },
   ]
 
-const formatCurrency = (amount: number | null) => {
-  if (!amount) return "—"
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount)
-}
-
 const formatTimeAgo = (date: Date | null) => {
   if (!date) return "Never"
   const now = new Date()
@@ -192,6 +194,7 @@ export function VendorPipelineKanbanBoard() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedLead, setSelectedLead] = useState<VendorLead | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [generatingPackId, setGeneratingPackId] = useState<string | null>(null)
 
   // View and filter state
   const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban")
@@ -225,6 +228,8 @@ export function VendorPipelineKanbanBoard() {
         profitPotential: lead.profitPotential ? Number(lead.profitPotential) : null,
         offerAmount: lead.offerAmount ? Number(lead.offerAmount) : null,
         offerPercentage: lead.offerPercentage ? Number(lead.offerPercentage) : null,
+        estimatedMonthlyRent: lead.estimatedMonthlyRent ? Number(lead.estimatedMonthlyRent) : null,
+        estimatedAnnualRent: lead.estimatedAnnualRent ? Number(lead.estimatedAnnualRent) : null,
         motivationScore: lead.motivationScore ? Number(lead.motivationScore) : null,
         createdAt: new Date(lead.createdAt),
         updatedAt: new Date(lead.updatedAt),
@@ -295,6 +300,60 @@ export function VendorPipelineKanbanBoard() {
   }
 
   const leadsByStage = groupLeadsByStage(filteredLeads)
+
+  // Handle generate investor pack
+  const handleGenerateInvestorPack = async (lead: VendorLead, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation()
+    }
+
+    if (!lead.propertyAddress) {
+      toast.error("Property address is required to generate investor pack")
+      return
+    }
+
+    if (!lead.askingPrice) {
+      toast.error("Asking price is required to generate investor pack")
+      return
+    }
+
+    setGeneratingPackId(lead.id)
+
+    try {
+      const response = await fetch(`/api/vendor-leads/${lead.id}/investor-pack`)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || "Failed to generate investor pack")
+      }
+
+      // Get the PDF blob
+      const blob = await response.blob()
+
+      // Create a download link and trigger it
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      const fileName = lead.propertyAddress.replace(/[^a-z0-9]/gi, "-").toLowerCase()
+      a.download = `investor-pack-${fileName}.pdf`
+      document.body.appendChild(a)
+      a.click()
+
+      // Cleanup
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      toast.success("Investor pack generated successfully")
+
+      // Refresh data in case a deal was created
+      fetchData()
+    } catch (error: any) {
+      console.error("Error generating investor pack:", error)
+      toast.error(error.message || "Failed to generate investor pack")
+    } finally {
+      setGeneratingPackId(null)
+    }
+  }
 
   // Handle drag and drop
   const handleDragEnd = async (result: DropResult) => {
@@ -448,6 +507,7 @@ export function VendorPipelineKanbanBoard() {
                     <TableHead>Motivation</TableHead>
                     <TableHead>Asking Price</TableHead>
                     <TableHead>BMV Score</TableHead>
+                    <TableHead>Rental Yield</TableHead>
                     <TableHead>Offer</TableHead>
                     <TableHead>Last Contact</TableHead>
                     <TableHead>Actions</TableHead>
@@ -456,7 +516,7 @@ export function VendorPipelineKanbanBoard() {
                 <TableBody>
                   {filteredLeads.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                         No leads found
                       </TableCell>
                     </TableRow>
@@ -499,20 +559,52 @@ export function VendorPipelineKanbanBoard() {
                           )}
                         </TableCell>
                         <TableCell>
+                          {lead.estimatedMonthlyRent && lead.askingPrice ? (
+                            <div>
+                              <span className="text-blue-600 font-medium">
+                                {((Number(lead.estimatedAnnualRent || lead.estimatedMonthlyRent * 12) / Number(lead.askingPrice)) * 100).toFixed(1)}%
+                              </span>
+                              <div className="text-xs text-muted-foreground">
+                                {formatCurrency(lead.estimatedMonthlyRent)}/mo
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
                           {lead.offerAmount ? formatCurrency(lead.offerAmount) : "—"}
                         </TableCell>
                         <TableCell>{formatTimeAgo(lead.lastContactAt)}</TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setSelectedLead(lead)
-                            }}
-                          >
-                            View
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleGenerateInvestorPack(lead, e)
+                              }}
+                              disabled={generatingPackId === lead.id || !lead.propertyAddress || !lead.askingPrice}
+                              title={!lead.propertyAddress || !lead.askingPrice ? "Property address and asking price required" : "Generate investor pack"}
+                            >
+                              {generatingPackId === lead.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <FileDown className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedLead(lead)
+                              }}
+                            >
+                              View
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -598,7 +690,7 @@ export function VendorPipelineKanbanBoard() {
                                       )}
                                     </div>
 
-                                    <div className="flex items-center gap-2 mt-2 pt-2 border-t">
+                                    <div className="flex items-center gap-2 mt-2 pt-2 border-t flex-wrap">
                                       {lead.askingPrice && (
                                         <div className="text-xs">
                                           <span className="text-muted-foreground">Ask: </span>
@@ -612,6 +704,22 @@ export function VendorPipelineKanbanBoard() {
                                           <span className="text-muted-foreground">BMV: </span>
                                           <span className="font-medium text-green-600">
                                             {lead.bmvScore.toFixed(1)}%
+                                          </span>
+                                        </div>
+                                      )}
+                                      {lead.estimatedMonthlyRent && lead.askingPrice && (
+                                        <div className="text-xs">
+                                          <span className="text-muted-foreground">Yield: </span>
+                                          <span className="font-medium text-blue-600">
+                                            {((Number(lead.estimatedAnnualRent || lead.estimatedMonthlyRent * 12) / Number(lead.askingPrice)) * 100).toFixed(1)}%
+                                          </span>
+                                        </div>
+                                      )}
+                                      {lead.estimatedMonthlyRent && (
+                                        <div className="text-xs">
+                                          <span className="text-muted-foreground">Rent: </span>
+                                          <span className="font-medium">
+                                            {formatCurrency(lead.estimatedMonthlyRent)}/mo
                                           </span>
                                         </div>
                                       )}

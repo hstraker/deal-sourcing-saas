@@ -6,13 +6,13 @@ import { Eye, EyeOff } from "lucide-react"
 
 interface DealCardSectionsProps {
   dealId: string
-  children: {
+  sections: {
     metrics?: React.ReactNode
     map?: React.ReactNode | null
   }
 }
 
-export function DealCardSections({ dealId, children }: DealCardSectionsProps) {
+export function DealCardSections({ dealId, sections }: DealCardSectionsProps) {
   const [metricsVisible, setMetricsVisible] = useState(true)
   const [mapVisible, setMapVisible] = useState(true)
 
@@ -67,7 +67,7 @@ export function DealCardSections({ dealId, children }: DealCardSectionsProps) {
             </>
           )}
         </Button>
-        {children.map && (
+        {sections.map && (
           <Button
             variant="ghost"
             size="sm"
@@ -90,10 +90,10 @@ export function DealCardSections({ dealId, children }: DealCardSectionsProps) {
       </div>
 
       {/* Investment Metrics */}
-      {metricsVisible && children.metrics}
+      {metricsVisible && sections.metrics}
 
       {/* Map */}
-      {mapVisible && children.map}
+      {mapVisible && sections.map}
     </>
   )
 }

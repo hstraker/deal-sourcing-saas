@@ -121,8 +121,9 @@ export function ReservationForm({
     // Fetch investors for dropdown
     fetch("/api/investors")
       .then((res) => res.json())
-      .then((investorsData) => {
-        const investorsWithUsers = investorsData.map((inv: any) => ({
+      .then((data) => {
+        const investorsArray = data.investors || []
+        const investorsWithUsers = investorsArray.map((inv: any) => ({
           id: inv.id,
           user: inv.user,
         }))

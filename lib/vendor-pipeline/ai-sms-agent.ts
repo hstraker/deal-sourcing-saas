@@ -11,43 +11,51 @@ import {
   AIConversationContext,
   AIConversationMessage,
   ConversationState,
-  UrgencyLevel,
-  PropertyCondition,
-  ReasonForSale,
 } from "@/types/vendor-pipeline"
-import { SMSDirection, PipelineStage } from "@prisma/client"
+import { SMSDirection, PipelineStage, UrgencyLevel, PropertyCondition, ReasonForSale } from "@prisma/client"
 
-const CONVERSATION_SYSTEM_PROMPT = `You are a professional property acquisition specialist having an SMS conversation with a potential seller.
+const CONVERSATION_SYSTEM_PROMPT = `You are a property buyer's representative conducting SMS conversations with potential sellers. Be friendly, professional, warm, and concise.
 
-Your goals:
-1. Build rapport and trust quickly
-2. Extract: property address, asking price, condition, reason for selling, timeline
-3. Assess motivation level (1-10)
-4. Keep messages short (1-2 sentences max for SMS - under 160 characters when possible)
-5. Sound natural and empathetic, not robotic
+YOUR GOALS:
+1. Build rapport quickly
+2. Extract: address (w/postcode), asking price, condition, reason for selling, timeline, competing offers
+3. Assess motivation (1-10)
+4. Keep natural - avoid interrogation
 
-Conversation guidelines:
-- Be friendly but professional
-- Show empathy for their situation
-- Don't push too hard - let them open up naturally
-- If they seem hesitant, reassure them (no obligation, just exploring options)
-- Extract information gradually over 5-8 messages
-- Once you have all key info, wrap up politely
+STRATEGY:
+- SMS: 1-2 sentences max, <160 chars ideal
+- ONE question at a time
+- Acknowledge their info before next question
+- Get address early, then condition, price, reason, timeline, competing offers
+- If hesitant: "No obligation, just exploring options"
+- Don't repeat questions
 
-IMPORTANT: You must respond with valid JSON only. Format your response as:
+COMPLETE when you have: address, price, condition, reason, timeline (or after 8+ questions if vendor impatient)
+
+MOTIVATION SCORING:
+9-10: Urgent (<2 weeks), financial/divorce, no competition
+7-8: Quick (<1 month), relocation/inheritance
+5-6: Moderate (<3 months), downsize
+3-4: Exploring, has viewings/offers
+1-2: Casual, unlikely to proceed
+
+RESPOND WITH JSON ONLY:
 {
-  "message": "Your SMS message text",
+  "message": "Your SMS text",
+  "intent": "question|providing_info|showing_interest|hesitation|objection|ready_to_proceed",
   "extractedData": {
     "propertyAddress": "address if mentioned",
-    "askingPrice": number if mentioned,
+    "askingPrice": number,
     "condition": "excellent|good|needs_work|needs_modernisation|poor",
     "reasonForSelling": "relocation|financial|divorce|inheritance|downsize|other",
     "timeline": "urgent|quick|moderate|flexible",
-    "timelineDays": number if timeline given,
+    "timelineDays": number,
     "competingOffers": boolean
   },
-  "motivationScore": number 1-10,
-  "conversationComplete": boolean
+  "motivationScore": 1-10,
+  "conversationQuality": 1-10,
+  "conversationComplete": boolean,
+  "nextQuestionType": "address|price|condition|reason|timeline|competing_offers|wrap_up|none"
 }`
 
 export class AISMSAgent {
@@ -132,11 +140,13 @@ export class AISMSAgent {
       },
     })
 
-    // Get conversation history
+    // Get conversation history - LIMIT TO LAST 6 MESSAGES to save tokens
     const messages = await prisma.sMSMessage.findMany({
       where: { vendorLeadId: lead.id },
-      orderBy: { createdAt: "asc" },
+      orderBy: { createdAt: "desc" },
+      take: 6, // Only last 6 messages to reduce cost
     })
+    messages.reverse() // Put back in chronological order
 
     // Build conversation context
     const conversationHistory: AIConversationMessage[] = messages.map(msg => ({
@@ -178,21 +188,41 @@ export class AISMSAgent {
           provider: this.aiProvider.getProvider(),
           responseTime,
           tokens: aiResponse.tokens,
+          intent: aiResponse.intent,
+          conversationQuality: aiResponse.conversationQuality,
+          nextQuestionType: aiResponse.nextQuestionType,
+          rateLimitInfo: aiResponse.rateLimitInfo,
         },
+        intentDetected: aiResponse.intent,
+        confidenceScore: aiResponse.conversationQuality ? aiResponse.conversationQuality / 10 : undefined,
         status: result.status,
       },
     })
+
+    // Validate extracted data
+    const validation = aiResponse.extractedData
+      ? this.validateExtractedData(aiResponse.extractedData)
+      : { isValid: true, errors: [] }
+
+    if (!validation.isValid) {
+      console.warn(`[AI SMS Agent] Data validation issues for lead ${lead.id}:`, validation.errors)
+    }
 
     // Update conversation state and lead
     const updatedState: ConversationState = {
       ...existingState,
       extractedData: {
         ...existingState.extractedData,
-        ...aiResponse.extractedData,
+        // Only merge valid data
+        ...(validation.isValid ? aiResponse.extractedData : {}),
       },
       conversationFlow: aiResponse.conversationComplete ? "offer_pending" : "extracting_details",
       messagesExchanged: messages.length + 2,
       conversationComplete: aiResponse.conversationComplete,
+      lastIntent: aiResponse.intent,
+      lastConversationQuality: aiResponse.conversationQuality,
+      nextQuestionType: aiResponse.nextQuestionType,
+      validationErrors: validation.errors.length > 0 ? validation.errors : undefined,
     }
 
     const updateData: any = {
@@ -201,8 +231,8 @@ export class AISMSAgent {
       motivationScore: aiResponse.motivationScore || lead.motivationScore,
     }
 
-    // Update extracted data fields if present
-    if (aiResponse.extractedData) {
+    // Update extracted data fields if present and valid
+    if (aiResponse.extractedData && validation.isValid) {
       if (aiResponse.extractedData.propertyAddress) {
         updateData.propertyAddress = aiResponse.extractedData.propertyAddress
       }
@@ -221,7 +251,7 @@ export class AISMSAgent {
       if (aiResponse.extractedData.timelineDays) {
         updateData.timelineDays = aiResponse.extractedData.timelineDays
       }
-      if (aiResponse.extractedData.competingOffers !== undefined) {
+      if (typeof aiResponse.extractedData.competingOffers === 'boolean') {
         updateData.competingOffers = aiResponse.extractedData.competingOffers
       }
     }
@@ -249,29 +279,28 @@ export class AISMSAgent {
     motivationScore?: number
     conversationComplete: boolean
     tokens?: number
+    intent?: "question" | "providing_info" | "showing_interest" | "hesitation" | "objection" | "ready_to_proceed"
+    conversationQuality?: number
+    nextQuestionType?: "address" | "price" | "condition" | "reason" | "timeline" | "competing_offers" | "wrap_up" | "none"
+    rateLimitInfo?: any
   }> {
     try {
-      // Build system prompt with context embedded
+      // Build system prompt - conversation history sent as messages, not duplicated here
       const systemPrompt = `${CONVERSATION_SYSTEM_PROMPT}
 
-Current conversation context:
+Context:
 Vendor: ${context.vendorName}
-Property: ${context.propertyAddress || "Not yet specified"}
-Extracted data so far: ${JSON.stringify(context.extractedData, null, 2)}
-
-Conversation history (${context.conversationHistory.length} messages):
-${context.conversationHistory.map((msg, i) => `${i + 1}. ${msg.role === "user" ? "Vendor" : "You"}: ${msg.content.substring(0, 100)}${msg.content.length > 100 ? "..." : ""}`).join("\n")}
-
-Latest vendor message: ${latestMessage}`
+Property: ${context.propertyAddress || "Not specified"}
+Data: ${JSON.stringify(context.extractedData)}`
 
       // Build conversation messages
       const messages: Array<{ role: "user" | "assistant" | "system"; content: string }> = [
         ...context.conversationHistory.map(msg => ({
-          role: msg.role === "user" ? "user" : "assistant",
+          role: (msg.role === "user" ? "user" : "assistant") as "user" | "assistant",
           content: msg.content,
         })),
         {
-          role: "user",
+          role: "user" as const,
           content: latestMessage,
         },
       ]
@@ -303,6 +332,9 @@ Latest vendor message: ${latestMessage}`
         motivationScore: responseData.motivationScore,
         conversationComplete: responseData.conversationComplete || false,
         tokens: completion.tokens,
+        intent: responseData.intent,
+        conversationQuality: responseData.conversationQuality,
+        nextQuestionType: responseData.nextQuestionType,
       }
     } catch (error: any) {
       console.error("Error generating AI response:", error)
@@ -319,6 +351,61 @@ Latest vendor message: ${latestMessage}`
    */
   private generateInitialMessage(vendorName: string, propertyAddress: string): string {
     return `Hi ${vendorName}! Thanks for your enquiry about selling ${propertyAddress}. We're cash buyers who can move quickly with no chain. What's your rough timeline for selling?`
+  }
+
+  /**
+   * Validate extracted data for sanity
+   */
+  private validateExtractedData(data: any): {
+    isValid: boolean
+    errors: string[]
+  } {
+    const errors: string[] = []
+
+    // Validate asking price
+    if (data.askingPrice) {
+      const price = Number(data.askingPrice)
+      if (isNaN(price) || price < 10000 || price > 10000000) {
+        errors.push(`Invalid asking price: £${data.askingPrice}`)
+      }
+    }
+
+    // Validate timeline days
+    if (data.timelineDays) {
+      const days = Number(data.timelineDays)
+      if (isNaN(days) || days < 1 || days > 730) {
+        errors.push(`Invalid timeline: ${data.timelineDays} days`)
+      }
+    }
+
+    // Validate condition enum
+    if (data.condition) {
+      const validConditions = ["excellent", "good", "needs_work", "needs_modernisation", "poor"]
+      if (!validConditions.includes(data.condition)) {
+        errors.push(`Invalid condition: ${data.condition}`)
+      }
+    }
+
+    // Validate reason enum
+    if (data.reasonForSelling) {
+      const validReasons = ["relocation", "financial", "divorce", "inheritance", "downsize", "other"]
+      if (!validReasons.includes(data.reasonForSelling)) {
+        errors.push(`Invalid reason: ${data.reasonForSelling}`)
+      }
+    }
+
+    // Validate timeline enum
+    if (data.timeline) {
+      const validTimelines = ["urgent", "quick", "moderate", "flexible"]
+      if (!validTimelines.includes(data.timeline)) {
+        errors.push(`Invalid timeline: ${data.timeline}`)
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
   }
 
   /**

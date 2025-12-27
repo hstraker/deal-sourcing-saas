@@ -50,18 +50,18 @@ export async function GET(request: NextRequest) {
         where: propertyId
           ? {
               address: `property_id:${propertyId}`, // Store property_id in address field for caching
-              postcode: null,
+              postcode: { equals: null },
             }
           : {
-              address: address,
-              postcode: postcode || null,
+              address: address || undefined,
+              postcode: postcode || { equals: null },
             },
       })
 
       if (cached && cached.expiresAt > new Date()) {
         // Return cached data
         return NextResponse.json({
-          ...(cached.data as PropertyDataResponse),
+          ...(cached.data as unknown as PropertyDataResponse),
           cached: true,
           fetchedAt: cached.fetchedAt,
         })
@@ -172,45 +172,5 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// GET /api/propertydata/usage - Get API usage stats
-export async function GET_USAGE(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-
-    if (!session || session.user.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    // Get usage for current month
-    const now = new Date()
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-
-    const usage = await prisma.propertyDataCache.aggregate({
-      where: {
-        fetchedAt: {
-          gte: startOfMonth,
-        },
-      },
-      _sum: {
-        creditsUsed: true,
-      },
-      _count: {
-        id: true,
-      },
-    })
-
-    return NextResponse.json({
-      creditsUsed: usage._sum.creditsUsed || 0,
-      creditsRemaining: 2000 - (usage._sum.creditsUsed || 0),
-      requestsThisMonth: usage._count.id || 0,
-      limit: 2000,
-    })
-  } catch (error) {
-    console.error("Error fetching usage stats:", error)
-    return NextResponse.json(
-      { error: "Failed to fetch usage stats" },
-      { status: 500 }
-    )
-  }
-}
+// Note: Usage stats endpoint moved to app/api/propertydata/usage/route.ts
 

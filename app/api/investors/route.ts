@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(investors)
+    return NextResponse.json({ investors })
   } catch (error) {
     console.error("Error fetching investors:", error)
     return NextResponse.json(
@@ -88,8 +88,8 @@ export async function POST(request: NextRequest) {
     const investor = await prisma.investor.create({
       data: {
         userId,
-        minBudget: minBudget ? new Decimal(minBudget) : null,
-        maxBudget: maxBudget ? new Decimal(maxBudget) : null,
+        minBudget: (minBudget ? new Decimal(minBudget) : null) as any,
+        maxBudget: (maxBudget ? new Decimal(maxBudget) : null) as any,
         preferredAreas: preferredAreas || [],
         strategy: strategy || [],
         experienceLevel: experienceLevel || null,

@@ -18,6 +18,7 @@ import {
   type SortConfig,
 } from "@/components/deals/deal-sorting"
 import type { DealWithRelations } from "@/types/deal"
+import { formatCurrency } from "@/lib/format"
 
 type ViewMode = "cards" | "list" | "table"
 
@@ -51,16 +52,6 @@ const formatStatus = (status: string) => {
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ")
-}
-
-const formatCurrency = (amount: number | null | undefined) => {
-  if (!amount) return "—"
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount)
 }
 
 export function DealList({ deals, teamMembers = [] }: DealListProps) {
@@ -412,10 +403,10 @@ function ListView({ deals }: DealListProps) {
 
                 {/* Center: Pricing */}
                 <div className="text-right min-w-[140px]">
-                  <div className="font-bold">{formatCurrency(deal.askingPrice)}</div>
+                  <div className="font-bold">{formatCurrency(Number(deal.askingPrice))}</div>
                   {deal.marketValue && (
                     <div className="text-sm text-muted-foreground">
-                      MV: {formatCurrency(deal.marketValue)}
+                      MV: {formatCurrency(Number(deal.marketValue))}
                     </div>
                   )}
                 </div>
@@ -533,10 +524,10 @@ function TableView({ deals }: DealListProps) {
                   </span>
                 </td>
                 <td className="p-4 align-middle text-right font-medium">
-                  {formatCurrency(deal.askingPrice)}
+                  {formatCurrency(Number(deal.askingPrice))}
                 </td>
                 <td className="p-4 align-middle text-right">
-                  {formatCurrency(deal.marketValue)}
+                  {formatCurrency(Number(deal.marketValue))}
                 </td>
                 <td className="p-4 align-middle text-center">
                   {deal.dealScore !== null ? (
@@ -656,7 +647,7 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
                     Asking Price
                   </span>
                   <span className="font-bold text-base">
-                    {formatCurrency(deal.askingPrice)}
+                    {formatCurrency(Number(deal.askingPrice))}
                   </span>
                 </div>
                 {deal.marketValue && (
@@ -665,7 +656,7 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
                       Market Value
                     </span>
                     <span className="font-semibold text-sm">
-                      {formatCurrency(deal.marketValue)}
+                      {formatCurrency(Number(deal.marketValue))}
                     </span>
                   </div>
                 )}
@@ -675,7 +666,7 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
                       Monthly Rent
                     </span>
                     <span className="font-semibold text-sm">
-                      {formatCurrency(deal.estimatedMonthlyRent)}
+                      {formatCurrency(Number(deal.estimatedMonthlyRent))}
                     </span>
                   </div>
                 )}
@@ -718,7 +709,7 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
               {/* Toggle Section */}
               <DealCardSections
                 dealId={deal.id}
-                children={{
+                sections={{
                   metrics: (
                     <div className="pt-2 border-t space-y-2">
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">

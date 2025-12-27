@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { RefreshCw, TrendingUp, MessageSquare, DollarSign } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { formatCurrency } from "@/lib/format"
 
 interface PipelineStats {
   totalLeads: number
@@ -29,15 +30,6 @@ interface PipelineStatsCardsProps {
   stats: PipelineStats | null
   refreshing?: boolean
   onRefresh?: () => void
-}
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount)
 }
 
 export function PipelineStatsCards({ stats, refreshing, onRefresh }: PipelineStatsCardsProps) {

@@ -54,36 +54,27 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams
-    const dealId = searchParams.get("dealId")
-    const status = searchParams.get("status")
+    const pipelineStage = searchParams.get("pipelineStage")
 
-    const vendors = await prisma.vendor.findMany({
+    const vendorLeads = await prisma.vendorLead.findMany({
       where: {
-        ...(dealId && { dealId }),
-        ...(status && { status: status as any }),
+        ...(pipelineStage && { pipelineStage: pipelineStage as any }),
       },
       include: {
-        deal: {
+        smsMessages: {
+          orderBy: { createdAt: "desc" },
+          take: 5,
           select: {
             id: true,
-            address: true,
-            askingPrice: true,
-            status: true,
+            direction: true,
+            messageBody: true,
+            createdAt: true,
+            aiGenerated: true,
           },
         },
         _count: {
           select: {
-            offers: true,
-            aiConversations: true,
-          },
-        },
-        offers: {
-          orderBy: { offerDate: "desc" },
-          take: 1,
-          select: {
-            id: true,
-            offerAmount: true,
-            status: true,
+            smsMessages: true,
           },
         },
       },
@@ -92,7 +83,7 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(vendors)
+    return NextResponse.json(vendorLeads)
   } catch (error) {
     console.error("Error fetching vendors:", error)
     return NextResponse.json(

@@ -1,6 +1,7 @@
 "use client"
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
+import { formatCurrency } from "@/lib/format"
 
 interface FinancialPieChartProps {
   data: Array<{
@@ -23,15 +24,6 @@ export function FinancialPieChart({ data, title }: FinancialPieChartProps) {
         <p>No data available for chart</p>
       </div>
     )
-  }
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-GB", {
-      style: "currency",
-      currency: "GBP",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value)
   }
 
   return (

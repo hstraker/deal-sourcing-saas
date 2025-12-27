@@ -141,7 +141,7 @@ export function DashboardAnalytics() {
                           <Info className="h-4 w-4 text-muted-foreground cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent className="max-w-sm">
-                          <p className="text-sm font-medium mb-1">How it's calculated:</p>
+                          <p className="text-sm font-medium mb-1">How it&apos;s calculated:</p>
                           <p className="text-xs">
                             Counts vendors grouped by their current status in the workflow. Each vendor moves through stages: Contacted → Validated → Offer Made → Accepted → Locked Out.
                           </p>
@@ -231,7 +231,7 @@ export function DashboardAnalytics() {
                     <TooltipContent className="max-w-sm">
                       <p className="text-sm font-medium mb-1">Conversion Rate Calculation</p>
                       <p className="text-xs">
-                        Conversion rates are calculated as: (Next Stage Count / Previous Stage Count) × 100. For example, "Contacted → Validated" = (Validated Vendors / Contacted Vendors) × 100.
+                        Conversion rates are calculated as: (Next Stage Count / Previous Stage Count) × 100. For example, &quot;Contacted → Validated&quot; = (Validated Vendors / Contacted Vendors) × 100.
                       </p>
                     </TooltipContent>
                   </Tooltip>
@@ -282,7 +282,7 @@ export function DashboardAnalytics() {
                           <TooltipContent className="max-w-sm">
                             <p className="text-sm font-medium mb-1">Validated → Offer Made</p>
                             <p className="text-xs">
-                              Calculated as: (Vendors with Offers / Validated Vendors) × 100. Includes vendors in "offer_made" or "negotiating" status.
+                              Calculated as: (Vendors with Offers / Validated Vendors) × 100. Includes vendors in &quot;offer_made&quot; or &quot;negotiating&quot; status.
                             </p>
                           </TooltipContent>
                         </Tooltip>
@@ -309,7 +309,7 @@ export function DashboardAnalytics() {
                           <TooltipContent className="max-w-sm">
                             <p className="text-sm font-medium mb-1">Offer → Accepted</p>
                             <p className="text-xs">
-                              Calculated as: (Accepted Offers / Total Offers Made) × 100. Based on VendorOffer records where vendorDecision = "accepted".
+                              Calculated as: (Accepted Offers / Total Offers Made) × 100. Based on VendorOffer records where vendorDecision = &quot;accepted&quot;.
                             </p>
                           </TooltipContent>
                         </Tooltip>
@@ -393,7 +393,7 @@ export function DashboardAnalytics() {
                     <TooltipContent className="max-w-sm">
                       <p className="text-sm font-medium mb-1">Time Calculation</p>
                       <p className="text-xs">
-                        Average time is calculated by measuring the duration between stage transitions. For example, time in "Contacted" = average of (qualifiedAt - createdAt) for all validated vendors.
+                        Average time is calculated by measuring the duration between stage transitions. For example, time in &quot;Contacted&quot; = average of (qualifiedAt - createdAt) for all validated vendors.
                       </p>
                     </TooltipContent>
                   </Tooltip>
@@ -487,7 +487,7 @@ export function DashboardAnalytics() {
                           <Info className="h-4 w-4 text-muted-foreground cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent className="max-w-sm">
-                          <p className="text-sm font-medium mb-1">How it's calculated:</p>
+                          <p className="text-sm font-medium mb-1">How it&apos;s calculated:</p>
                           <p className="text-xs">
                             Counts investor reservations grouped by their current status. Reservations flow through: Pending → Proof of Funds → Locked Out → Completed.
                           </p>
@@ -556,7 +556,7 @@ export function DashboardAnalytics() {
                         <TooltipContent className="max-w-sm">
                           <p className="text-sm font-medium mb-1">Locked Out</p>
                           <p className="text-xs">
-                            Count of reservations where status = "locked_out". This means the lock-out agreement has been signed by the investor, securing their reservation. Calculated from InvestorReservation where status = 'locked_out'.
+                            Count of reservations where status = &quot;locked_out&quot;. This means the lock-out agreement has been signed by the investor, securing their reservation. Calculated from InvestorReservation where status = &apos;locked_out&apos;.
                           </p>
                         </TooltipContent>
                       </Tooltip>
@@ -575,7 +575,7 @@ export function DashboardAnalytics() {
                         <TooltipContent className="max-w-sm">
                           <p className="text-sm font-medium mb-1">Completed</p>
                           <p className="text-xs">
-                            Count of reservations where status = "completed". These reservations are ready for completion - all requirements met, lock-out signed, and ready to proceed to final completion. Calculated from InvestorReservation where status = 'completed'.
+                            Count of reservations where status = &quot;completed&quot;. These reservations are ready for completion - all requirements met, lock-out signed, and ready to proceed to final completion. Calculated from InvestorReservation where status = &apos;completed&apos;.
                           </p>
                         </TooltipContent>
                       </Tooltip>
@@ -728,6 +728,7 @@ export function DashboardAnalytics() {
     </TooltipProvider>
   )
 }
+
 
 
 

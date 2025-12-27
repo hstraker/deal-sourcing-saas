@@ -30,6 +30,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { formatCurrency } from "@/lib/format"
 
 interface VendorOffer {
   id: string
@@ -192,13 +193,6 @@ export function VendorOffers({ vendorId, dealId }: VendorOffersProps) {
       default:
         return <MessageSquare className="h-4 w-4 text-gray-500" />
     }
-  }
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-GB", {
-      style: "currency",
-      currency: "GBP",
-    }).format(amount)
   }
 
   const formatDate = (dateString: string) => {
@@ -380,7 +374,7 @@ export function VendorOffers({ vendorId, dealId }: VendorOffersProps) {
       <CardContent>
         {offers.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            No offers made yet. Click "New Offer" to create one.
+            No offers made yet. Click &quot;New Offer&quot; to create one.
           </div>
         ) : (
           <Table>

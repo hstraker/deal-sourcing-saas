@@ -73,14 +73,14 @@ export async function PUT(
         status: data.status,
         assignedToId: data.assignedToId === undefined ? existingDeal.assignedToId : data.assignedToId,
         statusUpdatedAt: statusChanged ? now : undefined,
-        statusHistory: statusChanged
+        statusHistory: (statusChanged
           ? appendStatusHistory(existingDeal.statusHistory, {
               status: data.status,
               changedAt: now.toISOString(),
               changedBy: session.user.id,
               note: data.note ?? "Pipeline update",
             })
-          : undefined,
+          : undefined) as any,
         listedAt: statusChanged && data.status === "listed" ? now : undefined,
         archivedAt: statusChanged && data.status === "archived" ? now : undefined,
       },

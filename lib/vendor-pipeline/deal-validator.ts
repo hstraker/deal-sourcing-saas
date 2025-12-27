@@ -7,7 +7,8 @@ import { prisma } from "@/lib/db"
 import { calculateBMVPercentage } from "@/lib/calculations/deal-metrics"
 import { calculateDealScore } from "@/lib/deal-scoring"
 import { fetchPropertyValuation } from "@/lib/propertydata"
-import { DealValidationInput, DealValidationResult, PropertyCondition } from "@/types/vendor-pipeline"
+import { DealValidationInput, DealValidationResult } from "@/types/vendor-pipeline"
+import { PropertyCondition } from "@prisma/client"
 import { getPipelineConfig } from "./config"
 
 export class DealValidator {
@@ -64,19 +65,20 @@ export class DealValidator {
       // 1. Get market value from PropertyData API
       try {
         if (input.postcode) {
+          // Estimate internal area based on bedrooms if not provided
+          const bedrooms = input.bedrooms || 3
+          const estimatedInternalArea = bedrooms * 50 // Rough estimate: 50 sqm per bedroom
+
           const valuationData = await fetchPropertyValuation(
             input.postcode,
             input.propertyType || "house",
-            undefined, // internalArea
-            input.bedrooms,
-            undefined // externalArea
+            estimatedInternalArea,
+            bedrooms,
+            input.bathrooms || 1
           )
-          
-          if (valuationData?.estimatedValue) {
-            estimatedMarketValue = valuationData.estimatedValue
-          } else if (valuationData?.valueRange) {
-            // Use midpoint of value range
-            estimatedMarketValue = (valuationData.valueRange.min + valuationData.valueRange.max) / 2
+
+          if (valuationData?.estimate) {
+            estimatedMarketValue = valuationData.estimate
           }
         }
       } catch (error) {

@@ -86,6 +86,16 @@ export interface HistoricalSale {
   saleType: string // 'freehold', 'leasehold'
 }
 
+export interface SoldProperty {
+  address: string
+  postcode?: string  // Individual property postcode
+  salePrice: number
+  saleDate: string
+  bedrooms: number
+  propertyType: string
+  distance?: number // in miles (calculated if lat/lng available)
+}
+
 export interface PropertyDataCache {
   id: string
   address: string
@@ -402,8 +412,32 @@ export async function fetchRentalData(
       params.append("bedrooms", bedrooms.toString())
     }
 
+    // Map property type to PropertyData API format
+    // API accepts: flat, terraced_house, semi-detached_house (with hyphen!), detached_house
     if (propertyType) {
-      params.append("type", propertyType)
+      const typeMap: Record<string, string> = {
+        'flat': 'flat',
+        'apartment': 'flat',
+        'terraced': 'terraced_house',
+        'terraced_house': 'terraced_house',
+        'semi-detached': 'semi-detached_house',  // NOTE: hyphen, not underscore!
+        'semi_detached': 'semi-detached_house',
+        'semidetached': 'semi-detached_house',
+        'semi-detached_house': 'semi-detached_house',
+        'semi_detached_house': 'semi-detached_house',
+        'detached': 'detached_house',
+        'detached_house': 'detached_house',
+      }
+
+      const normalized = propertyType.toLowerCase().replace(/\s+/g, '_')
+      const mappedType = typeMap[normalized] || typeMap[propertyType.toLowerCase()]
+
+      if (mappedType) {
+        params.append("type", mappedType)
+        console.log(`[PropertyData] Property type mapped: "${propertyType}" → "${mappedType}"`)
+      } else {
+        console.log(`[PropertyData] Property type "${propertyType}" not recognized, fetching without type filter`)
+      }
     }
 
     const url = `${PROPERTYDATA_API_URL}/rents?${params.toString()}`
@@ -446,8 +480,200 @@ export async function fetchRentalData(
 }
 
 /**
+ * Fetch sold prices (comparable properties) from PropertyData API
+ *
+ * @param postcode - UK postcode
+ * @param bedrooms - Number of bedrooms (optional filter)
+ * @param radius - Search radius in miles (default: 3)
+ * @param maxResults - Maximum results to return (default: 50)
+ * @returns Array of sold properties or null if error
+ */
+export async function fetchSoldPrices(
+  postcode: string,
+  bedrooms?: number,
+  radius: number = 3,
+  maxResults: number = 50
+): Promise<{ soldProperties: SoldProperty[]; creditsUsed: number } | null> {
+  if (!PROPERTYDATA_API_KEY) {
+    return null
+  }
+
+  try {
+    const params = new URLSearchParams({
+      key: PROPERTYDATA_API_KEY,
+      postcode: postcode,
+      radius: radius.toString(),
+      results: Math.min(maxResults, 500).toString(),
+    })
+
+    if (bedrooms !== undefined && bedrooms !== null) {
+      params.append("bedrooms", bedrooms.toString())
+    }
+
+    const url = `${PROPERTYDATA_API_URL}/sold-prices?${params.toString()}`
+
+    console.log(`[PropertyData] Fetching sold prices for postcode: ${postcode}, bedrooms: ${bedrooms || 'any'}, radius: ${radius} miles`)
+
+    const response = await fetch(url, {
+      method: "GET",
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("PropertyData sold-prices API error:", response.status, errorText)
+      return null
+    }
+
+    const data = await response.json()
+
+    if (data.status === "success" && data.data?.raw_data) {
+      const rawData = data.data.raw_data
+
+      console.log(`[PropertyData] Found ${rawData.length} sold properties`)
+
+      // Log first raw item to see what API actually returns
+      if (rawData.length > 0) {
+        console.log(`[PropertyData] Sample raw API data:`, {
+          address: rawData[0].address || rawData[0].Address,
+          postcode: rawData[0].postcode || rawData[0].Postcode || 'NOT IN API',
+          availableKeys: Object.keys(rawData[0])
+        })
+      }
+
+      // Transform to our format
+      const soldProperties: SoldProperty[] = rawData.map((item: any, index: number) => {
+        const address = item.address || item.Address || ""
+
+        // Try to get postcode from API response first, then extract from address
+        let propertyPostcode = item.postcode || item.Postcode
+        if (!propertyPostcode && address) {
+          propertyPostcode = extractPostcode(address)
+          console.log(`[PropertyData] Extracted postcode "${propertyPostcode}" from address: "${address}"`)
+        }
+
+        const property = {
+          address,
+          postcode: propertyPostcode || undefined,
+          salePrice: Number(item.sale_price || item.price || item.Price || 0),
+          saleDate: item.sale_date || item.date || item.Date || "",
+          bedrooms: Number(item.bedrooms || item.Bedrooms || 0),
+          propertyType: item.property_type || item.type || item.Type || "",
+          distance: item.distance ? Number(item.distance) : undefined,
+        }
+
+        // Log first property to verify postcode extraction
+        if (index === 0) {
+          console.log(`[PropertyData] First property: ${property.address}, postcode: ${property.postcode || 'NOT FOUND'}`)
+        }
+
+        return property
+      })
+
+      // Filter out invalid entries (missing critical data)
+      const validProperties = soldProperties.filter(
+        prop => prop.salePrice > 0 && prop.address && prop.saleDate
+      )
+
+      console.log(`[PropertyData] Returning ${validProperties.length} valid sold properties`)
+
+      return {
+        soldProperties: validProperties,
+        creditsUsed: 1, // PropertyData charges 1 credit for sold-prices endpoint
+      }
+    }
+
+    return null
+  } catch (error) {
+    console.error("Error fetching sold prices:", error)
+    return null
+  }
+}
+
+/**
+ * Filter and sort comparable properties for BMV analysis
+ *
+ * @param soldProperties - Array of sold properties
+ * @param targetBedrooms - Target property bedrooms
+ * @param targetPropertyType - Target property type
+ * @param maxAgeMonths - Maximum age of sales in months (default: 12)
+ * @param maxResults - Maximum comparables to return (default: 5)
+ * @returns Filtered and sorted comparable properties
+ */
+export function filterComparables(
+  soldProperties: SoldProperty[],
+  targetBedrooms?: number,
+  targetPropertyType?: string,
+  maxAgeMonths: number = 12,
+  maxResults: number = 5
+): SoldProperty[] {
+  const now = new Date()
+  const maxAgeMs = maxAgeMonths * 30 * 24 * 60 * 60 * 1000
+
+  let filtered = soldProperties.filter(prop => {
+    // Filter by age
+    const saleDate = new Date(prop.saleDate)
+    const ageMs = now.getTime() - saleDate.getTime()
+    if (ageMs > maxAgeMs) return false
+
+    // Filter by bedrooms (±1 bedroom)
+    if (targetBedrooms !== undefined && prop.bedrooms > 0) {
+      const bedroomDiff = Math.abs(prop.bedrooms - targetBedrooms)
+      if (bedroomDiff > 1) return false
+    }
+
+    // Filter by property type (if provided and matches)
+    if (targetPropertyType && prop.propertyType) {
+      const targetType = targetPropertyType.toLowerCase()
+      const propType = prop.propertyType.toLowerCase()
+
+      // Flexible matching
+      if (
+        !propType.includes(targetType) &&
+        !targetType.includes(propType) &&
+        !(targetType.includes("house") && propType.includes("house")) &&
+        !(targetType.includes("flat") && propType.includes("flat"))
+      ) {
+        return false
+      }
+    }
+
+    return true
+  })
+
+  // Sort by relevance (recency and distance)
+  filtered.sort((a, b) => {
+    // First priority: distance (if available)
+    if (a.distance !== undefined && b.distance !== undefined) {
+      const distanceDiff = a.distance - b.distance
+      if (Math.abs(distanceDiff) > 0.1) return distanceDiff
+    }
+
+    // Second priority: recency
+    const dateA = new Date(a.saleDate).getTime()
+    const dateB = new Date(b.saleDate).getTime()
+    return dateB - dateA // Most recent first
+  })
+
+  // Return top N results
+  return filtered.slice(0, maxResults)
+}
+
+/**
+ * Calculate average price from comparable properties
+ *
+ * @param comparables - Array of comparable properties
+ * @returns Average sale price or null if no comparables
+ */
+export function calculateAverageComparablePrice(comparables: SoldProperty[]): number | null {
+  if (comparables.length === 0) return null
+
+  const total = comparables.reduce((sum, prop) => sum + prop.salePrice, 0)
+  return Math.round(total / comparables.length)
+}
+
+/**
  * Fetch detailed property data from PropertyData API using property_id
- * 
+ *
  * @param propertyId - Property ID from PropertyData API
  * @returns Property data or null if error
  */
@@ -861,5 +1087,232 @@ export function getPropertyAnalysis(
   }
 
   return { insights, recommendations, riskFactors }
+}
+
+/**
+ * Detailed Comparable Property interface with rental data
+ */
+export interface DetailedComparableProperty extends SoldProperty {
+  // Rental Data
+  monthlyRent?: number
+  weeklyRent?: number
+  rentalYield?: number
+  rentalYieldMin?: number
+  rentalYieldMax?: number
+  areaAverageRent?: number
+
+  // Enhanced Property Data
+  bathrooms?: number
+  squareFeet?: number
+
+  // Market Data
+  daysOnMarket?: number
+  priceReductions?: number
+
+  // Source Links
+  listingSource?: 'rightmove' | 'zoopla' | 'onthemarket' | 'multiple'
+  listingUrl?: string
+  listingUrlSecondary?: string // Secondary portal link (e.g., Zoopla)
+  propertyDataId?: string
+
+  // Calculated Fields
+  pricePerSqft?: number
+  grossYield?: number // Annual rental income / purchase price
+}
+
+/**
+ * Fetch detailed comparable properties with rental data
+ *
+ * This function combines sold prices with rental data to provide
+ * comprehensive comparable analysis including investment potential
+ *
+ * @param postcode - UK postcode
+ * @param bedrooms - Number of bedrooms
+ * @param propertyType - Property type filter
+ * @param searchRadius - Search radius in miles (default: 3)
+ * @param maxResults - Maximum comparables to return (default: 5)
+ * @param maxAgeMonths - Maximum age of sold properties (default: 12)
+ * @returns Detailed comparables with rental data and yields
+ */
+export async function fetchDetailedComparables(
+  postcode: string,
+  bedrooms?: number,
+  propertyType?: string,
+  searchRadius: number = 3,
+  maxResults: number = 5,
+  maxAgeMonths: number = 12
+): Promise<{
+  comparables: DetailedComparableProperty[]
+  avgSalePrice: number | null
+  avgRentalYield: number | null
+  priceRange: { min: number; max: number } | null
+  rentalYieldRange: { min: number; max: number } | null
+  creditsUsed: number
+} | null> {
+  if (!PROPERTYDATA_API_KEY) {
+    console.warn("[PropertyData] API key not configured")
+    return null
+  }
+
+  try {
+    let totalCreditsUsed = 0
+
+    // Step 1: Fetch sold prices (comparables)
+    console.log(`[PropertyData] Fetching sold prices for postcode: ${postcode}`)
+    const soldPricesResult = await fetchSoldPrices(
+      postcode,
+      bedrooms,
+      searchRadius,
+      maxResults * 2 // Fetch more to account for filtering
+    )
+
+    if (!soldPricesResult || soldPricesResult.soldProperties.length === 0) {
+      console.log("[PropertyData] No sold properties found")
+      return {
+        comparables: [],
+        avgSalePrice: null,
+        avgRentalYield: null,
+        priceRange: null,
+        rentalYieldRange: null,
+        creditsUsed: soldPricesResult?.creditsUsed || 0,
+      }
+    }
+
+    totalCreditsUsed += soldPricesResult.creditsUsed
+
+    // Step 2: Filter comparables by age, bedrooms, property type
+    const filteredComparables = filterComparables(
+      soldPricesResult.soldProperties,
+      bedrooms,
+      propertyType,
+      maxAgeMonths,
+      maxResults
+    )
+
+    console.log(`[PropertyData] Filtered to ${filteredComparables.length} comparables`)
+
+    if (filteredComparables.length === 0) {
+      return {
+        comparables: [],
+        avgSalePrice: null,
+        avgRentalYield: null,
+        priceRange: null,
+        rentalYieldRange: null,
+        creditsUsed: totalCreditsUsed,
+      }
+    }
+
+    // Step 3: Fetch rental data for the area (1 credit for area rental data)
+    console.log(`[PropertyData] Fetching rental data for area: ${postcode}, bedrooms: ${bedrooms}`)
+    const rentalData = await fetchRentalData(postcode, bedrooms, propertyType)
+
+    if (rentalData) {
+      console.log(`[PropertyData] ✅ Rental data fetched successfully:`, {
+        weeklyRent: rentalData.weeklyRent,
+        monthlyRent: rentalData.monthlyRent,
+        confidenceMin: rentalData.confidenceRange.min,
+        confidenceMax: rentalData.confidenceRange.max,
+      })
+      totalCreditsUsed += 1 // Rental data costs 1 credit
+    } else {
+      console.warn(`[PropertyData] ⚠️ No rental data returned from API for ${postcode}`)
+    }
+
+    // Step 4: Enrich each comparable with rental data and calculated fields
+    const detailedComparables: DetailedComparableProperty[] = filteredComparables.map((comp) => {
+      const detailed: DetailedComparableProperty = {
+        ...comp,
+      }
+
+      // Add rental data if available
+      if (rentalData) {
+        detailed.monthlyRent = rentalData.monthlyRent
+        detailed.weeklyRent = rentalData.weeklyRent
+        detailed.areaAverageRent = rentalData.monthlyRent
+
+        // Calculate rental yield: (Annual Rent / Sale Price) * 100
+        if (comp.salePrice > 0) {
+          const annualRent = rentalData.monthlyRent * 12
+          detailed.rentalYield = Number(((annualRent / comp.salePrice) * 100).toFixed(2))
+          detailed.grossYield = detailed.rentalYield
+
+          // Calculate yield range based on rental confidence range
+          if (rentalData.confidenceRange) {
+            const annualRentMin = rentalData.confidenceRange.min * 12
+            const annualRentMax = rentalData.confidenceRange.max * 12
+            detailed.rentalYieldMin = Number(((annualRentMin / comp.salePrice) * 100).toFixed(2))
+            detailed.rentalYieldMax = Number(((annualRentMax / comp.salePrice) * 100).toFixed(2))
+          }
+        }
+
+        console.log(`[PropertyData] Enriched comparable ${comp.address} with rental data: £${detailed.monthlyRent}/mo, yield: ${detailed.rentalYield}%`)
+      } else {
+        console.log(`[PropertyData] No rental data to enrich comparable: ${comp.address}`)
+      }
+
+      // Generate listing URLs - Multiple portals for better coverage
+      // IMPORTANT: Always use the comparable's actual postcode, not the search postcode
+      const compPostcode = comp.postcode || postcode
+      if (compPostcode) {
+        const propertyPostcode = compPostcode.replace(/\s+/g, '-').toLowerCase()
+        const propertyAddress = comp.address.split(',')[0].trim() // Get first part of address
+
+        // Rightmove House Prices - shows all sales in postcode
+        const rightmoveUrl = `https://www.rightmove.co.uk/house-prices/${propertyPostcode}.html`
+
+        // Zoopla - includes address in search for better accuracy
+        const zooplaUrl = `https://www.zoopla.co.uk/house-prices/${propertyPostcode}/?q=${encodeURIComponent(propertyAddress)}`
+
+        detailed.listingSource = 'multiple'
+        detailed.listingUrl = rightmoveUrl // Primary link (Rightmove)
+        detailed.listingUrlSecondary = zooplaUrl // Secondary link (Zoopla)
+
+        console.log(`[PropertyData] Generated links for ${comp.address} (${compPostcode}): Rightmove=${rightmoveUrl}`)
+      }
+
+      return detailed
+    })
+
+    // Calculate statistics
+    const salePrices = detailedComparables.map((c) => c.salePrice)
+    const avgSalePrice = salePrices.length > 0
+      ? Math.round(salePrices.reduce((sum, p) => sum + p, 0) / salePrices.length)
+      : null
+
+    const priceRange = salePrices.length > 0
+      ? { min: Math.min(...salePrices), max: Math.max(...salePrices) }
+      : null
+
+    const rentalYields = detailedComparables
+      .map((c) => c.rentalYield)
+      .filter((y): y is number => y !== undefined)
+
+    const avgRentalYield = rentalYields.length > 0
+      ? Number((rentalYields.reduce((sum, y) => sum + y, 0) / rentalYields.length).toFixed(2))
+      : null
+
+    const rentalYieldRange = rentalYields.length > 0
+      ? { min: Math.min(...rentalYields), max: Math.max(...rentalYields) }
+      : null
+
+    console.log(`[PropertyData] Detailed comparables summary:`, {
+      count: detailedComparables.length,
+      avgSalePrice,
+      avgRentalYield,
+      creditsUsed: totalCreditsUsed,
+    })
+
+    return {
+      comparables: detailedComparables,
+      avgSalePrice,
+      avgRentalYield,
+      priceRange,
+      rentalYieldRange,
+      creditsUsed: totalCreditsUsed,
+    }
+  } catch (error) {
+    console.error("[PropertyData] Error fetching detailed comparables:", error)
+    return null
+  }
 }
 

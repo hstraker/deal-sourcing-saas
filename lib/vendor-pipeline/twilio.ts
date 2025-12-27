@@ -4,8 +4,9 @@
  */
 
 import { Twilio } from "twilio"
-import { SMSMessageInput, SMSDirection } from "@/types/vendor-pipeline"
-import { SMSStatus } from "@prisma/client"
+import { validateRequest } from "twilio"
+import { SMSMessageInput } from "@/types/vendor-pipeline"
+import { SMSDirection, SMSStatus } from "@prisma/client"
 
 export class TwilioService {
   private client: Twilio
@@ -86,7 +87,7 @@ export class TwilioService {
     signature: string
   ): boolean {
     try {
-      return this.client.validateRequest(
+      return validateRequest(
         process.env.TWILIO_AUTH_TOKEN || "",
         signature,
         url,

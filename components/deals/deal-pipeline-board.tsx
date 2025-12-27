@@ -247,11 +247,11 @@ export function DealPipelineBoard({ deals, currentUserId }: DealPipelineBoardPro
 
     const bedroomsValue = quickAddForm.bedrooms ? Number(quickAddForm.bedrooms) : null
     const bathroomsValue = quickAddForm.bathrooms ? Number(quickAddForm.bathrooms) : null
-    if (quickAddForm.bedrooms && (Number.isNaN(bedroomsValue) || bedroomsValue < 0)) {
+    if (quickAddForm.bedrooms && bedroomsValue !== null && (Number.isNaN(bedroomsValue) || bedroomsValue < 0)) {
       setFormError("Bedrooms must be a positive number.")
       return
     }
-    if (quickAddForm.bathrooms && (Number.isNaN(bathroomsValue) || bathroomsValue < 0)) {
+    if (quickAddForm.bathrooms && bathroomsValue !== null && (Number.isNaN(bathroomsValue) || bathroomsValue < 0)) {
       setFormError("Bathrooms must be a positive number.")
       return
     }

@@ -10,6 +10,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { z } from "zod"
 import { PipelineStage } from "@prisma/client"
+import { estimateRentalIncome, estimateSquareFeet, calculateRentPerSqFt } from "@/lib/rental-estimator"
 
 const createVendorLeadSchema = z.object({
   facebookLeadId: z.string().optional(),
@@ -119,8 +120,46 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Auto-estimate rental data if asking price is provided
+    const createData: any = { ...validatedData }
+
+    if (validatedData.askingPrice) {
+      const rental = estimateRentalIncome(
+        validatedData.askingPrice,
+        validatedData.propertyType,
+        validatedData.bedrooms,
+        validatedData.propertyPostcode
+      )
+
+      createData.estimatedMonthlyRent = rental.monthlyRent
+      createData.estimatedAnnualRent = rental.annualRent
+      createData.rentConfidence = rental.confidence
+
+      console.log(`[Rental Estimator] Auto-estimated rent for new lead: £${rental.monthlyRent}/mo (${rental.estimatedYield.toFixed(1)}% yield)`)
+    }
+
+    // Auto-estimate square footage if bedrooms are provided
+    if (validatedData.bedrooms) {
+      const estimatedSqFt = estimateSquareFeet(
+        validatedData.propertyType,
+        validatedData.bedrooms
+      )
+      if (estimatedSqFt) {
+        createData.squareFeet = estimatedSqFt
+        console.log(`[Rental Estimator] Auto-estimated square footage for new lead: ${estimatedSqFt} sq ft`)
+      }
+    }
+
+    // Calculate rent per sq ft if we have both values
+    if (createData.estimatedMonthlyRent && createData.squareFeet) {
+      createData.rentPerSqFt = calculateRentPerSqFt(
+        createData.estimatedMonthlyRent,
+        createData.squareFeet
+      )
+    }
+
     const lead = await prisma.vendorLead.create({
-      data: validatedData,
+      data: createData,
     })
 
     return NextResponse.json(lead, { status: 201 })

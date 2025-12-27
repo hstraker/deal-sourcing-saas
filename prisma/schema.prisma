@@ -97,6 +97,31 @@ enum ReservationStatus {
   cancelled
 }
 
+enum InvestorPipelineStage {
+  LEAD
+  CONTACTED
+  QUALIFIED
+  VIEWING_DEALS
+  RESERVED
+  PURCHASED
+  INACTIVE
+}
+
+enum InvestorActivityType {
+  ACCOUNT_CREATED
+  PROFILE_UPDATED
+  DEAL_VIEWED
+  DEAL_FAVORITED
+  PACK_REQUESTED
+  PACK_VIEWED
+  PACK_DOWNLOADED
+  RESERVATION_MADE
+  RESERVATION_CANCELLED
+  PURCHASE_COMPLETED
+  COMMUNICATION_SENT
+  COMMUNICATION_RECEIVED
+}
+
 enum PipelineStage {
   NEW_LEAD
   AI_CONVERSATION
@@ -166,15 +191,56 @@ model User {
   resetPasswordTokenExpires DateTime? @map("reset_password_token_expires")
 
   // Relations
-  dealsCreated        Deal[]          @relation("DealCreator")
-  dealsAssigned       Deal[]          @relation("DealAssignee")
+  dealsCreated        Deal[]             @relation("DealCreator")
+  dealsAssigned       Deal[]             @relation("DealAssignee")
   investor            Investor?
-  communicationsSent  Communication[] @relation("CommunicationSender")
-  vendorOffersCreated VendorOffer[]   @relation("OfferCreator")
+  investorsAssigned   Investor[]         @relation("InvestorAssignee")
+  communicationsSent  Communication[]    @relation("CommunicationSender")
+  vendorOffersCreated VendorOffer[]      @relation("OfferCreator")
+  comparablesConfig   ComparablesConfig?
 
   @@index([email])
   @@index([role])
   @@map("users")
+}
+
+// Company Profile - Global company information used across the platform
+model CompanyProfile {
+  id String @id @default(uuid())
+
+  // Company Details
+  companyName    String  @map("company_name")
+  companyEmail   String? @map("company_email")
+  companyPhone   String? @map("company_phone")
+  companyWebsite String? @map("company_website")
+  companyAddress String? @map("company_address") @db.Text
+
+  // Branding
+  logoUrl        String? @map("logo_url") @db.Text
+  logoS3Key      String? @map("logo_s3_key") // For S3 storage
+  primaryColor   String  @default("#3b82f6") @map("primary_color") // Hex color
+  secondaryColor String  @default("#10b981") @map("secondary_color") // Hex color
+
+  // About
+  description String? @db.Text
+  tagline     String?
+
+  // Social Media
+  linkedinUrl  String? @map("linkedin_url")
+  facebookUrl  String? @map("facebook_url")
+  twitterUrl   String? @map("twitter_url")
+  instagramUrl String? @map("instagram_url")
+
+  // Legal
+  companyNumber String? @map("company_number") // Company registration number
+  vatNumber     String? @map("vat_number")
+  fcaNumber     String? @map("fca_number") // FCA registration if applicable
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("company_profile")
 }
 
 model Investor {
@@ -194,9 +260,18 @@ model Investor {
   experienceLevel String? @map("experience_level") // 'beginner', 'intermediate', 'advanced'
   financingStatus String? @map("financing_status") // 'cash', 'mortgage', 'both'
 
+  // Pipeline Management
+  pipelineStage InvestorPipelineStage @default(LEAD) @map("pipeline_stage")
+  lastActivityAt DateTime? @map("last_activity_at")
+  assignedToId String? @map("assigned_to")
+  assignedTo User? @relation("InvestorAssignee", fields: [assignedToId], references: [id])
+
   // Stats
   dealsPurchased Int     @default(0) @map("deals_purchased")
   totalSpent     Decimal @default(0) @map("total_spent") @db.Decimal(10, 2)
+  dealsViewed Int @default(0) @map("deals_viewed")
+  packsRequested Int @default(0) @map("packs_requested")
+  activeReservationsCount Int @default(0) @map("active_reservations_count")
 
   // Communication
   emailAlerts Boolean @default(true) @map("email_alerts")
@@ -213,8 +288,13 @@ model Investor {
   communications Communication[]
   alerts         Alert[]
   reservations   InvestorReservation[]
+  packsReceived  InvestorPackDelivery[]
+  activities     InvestorActivity[]
 
   @@index([userId])
+  @@index([pipelineStage])
+  @@index([assignedToId])
+  @@index([lastActivityAt])
   @@map("investors")
 }
 
@@ -318,6 +398,7 @@ model Deal {
   communications       Communication[]
   vendorOffers         VendorOffer[]         @relation("VendorOfferDeal")
   investorReservations InvestorReservation[] @relation("InvestorReservationDeal")
+  packDeliveries       InvestorPackDelivery[] @relation("InvestorPackDelivery")
 
   @@index([status])
   @@index([postcode])
@@ -678,54 +759,67 @@ model VendorLead {
 
   // Lead Source
   facebookLeadId String? @unique @map("facebook_lead_id")
-  leadSource      String  @default("facebook_ads") @map("lead_source")
-  campaignId      String? @map("campaign_id")
+  leadSource     String  @default("facebook_ads") @map("lead_source")
+  campaignId     String? @map("campaign_id")
 
   // Vendor Information
-  vendorName  String  @map("vendor_name")
-  vendorPhone String  @map("vendor_phone")
-  vendorEmail String? @map("vendor_email")
+  vendorName    String  @map("vendor_name")
+  vendorPhone   String  @map("vendor_phone")
+  vendorEmail   String? @map("vendor_email")
   vendorAddress String? @map("vendor_address") @db.Text
 
   // Property Details
-  propertyAddress String? @map("property_address") @db.Text
-  propertyPostcode String? @map("property_postcode")
-  askingPrice      Decimal? @map("asking_price") @db.Decimal(12, 2)
-  propertyType     String? @map("property_type")
-  bedrooms         Int?
-  bathrooms        Int?
-  condition        PropertyCondition?
+  propertyAddress       String?            @map("property_address") @db.Text
+  propertyPostcode      String?            @map("property_postcode")
+  askingPrice           Decimal?           @map("asking_price") @db.Decimal(12, 2)
+  propertyType          String?            @map("property_type")
+  bedrooms              Int?
+  bathrooms             Int?
+  squareFeet            Int?               @map("square_feet")
+  condition             PropertyCondition?
+  estimatedMonthlyRent  Decimal?           @map("estimated_monthly_rent") @db.Decimal(10, 2)
+  estimatedAnnualRent   Decimal?           @map("estimated_annual_rent") @db.Decimal(10, 2)
+  rentPerSqFt           Decimal?           @map("rent_per_sq_ft") @db.Decimal(5, 2)
+  localAverageRent      Decimal?           @map("local_average_rent") @db.Decimal(10, 2)
+  rentConfidence        String?            @map("rent_confidence") // 'HIGH', 'MEDIUM', 'LOW'
 
   // Workflow Status
   pipelineStage     PipelineStage @default(NEW_LEAD) @map("pipeline_stage")
   conversationState Json?         @default("{}") @map("conversation_state")
 
   // AI Conversation Data
-  aiConversationHistory Json? @default("[]") @map("ai_conversation_history")
-  motivationScore       Int?  @map("motivation_score")
-  urgencyLevel          UrgencyLevel? @map("urgency_level")
+  aiConversationHistory Json?          @default("[]") @map("ai_conversation_history")
+  motivationScore       Int?           @map("motivation_score")
+  urgencyLevel          UrgencyLevel?  @map("urgency_level")
   reasonForSelling      ReasonForSale? @map("reason_for_selling")
-  timelineDays          Int? @map("timeline_days")
-  competingOffers       Boolean @default(false) @map("competing_offers")
+  timelineDays          Int?           @map("timeline_days")
+  competingOffers       Boolean        @default(false) @map("competing_offers")
 
   // Deal Validation
-  bmvScore            Decimal? @map("bmv_score") @db.Decimal(5, 2)
-  estimatedMarketValue Decimal? @map("estimated_market_value") @db.Decimal(12, 2)
-  estimatedRefurbCost  Decimal? @map("estimated_refurb_cost") @db.Decimal(12, 2)
-  profitPotential      Decimal? @map("profit_potential") @db.Decimal(12, 2)
-  validationPassed     Boolean? @map("validation_passed")
-  validationNotes      String? @map("validation_notes") @db.Text
+  bmvScore             Decimal?  @map("bmv_score") @db.Decimal(5, 2)
+  estimatedMarketValue Decimal?  @map("estimated_market_value") @db.Decimal(12, 2)
+  estimatedRefurbCost  Decimal?  @map("estimated_refurb_cost") @db.Decimal(12, 2)
+  profitPotential      Decimal?  @map("profit_potential") @db.Decimal(12, 2)
+  validationPassed     Boolean?  @map("validation_passed")
+  validationNotes      String?   @map("validation_notes") @db.Text
   validatedAt          DateTime? @map("validated_at")
 
+  // Comparables Tracking
+  comparablesCount        Int?      @default(0) @map("comparables_count")
+  comparablesFetchedAt    DateTime? @map("comparables_fetched_at")
+  comparablesSearchRadius Int?      @default(3) @map("comparables_search_radius")
+  avgComparablePrice      Decimal?  @map("avg_comparable_price") @db.Decimal(10, 2)
+  comparablesConfidence   String?   @map("comparables_confidence") // 'HIGH', 'MEDIUM', 'LOW'
+
   // Offer Management
-  offerAmount       Decimal? @map("offer_amount") @db.Decimal(12, 2)
-  offerPercentage   Decimal? @map("offer_percentage") @db.Decimal(5, 2)
-  offerSentAt       DateTime? @map("offer_sent_at")
-  offerAcceptedAt   DateTime? @map("offer_accepted_at")
-  offerRejectedAt   DateTime? @map("offer_rejected_at")
-  rejectionReason   String? @map("rejection_reason") @db.Text
-  retryCount        Int     @default(0) @map("retry_count")
-  nextRetryAt       DateTime? @map("next_retry_at")
+  offerAmount     Decimal?  @map("offer_amount") @db.Decimal(12, 2)
+  offerPercentage Decimal?  @map("offer_percentage") @db.Decimal(5, 2)
+  offerSentAt     DateTime? @map("offer_sent_at")
+  offerAcceptedAt DateTime? @map("offer_accepted_at")
+  offerRejectedAt DateTime? @map("offer_rejected_at")
+  rejectionReason String?   @map("rejection_reason") @db.Text
+  retryCount      Int       @default(0) @map("retry_count")
+  nextRetryAt     DateTime? @map("next_retry_at")
 
   // Retry Tracking
   videoSent   Boolean   @default(false) @map("video_sent")
@@ -733,30 +827,36 @@ model VendorLead {
   videoUrl    String?   @map("video_url") @db.Text
 
   // Solicitor Details
-  solicitorName    String? @map("solicitor_name")
-  solicitorFirm    String? @map("solicitor_firm")
-  solicitorPhone   String? @map("solicitor_phone")
-  solicitorEmail   String? @map("solicitor_email")
-  lockoutAgreementSent    Boolean   @default(false) @map("lockout_agreement_sent")
-  lockoutAgreementSentAt  DateTime? @map("lockout_agreement_sent_at")
-  lockoutAgreementSigned  Boolean   @default(false) @map("lockout_agreement_signed")
+  solicitorName            String?   @map("solicitor_name")
+  solicitorFirm            String?   @map("solicitor_firm")
+  solicitorPhone           String?   @map("solicitor_phone")
+  solicitorEmail           String?   @map("solicitor_email")
+  lockoutAgreementSent     Boolean   @default(false) @map("lockout_agreement_sent")
+  lockoutAgreementSentAt   DateTime? @map("lockout_agreement_sent_at")
+  lockoutAgreementSigned   Boolean   @default(false) @map("lockout_agreement_signed")
   lockoutAgreementSignedAt DateTime? @map("lockout_agreement_signed_at")
-  lockoutAgreementS3Key   String? @map("lockout_agreement_s3_key")
+  lockoutAgreementS3Key    String?   @map("lockout_agreement_s3_key")
 
   // Link to Deal
   dealId String? @map("deal_id")
 
+  // Investor Pack Tracking
+  investorPackGenerationCount Int       @default(0) @map("investor_pack_generation_count")
+  lastInvestorPackGeneratedAt DateTime? @map("last_investor_pack_generated_at")
+
   // Timestamps
-  createdAt             DateTime @default(now()) @map("created_at")
-  updatedAt             DateTime @updatedAt @map("updated_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
   lastContactAt         DateTime? @map("last_contact_at")
   conversationStartedAt DateTime? @map("conversation_started_at")
   dealClosedAt          DateTime? @map("deal_closed_at")
 
   // Relations
-  smsMessages     SMSMessage[]
-  pipelineEvents  PipelineEvent[]
-  offerRetries    OfferRetry[]
+  smsMessages          SMSMessage[]
+  pipelineEvents       PipelineEvent[]
+  offerRetries         OfferRetry[]
+  comparableProperties ComparableProperty[]
+  comparablesSnapshots ComparablesSnapshot[]
 
   @@index([pipelineStage])
   @@index([createdAt])
@@ -769,35 +869,35 @@ model VendorLead {
 }
 
 model SMSMessage {
-  id          String   @id @default(uuid())
-  vendorLeadId String  @map("vendor_lead_id")
-  vendorLead  VendorLead @relation(fields: [vendorLeadId], references: [id], onDelete: Cascade)
+  id           String     @id @default(uuid())
+  vendorLeadId String     @map("vendor_lead_id")
+  vendorLead   VendorLead @relation(fields: [vendorLeadId], references: [id], onDelete: Cascade)
 
   // Message Details
   direction  SMSDirection
-  messageSid String? @unique @map("message_sid")
+  messageSid String?      @unique @map("message_sid")
 
   // Phone Numbers
   fromNumber  String? @map("from_number")
   toNumber    String? @map("to_number")
-  messageBody String  @db.Text @map("message_body")
+  messageBody String  @map("message_body") @db.Text
 
   // AI Context
-  aiGenerated        Boolean @default(false) @map("ai_generated")
-  aiPrompt           String? @db.Text @map("ai_prompt")
-  aiResponseMetadata Json?   @map("ai_response_metadata")
-  intentDetected     String? @map("intent_detected")
+  aiGenerated        Boolean  @default(false) @map("ai_generated")
+  aiPrompt           String?  @map("ai_prompt") @db.Text
+  aiResponseMetadata Json?    @map("ai_response_metadata")
+  intentDetected     String?  @map("intent_detected")
   confidenceScore    Decimal? @map("confidence_score") @db.Decimal(5, 2)
 
   // Status Tracking
-  status      SMSStatus?
-  errorCode   String? @map("error_code")
-  errorMessage String? @map("error_message") @db.Text
+  status       SMSStatus?
+  errorCode    String?    @map("error_code")
+  errorMessage String?    @map("error_message") @db.Text
 
   // Timestamps
-  sentAt     DateTime @default(now()) @map("sent_at")
+  sentAt      DateTime  @default(now()) @map("sent_at")
   deliveredAt DateTime? @map("delivered_at")
-  createdAt  DateTime @default(now()) @map("created_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
 
   @@index([vendorLeadId])
   @@index([createdAt])
@@ -813,14 +913,14 @@ model PipelineMetric {
   date DateTime @unique @db.Date
 
   // Lead Counts by Stage
-  newLeads        Int @default(0) @map("new_leads")
-  inConversation  Int @default(0) @map("in_conversation")
-  validated       Int @default(0)
-  offersMade      Int @default(0) @map("offers_made")
-  offersAccepted  Int @default(0) @map("offers_accepted")
-  offersRejected  Int @default(0) @map("offers_rejected")
-  dealsClosed     Int @default(0) @map("deals_closed")
-  deadLeads       Int @default(0) @map("dead_leads")
+  newLeads       Int @default(0) @map("new_leads")
+  inConversation Int @default(0) @map("in_conversation")
+  validated      Int @default(0)
+  offersMade     Int @default(0) @map("offers_made")
+  offersAccepted Int @default(0) @map("offers_accepted")
+  offersRejected Int @default(0) @map("offers_rejected")
+  dealsClosed    Int @default(0) @map("deals_closed")
+  deadLeads      Int @default(0) @map("dead_leads")
 
   // Conversion Rates (percentages)
   conversationToOfferRate Decimal? @map("conversation_to_offer_rate") @db.Decimal(5, 2)
@@ -833,15 +933,15 @@ model PipelineMetric {
   avgTimeToCloseDays           Decimal? @map("avg_time_to_close_days") @db.Decimal(10, 2)
 
   // Financial Metrics
-  totalOfferValue       Decimal? @map("total_offer_value") @db.Decimal(15, 2)
-  totalAcceptedValue    Decimal? @map("total_accepted_value") @db.Decimal(15, 2)
-  avgBmvPercentage      Decimal? @map("avg_bmv_percentage") @db.Decimal(5, 2)
-  totalProfitPotential  Decimal? @map("total_profit_potential") @db.Decimal(15, 2)
+  totalOfferValue      Decimal? @map("total_offer_value") @db.Decimal(15, 2)
+  totalAcceptedValue   Decimal? @map("total_accepted_value") @db.Decimal(15, 2)
+  avgBmvPercentage     Decimal? @map("avg_bmv_percentage") @db.Decimal(5, 2)
+  totalProfitPotential Decimal? @map("total_profit_potential") @db.Decimal(15, 2)
 
   // AI Performance Metrics
-  avgMotivationScore        Decimal? @map("avg_motivation_score") @db.Decimal(3, 1)
+  avgMotivationScore         Decimal? @map("avg_motivation_score") @db.Decimal(3, 1)
   avgMessagesPerConversation Decimal? @map("avg_messages_per_conversation") @db.Decimal(5, 2)
-  aiResponseTimeMs          Int?     @map("ai_response_time_ms")
+  aiResponseTimeMs           Int?     @map("ai_response_time_ms")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -851,16 +951,16 @@ model PipelineMetric {
 }
 
 model PipelineEvent {
-  id          String   @id @default(uuid())
-  vendorLeadId String  @map("vendor_lead_id")
-  vendorLead  VendorLead @relation(fields: [vendorLeadId], references: [id], onDelete: Cascade)
+  id           String     @id @default(uuid())
+  vendorLeadId String     @map("vendor_lead_id")
+  vendorLead   VendorLead @relation(fields: [vendorLeadId], references: [id], onDelete: Cascade)
 
-  eventType  String  @map("event_type")
-  fromStage  String? @map("from_stage")
-  toStage    String? @map("to_stage")
-  details    Json?   @default("{}")
-  createdBy  String? @map("created_by")
-  createdAt  DateTime @default(now()) @map("created_at")
+  eventType String   @map("event_type")
+  fromStage String?  @map("from_stage")
+  toStage   String?  @map("to_stage")
+  details   Json?    @default("{}")
+  createdBy String?  @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@index([vendorLeadId])
   @@index([eventType])
@@ -869,20 +969,20 @@ model PipelineEvent {
 }
 
 model OfferRetry {
-  id          String   @id @default(uuid())
-  vendorLeadId String  @map("vendor_lead_id")
-  vendorLead  VendorLead @relation(fields: [vendorLeadId], references: [id], onDelete: Cascade)
+  id           String     @id @default(uuid())
+  vendorLeadId String     @map("vendor_lead_id")
+  vendorLead   VendorLead @relation(fields: [vendorLeadId], references: [id], onDelete: Cascade)
 
-  retryNumber           Int       @map("retry_number")
-  originalOfferAmount   Decimal   @map("original_offer_amount") @db.Decimal(12, 2)
-  adjustedOfferAmount   Decimal?  @map("adjusted_offer_amount") @db.Decimal(12, 2)
-  messageSent           String?   @db.Text @map("message_sent")
-  smsMessageId          String?   @map("sms_message_id")
-  scheduledFor          DateTime  @map("scheduled_for")
-  sentAt                DateTime? @map("sent_at")
-  vendorResponse        String?   @map("vendor_response")
-  responseReceivedAt    DateTime? @map("response_received_at")
-  createdAt             DateTime  @default(now()) @map("created_at")
+  retryNumber         Int       @map("retry_number")
+  originalOfferAmount Decimal   @map("original_offer_amount") @db.Decimal(12, 2)
+  adjustedOfferAmount Decimal?  @map("adjusted_offer_amount") @db.Decimal(12, 2)
+  messageSent         String?   @map("message_sent") @db.Text
+  smsMessageId        String?   @map("sms_message_id")
+  scheduledFor        DateTime  @map("scheduled_for")
+  sentAt              DateTime? @map("sent_at")
+  vendorResponse      String?   @map("vendor_response")
+  responseReceivedAt  DateTime? @map("response_received_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
 
   @@index([vendorLeadId])
   @@index([scheduledFor])
@@ -890,17 +990,278 @@ model OfferRetry {
 }
 
 model FacebookLeadSync {
-  id             String   @id @default(uuid())
-  facebookLeadId String   @unique @map("facebook_lead_id")
-  vendorLeadId   String?  @map("vendor_lead_id")
-  leadData       Json?    @map("lead_data")
-  syncedAt       DateTime @default(now()) @map("synced_at")
+  id             String    @id @default(uuid())
+  facebookLeadId String    @unique @map("facebook_lead_id")
+  vendorLeadId   String?   @map("vendor_lead_id")
+  leadData       Json?     @map("lead_data")
+  syncedAt       DateTime  @default(now()) @map("synced_at")
   processedAt    DateTime? @map("processed_at")
-  errorMessage   String?  @db.Text @map("error_message")
-  createdAt      DateTime @default(now()) @map("created_at")
+  errorMessage   String?   @map("error_message") @db.Text
+  createdAt      DateTime  @default(now()) @map("created_at")
 
   @@index([facebookLeadId])
   @@index([vendorLeadId])
   @@index([processedAt])
   @@map("facebook_lead_sync")
+}
+
+// Comparables Configuration - User-specific settings for comparable property searches
+model ComparablesConfig {
+  id     String @id @default(uuid())
+  userId String @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  searchRadius         Int      @default(3) @map("search_radius") // miles
+  maxResults           Int      @default(5) @map("max_results") // number of comparables
+  maxAgeMonths         Int      @default(12) @map("max_age_months") // max age of sold properties
+  bedroomTolerance     Int      @default(1) @map("bedroom_tolerance") // ±N bedrooms
+  includePropertyTypes String[] @map("include_property_types") // empty = all types
+  minConfidenceScore   Decimal  @default(0.7) @map("min_confidence_score") @db.Decimal(3, 2) // 0.0 to 1.0
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("comparables_config")
+}
+
+// Comparable Property - Individual sold property used for comparison
+model ComparableProperty {
+  id           String     @id @default(uuid())
+  vendorLeadId String     @map("vendor_lead_id")
+  vendorLead   VendorLead @relation(fields: [vendorLeadId], references: [id], onDelete: Cascade)
+
+  // Property Details
+  address      String
+  postcode     String?
+  salePrice    Decimal  @map("sale_price") @db.Decimal(10, 2)
+  saleDate     DateTime @map("sale_date")
+  bedrooms     Int?
+  bathrooms    Int?
+  propertyType String?  @map("property_type")
+  squareFeet   Int?     @map("square_feet")
+
+  // Location & Market Data
+  distance        Decimal? @db.Decimal(5, 2) // miles from target property
+  daysOnMarket    Int?     @map("days_on_market")
+  priceReductions Int      @default(0) @map("price_reductions")
+
+  // Rental Data (from PropertyData API)
+  monthlyRent           Decimal? @map("monthly_rent") @db.Decimal(10, 2) // Average monthly rent
+  weeklyRent            Decimal? @map("weekly_rent") @db.Decimal(10, 2) // Average weekly rent
+  rentalYield           Decimal? @map("rental_yield") @db.Decimal(5, 2) // Annual yield percentage
+  rentalYieldMin        Decimal? @map("rental_yield_min") @db.Decimal(5, 2) // Min yield (70% confidence range)
+  rentalYieldMax        Decimal? @map("rental_yield_max") @db.Decimal(5, 2) // Max yield (70% confidence range)
+  areaAverageRent       Decimal? @map("area_average_rent") @db.Decimal(10, 2) // Area average for comparison
+
+  // Source Information
+  listingSource       String? @map("listing_source") // 'rightmove', 'zoopla', 'onthemarket', 'multiple'
+  listingUrl          String? @map("listing_url") @db.Text // Primary portal link (e.g., Rightmove)
+  listingUrlSecondary String? @map("listing_url_secondary") @db.Text // Secondary portal link (e.g., Zoopla)
+  propertyDataId      String? @map("propertydata_id") // PropertyData property ID
+
+  // Analysis
+  confidence Decimal @default(1.0) @db.Decimal(3, 2) // 0.0 to 1.0 confidence score
+  notes      String? @db.Text
+
+  // Metadata
+  fetchedAt DateTime @default(now()) @map("fetched_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([vendorLeadId])
+  @@index([postcode])
+  @@index([saleDate])
+  @@index([fetchedAt])
+  @@index([rentalYield])
+  @@map("comparable_properties")
+}
+
+// Comparables Snapshot - Historical tracking of comparables over time
+model ComparablesSnapshot {
+  id           String     @id @default(uuid())
+  vendorLeadId String     @map("vendor_lead_id")
+  vendorLead   VendorLead @relation(fields: [vendorLeadId], references: [id], onDelete: Cascade)
+
+  snapshotDate     DateTime @map("snapshot_date")
+  avgPrice         Decimal? @map("avg_price") @db.Decimal(10, 2)
+  comparablesCount Int      @map("comparables_count")
+  searchRadius     Int      @map("search_radius")
+  confidence       String? // 'HIGH', 'MEDIUM', 'LOW'
+  data             Json? // Full comparables data snapshot
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([vendorLeadId])
+  @@index([snapshotDate])
+  @@map("comparables_snapshots")
+}
+
+// Investor Pack Templates - Customizable templates for generating investor packs
+model InvestorPackTemplate {
+  id          String   @id @default(uuid())
+  name        String // e.g., "Premium Template", "Quick Overview", "Detailed Analysis"
+  description String?  @db.Text
+  isDefault   Boolean  @default(false) @map("is_default")
+  isActive    Boolean  @default(true) @map("is_active")
+
+  // Template Type
+  templateType String @default("single") @map("template_type") // '4-part' or 'single'
+
+  // Template Configuration
+  coverStyle     String?  @map("cover_style") // 'modern', 'classic', 'minimal' (for single templates)
+  colorScheme    String   @default("blue") @map("color_scheme") // 'blue', 'green', 'purple', 'gold', 'dark'
+  orientation    String   @default("landscape") // 'landscape' or 'portrait'
+  // Company info now comes from global CompanyProfile table
+
+  // Single Template Configuration (for backward compatibility)
+  sections Json @default("[]")
+  metricsConfig Json @default("{}") @map("metrics_config")
+
+  // 4-Part Template Configuration (The Investables Method)
+  part1Enabled  Boolean @default(true) @map("part1_enabled")
+  part1Sections Json    @default("[]") @map("part1_sections")
+  part2Enabled  Boolean @default(true) @map("part2_enabled")
+  part2Sections Json    @default("[]") @map("part2_sections")
+  part3Enabled  Boolean @default(true) @map("part3_enabled")
+  part3Sections Json    @default("[]") @map("part3_sections")
+  part4Enabled  Boolean @default(true) @map("part4_enabled")
+  part4Sections Json    @default("[]") @map("part4_sections")
+  includeRiskWarnings Boolean @default(true) @map("include_risk_warnings")
+
+  // Custom Fields
+  customFields Json? @map("custom_fields") // Additional user-defined fields
+
+  // Usage Statistics
+  usageCount Int      @default(0) @map("usage_count")
+  lastUsedAt DateTime? @map("last_used_at")
+
+  // Ownership
+  createdById String? @map("created_by")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  generatedPacks InvestorPackGeneration[]
+
+  @@index([isDefault])
+  @@index([isActive])
+  @@index([createdById])
+  @@map("investor_pack_templates")
+}
+
+// Investor Pack Generation Log - Track all generated investor packs
+model InvestorPackGeneration {
+  id              String   @id @default(uuid())
+  templateId      String?  @map("template_id")
+  template        InvestorPackTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  // Source
+  vendorLeadId    String?  @map("vendor_lead_id")
+  dealId          String?  @map("deal_id")
+
+  // Property Info (snapshot at generation time)
+  propertyAddress String   @map("property_address")
+  askingPrice     Decimal  @map("asking_price") @db.Decimal(10, 2)
+
+  // Generation Details
+  generatedById   String   @map("generated_by")
+  fileSize        Int?     @map("file_size") // bytes
+  pageCount       Int?     @map("page_count")
+
+  // Delivery
+  sentToEmail     String?  @map("sent_to_email")
+  sentAt          DateTime? @map("sent_at")
+  viewedAt        DateTime? @map("viewed_at")
+  downloadedAt    DateTime? @map("downloaded_at")
+
+  // Timestamps
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  deliveries      InvestorPackDelivery[]
+
+  @@index([templateId])
+  @@index([vendorLeadId])
+  @@index([dealId])
+  @@index([generatedById])
+  @@index([createdAt])
+  @@map("investor_pack_generations")
+}
+
+// ============================================================================
+// INVESTOR PACK DELIVERY & ACTIVITY TRACKING
+// ============================================================================
+
+// Track which investor received which investor pack
+model InvestorPackDelivery {
+  id String @id @default(uuid())
+
+  // Links
+  investorId String @map("investor_id")
+  investor Investor @relation(fields: [investorId], references: [id], onDelete: Cascade)
+
+  dealId String @map("deal_id")
+  deal Deal @relation("InvestorPackDelivery", fields: [dealId], references: [id], onDelete: Cascade)
+
+  generationId String? @map("generation_id")
+  generation InvestorPackGeneration? @relation(fields: [generationId], references: [id], onDelete: SetNull)
+
+  // Delivery Details
+  deliveryMethod String @default("email") @map("delivery_method") // email, download, manual
+  recipientEmail String? @map("recipient_email")
+  partNumber Int? @map("part_number") // For 4-part templates: 1, 2, 3, 4. NULL for single pack
+
+  // Tracking
+  sentAt DateTime @default(now()) @map("sent_at")
+  viewedAt DateTime? @map("viewed_at")
+  downloadedAt DateTime? @map("downloaded_at")
+  viewCount Int @default(0) @map("view_count")
+  downloadCount Int @default(0) @map("download_count")
+
+  // Notes
+  notes String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([investorId, dealId, generationId, partNumber])
+  @@index([investorId])
+  @@index([dealId])
+  @@index([generationId])
+  @@index([sentAt])
+  @@index([partNumber])
+  @@map("investor_pack_deliveries")
+}
+
+// Track all investor activities for pipeline management
+model InvestorActivity {
+  id String @id @default(uuid())
+
+  // Links
+  investorId String @map("investor_id")
+  investor Investor @relation(fields: [investorId], references: [id], onDelete: Cascade)
+
+  // Activity Details
+  activityType InvestorActivityType @map("activity_type")
+  description String? @db.Text
+
+  // Related entities (optional)
+  dealId String? @map("deal_id")
+  reservationId String? @map("reservation_id")
+  packDeliveryId String? @map("pack_delivery_id")
+
+  // Metadata
+  metadata Json? // Store additional data like previous/new values, etc.
+
+  // Who triggered (if system or admin action)
+  triggeredById String? @map("triggered_by")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([investorId])
+  @@index([activityType])
+  @@index([dealId])
+  @@index([createdAt])
+  @@map("investor_activities")
 }

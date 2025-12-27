@@ -46,9 +46,12 @@ export async function POST(request: NextRequest) {
     if (!lead) {
       console.warn(`No vendor lead found for phone number: ${fromNumber}`)
       // Return 200 to Twilio even if we don't have a lead (prevents retries)
-      return NextResponse.xml(
+      return new Response(
         '<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
-        { status: 200 }
+        {
+          status: 200,
+          headers: { 'Content-Type': 'text/xml' }
+        }
       )
     }
 
@@ -56,16 +59,22 @@ export async function POST(request: NextRequest) {
     await aiSMSAgent.processInboundMessage(lead.id, messageBody, fromNumber)
 
     // Return TwiML response (empty to not send auto-reply)
-    return NextResponse.xml(
+    return new Response(
       '<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
-      { status: 200 }
+      {
+        status: 200,
+        headers: { 'Content-Type': 'text/xml' }
+      }
     )
   } catch (error: any) {
     console.error("Error processing SMS webhook:", error)
     // Return 200 to Twilio to prevent retries on our errors
-    return NextResponse.xml(
+    return new Response(
       '<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
-      { status: 200 }
+      {
+        status: 200,
+        headers: { 'Content-Type': 'text/xml' }
+      }
     )
   }
 }

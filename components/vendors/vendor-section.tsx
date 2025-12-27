@@ -20,6 +20,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
+import { formatCurrency } from "@/lib/format"
 
 interface Vendor {
   id: string
@@ -90,16 +91,6 @@ export function VendorSection({ dealId, vendorId }: VendorSectionProps) {
   const handleFormCancel = () => {
     setIsFormOpen(false)
     setIsEditing(false)
-  }
-
-  const formatCurrency = (amount: number | null) => {
-    if (!amount) return "—"
-    return new Intl.NumberFormat("en-GB", {
-      style: "currency",
-      currency: "GBP",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount)
   }
 
   const getStatusBadge = (status: string) => {

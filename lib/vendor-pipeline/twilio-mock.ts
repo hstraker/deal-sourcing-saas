@@ -4,8 +4,7 @@
  * Stores messages in memory for testing
  */
 
-import { SMSDirection } from "@/types/vendor-pipeline"
-import { SMSStatus } from "@prisma/client"
+import { SMSDirection, SMSStatus } from "@prisma/client"
 
 export interface MockSMS {
   id: string
