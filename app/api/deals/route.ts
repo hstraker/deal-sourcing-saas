@@ -82,6 +82,7 @@ export async function GET(request: NextRequest) {
           select: {
             photos: true,
             favorites: true,
+            packDeliveries: true,
           },
         },
       },

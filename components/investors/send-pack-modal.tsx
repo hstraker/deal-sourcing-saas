@@ -87,12 +87,12 @@ export function SendPackModal({
       const response = await fetch("/api/deals")
       if (response.ok) {
         const data = await response.json()
-        // Filter to show deals that are listed, ready, or have investor packs sent
+        // Filter to show deals that can have investor packs generated
+        // Show all deals except those that are archived or in very early stages
         const availableDeals = (data.deals || []).filter(
           (deal: any) =>
-            deal.status === "listed" ||
-            deal.status === "ready" ||
-            deal.investorPackSent === true
+            deal.status !== "archived" &&
+            deal.status !== "new"
         )
         setDeals(availableDeals)
       } else {
