@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc:*)",
+      "Bash(npx prisma db push:*)",
+      "Bash(npx tsc:*)",
+      "WebFetch(domain:www.rightmove.co.uk)",
+      "WebFetch(domain:www.primelocation.com)",
+      "Bash(grep:*)",
+      "Bash(npx tsx:*)",
+      "Bash(python3:*)",
+      "Bash(ls:*)",
+      "Bash(npm install:*)",
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(curl:*)",
+      "Bash(node:*)"
+    ]
+  }
+}

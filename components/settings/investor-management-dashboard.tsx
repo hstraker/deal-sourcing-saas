@@ -356,7 +356,7 @@ export function InvestorManagementDashboard() {
                     <p className="text-sm text-muted-foreground">
                       {activity.description || activity.activityType}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p suppressHydrationWarning className="text-xs text-muted-foreground mt-1">
                       {new Date(activity.createdAt).toLocaleString()}
                     </p>
                   </div>

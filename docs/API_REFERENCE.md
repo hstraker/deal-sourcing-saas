@@ -2277,6 +2277,139 @@ Update offer (legacy).
 
 ---
 
+# Land Registry (Admin)
+
+Admin endpoints for downloading and importing HM Land Registry company ownership data.
+
+## POST /api/admin/land-registry/import
+
+Start a new import of CCOD or OCOD dataset.
+
+**Auth:** Required (admin)
+
+**Request Body:**
+```json
+{
+  "datasetType": "ccod" | "ocod" | "both"
+}
+```
+
+**Response (202):**
+```json
+{
+  "message": "Import started for: CCOD, OCOD",
+  "imports": [
+    {
+      "id": "uuid",
+      "datasetType": "CCOD"
+    },
+    {
+      "id": "uuid",
+      "datasetType": "OCOD"
+    }
+  ]
+}
+```
+
+**Errors:**
+- `400` - Invalid datasetType
+- `409` - Import already in progress
+- `500` - LAND_REGISTRY_API_KEY not configured
+
+---
+
+## GET /api/admin/land-registry/status
+
+Get import statistics and recent import history.
+
+**Auth:** Required (admin)
+
+**Response (200):**
+```json
+{
+  "stats": {
+    "ccodCount": 1234567,
+    "ocodCount": 12345,
+    "lastCcodImport": "2025-01-15T10:30:00Z",
+    "lastOcodImport": "2025-01-15T10:35:00Z"
+  },
+  "recentImports": [
+    {
+      "id": "uuid",
+      "datasetType": "CCOD",
+      "status": "RUNNING",
+      "recordsImported": 50000,
+      "recordsTotal": 3000000,
+      "bytesDownloaded": "524288000",
+      "bytesTotal": "1073741824",
+      "downloadSpeed": 1048576.5,
+      "estimatedTimeRemaining": 600,
+      "startedAt": "2025-01-15T10:00:00Z",
+      "createdAt": "2025-01-15T10:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+## POST /api/admin/land-registry/import/[id]/pause
+
+Pause a running import. Progress is saved and can be resumed later.
+
+**Auth:** Required (admin)
+
+**Response (200):**
+```json
+{
+  "message": "Import paused"
+}
+```
+
+**Errors:**
+- `400` - Import is not running
+- `404` - Import not found
+
+---
+
+## POST /api/admin/land-registry/import/[id]/resume
+
+Resume a paused import. Download restarts from beginning but duplicate records are skipped.
+
+**Auth:** Required (admin)
+
+**Response (200):**
+```json
+{
+  "message": "Import resumed"
+}
+```
+
+**Errors:**
+- `400` - Import is not paused
+- `404` - Import not found
+
+---
+
+## POST /api/admin/land-registry/import/[id]/cancel
+
+Cancel an active or paused import. Progress is lost and cannot be resumed.
+
+**Auth:** Required (admin)
+
+**Response (200):**
+```json
+{
+  "message": "Import cancelled"
+}
+```
+
+**Errors:**
+- `400` - Import cannot be cancelled (already completed/failed/cancelled)
+- `404` - Import not found
+
+---
+
 # Development/Testing
 
 Development and testing endpoints (should be disabled in production).

@@ -1,0 +1,40 @@
+============================================================
+[Debug] Scraper Data Debugger
+[Debug] Source:    ONTHEMARKET
+[Debug] Sample:    2 properties
+[Debug] Log file:  /mnt/c/Users/henry/Projects/deal-sourcing-saas/logs/debug-ONTHEMARKET-2026-02-11T12-01-20.json
+============================================================
+
+[Debug] Navigating to search: https://www.onthemarket.com/for-sale/property/birmingham/
+
+[Debug] Will scrape 2 property URL(s):
+  https://www.onthemarket.com/details/17989654/
+  https://www.onthemarket.com/details/18360125/
+
+────────────────────────────────────────────────────────────
+[Debug] Scraping: https://www.onthemarket.com/details/17989654/
+
+[ANALYSIS] https://www.onthemarket.com/details/17989654/
+  Source: ONTHEMARKET
+
+  === PRICE FIELDS ===
+  __NEXT_DATA__.props.pageProps found ✓
+  pageProps keys: 
+    (no price fields found in pageProps)
+  DOM price selectors:
+
+  === DATE FIELDS ===
+
+────────────────────────────────────────────────────────────
+[Debug] Scraping: https://www.onthemarket.com/details/18360125/
+
+[ANALYSIS] https://www.onthemarket.com/details/18360125/
+  Source: ONTHEMARKET
+
+  === PRICE FIELDS ===
+  __NEXT_DATA__.props.pageProps found ✓
+  pageProps keys: 
+    (no price fields found in pageProps)
+  DOM price selectors:
+
+  === DATE FIELDS ===

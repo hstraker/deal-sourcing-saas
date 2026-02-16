@@ -15,6 +15,7 @@ import {
   calculateAverageComparablePrice,
   SoldProperty,
 } from "@/lib/propertydata"
+import { findOwnershipByPostcode, resolvePostcodeFromAddress } from "@/lib/land-registry"
 
 export async function POST(
   request: NextRequest,
@@ -68,8 +69,56 @@ export async function POST(
     let comparableAverage: number | null = null
     let valuationEstimate: number | null = null
 
-    if (lead.propertyPostcode) {
-      console.log(`[BMV Calculator] Property has postcode: ${lead.propertyPostcode}`)
+    // ── Postcode resolution ──────────────────────────────────────────────────
+    // Scrapers (especially Zoopla) sometimes store the wrong postcode:
+    //   - SE1 2LH  — Zoopla's own London office appears in the page footer
+    //   - SA6      — outcode only, no incode (Zoopla withholds it for privacy)
+    // We cross-check the stored postcode against:
+    //   1. The outcode embedded in the display address (e.g. "…Swansea SA6")
+    //   2. The Land Registry companyOwnership table (if imported)
+    //   3. postcodes.io free API (fallback, gives representative postcode for area)
+    let effectivePostcode = lead.propertyPostcode ?? null
+    let postcodeResolutionSource: string | null = null
+    let postcodeWasCorrected = false
+
+    try {
+      const resolved = await resolvePostcodeFromAddress(
+        lead.propertyAddress ?? null,
+        lead.propertyPostcode ?? null
+      )
+      if (resolved) {
+        effectivePostcode = resolved.postcode
+        postcodeResolutionSource = resolved.source
+        postcodeWasCorrected = resolved.corrected
+
+        if (resolved.corrected) {
+          console.log(
+            `[BMV Calculator] Postcode corrected: "${lead.propertyPostcode}" → "${resolved.postcode}" (source: ${resolved.source})`
+          )
+          // Persist the corrected postcode so future BMV calculations are accurate
+          await prisma.vendorLead.update({
+            where: { id: params.id },
+            data: { propertyPostcode: resolved.postcode },
+          })
+        }
+      }
+    } catch (err) {
+      console.warn("[BMV Calculator] Postcode resolution failed:", err)
+    }
+
+    // Detect if we still have only an outcode (e.g. resolution could not find a full postcode)
+    const isOutcodeOnly = effectivePostcode
+      ? !/^[A-Z]{1,2}\d{1,2}[A-Z]?\s\d[A-Z]{2}$/i.test(effectivePostcode.trim())
+      : true
+
+    if (isOutcodeOnly) {
+      console.warn(
+        `[BMV Calculator] Postcode "${effectivePostcode}" is still outcode-only after resolution attempt — PropertyData API needs a full postcode. Skipping API calls.`
+      )
+    }
+
+    if (effectivePostcode && !isOutcodeOnly) {
+      console.log(`[BMV Calculator] Using postcode: ${effectivePostcode}${postcodeWasCorrected ? ` (corrected from "${lead.propertyPostcode}" via ${postcodeResolutionSource})` : ""}`)
 
       try {
         // First, check if we have stored comparables (saves API credits)
@@ -106,7 +155,7 @@ export async function POST(
           console.log(`[BMV Calculator] No stored comparables, fetching from PropertyData...`)
 
           const soldPricesResult = await fetchSoldPrices(
-            lead.propertyPostcode,
+            effectivePostcode!,
             lead.bedrooms || undefined,
             3, // 3 miles radius
             50 // max 50 results
@@ -122,7 +171,8 @@ export async function POST(
               lead.bedrooms || undefined,
               lead.propertyType || undefined,
               12, // last 12 months
-              5 // top 5 comparables
+              5, // top 5 comparables
+              effectivePostcode || undefined
             )
 
             console.log(`[BMV Calculator] Filtered to ${comparables.length} comparable properties`)
@@ -143,7 +193,7 @@ export async function POST(
           console.log(`[BMV Calculator] Fetching rental data from PropertyData...`)
           try {
             const rentalResult = await fetchRentalData(
-              lead.propertyPostcode,
+              effectivePostcode!,
               lead.bedrooms || undefined,
               lead.propertyType || undefined
             )
@@ -173,8 +223,40 @@ export async function POST(
         // Continue with fallback logic
       }
     } else {
-      console.log("[BMV Calculator] No postcode available, using fallback estimation")
+      if (isOutcodeOnly) {
+        console.log("[BMV Calculator] Outcode-only postcode — skipping PropertyData API, using fallback estimation")
+      } else {
+        console.log("[BMV Calculator] No postcode available, using fallback estimation")
+      }
     }
+
+    // ── Land Registry ownership lookup ──────────────────────────────────────
+    // Check if land registry data has been imported before querying
+    let landRegistryOwnership: Awaited<ReturnType<typeof findOwnershipByPostcode>> = null
+    let landRegistryUsed = false
+    if (effectivePostcode) {
+      try {
+        const hasLRData = await prisma.companyOwnership.findFirst({ select: { id: true } })
+        if (hasLRData) {
+          landRegistryOwnership = await findOwnershipByPostcode(effectivePostcode)
+          if (landRegistryOwnership) {
+            landRegistryUsed = true
+            console.log(
+              `[BMV Calculator] Land Registry: ${landRegistryOwnership.companyName} | ` +
+              `corporate=${landRegistryOwnership.isCorporateOwned} overseas=${landRegistryOwnership.isOverseasOwned} ` +
+              `portfolio=${landRegistryOwnership.isPortfolioOwner}`
+            )
+          } else {
+            console.log("[BMV Calculator] Land Registry imported but no match for this postcode")
+          }
+        } else {
+          console.log("[BMV Calculator] Land Registry data not imported — skipping ownership lookup")
+        }
+      } catch (err) {
+        console.error("[BMV Calculator] Land Registry lookup failed:", err)
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     // Calculate final market value using weighted sources
     if (comparableAverage && comparableAverage > 0) {
@@ -252,10 +334,23 @@ export async function POST(
       offerPercentage += 2 // Higher offer for flexible sellers
     }
 
+    // Land Registry: lower offer if corporate/overseas/portfolio owner (more leverage)
+    if (landRegistryOwnership) {
+      if (landRegistryOwnership.isCorporateOwned) offerPercentage -= 2
+      if (landRegistryOwnership.isOverseasOwned) offerPercentage -= 2
+      if (landRegistryOwnership.isPortfolioOwner) offerPercentage -= 1
+    }
+
     // Ensure offer percentage stays within reasonable bounds
     offerPercentage = Math.max(65, Math.min(85, offerPercentage))
 
-    const calculatedOffer = marketValue * (offerPercentage / 100)
+    // Calculate offer based on market value percentage, then cap at asking price.
+    // The vendor is already asking below market — we would never offer MORE than
+    // what they are asking, so the offer cannot exceed the asking price.
+    const rawCalculatedOffer = Math.round(marketValue * (offerPercentage / 100))
+    const offerCappedAtAsking = rawCalculatedOffer > askingPrice
+    const calculatedOffer = offerCappedAtAsking ? askingPrice : rawCalculatedOffer
+
     const refurbCost = lead.estimatedRefurbCost?.toNumber() || 0
     const profitPotential = marketValue - calculatedOffer - refurbCost
 
@@ -271,10 +366,30 @@ export async function POST(
     const hasGoodYield = grossYield >= 6
     const validationPassed = bmvScore >= 15 && profitPotential >= 10000
 
+    // Build a postcode notice that appears at the top of notes when needed
+    let postcodeWarning = ""
+    if (isOutcodeOnly) {
+      postcodeWarning =
+        `⚠️ INCOMPLETE POSTCODE\n` +
+        `${"─".repeat(60)}\n` +
+        `  Postcode "${effectivePostcode ?? lead.propertyPostcode}" is outcode-only.\n` +
+        `  PropertyData API requires a full postcode (e.g. SA5 1AB).\n` +
+        `  Edit this lead and add the full postcode, then recalculate\n` +
+        `  to get real comparable sales and rental data.\n\n`
+    } else if (postcodeWasCorrected) {
+      postcodeWarning =
+        `ℹ️ POSTCODE AUTO-CORRECTED\n` +
+        `${"─".repeat(60)}\n` +
+        `  Stored postcode "${lead.propertyPostcode}" did not match the property area.\n` +
+        `  Resolved to "${effectivePostcode}" via ${postcodeResolutionSource}.\n` +
+        `  PropertyData analysis uses the corrected postcode.\n\n`
+    }
+
     let validationNotes = ""
     if (validationPassed) {
       validationNotes = `✅ DEAL VALIDATED\n`
       validationNotes += `${"=".repeat(60)}\n\n`
+      validationNotes += postcodeWarning
 
       // Market Value Analysis Section
       validationNotes += `📊 MARKET VALUE ANALYSIS\n`
@@ -305,10 +420,36 @@ export async function POST(
           validationNotes += `     💷 £${comp.salePrice.toLocaleString()} | 🛏️ ${comp.bedrooms} bed | 📅 ${saleDate}${distance}\n`
         })
         validationNotes += `\n`
-      } else if (lead.propertyPostcode) {
+      } else if (effectivePostcode) {
         validationNotes += `⚠️ NO COMPARABLE PROPERTIES FOUND within 3 miles\n`
         validationNotes += `Market value is estimated - consider manual verification\n\n`
       }
+
+      // Land Registry Ownership Section
+      validationNotes += `🏛️ LAND REGISTRY OWNERSHIP\n`
+      validationNotes += `${"─".repeat(60)}\n`
+      if (landRegistryUsed && landRegistryOwnership) {
+        validationNotes += `  ✓ Data Found: HM Land Registry CCOD/OCOD dataset\n`
+        validationNotes += `  ✓ Owner: ${landRegistryOwnership.companyName}\n`
+        if (landRegistryOwnership.proprietorCategory) {
+          validationNotes += `  ✓ Proprietor Type: ${landRegistryOwnership.proprietorCategory}\n`
+        }
+        if (landRegistryOwnership.isCorporateOwned) {
+          validationNotes += `  ✓ Corporate Owner — offer adjusted -2% (easier negotiation)\n`
+        }
+        if (landRegistryOwnership.isOverseasOwned) {
+          validationNotes += `  ✓ Overseas Owner — offer adjusted -2% (potentially motivated)\n`
+        }
+        if (landRegistryOwnership.isPortfolioOwner) {
+          validationNotes += `  ✓ Portfolio Owner (5+ properties) — offer adjusted -1% (bulk deal)\n`
+        }
+      } else if (effectivePostcode) {
+        validationNotes += `  • No match in Land Registry dataset for this postcode\n`
+        validationNotes += `  • (Land Registry data helps identify corporate/overseas owners)\n`
+      } else {
+        validationNotes += `  • Land Registry not checked — no postcode provided\n`
+      }
+      validationNotes += `\n`
 
       // BMV Analysis - HIGHLIGHTED
       validationNotes += `💰 BMV ANALYSIS\n`
@@ -320,7 +461,13 @@ export async function POST(
 
       validationNotes += `💵 OFFER DETAILS\n`
       validationNotes += `${"─".repeat(60)}\n`
-      validationNotes += `  💼 Calculated Offer: £${calculatedOffer.toLocaleString()} (${offerPercentage.toFixed(1)}% of market value)\n`
+      if (offerCappedAtAsking) {
+        validationNotes += `  💼 Offer: £${calculatedOffer.toLocaleString()} (capped at asking price)\n`
+        validationNotes += `  ℹ️  Market-value formula gave £${rawCalculatedOffer.toLocaleString()} (${offerPercentage.toFixed(1)}% of MV)\n`
+        validationNotes += `     but vendor is asking LESS — so offer = asking price.\n`
+      } else {
+        validationNotes += `  💼 Calculated Offer: £${calculatedOffer.toLocaleString()} (${offerPercentage.toFixed(1)}% of market value)\n`
+      }
       if (refurbCost > 0) {
         validationNotes += `  🔨 Refurb Cost: £${refurbCost.toLocaleString()}\n`
       }
@@ -392,6 +539,7 @@ export async function POST(
     } else {
       validationNotes = `❌ DEAL FAILED VALIDATION\n`
       validationNotes += `${"=".repeat(60)}\n\n`
+      validationNotes += postcodeWarning
 
       // Market Value Analysis Section
       validationNotes += `📊 MARKET VALUE ANALYSIS\n`
@@ -422,10 +570,26 @@ export async function POST(
           validationNotes += `     💷 £${comp.salePrice.toLocaleString()} | 🛏️ ${comp.bedrooms} bed | 📅 ${saleDate}${distance}\n`
         })
         validationNotes += `\n`
-      } else if (lead.propertyPostcode) {
+      } else if (effectivePostcode) {
         validationNotes += `⚠️ NO COMPARABLE PROPERTIES FOUND within 3 miles\n`
         validationNotes += `Market value is estimated - accuracy may be limited\n\n`
       }
+
+      // Land Registry Ownership Section (failed deal)
+      validationNotes += `🏛️ LAND REGISTRY OWNERSHIP\n`
+      validationNotes += `${"─".repeat(60)}\n`
+      if (landRegistryUsed && landRegistryOwnership) {
+        validationNotes += `  • Data Found: HM Land Registry CCOD/OCOD dataset\n`
+        validationNotes += `  • Owner: ${landRegistryOwnership.companyName}\n`
+        if (landRegistryOwnership.isCorporateOwned) validationNotes += `  • Corporate Owner — offer adjusted -2%\n`
+        if (landRegistryOwnership.isOverseasOwned)  validationNotes += `  • Overseas Owner — offer adjusted -2%\n`
+        if (landRegistryOwnership.isPortfolioOwner) validationNotes += `  • Portfolio Owner — offer adjusted -1%\n`
+      } else if (effectivePostcode) {
+        validationNotes += `  • No match in Land Registry dataset for this postcode\n`
+      } else {
+        validationNotes += `  • Land Registry not checked — no postcode provided\n`
+      }
+      validationNotes += `\n`
 
       const reasons = []
 
@@ -564,6 +728,8 @@ export async function POST(
         bmvScore,
         estimatedMarketValue: marketValue,
         offerAmount: calculatedOffer,
+        rawCalculatedOffer,
+        offerCappedAtAsking,
         offerPercentage,
         profitPotential,
         validationPassed,
@@ -581,6 +747,22 @@ export async function POST(
         hasGoodYield,
         rentalDataSource,
         rentConfidenceRange,
+        // Postcode quality
+        isOutcodeOnly,
+        postcodeUsed: effectivePostcode,
+        postcodeWasCorrected,
+        postcodeResolutionSource,
+        // Land Registry ownership data
+        landRegistryUsed,
+        landRegistryOwnership: landRegistryOwnership
+          ? {
+              companyName: landRegistryOwnership.companyName,
+              isCorporateOwned: landRegistryOwnership.isCorporateOwned,
+              isOverseasOwned: landRegistryOwnership.isOverseasOwned,
+              isPortfolioOwner: landRegistryOwnership.isPortfolioOwner,
+              proprietorCategory: landRegistryOwnership.proprietorCategory,
+            }
+          : null,
       },
     })
   } catch (error) {

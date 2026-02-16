@@ -523,7 +523,7 @@ export function DealPipelineBoard({ deals, currentUserId }: DealPipelineBoardPro
                                   </span>
                                 )}
                                 {deal.packPrice && (
-                                  <span className="rounded-full bg-muted px-2 py-0.5 font-semibold text-muted-foreground">
+                                  <span suppressHydrationWarning className="rounded-full bg-muted px-2 py-0.5 font-semibold text-muted-foreground">
                                     £{Number(deal.packPrice).toLocaleString()}
                                   </span>
                                 )}
@@ -567,7 +567,7 @@ export function DealPipelineBoard({ deals, currentUserId }: DealPipelineBoardPro
                                 </Select>
                                 <div className="flex items-center gap-1">
                                   <Clock className="h-3.5 w-3.5" />
-                                  <span>
+                                  <span suppressHydrationWarning>
                                     {(() => {
                                       const days = calcDaysInStatus(deal.statusUpdatedAt)
                                       return days === "—" ? "—" : `${days}d`

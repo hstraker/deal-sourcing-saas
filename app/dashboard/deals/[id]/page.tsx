@@ -235,7 +235,7 @@ export default async function DealDetailPage({ params }: DealDetailPageProps) {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Square Feet</p>
-                  <p className="font-medium">{deal.squareFeet?.toLocaleString() || "—"}</p>
+                  <p suppressHydrationWarning className="font-medium">{deal.squareFeet?.toLocaleString() || "—"}</p>
                 </div>
               </div>
             </CardContent>

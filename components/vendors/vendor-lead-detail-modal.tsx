@@ -49,7 +49,8 @@ import {
   Home,
   ArrowDownRight,
   Target,
-  Wallet
+  Wallet,
+  Building2,
 } from "lucide-react"
 import { PipelineStage } from "@prisma/client"
 import { cn } from "@/lib/utils"
@@ -158,6 +159,7 @@ export function VendorLeadDetailModal({
   const [isDeleting, setIsDeleting] = useState(false)
   const [isCalculating, setIsCalculating] = useState(false)
   const [isGeneratingPack, setIsGeneratingPack] = useState(false)
+  const [bmvResult, setBmvResult] = useState<any>(null)
   const [editForm, setEditForm] = useState<any>({})
   const [templates, setTemplates] = useState<any[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("")
@@ -516,6 +518,7 @@ export function VendorLeadDetailModal({
       }
 
       const result = await response.json()
+      setBmvResult(result.data)
 
       // Fetch the updated lead from the database to ensure consistency
       const freshLead = await fetch(`/api/vendor-leads/${lead.id}`)
@@ -551,6 +554,27 @@ export function VendorLeadDetailModal({
     }
   }
 
+  // Derive land registry status from fresh calculation result OR from stored validation notes
+  const landRegistryUsed: boolean =
+    bmvResult?.landRegistryUsed === true ||
+    (currentLead.validationNotes?.includes("Data Found: HM Land Registry") ?? false)
+  const landRegistryOwnership = bmvResult?.landRegistryOwnership ?? null
+  // Detect if LR was checked but no match found (i.e. data was imported but postcode not matched)
+  const landRegistryCheckedNoMatch: boolean =
+    !landRegistryUsed &&
+    (bmvResult?.landRegistryUsed === false ||
+      (currentLead.validationNotes?.includes("No match in Land Registry dataset") ?? false))
+  // Detect outcode-only postcode (e.g. "SA5" with no incode)
+  const isOutcodeOnly: boolean =
+    bmvResult?.isOutcodeOnly === true ||
+    (currentLead.validationNotes?.includes("outcode-only") ?? false) ||
+    (currentLead.propertyPostcode != null &&
+      !/^[A-Z]{1,2}\d{1,2}[A-Z]?\s\d[A-Z]{2}$/i.test(currentLead.propertyPostcode.trim()))
+  // Postcode correction info from latest BMV calculation
+  const postcodeWasCorrected: boolean = bmvResult?.postcodeWasCorrected === true
+  const postcodeUsed: string | null = bmvResult?.postcodeUsed ?? currentLead.propertyPostcode ?? null
+  const postcodeResolutionSource: string | null = bmvResult?.postcodeResolutionSource ?? null
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -562,7 +586,14 @@ export function VendorLeadDetailModal({
                 <div className="mt-2 flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-primary" />
-                    <span className="font-medium text-primary">{currentLead.propertyAddress || "No Address"}</span>
+                    <span className="font-medium text-primary">
+                      {currentLead.propertyAddress
+                        ? currentLead.propertyPostcode &&
+                          !currentLead.propertyAddress.includes(currentLead.propertyPostcode)
+                          ? `${currentLead.propertyAddress}, ${currentLead.propertyPostcode}`
+                          : currentLead.propertyAddress
+                        : currentLead.propertyPostcode || "No Address"}
+                    </span>
                   </div>
                   {currentLead.vendorName && (
                     <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
@@ -632,7 +663,7 @@ export function VendorLeadDetailModal({
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>
+                          <p suppressHydrationWarning>
                             {currentLead.investorPackGenerationCount && currentLead.investorPackGenerationCount > 0
                               ? `Generated ${currentLead.investorPackGenerationCount} time${currentLead.investorPackGenerationCount > 1 ? "s" : ""}${
                                   currentLead.lastInvestorPackGeneratedAt
@@ -730,6 +761,7 @@ export function VendorLeadDetailModal({
                           >
                             <p className="text-sm whitespace-pre-wrap">{message.messageBody}</p>
                             <p
+                              suppressHydrationWarning
                               className={cn(
                                 "text-xs mt-1",
                                 isOutbound ? "text-blue-100" : "text-muted-foreground"
@@ -947,19 +979,18 @@ export function VendorLeadDetailModal({
                     </>
                   ) : (
                     <>
-                      {currentLead.propertyAddress && (
+                      {(currentLead.propertyAddress || currentLead.propertyPostcode) && (
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Address</p>
                           <p className="text-base flex items-center gap-2">
                             <MapPin className="h-4 w-4" />
-                            {currentLead.propertyAddress}
+                            {currentLead.propertyAddress
+                              ? currentLead.propertyPostcode &&
+                                !currentLead.propertyAddress.includes(currentLead.propertyPostcode)
+                                ? `${currentLead.propertyAddress}, ${currentLead.propertyPostcode}`
+                                : currentLead.propertyAddress
+                              : currentLead.propertyPostcode}
                           </p>
-                        </div>
-                      )}
-                      {currentLead.propertyPostcode && (
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Postcode</p>
-                          <p className="text-base">{currentLead.propertyPostcode}</p>
                         </div>
                       )}
                       {currentLead.propertyType && (
@@ -968,13 +999,13 @@ export function VendorLeadDetailModal({
                           <p className="text-base capitalize">{currentLead.propertyType}</p>
                         </div>
                       )}
-                      {(currentLead.bedrooms || currentLead.bathrooms) && (
+                      {(currentLead.bedrooms != null || currentLead.bathrooms != null) && (
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Size</p>
                           <p className="text-base">
-                            {currentLead.bedrooms && `${currentLead.bedrooms} bed${currentLead.bedrooms > 1 ? "s" : ""}`}
-                            {currentLead.bedrooms && currentLead.bathrooms && ", "}
-                            {currentLead.bathrooms && `${currentLead.bathrooms} bath${currentLead.bathrooms > 1 ? "s" : ""}`}
+                            {currentLead.bedrooms ? `${currentLead.bedrooms} bed${currentLead.bedrooms > 1 ? "s" : ""}` : null}
+                            {currentLead.bedrooms && currentLead.bathrooms ? ", " : null}
+                            {currentLead.bathrooms ? `${currentLead.bathrooms} bath${currentLead.bathrooms > 1 ? "s" : ""}` : null}
                           </p>
                         </div>
                       )}
@@ -987,7 +1018,7 @@ export function VendorLeadDetailModal({
                       {currentLead.squareFeet && (
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Square Footage</p>
-                          <p className="text-base">{currentLead.squareFeet.toLocaleString()} sq ft</p>
+                          <p suppressHydrationWarning className="text-base">{currentLead.squareFeet.toLocaleString()} sq ft</p>
                         </div>
                       )}
                       {currentLead.askingPrice && (
@@ -1199,7 +1230,7 @@ export function VendorLeadDetailModal({
                   )}
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Last Contact</p>
-                    <p className="text-base">{formatTimeAgo(currentLead.lastContactAt)}</p>
+                    <p suppressHydrationWarning className="text-base">{formatTimeAgo(currentLead.lastContactAt)}</p>
                   </div>
                   {currentLead.retryCount > 0 && (
                     <div>
@@ -1221,6 +1252,51 @@ export function VendorLeadDetailModal({
                     <CardDescription>
                       {currentLead.validatedAt ? `Validated on ${formatDate(currentLead.validatedAt)}` : "Not yet validated"}
                     </CardDescription>
+                    {/* Land Registry indicator */}
+                    {landRegistryUsed && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 border gap-1 font-medium">
+                          <Building2 className="h-3 w-3" />
+                          Land Registry Used
+                        </Badge>
+                        {landRegistryOwnership && (
+                          <span className="text-xs text-muted-foreground">
+                            Owner: {landRegistryOwnership.companyName}
+                            {landRegistryOwnership.isCorporateOwned && " · Corporate"}
+                            {landRegistryOwnership.isOverseasOwned && " · Overseas"}
+                            {landRegistryOwnership.isPortfolioOwner && " · Portfolio"}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {landRegistryCheckedNoMatch && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge variant="outline" className="text-muted-foreground gap-1 font-normal">
+                          <Building2 className="h-3 w-3" />
+                          No Land Registry Match
+                        </Badge>
+                      </div>
+                    )}
+                    {isOutcodeOnly && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge className="bg-amber-100 text-amber-800 border-amber-300 border gap-1 font-medium">
+                          ⚠️ Incomplete Postcode: {currentLead.propertyPostcode ?? "none"}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          Edit and add full postcode for accurate BMV
+                        </span>
+                      </div>
+                    )}
+                    {postcodeWasCorrected && postcodeUsed && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge className="bg-blue-100 text-blue-800 border-blue-300 border gap-1 font-medium">
+                          ℹ️ Postcode corrected → {postcodeUsed}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          Auto-resolved via {postcodeResolutionSource} (was: {currentLead.propertyPostcode})
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <Button
                     onClick={handleCalculateBMV}
@@ -1558,7 +1634,15 @@ export function VendorLeadDetailModal({
                 {/* Offer Strategy */}
                 <Card className="bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200">
                   <CardHeader>
-                    <CardTitle className="text-slate-800">Offer Strategy</CardTitle>
+                    <CardTitle className="text-slate-800 flex items-center gap-2">
+                      Offer Strategy
+                      {landRegistryUsed && (
+                        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 border gap-1 font-medium text-xs">
+                          <Building2 className="h-3 w-3" />
+                          Land Registry
+                        </Badge>
+                      )}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3 text-sm">
@@ -1572,6 +1656,23 @@ export function VendorLeadDetailModal({
                               {currentLead.motivationScore && ` (${currentLead.motivationScore}/10)`}
                               {currentLead.urgencyLevel && `, urgency (${currentLead.urgencyLevel})`}
                               {currentLead.condition && `, and property condition (${currentLead.condition.replace(/_/g, ' ')})`}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {landRegistryUsed && landRegistryOwnership && (
+                        <div className="flex items-start gap-3">
+                          <Building2 className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-medium text-slate-900">
+                              Land Registry ownership data applied
+                            </p>
+                            <p className="text-slate-600 mt-1">
+                              Owner: <span className="font-medium">{landRegistryOwnership.companyName}</span>
+                              {landRegistryOwnership.isCorporateOwned && " · Corporate owner (-2% offer)"}
+                              {landRegistryOwnership.isOverseasOwned && " · Overseas owner (-2% offer)"}
+                              {landRegistryOwnership.isPortfolioOwner && " · Portfolio owner (-1% offer)"}
                             </p>
                           </div>
                         </div>

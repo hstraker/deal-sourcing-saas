@@ -597,6 +597,7 @@ export async function fetchSoldPrices(
  * @param targetPropertyType - Target property type
  * @param maxAgeMonths - Maximum age of sales in months (default: 12)
  * @param maxResults - Maximum comparables to return (default: 5)
+ * @param targetPostcode - Target property postcode (used to filter out comparables from wrong areas)
  * @returns Filtered and sorted comparable properties
  */
 export function filterComparables(
@@ -604,12 +605,28 @@ export function filterComparables(
   targetBedrooms?: number,
   targetPropertyType?: string,
   maxAgeMonths: number = 12,
-  maxResults: number = 5
+  maxResults: number = 5,
+  targetPostcode?: string
 ): SoldProperty[] {
   const now = new Date()
   const maxAgeMs = maxAgeMonths * 30 * 24 * 60 * 60 * 1000
 
+  // Extract the postcode area from the target so we can reject comparables from
+  // completely different regions (e.g. London postcodes for a Newport property).
+  const targetArea = targetPostcode ? extractPostcodeArea(targetPostcode) : null
+
   let filtered = soldProperties.filter(prop => {
+    // Filter by postcode area — reject comparables from a different region
+    if (targetArea) {
+      const propPostcode = prop.postcode || extractPostcode(prop.address)
+      if (propPostcode) {
+        const propArea = extractPostcodeArea(propPostcode)
+        if (propArea && propArea !== targetArea) {
+          return false
+        }
+      }
+    }
+
     // Filter by age
     const saleDate = new Date(prop.saleDate)
     const ageMs = now.getTime() - saleDate.getTime()
@@ -903,6 +920,15 @@ function extractPostcode(address: string): string | null {
   return match ? match[1].replace(/\s+/g, " ").trim() : null
 }
 
+/**
+ * Extract the postcode area prefix (the 1-2 letter prefix before digits).
+ * Examples: "NP20 1AB" → "NP", "SW1A 1AA" → "SW", "B1 2AB" → "B"
+ */
+function extractPostcodeArea(postcode: string): string | null {
+  const match = postcode.trim().match(/^([A-Z]{1,2})/i)
+  return match ? match[1].toUpperCase() : null
+}
+
 export async function fetchPropertyData(
   address: string,
   postcode?: string | null,
@@ -1180,13 +1206,14 @@ export async function fetchDetailedComparables(
 
     totalCreditsUsed += soldPricesResult.creditsUsed
 
-    // Step 2: Filter comparables by age, bedrooms, property type
+    // Step 2: Filter comparables by age, bedrooms, property type, and postcode area
     const filteredComparables = filterComparables(
       soldPricesResult.soldProperties,
       bedrooms,
       propertyType,
       maxAgeMonths,
-      maxResults
+      maxResults,
+      postcode
     )
 
     console.log(`[PropertyData] Filtered to ${filteredComparables.length} comparables`)

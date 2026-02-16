@@ -701,7 +701,33 @@ await twilioClient.messages.create({
 
 **Usage tracking:** Stored in `PropertyDataUsage` model
 
-### 4. AWS S3
+### 4. HM Land Registry API
+
+**Purpose:** Download and import company ownership data (CCOD/OCOD) for BMV scoring
+
+**Implementation:** `lib/land-registry.ts`
+
+**Features:**
+- Pause/resume/cancel downloads
+- Real-time progress tracking (speed, ETA, bytes)
+- Automatic resume on failures
+- Batch import with duplicate skipping
+
+**Endpoints:**
+- `POST /api/admin/land-registry/import` - Start import
+- `POST /api/admin/land-registry/import/[id]/pause` - Pause import
+- `POST /api/admin/land-registry/import/[id]/resume` - Resume import
+- `POST /api/admin/land-registry/import/[id]/cancel` - Cancel import
+- `GET /api/admin/land-registry/status` - Get status and progress
+
+**BMV Integration:** Automatically boosts BMV scores:
+- Corporate owner: +10 points
+- Overseas owner: +7 points
+- Portfolio owner: +5 points
+
+**See:** `docs/LAND_REGISTRY_ENHANCEMENTS.md` for full documentation
+
+### 5. AWS S3
 
 **Purpose:** Property photo storage
 
@@ -713,7 +739,7 @@ await twilioClient.messages.create({
 3. Frontend uploads directly to S3
 4. Backend saves metadata to database
 
-### 5. Facebook Lead Ads
+### 6. Facebook Lead Ads
 
 **Purpose:** Capture property seller leads
 

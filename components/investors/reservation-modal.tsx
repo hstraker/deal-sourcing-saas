@@ -290,7 +290,7 @@ export function ReservationModal({
                       </div>
                     ) : (
                       deals.map((deal) => (
-                        <SelectItem key={deal.id} value={deal.id}>
+                        <SelectItem suppressHydrationWarning key={deal.id} value={deal.id}>
                           {deal.address} - £{deal.askingPrice.toLocaleString()}
                         </SelectItem>
                       ))
@@ -298,7 +298,7 @@ export function ReservationModal({
                   </SelectContent>
                 </Select>
                 {selectedDeal && (
-                  <p className="text-sm text-muted-foreground">
+                  <p suppressHydrationWarning className="text-sm text-muted-foreground">
                     Price: £{selectedDeal.askingPrice.toLocaleString()}
                   </p>
                 )}

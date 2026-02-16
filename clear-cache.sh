@@ -6,7 +6,9 @@ rm -rf .next
 rm -rf node_modules/.cache
 rm -rf .next/cache
 
-echo "Cache cleared! Now restart your dev server with:"
-echo "Start application"
+echo "Clearing - Scraper cards"
+npx tsx scripts/run-scraper.ts --reset-db
+
+echo "Starting application"
 npm run dev
 

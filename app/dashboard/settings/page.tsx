@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-import { Settings, DollarSign, Eye, TrendingUp, Terminal, Play, Trash2, ExternalLink, Loader2, CheckCircle, XCircle, Send, Shuffle, Facebook, FileText, Building2 } from "lucide-react"
+import { Settings, DollarSign, Eye, TrendingUp, Terminal, Play, Trash2, ExternalLink, Loader2, CheckCircle, XCircle, Send, Shuffle, Facebook, FileText, Building2, Search } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -345,6 +345,68 @@ export default function SettingsPage() {
               <Button>
                 <FileText className="h-4 w-4 mr-2" />
                 Manage Templates
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Scraper Settings */}
+      <Card className="border-green-200 dark:border-green-800">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Search className="h-5 w-5 text-green-600" />
+            Scraper Settings
+          </CardTitle>
+          <CardDescription>
+            Configure property scraping sources, schedules, and review behavior
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">
+                Manage scraper sources, rate limiting, proxy settings, and auto-analysis configuration
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Controls how properties are scraped from Rightmove, Zoopla, and OnTheMarket
+              </p>
+            </div>
+            <Link href="/dashboard/settings/scraper">
+              <Button>
+                <Search className="h-4 w-4 mr-2" />
+                Manage Scraper
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Land Registry Settings */}
+      <Card className="border-indigo-200 dark:border-indigo-800">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-indigo-600" />
+            HM Land Registry
+          </CardTitle>
+          <CardDescription>
+            Import CCOD/OCOD ownership datasets to boost BMV scores with corporate and overseas ownership intelligence
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">
+                Corporate owner: +10 pts · Overseas owner: +7 pts · Portfolio owner: +5 pts
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Monthly imports from HM Land Registry. Enriches scraped properties automatically by postcode.
+              </p>
+            </div>
+            <Link href="/dashboard/settings/land-registry">
+              <Button>
+                <Building2 className="h-4 w-4 mr-2" />
+                Manage
               </Button>
             </Link>
           </div>

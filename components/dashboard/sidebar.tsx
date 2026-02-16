@@ -5,12 +5,11 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
   LayoutDashboard,
-  FileText,
   Users,
   Settings,
   LogOut,
-  KanbanSquare,
   Building2,
+  Search,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { signOut } from "next-auth/react"
@@ -24,17 +23,7 @@ const navigation = [
     icon: LayoutDashboard,
   },
   {
-    name: "Deals",
-    href: "/dashboard/deals",
-    icon: FileText,
-  },
-  {
-    name: "Pipeline",
-    href: "/dashboard/deals/pipeline",
-    icon: KanbanSquare,
-  },
-  {
-    name: "Vendors",
+    name: "Vendor",
     href: "/dashboard/vendors",
     icon: Building2,
   },
@@ -42,6 +31,11 @@ const navigation = [
     name: "Investors",
     href: "/dashboard/investors",
     icon: Users,
+  },
+  {
+    name: "Scraper",
+    href: "/dashboard/scraper",
+    icon: Search,
   },
   {
     name: "Settings",

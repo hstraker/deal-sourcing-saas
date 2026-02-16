@@ -445,7 +445,7 @@ export function VendorList() {
                             {vendor.leadSource ? `Source: ${vendor.leadSource.replace(/_/g, " ")}` : "Direct"}
                           </div>
                           {vendor.lastContactAt && (
-                            <div className="text-xs text-muted-foreground">
+                            <div suppressHydrationWarning className="text-xs text-muted-foreground">
                               Last contact: {new Date(vendor.lastContactAt).toLocaleDateString()}
                             </div>
                           )}
@@ -518,17 +518,17 @@ export function VendorList() {
                                 {formatCurrency(vendor.offerAmount)}
                               </div>
                               {vendor.offerSentAt && (
-                                <div className="text-xs text-muted-foreground">
+                                <div suppressHydrationWarning className="text-xs text-muted-foreground">
                                   Sent: {new Date(vendor.offerSentAt).toLocaleDateString()}
                                 </div>
                               )}
                               {vendor.offerAcceptedAt && (
-                                <div className="text-xs text-green-600">
+                                <div suppressHydrationWarning className="text-xs text-green-600">
                                   Accepted: {new Date(vendor.offerAcceptedAt).toLocaleDateString()}
                                 </div>
                               )}
                               {vendor.offerRejectedAt && (
-                                <div className="text-xs text-red-600">
+                                <div suppressHydrationWarning className="text-xs text-red-600">
                                   Rejected: {new Date(vendor.offerRejectedAt).toLocaleDateString()}
                                 </div>
                               )}

@@ -1,0 +1,78 @@
+============================================================
+[Debug] Scraper Data Debugger
+[Debug] Source:    RIGHTMOVE
+[Debug] Sample:    2 properties
+[Debug] Log file:  /mnt/c/Users/henry/Projects/deal-sourcing-saas/logs/debug-RIGHTMOVE-2026-02-11T11-59-56.json
+============================================================
+
+[Debug] Navigating to search: https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=OUTCODE%5E2245&maxPages=1&sortType=6
+
+[Debug] Will scrape 2 property URL(s):
+  https://www.rightmove.co.uk/properties/171939740
+  https://www.rightmove.co.uk/properties/168069641
+
+────────────────────────────────────────────────────────────
+[Debug] Scraping: https://www.rightmove.co.uk/properties/171939740
+
+[ANALYSIS] https://www.rightmove.co.uk/properties/171939740
+  Source: RIGHTMOVE
+
+  === PRICE FIELDS ===
+  PAGE_MODEL.propertyData found ✓
+    propertyData.text.guidePriceDisclaimer: null
+    propertyData.text.reservePriceDisclaimer: null
+    propertyData.prices: {"primaryPrice":"£200,000","secondaryPrice":null,"displayPriceQualifier":"Offers Over","pricePerSqFt":null,"message":null,"exchangeRate":null}
+    propertyData.prices.primaryPrice: "£200,000"
+    propertyData.prices.secondaryPrice: null
+    propertyData.prices.displayPriceQualifier: "Offers Over"
+    propertyData.prices.pricePerSqFt: null
+    propertyData.address.displayAddress: "Carr Furlong, Barnsley, S71"
+    propertyData.customer.branchDisplayName: "Roebucks Estate Agents, Barnsley"
+    propertyData.customer.displayAddress: "Digital Media Centre County Way,\r\nBarnsley,\r\nS70 2JW"
+    propertyData.countryGuide: null
+    propertyData.misInfo.offerAdvertStampTypeId: null
+    propertyData.misInfo.premiumDisplay: true
+    propertyData.misInfo.premiumDisplayStampId: 34
+    propertyData.mortgageCalculator.price: 200000
+    propertyData.sharedOwnership.rentPrice: null
+    propertyData.livingCosts: {"councilTaxExempt":false,"councilTaxIncluded":false,"annualGroundRent":null,"groundRentReviewPeriodInYears":null,"groundRentPercentageIncrease":null,"annualServiceCharge":null,"councilTaxBand":"A","domesticRates":null}
+  DOM price selectors:
+
+  === DATE FIELDS ===
+    propertyData.status.published: true
+    propertyData.listingHistory: {"listingUpdateReason":"Added on 06/02/2026"}
+    propertyData.listingHistory.listingUpdateReason: "Added on 06/02/2026"
+    propertyData.features.obligations.listed: false
+
+────────────────────────────────────────────────────────────
+[Debug] Scraping: https://www.rightmove.co.uk/properties/168069641
+
+[ANALYSIS] https://www.rightmove.co.uk/properties/168069641
+  Source: RIGHTMOVE
+
+  === PRICE FIELDS ===
+  PAGE_MODEL.propertyData found ✓
+    propertyData.text.guidePriceDisclaimer: null
+    propertyData.text.reservePriceDisclaimer: null
+    propertyData.prices: {"primaryPrice":"£330,000","secondaryPrice":null,"displayPriceQualifier":"Guide Price","pricePerSqFt":null,"message":null,"exchangeRate":null}
+    propertyData.prices.primaryPrice: "£330,000"
+    propertyData.prices.secondaryPrice: null
+    propertyData.prices.displayPriceQualifier: "Guide Price"
+    propertyData.prices.pricePerSqFt: null
+    propertyData.address.displayAddress: "Chantry Grove, Royston"
+    propertyData.customer.branchDisplayName: "Haybrook, Barnsley"
+    propertyData.customer.displayAddress: "1 \r\nMarket Hill\r\nBarnsley\r\nS70 2PS"
+    propertyData.countryGuide: null
+    propertyData.misInfo.offerAdvertStampTypeId: null
+    propertyData.misInfo.premiumDisplay: true
+    propertyData.misInfo.premiumDisplayStampId: 14
+    propertyData.mortgageCalculator.price: 330000
+    propertyData.sharedOwnership.rentPrice: null
+    propertyData.livingCosts: {"councilTaxExempt":false,"councilTaxIncluded":false,"annualGroundRent":null,"groundRentReviewPeriodInYears":null,"groundRentPercentageIncrease":null,"annualServiceCharge":null,"councilTaxBand":"E","domesticRates":null}
+  DOM price selectors:
+
+  === DATE FIELDS ===
+    propertyData.status.published: true
+    propertyData.listingHistory: {"listingUpdateReason":"Reduced today"}
+    propertyData.listingHistory.listingUpdateReason: "Reduced today"
+    propertyData.features.obligations.listed: null

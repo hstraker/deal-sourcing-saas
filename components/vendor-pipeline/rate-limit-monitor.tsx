@@ -222,7 +222,7 @@ export function RateLimitMonitor() {
                       <li>• System includes automatic retry (3 attempts)</li>
                       <li>• Reduce conversation history to save tokens</li>
                       <li>• Consider upgrading your Anthropic plan</li>
-                      <li>• Current limit: {current.inputTokensLimit.toLocaleString()} tokens/min</li>
+                      <li suppressHydrationWarning>• Current limit: {current.inputTokensLimit.toLocaleString()} tokens/min</li>
                     </ul>
                   </TooltipContent>
                 </Tooltip>
@@ -248,7 +248,7 @@ export function RateLimitMonitor() {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-muted-foreground">Input Tokens</span>
-                <span className="text-xs font-mono">
+                <span suppressHydrationWarning className="text-xs font-mono">
                   {current.inputTokensRemaining.toLocaleString()} / {current.inputTokensLimit.toLocaleString()}
                 </span>
               </div>
@@ -271,7 +271,7 @@ export function RateLimitMonitor() {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-muted-foreground">Output Tokens</span>
-                <span className="text-xs font-mono">
+                <span suppressHydrationWarning className="text-xs font-mono">
                   {current.outputTokensRemaining.toLocaleString()} / {current.outputTokensLimit.toLocaleString()}
                 </span>
               </div>
@@ -328,7 +328,7 @@ export function RateLimitMonitor() {
             <div className="grid grid-cols-2 gap-4">
               <div className="p-3 border rounded-lg bg-blue-50/50">
                 <p className="text-xs text-muted-foreground mb-1">Total AI Messages</p>
-                <p className="text-xl font-bold text-blue-700">{stats.totalAIMessages.toLocaleString()}</p>
+                <p suppressHydrationWarning className="text-xl font-bold text-blue-700">{stats.totalAIMessages.toLocaleString()}</p>
               </div>
               <div className="p-3 border rounded-lg bg-emerald-50/50">
                 <Tooltip>
@@ -358,7 +358,7 @@ export function RateLimitMonitor() {
                   <TooltipTrigger asChild>
                     <div className="cursor-help">
                       <p className="text-xs text-muted-foreground mb-1">Input Tokens</p>
-                      <p className="text-lg font-bold text-purple-700">{(stats.totalInputTokensUsed || 0).toLocaleString()}</p>
+                      <p suppressHydrationWarning className="text-lg font-bold text-purple-700">{(stats.totalInputTokensUsed || 0).toLocaleString()}</p>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -371,7 +371,7 @@ export function RateLimitMonitor() {
                   <TooltipTrigger asChild>
                     <div className="cursor-help">
                       <p className="text-xs text-muted-foreground mb-1">Output Tokens</p>
-                      <p className="text-lg font-bold text-amber-700">{(stats.totalOutputTokensUsed || 0).toLocaleString()}</p>
+                      <p suppressHydrationWarning className="text-lg font-bold text-amber-700">{(stats.totalOutputTokensUsed || 0).toLocaleString()}</p>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>

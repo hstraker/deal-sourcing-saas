@@ -1,0 +1,38 @@
+============================================================
+[Debug] Scraper Data Debugger
+[Debug] Source:    PRIMELOCATION
+[Debug] Sample:    2 properties
+[Debug] Log file:  /mnt/c/Users/henry/Projects/deal-sourcing-saas/logs/debug-PRIMELOCATION-2026-02-11T12-04-02.json
+============================================================
+
+[Debug] Navigating to search: https://www.primelocation.com/for-sale/property/birmingham/
+
+[Debug] Will scrape 2 property URL(s):
+  https://www.primelocation.com/for-sale/details/72371744/
+  https://www.primelocation.com/for-sale/details/71498613/
+
+────────────────────────────────────────────────────────────
+[Debug] Scraping: https://www.primelocation.com/for-sale/details/72371744/
+
+[ANALYSIS] https://www.primelocation.com/for-sale/details/72371744/
+  Source: PRIMELOCATION
+
+  === PRICE FIELDS ===
+  No embedded JSON data found
+  DOM price selectors:
+  ld+json price: 190000
+
+  === DATE FIELDS ===
+
+────────────────────────────────────────────────────────────
+[Debug] Scraping: https://www.primelocation.com/for-sale/details/71498613/
+
+[ANALYSIS] https://www.primelocation.com/for-sale/details/71498613/
+  Source: PRIMELOCATION
+
+  === PRICE FIELDS ===
+  No embedded JSON data found
+  DOM price selectors:
+  ld+json price: 170000
+
+  === DATE FIELDS ===

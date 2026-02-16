@@ -381,7 +381,7 @@ export function PropertyAnalysisPanel({
             )}
 
             {propertyData.cached && propertyData.fetchedAt && (
-              <div className="text-xs text-muted-foreground text-center pt-2 border-t">
+              <div suppressHydrationWarning className="text-xs text-muted-foreground text-center pt-2 border-t">
                 Cached data • Last fetched: {new Date(propertyData.fetchedAt).toLocaleString()}
               </div>
             )}

@@ -60,7 +60,7 @@ export function PropertyDataUsageDisplay() {
     <Card>
       <CardHeader>
         <CardTitle className="text-sm">PropertyData API Usage</CardTitle>
-        <CardDescription className="text-xs">
+        <CardDescription suppressHydrationWarning className="text-xs">
           Monthly credit limit: {usage.limit.toLocaleString()}
         </CardDescription>
       </CardHeader>
@@ -68,13 +68,13 @@ export function PropertyDataUsageDisplay() {
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Credits Used</span>
-            <span className="font-semibold">
+            <span suppressHydrationWarning className="font-semibold">
               {usage.creditsUsed.toLocaleString()} / {usage.limit.toLocaleString()}
             </span>
           </div>
           <Progress value={usagePercentage} className="h-2" />
           <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">
+            <span suppressHydrationWarning className="text-muted-foreground">
               {usage.creditsRemaining.toLocaleString()} remaining
             </span>
             <span className="text-muted-foreground">
@@ -100,7 +100,7 @@ export function PropertyDataUsageDisplay() {
         {!isNearLimit && (
           <div className="rounded-md bg-green-50 dark:bg-green-950/20 p-2 text-xs text-green-600 dark:text-green-400 flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4" />
-            <span>Usage is healthy. {usage.creditsRemaining.toLocaleString()} credits available.</span>
+            <span suppressHydrationWarning>Usage is healthy. {usage.creditsRemaining.toLocaleString()} credits available.</span>
           </div>
         )}
       </CardContent>

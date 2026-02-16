@@ -279,7 +279,7 @@ export function UserList() {
                     </TableCell>
                     <TableCell>
                       {user.lastLogin ? (
-                        <div className="text-sm">
+                        <div suppressHydrationWarning className="text-sm">
                           {new Date(user.lastLogin).toLocaleDateString()}
                         </div>
                       ) : (

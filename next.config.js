@@ -18,6 +18,10 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '10mb',
     },
+    instrumentationHook: true,
+    // Puppeteer must not be bundled by webpack — it needs to resolve its
+    // bundled Chrome binary at runtime from node_modules.
+    serverComponentsExternalPackages: ['puppeteer', 'puppeteer-core'],
   },
   // Allow Cloudflare Tunnel domain for development
   // This allows cross-origin requests to /_next/* resources from the tunnel domain

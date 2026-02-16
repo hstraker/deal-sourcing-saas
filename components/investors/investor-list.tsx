@@ -297,7 +297,7 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
                     </TableCell>
                     <TableCell>
                       {investor.minBudget || investor.maxBudget ? (
-                        <div className="text-sm">
+                        <div suppressHydrationWarning className="text-sm">
                           £{investor.minBudget ? investor.minBudget.toLocaleString() : "—"}
                           {" - "}
                           £{investor.maxBudget ? investor.maxBudget.toLocaleString() : "—"}
@@ -334,7 +334,7 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
                       <div className="text-sm space-y-1">
                         <div className="flex items-center gap-1">
                           <PoundSterling className="h-3 w-3 text-muted-foreground" />
-                          <span className="font-medium">{Number(investor.totalSpent).toLocaleString()}</span>
+                          <span suppressHydrationWarning className="font-medium">{Number(investor.totalSpent).toLocaleString()}</span>
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {investor.dealsPurchased} deals

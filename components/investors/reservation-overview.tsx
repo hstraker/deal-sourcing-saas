@@ -146,7 +146,7 @@ export function ReservationOverview({ initialReservations = [] }: ReservationOve
             <CardTitle className="text-sm font-medium">Total Fees</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">£{stats.totalFees.toLocaleString()}</div>
+            <div suppressHydrationWarning className="text-2xl font-bold">£{stats.totalFees.toLocaleString()}</div>
           </CardContent>
         </Card>
       </div>
@@ -204,11 +204,11 @@ export function ReservationOverview({ initialReservations = [] }: ReservationOve
                           <LinkIcon className="h-3 w-3" />
                           {reservation.deal.address}
                         </Link>
-                        <div className="text-xs text-muted-foreground">
+                        <div suppressHydrationWarning className="text-xs text-muted-foreground">
                           £{Number(reservation.deal.askingPrice).toLocaleString()}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell suppressHydrationWarning>
                         £{Number(reservation.reservationFee).toLocaleString()}
                       </TableCell>
                       <TableCell>

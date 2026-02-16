@@ -10,12 +10,26 @@ interface CoverPhotoViewerWithGalleryProps {
 }
 
 export function CoverPhotoViewerWithGallery({ photos }: CoverPhotoViewerWithGalleryProps) {
-  // Just show the cover photo viewer inline - no gallery mode
+  const [galleryOpen, setGalleryOpen] = useState(false)
+  const [currentIndex, setCurrentIndex] = useState(0)
+
+  if (photos.length === 0) return null
+
   return (
-    <CoverPhotoViewer
-      photos={photos}
-      // Don't provide onPhotoClick - this keeps it inline
-    />
+    <>
+      <CoverPhotoViewer
+        photos={photos}
+        onPhotoClick={() => setGalleryOpen(true)}
+        onIndexChange={(index) => setCurrentIndex(index)}
+      />
+      {galleryOpen && (
+        <PhotoGallery
+          photos={photos}
+          initialIndex={currentIndex}
+          hideThumbnails={true}
+          onClose={() => setGalleryOpen(false)}
+        />
+      )}
+    </>
   )
 }
-

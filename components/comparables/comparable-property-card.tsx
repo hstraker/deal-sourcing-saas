@@ -236,7 +236,7 @@ export function ComparablePropertyCard({
             {property.squareFeet && (
               <div className="flex items-center gap-1.5">
                 <Ruler className="h-4 w-4 text-muted-foreground" />
-                <span>{property.squareFeet.toLocaleString()} sqft</span>
+                <span suppressHydrationWarning>{property.squareFeet.toLocaleString()} sqft</span>
               </div>
             )}
           </div>

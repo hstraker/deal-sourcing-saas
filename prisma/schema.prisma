@@ -175,6 +175,50 @@ enum ReasonForSale {
   other
 }
 
+// ============================================================================
+// PROPERTY SCRAPING ENUMS
+// ============================================================================
+
+enum PropertySource {
+  RIGHTMOVE
+  ZOOPLA
+  ONTHEMARKET
+  PRIMELOCATION
+}
+
+enum PropertyCategory {
+  RESIDENTIAL
+  COMMERCIAL
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  AUTO_APPROVED
+}
+
+enum ListingStatus {
+  FOR_SALE
+  SOLD_STC
+  UNDER_OFFER
+  REMOVED
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ExportFormat {
+  CSV
+  EXCEL
+  JSON
+}
+
 model User {
   id                        String    @id @default(uuid())
   email                     String    @unique
@@ -399,6 +443,7 @@ model Deal {
   vendorOffers         VendorOffer[]         @relation("VendorOfferDeal")
   investorReservations InvestorReservation[] @relation("InvestorReservationDeal")
   packDeliveries       InvestorPackDelivery[] @relation("InvestorPackDelivery")
+  propertyListings     PropertyListing[]
 
   @@index([status])
   @@index([postcode])
@@ -1264,4 +1309,241 @@ model InvestorActivity {
   @@index([dealId])
   @@index([createdAt])
   @@map("investor_activities")
+}
+
+// ============================================================================
+// PROPERTY SCRAPING MODELS
+// ============================================================================
+
+// Scraped property listing - raw data from Rightmove, Zoopla, OnTheMarket
+model PropertyListing {
+  id              String           @id @default(uuid())
+  sourceId        String           @map("source_id")
+  source          PropertySource
+  category        PropertyCategory
+
+  // Basic details
+  title           String
+  description     String           @db.Text
+  propertyType    String           @map("property_type")
+  propertySubType String?          @map("property_sub_type")
+  bedrooms        Int              @default(0)
+  bathrooms       Int              @default(0)
+
+  // Pricing
+  price           Decimal          @db.Decimal(12, 2)
+  priceHistory    Json             @default("[]") @map("price_history")
+
+  // Location
+  address         Json
+
+  // Size
+  squareFeet      Int?             @map("square_feet")
+  squareMeters    Int?             @map("square_meters")
+  pricePerSqFt    Decimal?         @map("price_per_sq_ft") @db.Decimal(10, 2)
+
+  // Commercial-specific (null for residential)
+  commercialDetails Json?          @map("commercial_details")
+
+  // BMV indicators
+  bmvIndicators   Json             @default("{}") @map("bmv_indicators")
+  isAmbiguous     Boolean          @default(false) @map("is_ambiguous")
+  ambiguityReasons Json            @default("[]") @map("ambiguity_reasons")
+
+  // Review queue
+  reviewStatus    ReviewStatus     @default(PENDING) @map("review_status")
+  reviewNotes     String?          @map("review_notes") @db.Text
+  reviewedBy      String?          @map("reviewed_by")
+  reviewedAt      DateTime?        @map("reviewed_at")
+
+  // External data enrichment
+  propertyDataAnalysis Json?       @map("property_data_analysis")
+  aiAnalysis      Json?            @map("ai_analysis")
+
+  // Media
+  images          Json             @default("[]")
+  floorPlans      Json             @default("[]") @map("floor_plans")
+
+  // Agent info
+  agent           Json             @default("{}")
+
+  // Additional listing details
+  keyFeatures     Json             @default("[]") @map("key_features")
+  epcRating       String?          @map("epc_rating")
+  tenure          String?          // FREEHOLD | LEASEHOLD | SHARE_OF_FREEHOLD | COMMONHOLD
+  isChainFree     Boolean?         @map("is_chain_free")
+  isNewBuild      Boolean?         @map("is_new_build")
+  isRetirement    Boolean?         @map("is_retirement")
+  leaseYearsRemaining Int?         @map("lease_years_remaining")
+  groundRent      Decimal?         @map("ground_rent") @db.Decimal(10, 2)
+  serviceCharge   Decimal?         @map("service_charge") @db.Decimal(10, 2)
+
+  // Listing metadata
+  listingUrl      String?          @map("listing_url") @db.Text
+  listedDate      DateTime?        @map("listed_date")
+  daysOnMarket    Int              @default(0) @map("days_on_market")
+  status          ListingStatus    @default(FOR_SALE)
+  scrapedAt       DateTime         @default(now()) @map("scraped_at")
+  lastChecked     DateTime         @default(now()) @map("last_checked")
+  checksum        String?
+
+  // Link to Deal (when promoted)
+  dealId          String?          @map("deal_id")
+  deal            Deal?            @relation(fields: [dealId], references: [id], onDelete: SetNull)
+
+  // Relations
+  exports         PropertyExport[]
+
+  @@unique([source, sourceId])
+  @@index([category])
+  @@index([reviewStatus])
+  @@index([scrapedAt])
+  @@index([status])
+  @@index([dealId])
+  @@map("property_listings")
+}
+
+// Scraper job tracking - each scraping run creates a job record
+model ScraperJob {
+  id              String         @id @default(uuid())
+  source          PropertySource
+  category        PropertyCategory?
+  criteria        Json
+
+  // Status
+  status          JobStatus      @default(QUEUED)
+
+  // Progress
+  totalFound      Int            @default(0) @map("total_found")
+  processed       Int            @default(0)
+  successful      Int            @default(0)
+  failed          Int            @default(0)
+
+  // Errors
+  errors          Json           @default("[]")
+  propertiesFound String[]       @map("properties_found")
+
+  // Timing
+  startedAt       DateTime?      @map("started_at")
+  completedAt     DateTime?      @map("completed_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  @@index([status, createdAt])
+  @@index([source])
+  @@map("scraper_jobs")
+}
+
+// Global scraper settings - single row configuration
+model ScraperSettings {
+  id                    String   @id @default(uuid())
+  enabled               Boolean  @default(true)
+  scheduleType          String   @default("TWICE_DAILY") @map("schedule_type")
+
+  // Source toggles
+  rightmoveEnabled      Boolean  @default(true) @map("rightmove_enabled")
+  zooplaEnabled         Boolean  @default(true) @map("zoopla_enabled")
+  onthemarketEnabled    Boolean  @default(true) @map("onthemarket_enabled")
+  primelocationEnabled  Boolean  @default(true) @map("primelocation_enabled")
+
+  // Auto-analysis
+  autoAnalysisEnabled   Boolean  @default(true) @map("auto_analysis_enabled")
+  autoAnalysisThreshold Decimal? @map("auto_analysis_threshold") @db.Decimal(5, 2)
+
+  // Review queue
+  requireManualReview   Boolean  @default(true) @map("require_manual_review")
+
+  // Rate limiting
+  requestDelay          Int      @default(3000) @map("request_delay")
+  maxConcurrent         Int      @default(2) @map("max_concurrent")
+
+  // Search criteria (locations, price range, bedrooms, property types, etc.)
+  searchCriteria        Json?    @map("search_criteria")
+
+  // Proxy (optional)
+  useProxy              Boolean  @default(false) @map("use_proxy")
+  proxyUrl              String?  @map("proxy_url")
+
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("scraper_settings")
+}
+
+// Export tracking - records of CSV/Excel/JSON exports
+model PropertyExport {
+  id          String           @id @default(uuid())
+  propertyId  String?          @map("property_id")
+  property    PropertyListing? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+
+  format      ExportFormat
+  filters     Json?
+  recordCount Int              @default(0) @map("record_count")
+  fileUrl     String?          @map("file_url")
+  exportedBy  String?          @map("exported_by")
+  exportedAt  DateTime         @default(now()) @map("exported_at")
+
+  @@index([exportedAt])
+  @@map("property_exports")
+}
+
+// ============================================================================
+// HM LAND REGISTRY — COMPANY OWNERSHIP DATA (CCOD / OCOD)
+// ============================================================================
+
+// Company ownership record sourced from CCOD (UK companies) or OCOD (overseas companies)
+model CompanyOwnership {
+  id                  String   @id @default(uuid())
+  titleNumber         String   @unique @map("title_number")
+  tenure              String?  // FREEHOLD | LEASEHOLD
+  propertyAddress     String   @map("property_address") @db.Text
+  postcode            String?
+  postcodeNormalized  String?  @map("postcode_normalized") // uppercase, no spaces e.g. "N11AA"
+
+  companyName         String   @map("company_name")
+  companyRegNumber    String?  @map("company_reg_number")
+  companyAddress      String?  @map("company_address") @db.Text
+  proprietorCategory  String?  @map("proprietor_category") // e.g. "Limited Company", "Public Limited Company"
+  countryIncorporated String?  @map("country_incorporated")
+  isOverseas          Boolean  @default(false) @map("is_overseas")
+
+  dateProprietary     String?  @map("date_proprietary") // raw string from CSV e.g. "20/05/2015"
+  pricePaid           Decimal? @map("price_paid") @db.Decimal(12, 2)
+
+  importedAt          DateTime @default(now()) @map("imported_at")
+
+  @@index([postcodeNormalized])
+  @@index([companyRegNumber])
+  @@index([isOverseas])
+  @@map("company_ownership")
+}
+
+// Import job tracking for Land Registry dataset downloads
+model LandRegistryImport {
+  id              String    @id @default(uuid())
+  datasetType     String    @map("dataset_type")  // "CCOD" | "OCOD"
+  status          String    @default("PENDING")   // PENDING | RUNNING | PAUSED | COMPLETED | FAILED | CANCELLED
+  recordsImported Int       @default(0) @map("records_imported")
+  recordsTotal    Int       @default(0) @map("records_total")
+  errorMessage    String?   @map("error_message") @db.Text
+  startedAt       DateTime? @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  pausedAt        DateTime? @map("paused_at")
+  resumedAt       DateTime? @map("resumed_at")
+  cancelledAt     DateTime? @map("cancelled_at")
+  
+  // Progress tracking
+  bytesDownloaded String?   @map("bytes_downloaded") // Store as string for large numbers
+  bytesTotal      String?   @map("bytes_total") // Store as string for large numbers
+  downloadSpeed   Decimal?  @map("download_speed") @db.Decimal(10, 2) // bytes per second
+  estimatedTimeRemaining Int? @map("estimated_time_remaining") // seconds
+  
+  // Resume support
+  lastProcessedPosition String? @map("last_processed_position") // byte position in file (as string)
+  resumeToken          String?  @map("resume_token") @db.Text // token for resuming download
+  
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([datasetType, createdAt])
+  @@index([status])
+  @@map("land_registry_imports")
 }

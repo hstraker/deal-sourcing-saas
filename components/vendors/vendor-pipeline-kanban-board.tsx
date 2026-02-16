@@ -575,7 +575,7 @@ export function VendorPipelineKanbanBoard() {
                         <TableCell>
                           {lead.offerAmount ? formatCurrency(lead.offerAmount) : "—"}
                         </TableCell>
-                        <TableCell>{formatTimeAgo(lead.lastContactAt)}</TableCell>
+                        <TableCell suppressHydrationWarning>{formatTimeAgo(lead.lastContactAt)}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
                             <Button
@@ -732,7 +732,7 @@ export function VendorPipelineKanbanBoard() {
                                       </div>
                                       <div className="flex items-center gap-1">
                                         <Clock className="h-3 w-3" />
-                                        <span>{formatTimeAgo(lead.lastContactAt)}</span>
+                                        <span suppressHydrationWarning>{formatTimeAgo(lead.lastContactAt)}</span>
                                       </div>
                                     </div>
                                   </div>

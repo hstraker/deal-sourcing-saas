@@ -221,7 +221,7 @@ export function ReservationList({ dealId, initialReservations = [] }: Reservatio
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell suppressHydrationWarning>
                       £{Number(reservation.reservationFee).toLocaleString()}
                     </TableCell>
                     <TableCell>

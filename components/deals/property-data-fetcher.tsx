@@ -344,7 +344,7 @@ export function PropertyDataFetcher({
                             </span>
                           )}
                         </div>
-                        <span className="text-xs text-muted-foreground">
+                        <span suppressHydrationWarning className="text-xs text-muted-foreground">
                           {property.bedrooms} bed • {property.type} • £{property.price.toLocaleString()}
                           {property.sqf && ` • ${property.sqf} sqft`}
                           {distance && !isExactPostcode && ` • ${distance.toFixed(1)} miles away`}

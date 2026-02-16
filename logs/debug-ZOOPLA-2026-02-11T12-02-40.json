@@ -1,0 +1,356 @@
+[
+  {
+    "url": "https://www.zoopla.co.uk/for-sale/details/72074067/",
+    "source": "ZOOPLA",
+    "data": {
+      "ldJson": [
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Zoopla",
+              "item": "https://www.zoopla.co.uk/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "For sale",
+              "item": "https://www.zoopla.co.uk/for-sale/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "West Midlands",
+              "item": "https://www.zoopla.co.uk/for-sale/property/west-midlands-county/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 4,
+              "name": "Birmingham",
+              "item": "https://www.zoopla.co.uk/for-sale/property/birmingham/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 5,
+              "name": "Haigh Crescent",
+              "item": "https://www.zoopla.co.uk/for-sale/property/birmingham/haigh-crescent/"
+            }
+          ]
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "RealEstateListing",
+          "name": "2 bed flat for sale Haigh Crescent, Birmingham, West Midlands B23",
+          "description": "Dixons are proud to welcome this modern, tastefully decorated two-bedroom apartment, situated in a sought-after location, surrounded by a natural atmosphere.<br>With 114 years on the lease, this exceptional accommodation must be viewed!<br><br>This prime location is perfect for commuting and public transport, being on the primary arterial route between Birmingham City Centre and the Royal Town of Sutton Coldfield.",
+          "datePosted": "2025-12-27T13:16:16",
+          "mainEntityOfPage": "https://www.zoopla.co.uk/for-sale/details/72074067/",
+          "image": "https://lid.zoocdn.com/u/480/360/7e34f539f9f7ca0e7619d235e2b087ec8fc469a6.jpg",
+          "additionalProperty": [
+            {
+              "@type": "PropertyValue",
+              "name": "Bedrooms",
+              "value": "2"
+            },
+            {
+              "@type": "PropertyValue",
+              "name": "Bathrooms",
+              "value": "2"
+            }
+          ],
+          "potentialAction": {
+            "@type": "ViewAction",
+            "target": [
+              {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://www.zoopla.co.uk/for-sale/details/72074067/",
+                "actionPlatform": [
+                  "https://schema.org/DesktopWebPlatform",
+                  "https://schema.org/MobileWebPlatform",
+                  "https://schema.org/AndroidPlatform",
+                  "https://schema.org/IOSPlatform"
+                ]
+              }
+            ]
+          },
+          "offers": {
+            "@type": "Offer",
+            "price": 190000,
+            "priceCurrency": "GBP",
+            "availability": "https://schema.org/InStock"
+          }
+        }
+      ],
+      "meta": {
+        "viewport": "width=device-width, initial-scale=1",
+        "google": "nositelinkssearchbox",
+        "theme-color": "#ffffff",
+        "description": "2 bed flat for sale in Haigh Crescent, Birmingham, West Midlands B23, selling for £190,000 from Dixons Estate Agents - Erdington Sales. See property details on Zoopla or browse all our range of properties in Haigh Crescent, Birmingham, West Midlands B23.",
+        "robots": "index, follow",
+        "msapplication-TileColor": "#8046f1",
+        "fb:admins": "100003926523449",
+        "og:title": "Haigh Crescent, Birmingham, West Midlands B23, 2 bed flat for sale, £190,000 - Zoopla",
+        "og:description": "2 bed flat for sale in Haigh Crescent, Birmingham, West Midlands B23, selling for £190,000 from Dixons Estate Agents - Erdington Sales. See property details on Zoopla or browse all our range of properties in Haigh Crescent, Birmingham, West Midlands B23.",
+        "og:url": "https://www.zoopla.co.uk/for-sale/details/72074067/",
+        "og:site_name": "Zoopla",
+        "og:image": "https://lid.zoocdn.com/u/480/360/7e34f539f9f7ca0e7619d235e2b087ec8fc469a6.jpg",
+        "og:image:width": "480",
+        "og:image:height": "360",
+        "og:image:alt": "Picture No. 33",
+        "og:type": "article",
+        "twitter:card": "summary",
+        "twitter:site:id": "19903963",
+        "twitter:title": "Haigh Crescent, Birmingham, West Midlands B23, 2 bed flat for sale, £190,000 - Zoopla",
+        "twitter:description": "2 bed flat for sale in Haigh Crescent, Birmingham, West Midlands B23, selling for £190,000 from Dixons Estate Agents - Erdington Sales. See property details on Zoopla or browse all our range of properties in Haigh Crescent, Birmingham, West Midlands B23.",
+        "twitter:image": "https://lid.zoocdn.com/u/480/360/7e34f539f9f7ca0e7619d235e2b087ec8fc469a6.jpg",
+        "twitter:image:width": "480",
+        "twitter:image:height": "360",
+        "twitter:image:alt": "Picture No. 33"
+      },
+      "domPrices": {
+        "h1": "2 bed flat for saleHaigh Crescent, Birmingham, West Midlands B23",
+        "h2": "About this property"
+      }
+    }
+  },
+  {
+    "url": "https://www.zoopla.co.uk/for-sale/details/contact/72074067/?weekly_featured=1&utm_content=featured_listing",
+    "source": "ZOOPLA",
+    "data": {
+      "__NEXT_DATA__": {
+        "props": {
+          "pageProps": {
+            "listingDetails": {
+              "__typename": "ListingData",
+              "listingId": "72074067",
+              "branch": {
+                "__typename": "AgentBranch",
+                "branchId": "28269",
+                "memberType": "agent",
+                "name": "Dixons Estate Agents - Erdington Sales",
+                "phone": "0121 659 6496",
+                "logoUrl": "https://st.zoocdn.com/zoopla_static_agent_logo_(640107).png",
+                "branchDetailsUri": "/find-agents/branch/dixons-estate-agents-erdington-sales-erdington-birmingham-28269/",
+                "address": "1 Sutton New Road, Erdington, Birmingham"
+              },
+              "listingUris": {
+                "__typename": "ListingUris",
+                "contact": "/for-sale/contact/72074067/",
+                "detail": "/for-sale/details/72074067/",
+                "success": "/for-sale/contact/success/72074067/"
+              },
+              "emailLead": {
+                "__typename": "EmailLeadInfo",
+                "formFields": {
+                  "__typename": "EmailLeadFormFields",
+                  "email": null,
+                  "name": null,
+                  "phone": null,
+                  "postcode": null,
+                  "status": null
+                },
+                "uniqueLeadIdentifier": null
+              },
+              "section": "for-sale",
+              "category": "residential",
+              "propertyType": "flat",
+              "counts": {
+                "__typename": "RoomCount",
+                "numBathrooms": 2,
+                "numBedrooms": 2,
+                "numLivingRooms": 1
+              },
+              "displayAddress": "Haigh Crescent, Birmingham, West Midlands B23",
+              "pricing": {
+                "__typename": "ListingPricing",
+                "label": "£190,000",
+                "priceQualifierLabel": null,
+                "rentFrequencyLabel": null,
+                "isAuction": false,
+                "pricePerFloorAreaUnit": null,
+                "alternateRentFrequencyPrice": null,
+                "originalCurrencyPrice": null
+              },
+              "propertyImage": [
+                {
+                  "__typename": "Media",
+                  "filename": "7e34f539f9f7ca0e7619d235e2b087ec8fc469a6.jpg",
+                  "caption": "Picture No. 33"
+                },
+                {
+                  "__typename": "Media",
+                  "filename": "a5cec2fcef9af27c86c5bf7c4bf6d3d94f870e26.jpg",
+                  "caption": "Picture No. 37"
+                },
+                {
+                  "__typename": "Media",
+                  "filename": "7950fa0e32719a8c00bbc8af1d1af1bbb6922db2.jpg",
+                  "caption": "Picture No. 40"
+                },
+                {
+                  "__typename": "Media",
+                  "filename": "c9806eb0143ceeef3999ecf8137b0dff2fccdd59.jpg",
+                  "caption": "Picture No. 36"
+                },
+                {
+                  "__typename": "Media",
+                  "filename": "ebf9d3f723cc025201bf75085109b97469edc356.jpg",
+                  "caption": "Picture No. 32"
+                },
+                {
+                  "__typename": "Media",
+                  "filename": "30c4ea2cc426891aa9f5979441f6fb55c39f2896.jpg",
+                  "caption": "Picture No. 25"
+                },
+                {
+                  "__typename": "Media",
+                  "filename": "48d80ef2c1662bbc20b54033d6e036804b9bb2f4.jpg",
+                  "caption": "Picture No. 28"
+                },
+                {
+                  "__typename": "Media",
+                  "filename": "67cea43a151c063cf147ade8c93275b22566cb4a.jpg",
+                  "caption": "Picture No. 26"
+                },
+                {
+                  "__typename": "Media",
+                  "filename": "9c26e1e66bb8dfbf3e9a986aecc125c8a01a78ce.jpg",
+                  "caption": "Picture No. 27"
+                },
+                {
+                  "__typename": "Media",
+                  "filename": "d22748fd87fdf2775faf96bdc0302a762cb58a89.jpg",
+                  "caption": "Picture No. 41"
+                },
+                {
+                  "__typename": "Media",
+                  "filename": "3adb90bedd440cad57acc761bae5e870e94df876.jpg",
+                  "caption": "Picture No. 45"
+                },
+                {
+                  "__typename": "Media",
+                  "filename": "2a683722caf3b575f9adb8226fedcb03b5be5795.jpg",
+                  "caption": "Picture No. 46"
+                },
+                {
+                  "__typename": "Media",
+                  "filename": "d54a1169d1ffe6aa88ae57ad397fb02bad248cc0.jpg",
+                  "caption": "Picture No. 47"
+                },
+                {
+                  "__typename": "Media",
+                  "filename": "d4a209dc58ec6266617b3e18d815d831df74abbe.jpg",
+                  "caption": "Picture No. 39"
+                },
+                {
+                  "__typename": "Media",
+                  "filename": "dc7622b7dec671ff86f3239bafb39dc65838aa76.jpg",
+                  "caption": "Picture No. 44"
+                }
+              ],
+              "statusSummary": null,
+              "title": "2 bed flat for sale",
+              "analyticsEcommerce": {
+                "__typename": "ListingAnalyticsEcommerce",
+                "brand": "Dixons Estate Agents",
+                "category": "for-sale/resi/agent/pre-owned/gb",
+                "id": 72074067,
+                "name": "FS_Contact",
+                "price": 1,
+                "quantity": 1,
+                "variant": "premium plus"
+              },
+              "analyticsTaxonomy": {
+                "__typename": "ListingAnalyticsTaxonomy",
+                "areaName": "Birmingham",
+                "bedsMax": 2,
+                "bedsMin": 2,
+                "branchId": 28269,
+                "branchLogoUrl": "https://st.zoocdn.com/zoopla_static_agent_logo_(640107).png",
+                "branchName": "Dixons Estate Agents - Erdington Sales",
+                "brandName": "Dixons Estate Agents",
+                "chainFree": false,
+                "companyId": 5622,
+                "countryCode": "gb",
+                "countyAreaName": "West Midlands",
+                "currencyCode": "GBP",
+                "displayAddress": "Haigh Crescent, Birmingham, West Midlands B23",
+                "furnishedState": "",
+                "groupId": 8,
+                "hasEpc": true,
+                "hasFloorplan": true,
+                "incode": "5UP",
+                "isRetirementHome": false,
+                "isSharedOwnership": false,
+                "listingCondition": "pre-owned",
+                "listingId": 72074067,
+                "listingsCategory": "residential",
+                "listingStatus": "for_sale",
+                "location": "Birmingham",
+                "memberType": "agent",
+                "numBaths": 2,
+                "numBeds": 2,
+                "numImages": 15,
+                "numRecepts": 1,
+                "outcode": "B23",
+                "postalArea": "B",
+                "postTownName": "Birmingham",
+                "priceActual": 190000,
+                "price": 190000,
+                "priceMax": 190000,
+                "priceMin": 190000,
+                "priceQualifier": "",
+                "propertyHighlight": "Balcony|Secured Parking",
+                "propertyType": "flat",
+                "regionName": "West Midlands",
+                "section": "for-sale",
+                "sizeSqFeet": "",
+                "tenure": "leasehold",
+                "zindex": 177651
+              },
+              "uuid": "FA448128-06EB-11F1-AA41-10251C20278C",
+              "location": {
+                "uprn": "10091518468"
+              }
+            },
+            "backToResultsLink": {
+              "__typename": "BackToResultsLink",
+              "linkType": "geo",
+              "uri": "/for-sale/property/birmingham/"
+            },
+            "requestDetail": null,
+            "searchIdentifier": null,
+            "isEligibleForClaimHomeCTA": true,
+            "isUserLoggedIn": false,
+            "firstPartyConsentSelected": false
+          },
+          "__N_SSP": true
+        },
+        "page": "/for-sale/details/contact/[listingId]",
+        "query": {
+          "weekly_featured": "1",
+          "utm_content": "featured_listing",
+          "listingId": "72074067"
+        },
+        "buildId": "pp7akFZc89pIc_7pXSOic",
+        "assetPrefix": "https://cdn.prod.zoopla.co.uk",
+        "isFallback": false,
+        "isExperimentalCompile": false,
+        "gssp": true,
+        "scriptLoader": []
+      },
+      "meta": {
+        "viewport": "width=device-width",
+        "msapplication-TileColor": "#8046f1",
+        "theme-color": "#ffffff",
+        "robots": "noindex, follow",
+        "google": "nositelinkssearchbox"
+      },
+      "domPrices": {
+        "h1": "Email agent"
+      }
+    }
+  }
+]

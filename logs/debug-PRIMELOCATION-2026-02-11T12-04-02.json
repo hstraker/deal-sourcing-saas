@@ -1,0 +1,212 @@
+[
+  {
+    "url": "https://www.primelocation.com/for-sale/details/72371744/",
+    "source": "PRIMELOCATION",
+    "data": {
+      "ldJson": [
+        {
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "url": "https://www.primelocation.com",
+          "name": "PrimeLocation",
+          "alternateName": "PrimeLocation Property Search"
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "RealEstateListing",
+          "name": "2 bed terraced house for sale Armada Close, Birmingham, West Midlands B23",
+          "description": "Dixons are pleased to introduce this two bed mid-terrace family home with no upward chain and ample parking space.",
+          "mainEntityOfPage": "https://www.primelocation.com/for-sale/details/72371744/",
+          "datePosted": "2026-02-07T01:51:50",
+          "image": "https://lid.zoocdn.com/u/1024/768/81ed2cfec70a7fbacff8803fd6c4fa9fba7d3dd2.jpg",
+          "offers": {
+            "@type": "Offer",
+            "price": 190000,
+            "priceCurrency": "GBP",
+            "availability": "https://schema.org/InStock"
+          },
+          "additionalProperty": [
+            {
+              "@type": "PropertyValue",
+              "name": "Bedrooms",
+              "value": "2"
+            },
+            {
+              "@type": "PropertyValue",
+              "name": "Bathrooms",
+              "value": "1"
+            }
+          ]
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "PrimeLocation",
+              "item": "https://www.primelocation.com/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "For sale",
+              "item": "https://www.primelocation.com/for-sale/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "West Midlands",
+              "item": "https://www.primelocation.com/for-sale/property/west-midlands-county/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 4,
+              "name": "Birmingham",
+              "item": "https://www.primelocation.com/for-sale/property/birmingham/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 5,
+              "name": "Erdington",
+              "item": "https://www.primelocation.com/for-sale/property/erdington/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 6,
+              "name": "Armada Close",
+              "item": "https://www.primelocation.com/for-sale/property/erdington/armada-close/"
+            }
+          ]
+        }
+      ],
+      "meta": {
+        "viewport": "width=device-width, initial-scale=1",
+        "description": "2 bed terraced house for sale in Armada Close, Birmingham, West Midlands B23, selling for £190,000 from Dixons Estate Agents - Erdington Sales. See property details on PrimeLocation or browse all our range of properties in Armada Close, Birmingham, West Midlands B23.",
+        "msapplication-TileColor": "#221e38",
+        "og:title": "Armada Close, Birmingham, West Midlands B23, 2 bed terraced house for sale, £190,000",
+        "og:description": "2 bed terraced house for sale in Armada Close, Birmingham, West Midlands B23, selling for £190,000 from Dixons Estate Agents - Erdington Sales. See property details on PrimeLocation or browse all our range of properties in Armada Close, Birmingham, West Midlands B23.",
+        "og:url": "https://www.primelocation.com/for-sale/details/72371744/",
+        "og:site_name": "PrimeLocation",
+        "og:image": "https://lid.zoocdn.com/u/1024/768/ba28fc2d2a13ec736a34ddc22feedade0da8fb1f.jpg",
+        "og:type": "website",
+        "twitter:card": "summary_large_image",
+        "twitter:site": "@primelocation",
+        "twitter:creator": "@primelocation",
+        "twitter:title": "Armada Close, Birmingham, West Midlands B23, 2 bed terraced house for sale, £190,000",
+        "twitter:description": "2 bed terraced house for sale in Armada Close, Birmingham, West Midlands B23, selling for £190,000 from Dixons Estate Agents - Erdington Sales. See property details on PrimeLocation or browse all our range of properties in Armada Close, Birmingham, West Midlands B23.",
+        "twitter:image": "https://lid.zoocdn.com/u/1024/768/ba28fc2d2a13ec736a34ddc22feedade0da8fb1f.jpg"
+      },
+      "domPrices": {
+        "h1": "2 bed terraced house for saleArmada Close, Birmingham, West Midlands B23",
+        "h2": "About this property"
+      }
+    }
+  },
+  {
+    "url": "https://www.primelocation.com/for-sale/details/71498613/",
+    "source": "PRIMELOCATION",
+    "data": {
+      "ldJson": [
+        {
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "url": "https://www.primelocation.com",
+          "name": "PrimeLocation",
+          "alternateName": "PrimeLocation Property Search"
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "RealEstateListing",
+          "name": "2 bed flat for sale Lee Bank Middleway, Birmingham, West Midlands B15",
+          "description": "** no upward chain ** city centre location ** two double bedrooms ** Oakmans are delighted to offer a well presented, two double bedroom apartment situated within the highly popular, modern development on Lee Bank Middleway.",
+          "mainEntityOfPage": "https://www.primelocation.com/for-sale/details/71498613/",
+          "datePosted": "2025-10-07T01:38:10",
+          "image": "https://lid.zoocdn.com/u/1024/768/508b46e0401139b0978f71e4853ac76e339f3261.jpg",
+          "offers": {
+            "@type": "Offer",
+            "price": 170000,
+            "priceCurrency": "GBP",
+            "availability": "https://schema.org/InStock"
+          },
+          "additionalProperty": [
+            {
+              "@type": "PropertyValue",
+              "name": "Bedrooms",
+              "value": "2"
+            },
+            {
+              "@type": "PropertyValue",
+              "name": "Bathrooms",
+              "value": "2"
+            }
+          ]
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "PrimeLocation",
+              "item": "https://www.primelocation.com/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "For sale",
+              "item": "https://www.primelocation.com/for-sale/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "West Midlands",
+              "item": "https://www.primelocation.com/for-sale/property/west-midlands-county/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 4,
+              "name": "Birmingham",
+              "item": "https://www.primelocation.com/for-sale/property/birmingham/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 5,
+              "name": "Edgbaston",
+              "item": "https://www.primelocation.com/for-sale/property/edgbaston/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 6,
+              "name": "Lee Bank Middleway",
+              "item": "https://www.primelocation.com/for-sale/property/edgbaston/lee-bank-middleway/"
+            }
+          ]
+        }
+      ],
+      "meta": {
+        "viewport": "width=device-width, initial-scale=1",
+        "description": "2 bed flat for sale in Lee Bank Middleway, Birmingham, West Midlands B15, selling for £170,000 from Oakmans Estate Agents. See property details on PrimeLocation or browse all our range of properties in Lee Bank Middleway, Birmingham, West Midlands B15.",
+        "msapplication-TileColor": "#221e38",
+        "og:title": "Lee Bank Middleway, Birmingham, West Midlands B15, 2 bed flat for sale, £170,000",
+        "og:description": "2 bed flat for sale in Lee Bank Middleway, Birmingham, West Midlands B15, selling for £170,000 from Oakmans Estate Agents. See property details on PrimeLocation or browse all our range of properties in Lee Bank Middleway, Birmingham, West Midlands B15.",
+        "og:url": "https://www.primelocation.com/for-sale/details/71498613/",
+        "og:site_name": "PrimeLocation",
+        "og:image": "https://lid.zoocdn.com/u/1024/768/7e1551eece8916a3f6494e0b06cea6743613a1e2.jpg",
+        "og:type": "website",
+        "twitter:card": "summary_large_image",
+        "twitter:site": "@primelocation",
+        "twitter:creator": "@primelocation",
+        "twitter:title": "Lee Bank Middleway, Birmingham, West Midlands B15, 2 bed flat for sale, £170,000",
+        "twitter:description": "2 bed flat for sale in Lee Bank Middleway, Birmingham, West Midlands B15, selling for £170,000 from Oakmans Estate Agents. See property details on PrimeLocation or browse all our range of properties in Lee Bank Middleway, Birmingham, West Midlands B15.",
+        "twitter:image": "https://lid.zoocdn.com/u/1024/768/7e1551eece8916a3f6494e0b06cea6743613a1e2.jpg"
+      },
+      "domPrices": {
+        "h1": "2 bed flat for saleLee Bank Middleway, Birmingham, West Midlands B15",
+        "h2": "About this property"
+      }
+    }
+  }
+]
