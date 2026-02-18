@@ -18,7 +18,8 @@ const updateReservationSchema = z.object({
   lockOutAgreementSent: z.boolean().optional(),
   lockOutAgreementSigned: z.boolean().optional(),
   lockOutAgreementDocumentS3Key: z.string().optional(),
-  status: z.enum(["pending", "fee_pending", "proof_of_funds_pending", "verified", "locked_out", "completed", "cancelled"]).optional(),
+  status: z.enum(["pending", "pack_sent", "fee_pending", "fee_paid", "proof_of_funds_pending", "pof_received", "verified", "lock_out_sent", "locked_out", "completed", "cancelled"]).optional(),
+  proofOfFundsReceivedAt: z.string().optional(),
   notes: z.string().optional(),
 })
 
@@ -130,16 +131,43 @@ export async function PUT(
       updateData.feePaidAt = new Date()
     }
 
+    // Auto-set boolean flags from status transitions
+    if (validatedData.status === "fee_paid" && !existingReservation.feePaid) {
+      updateData.feePaid = true
+      updateData.feePaidAt = new Date()
+    }
+
+    if (validatedData.status === "pof_received" && !existingReservation.proofOfFundsProvided) {
+      updateData.proofOfFundsProvided = true
+      updateData.proofOfFundsReceivedAt = new Date()
+    }
+
     if (validatedData.proofOfFundsVerified === true && !existingReservation.proofOfFundsVerified) {
       updateData.proofOfFundsVerifiedAt = new Date()
       updateData.proofOfFundsVerifiedBy = validatedData.proofOfFundsVerifiedBy || session.user.id
+    }
+
+    if (validatedData.status === "verified" && !existingReservation.proofOfFundsVerified) {
+      updateData.proofOfFundsVerified = true
+      updateData.proofOfFundsVerifiedAt = new Date()
+      updateData.proofOfFundsVerifiedBy = session.user.id
     }
 
     if (validatedData.lockOutAgreementSent === true && !existingReservation.lockOutAgreementSent) {
       updateData.lockOutAgreementSentAt = new Date()
     }
 
+    if (validatedData.status === "lock_out_sent" && !existingReservation.lockOutAgreementSent) {
+      updateData.lockOutAgreementSent = true
+      updateData.lockOutAgreementSentAt = new Date()
+    }
+
     if (validatedData.lockOutAgreementSigned === true && !existingReservation.lockOutAgreementSigned) {
+      updateData.lockOutAgreementSignedAt = new Date()
+    }
+
+    if (validatedData.status === "locked_out" && !existingReservation.lockOutAgreementSigned) {
+      updateData.lockOutAgreementSigned = true
       updateData.lockOutAgreementSignedAt = new Date()
     }
 
@@ -195,6 +223,170 @@ export async function PUT(
           reservationsWithProofOfFunds: reservationsWithProof,
         },
       })
+    }
+
+    // Sync investor pipeline stage + deal status + vendor lead based on reservation status change
+    if (validatedData.status && validatedData.status !== existingReservation.status) {
+      const newStatus = validatedData.status
+
+      if (newStatus === "completed") {
+        // Reservation completed → investor is now a purchaser
+        await prisma.investor.update({
+          where: { id: existingReservation.investorId },
+          data: {
+            pipelineStage: "PURCHASED",
+            dealsPurchased: { increment: 1 },
+            lastActivityAt: new Date(),
+          },
+        })
+        await prisma.investorActivity.create({
+          data: {
+            investorId: existingReservation.investorId,
+            activityType: "PURCHASE_COMPLETED",
+            description: `Reservation completed — investor moved to Purchased`,
+            dealId: existingReservation.dealId,
+            triggeredById: session.user.id,
+          },
+        })
+
+        // Mark the deal as sold and link the investor
+        await prisma.deal.update({
+          where: { id: existingReservation.dealId },
+          data: {
+            status: "sold",
+            soldToId: existingReservation.investorId,
+            soldAt: new Date(),
+          },
+        })
+
+        // Update the linked VendorLead (if any) to record the closed deal
+        const vendorLeadForSale = await prisma.vendorLead.findFirst({
+          where: { dealId: existingReservation.dealId },
+        })
+        if (vendorLeadForSale) {
+          await prisma.vendorLead.update({
+            where: { id: vendorLeadForSale.id },
+            data: {
+              dealClosedAt: new Date(),
+              reservedByInvestorId: existingReservation.investorId,
+              reservedAt: vendorLeadForSale.reservedAt ?? new Date(),
+            },
+          })
+          await prisma.pipelineEvent.create({
+            data: {
+              vendorLeadId: vendorLeadForSale.id,
+              eventType: "DEAL_SOLD_TO_INVESTOR",
+              details: {
+                investorId: existingReservation.investorId,
+                reservationId: params.id,
+                dealId: existingReservation.dealId,
+              },
+              createdBy: session.user.id,
+            },
+          })
+        }
+
+      } else if (newStatus === "locked_out") {
+        // Lock-out agreement signed → reserve the deal and link vendor lead to investor
+        await prisma.deal.update({
+          where: { id: existingReservation.dealId },
+          data: { status: "reserved" },
+        })
+
+        const vendorLeadForLockOut = await prisma.vendorLead.findFirst({
+          where: { dealId: existingReservation.dealId },
+        })
+        if (vendorLeadForLockOut) {
+          await prisma.vendorLead.update({
+            where: { id: vendorLeadForLockOut.id },
+            data: {
+              reservedByInvestorId: existingReservation.investorId,
+              reservedAt: new Date(),
+            },
+          })
+          await prisma.pipelineEvent.create({
+            data: {
+              vendorLeadId: vendorLeadForLockOut.id,
+              eventType: "INVESTOR_LOCK_OUT_SIGNED",
+              details: {
+                investorId: existingReservation.investorId,
+                reservationId: params.id,
+                dealId: existingReservation.dealId,
+              },
+              createdBy: session.user.id,
+            },
+          })
+        }
+
+      } else if (newStatus === "cancelled") {
+        // If cancelled, check if they still have other active reservations
+        const otherActiveReservations = await prisma.investorReservation.count({
+          where: {
+            investorId: existingReservation.investorId,
+            id: { not: params.id },
+            status: { notIn: ["cancelled", "completed"] },
+          },
+        })
+        if (otherActiveReservations === 0) {
+          await prisma.investor.update({
+            where: { id: existingReservation.investorId },
+            data: {
+              pipelineStage: "VIEWING_DEALS",
+              lastActivityAt: new Date(),
+            },
+          })
+        }
+        await prisma.investorActivity.create({
+          data: {
+            investorId: existingReservation.investorId,
+            activityType: "RESERVATION_CANCELLED",
+            description: `Reservation cancelled`,
+            dealId: existingReservation.dealId,
+            triggeredById: session.user.id,
+          },
+        })
+
+        // If the cancelled reservation had locked/sold the deal, revert deal status
+        // and clear the vendor lead link — unless another reservation is still locked
+        const prevStatus = existingReservation.status
+        if (prevStatus === "locked_out" || prevStatus === "completed") {
+          const otherLockedReservations = await prisma.investorReservation.count({
+            where: {
+              dealId: existingReservation.dealId,
+              id: { not: params.id },
+              status: { in: ["locked_out", "completed"] },
+            },
+          })
+          if (otherLockedReservations === 0) {
+            await prisma.deal.update({
+              where: { id: existingReservation.dealId },
+              data: { status: "listed", soldToId: null, soldAt: null },
+            })
+            const vendorLeadToRevert = await prisma.vendorLead.findFirst({
+              where: { dealId: existingReservation.dealId },
+            })
+            if (vendorLeadToRevert) {
+              await prisma.vendorLead.update({
+                where: { id: vendorLeadToRevert.id },
+                data: { reservedByInvestorId: null, reservedAt: null },
+              })
+              await prisma.pipelineEvent.create({
+                data: {
+                  vendorLeadId: vendorLeadToRevert.id,
+                  eventType: "INVESTOR_RESERVATION_CANCELLED",
+                  details: {
+                    investorId: existingReservation.investorId,
+                    reservationId: params.id,
+                    previousStatus: prevStatus,
+                  },
+                  createdBy: session.user.id,
+                },
+              })
+            }
+          }
+        }
+      }
+      // All other status advances keep the investor at RESERVED — no deal/vendor change needed
     }
 
     return NextResponse.json(reservation)

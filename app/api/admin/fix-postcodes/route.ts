@@ -95,7 +95,14 @@ export async function POST(request: NextRequest) {
           if (!dryRun) {
             await prisma.propertyListing.update({
               where: { id: listing.id },
-              data: { address: { ...addr, postcode: resolved.postcode } as any },
+              data: {
+                address: {
+                  ...addr,
+                  postcode: resolved.postcode,
+                  postcodeFixed: true,
+                  postcodeSource: resolved.source,
+                } as any,
+              },
             })
           }
 
@@ -146,7 +153,11 @@ export async function POST(request: NextRequest) {
           if (!dryRun) {
             await prisma.vendorLead.update({
               where: { id: lead.id },
-              data: { propertyPostcode: resolved.postcode },
+              data: {
+                propertyPostcode: resolved.postcode,
+                propertyPostcodeSource: resolved.source,
+                propertyPostcodeFixed: true,
+              },
             })
           }
 

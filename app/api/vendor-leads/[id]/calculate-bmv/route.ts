@@ -304,54 +304,97 @@ export async function POST(
     console.log(`[BMV Calculator] Final market value: £${marketValue.toLocaleString()} (source: ${marketValueSource})`)
     console.log(`[BMV Calculator] BMV Score: ${bmvScore.toFixed(1)}%`)
 
-    // Calculate offer amount (typically 70-85% of market value)
-    let offerPercentage = 78 // Base 78%
-
-    // Adjust based on motivation score
-    if (lead.motivationScore) {
-      if (lead.motivationScore >= 8) {
-        offerPercentage = 72 // Lower offer for highly motivated
-      } else if (lead.motivationScore >= 6) {
-        offerPercentage = 75
-      } else if (lead.motivationScore <= 4) {
-        offerPercentage = 82 // Higher offer for less motivated
-      }
-    }
-
-    // Adjust based on condition
-    if (lead.condition === "poor" || lead.condition === "needs_modernisation") {
-      offerPercentage -= 5 // Lower offer for poor condition
-    } else if (lead.condition === "excellent") {
-      offerPercentage += 3 // Higher offer for excellent condition
-    } else if (lead.condition === "needs_work") {
-      offerPercentage -= 3
-    }
-
-    // Adjust for urgency
-    if (lead.urgencyLevel === "urgent") {
-      offerPercentage -= 3 // Lower offer for urgent sellers
-    } else if (lead.urgencyLevel === "flexible") {
-      offerPercentage += 2 // Higher offer for flexible sellers
-    }
-
-    // Land Registry: lower offer if corporate/overseas/portfolio owner (more leverage)
-    if (landRegistryOwnership) {
-      if (landRegistryOwnership.isCorporateOwned) offerPercentage -= 2
-      if (landRegistryOwnership.isOverseasOwned) offerPercentage -= 2
-      if (landRegistryOwnership.isPortfolioOwner) offerPercentage -= 1
-    }
-
-    // Ensure offer percentage stays within reasonable bounds
-    offerPercentage = Math.max(65, Math.min(85, offerPercentage))
-
-    // Calculate offer based on market value percentage, then cap at asking price.
-    // The vendor is already asking below market — we would never offer MORE than
-    // what they are asking, so the offer cannot exceed the asking price.
-    const rawCalculatedOffer = Math.round(marketValue * (offerPercentage / 100))
-    const offerCappedAtAsking = rawCalculatedOffer > askingPrice
-    const calculatedOffer = offerCappedAtAsking ? askingPrice : rawCalculatedOffer
-
     const refurbCost = lead.estimatedRefurbCost?.toNumber() || 0
+
+    // ── Strategy-aware offer calculator (when enabled in settings) ────────────
+    let calculatedOffer: number
+    let offerPercentage: number
+    let strategyExplanationBlock = ""
+    let rawCalculatedOffer = 0
+    let offerCappedAtAsking = false
+
+    const offerCalcConfig = await prisma.offerCalculatorConfig.findFirst()
+
+    if (offerCalcConfig?.enableStrategyMode) {
+      const { calculateOffer, mapCondition, toOfferConfig, DEFAULT_OFFER_CONFIG } =
+        await import("@/lib/offer-calculator")
+
+      const offerResult = calculateOffer({
+        askingPrice,
+        marketValue,
+        refurbCost,
+        condition: mapCondition(lead.condition),
+        tenure: ((lead as any).tenureType ?? "Freehold") as "Freehold" | "Leasehold",
+        chainStatus: ((lead as any).chainStatus ?? "NoChain") as "NoChain" | "ShortChain" | "LongChain",
+        postcodeDemandScore: (lead as any).postcodeDemandScore ?? 5,
+        strategy: ((lead as any).investmentStrategy ?? offerCalcConfig.defaultStrategy) as "Flip" | "BRR" | "BuyHold" | "BTL",
+        monthlyRent: monthlyRent > 0 ? monthlyRent : undefined,
+        config: toOfferConfig(offerCalcConfig),
+      })
+
+      calculatedOffer = offerResult.recommendedOffer
+      offerPercentage = ((marketValue - calculatedOffer) / marketValue) * 100
+      strategyExplanationBlock =
+        `\n📊 STRATEGY-AWARE OFFER CALCULATION\n` +
+        `${"─".repeat(60)}\n` +
+        offerResult.explanation.map((l) => `  ${l}`).join("\n") +
+        "\n\n"
+
+      console.log(`[BMV Calculator] Strategy mode (${(lead as any).investmentStrategy ?? offerCalcConfig.defaultStrategy}): offer ${calculatedOffer.toLocaleString()}`)
+    } else {
+      // ── Legacy calculation (motivation-based) ──────────────────────────────
+      let offerPct = 78 // Base 78%
+
+      // Adjust based on motivation score
+      if (lead.motivationScore) {
+        if (lead.motivationScore >= 8) {
+          offerPct = 72 // Lower offer for highly motivated
+        } else if (lead.motivationScore >= 6) {
+          offerPct = 75
+        } else if (lead.motivationScore <= 4) {
+          offerPct = 82 // Higher offer for less motivated
+        }
+      }
+
+      // Adjust based on condition
+      if (lead.condition === "poor" || lead.condition === "needs_modernisation") {
+        offerPct -= 5 // Lower offer for poor condition
+      } else if (lead.condition === "excellent") {
+        offerPct += 3 // Higher offer for excellent condition
+      } else if (lead.condition === "needs_work") {
+        offerPct -= 3
+      }
+
+      // Adjust for urgency
+      if (lead.urgencyLevel === "urgent") {
+        offerPct -= 3 // Lower offer for urgent sellers
+      } else if (lead.urgencyLevel === "flexible") {
+        offerPct += 2 // Higher offer for flexible sellers
+      }
+
+      // Land Registry: lower offer if corporate/overseas/portfolio owner (more leverage)
+      if (landRegistryOwnership) {
+        if (landRegistryOwnership.isCorporateOwned) offerPct -= 2
+        if (landRegistryOwnership.isOverseasOwned) offerPct -= 2
+        if (landRegistryOwnership.isPortfolioOwner) offerPct -= 1
+      }
+
+      // Ensure offer percentage stays within reasonable bounds
+      offerPct = Math.max(65, Math.min(85, offerPct))
+
+      rawCalculatedOffer = Math.round(marketValue * (offerPct / 100))
+      offerCappedAtAsking = rawCalculatedOffer >= askingPrice
+      if (offerCappedAtAsking) {
+        // Asking is already below our formula offer (great deal already priced).
+        // As a cash buyer, still negotiate 5% below asking to maximise margin.
+        calculatedOffer = Math.round(askingPrice * 0.95)
+      } else {
+        calculatedOffer = rawCalculatedOffer
+      }
+      // Always store the ACTUAL percentage of market value, not the formula percentage
+      offerPercentage = (calculatedOffer / marketValue) * 100
+    }
+
     const profitPotential = marketValue - calculatedOffer - refurbCost
 
     // Calculate rental yields
@@ -361,10 +404,93 @@ export async function POST(
     const rentVsLocalAvg = localAverageRent > 0 && monthlyRent > 0 ? ((monthlyRent - localAverageRent) / localAverageRent) * 100 : 0
 
     // Determine if deal passes validation
-    // Base criteria: BMV >= 15% AND profit >= £10k
-    // Bonus points for strong rental yield (>= 6% gross yield considered good)
+    const minBmv = offerCalcConfig?.minBmvPercentage
+      ? Number(offerCalcConfig.minBmvPercentage)
+      : 15
+    const minProfit = offerCalcConfig?.minProfitPotential
+      ? Number(offerCalcConfig.minProfitPotential)
+      : 10000
     const hasGoodYield = grossYield >= 6
-    const validationPassed = bmvScore >= 15 && profitPotential >= 10000
+    const validationPassed = bmvScore >= minBmv && profitPotential >= minProfit
+
+    // ── Strategy Analysis (always run regardless of mode) ─────────────────────
+    let strategyAnalysisBlock = ""
+    try {
+      const {
+        calculateOffer: calcStrat,
+        mapCondition: mapCond,
+        toOfferConfig: toConf,
+        DEFAULT_OFFER_CONFIG: DEF_CFG,
+      } = await import("@/lib/offer-calculator")
+
+      const sConfig = offerCalcConfig ? toConf(offerCalcConfig) : DEF_CFG
+      const sharedInput = {
+        askingPrice,
+        marketValue,
+        refurbCost,
+        condition: mapCond(lead.condition),
+        tenure: ((lead as any).tenureType ?? "Freehold") as "Freehold" | "Leasehold",
+        chainStatus: ((lead as any).chainStatus ?? "NoChain") as "NoChain" | "ShortChain" | "LongChain",
+        postcodeDemandScore: (lead as any).postcodeDemandScore ?? 5,
+        monthlyRent: monthlyRent > 0 ? monthlyRent : undefined,
+        config: sConfig,
+      }
+
+      type StratKey = "BTL" | "BuyHold" | "Flip" | "BRR"
+      const stratDefs: Array<{ key: StratKey; label: string; emoji: string }> = [
+        { key: "BTL",     label: "Buy-to-Let (BTL)", emoji: "🏠" },
+        { key: "BuyHold", label: "Buy & Hold",        emoji: "📈" },
+        { key: "Flip",    label: "Flip",              emoji: "🔨" },
+        { key: "BRR",     label: "BRRR",              emoji: "🔄" },
+      ]
+
+      const stratResults = stratDefs.map(({ key, label, emoji }) => ({
+        key, label, emoji,
+        ...calcStrat({ ...sharedInput, strategy: key }),
+      }))
+
+      // Pick recommended: viable strategies first, prefer yield-based when rent available,
+      // then highest ceiling
+      const viable = stratResults.filter(r => r.passesValidation)
+      const ranked = [...viable].sort((a, b) => {
+        if (monthlyRent > 0) {
+          const aYield = a.key === "BTL" || a.key === "BuyHold"
+          const bYield = b.key === "BTL" || b.key === "BuyHold"
+          if (aYield && !bYield) return -1
+          if (bYield && !aYield) return 1
+        }
+        return b.recommendedOffer - a.recommendedOffer
+      })
+      const recommended = ranked[0] ?? stratResults.reduce((best, curr) =>
+        curr.recommendedOffer > best.recommendedOffer ? curr : best
+      )
+
+      strategyAnalysisBlock  = `\n🏆 INVESTMENT STRATEGY ANALYSIS\n`
+      strategyAnalysisBlock += `${"─".repeat(60)}\n`
+      strategyAnalysisBlock += `  📌 Recommended: ${recommended.label}\n\n`
+      for (const r of stratResults) {
+        const rec = r.key === recommended.key ? " ← recommended" : ""
+        const yieldStr = r.achievedGrossYield > 0 ? ` | Yield: ${r.achievedGrossYield.toFixed(1)}%` : ""
+        const status = r.passesValidation ? "✅ Viable" : "❌ Not viable"
+        strategyAnalysisBlock += `  ${r.emoji} ${r.label}${rec}\n`
+        strategyAnalysisBlock += `     Max Offer: £${r.recommendedOffer.toLocaleString()}${yieldStr} | ${status}\n`
+      }
+      // Machine-readable block for UI parsing
+      const strategyJson = JSON.stringify({
+        recommended: recommended.key,
+        strategies: stratResults.map(r => ({
+          key: r.key,
+          name: r.label,
+          emoji: r.emoji,
+          maxOffer: r.recommendedOffer,
+          yield: r.achievedGrossYield > 0 ? Math.round(r.achievedGrossYield * 10) / 10 : null,
+          viable: r.passesValidation,
+        })),
+      })
+      strategyAnalysisBlock += `[STRATEGY_DATA]${strategyJson}[/STRATEGY_DATA]\n`
+    } catch (stratErr) {
+      console.error("[BMV Calculator] Strategy analysis error:", stratErr)
+    }
 
     // Build a postcode notice that appears at the top of notes when needed
     let postcodeWarning = ""
@@ -390,6 +516,7 @@ export async function POST(
       validationNotes = `✅ DEAL VALIDATED\n`
       validationNotes += `${"=".repeat(60)}\n\n`
       validationNotes += postcodeWarning
+      validationNotes += strategyExplanationBlock
 
       // Market Value Analysis Section
       validationNotes += `📊 MARKET VALUE ANALYSIS\n`
@@ -462,9 +589,9 @@ export async function POST(
       validationNotes += `💵 OFFER DETAILS\n`
       validationNotes += `${"─".repeat(60)}\n`
       if (offerCappedAtAsking) {
-        validationNotes += `  💼 Offer: £${calculatedOffer.toLocaleString()} (capped at asking price)\n`
-        validationNotes += `  ℹ️  Market-value formula gave £${rawCalculatedOffer.toLocaleString()} (${offerPercentage.toFixed(1)}% of MV)\n`
-        validationNotes += `     but vendor is asking LESS — so offer = asking price.\n`
+        validationNotes += `  💼 Offer: £${calculatedOffer.toLocaleString()} (negotiated 5% below asking — ${offerPercentage.toFixed(1)}% of MV)\n`
+        validationNotes += `  ℹ️  Formula max was £${rawCalculatedOffer.toLocaleString()} but vendor is already pricing below that.\n`
+        validationNotes += `     Cash-buyer negotiation applied: asking £${askingPrice.toLocaleString()} × 95% = £${calculatedOffer.toLocaleString()}\n`
       } else {
         validationNotes += `  💼 Calculated Offer: £${calculatedOffer.toLocaleString()} (${offerPercentage.toFixed(1)}% of market value)\n`
       }
@@ -472,6 +599,8 @@ export async function POST(
         validationNotes += `  🔨 Refurb Cost: £${refurbCost.toLocaleString()}\n`
       }
       validationNotes += `  ✨ Net Profit: £${profitPotential.toLocaleString()}\n\n`
+
+      validationNotes += strategyAnalysisBlock
 
       // Rental Analysis Section
       if (annualRent > 0) {
@@ -540,6 +669,7 @@ export async function POST(
       validationNotes = `❌ DEAL FAILED VALIDATION\n`
       validationNotes += `${"=".repeat(60)}\n\n`
       validationNotes += postcodeWarning
+      validationNotes += strategyExplanationBlock
 
       // Market Value Analysis Section
       validationNotes += `📊 MARKET VALUE ANALYSIS\n`
@@ -607,6 +737,8 @@ export async function POST(
         validationNotes += `  🔨 Refurb Cost: £${refurbCost.toLocaleString()}\n`
       }
       validationNotes += `  ✨ Net Profit: £${profitPotential.toLocaleString()}\n\n`
+
+      validationNotes += strategyAnalysisBlock
 
       // Rental Analysis Section (for failed deals)
       if (annualRent > 0) {

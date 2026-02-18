@@ -192,7 +192,7 @@ export function ScraperOverview({
   enrichmentStats,
 }: ScraperOverviewProps) {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<"review" | "all" | "jobs">("review")
+  const [activeTab, setActiveTab] = useState<"review" | "all" | "jobs">("all")
   const [runningJobs, setRunningJobs] = useState<Record<string, RunningJob>>({})
   const [tableRefreshKey, setTableRefreshKey] = useState(0)
   const pollIntervals = useRef<Record<string, NodeJS.Timeout>>({})
@@ -259,10 +259,37 @@ export function ScraperOverview({
     pollIntervals.current[source] = interval
   }, [])
 
+  // Cleanup all intervals on unmount
   useEffect(() => {
     return () => {
       Object.values(pollIntervals.current).forEach(clearInterval)
     }
+  }, [])
+
+  // On mount: resume polling for any jobs that were still active when the page was last left
+  useEffect(() => {
+    const active = recentJobs.filter((j) => j.status === "QUEUED" || j.status === "RUNNING")
+    if (active.length === 0) return
+
+    const initial: Record<string, RunningJob> = {}
+    for (const job of active) {
+      initial[job.source] = {
+        jobId: job.id,
+        source: job.source,
+        status: job.status as RunningJob["status"],
+        totalFound: job.totalFound,
+        successful: job.successful,
+        failed: job.failed,
+      }
+    }
+    setRunningJobs(initial)
+
+    for (const job of active) {
+      if (!pollIntervals.current[job.source]) {
+        pollJobStatus(job.id, job.source)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const triggerScrape = async (source: SourceKey) => {
@@ -498,9 +525,23 @@ export function ScraperOverview({
         </div>
       )}
 
-      {/* ── 5. Tabs: Review Queue | All Properties | Job History ── */}
+      {/* ── 5. Tabs: All Properties | Review Queue | Job History ── */}
       <div className="space-y-4">
         <div className="flex border-b">
+          <button
+            onClick={() => setActiveTab("all")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "all"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Database className="inline mr-2 h-4 w-4" />
+            All Properties
+            <Badge variant="secondary" className="ml-2">
+              {stats.totalListings}
+            </Badge>
+          </button>
           <button
             onClick={() => setActiveTab("review")}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -518,20 +559,6 @@ export function ScraperOverview({
             )}
           </button>
           <button
-            onClick={() => setActiveTab("all")}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "all"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Database className="inline mr-2 h-4 w-4" />
-            All Properties
-            <Badge variant="secondary" className="ml-2">
-              {stats.totalListings}
-            </Badge>
-          </button>
-          <button
             onClick={() => setActiveTab("jobs")}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === "jobs"
@@ -539,6 +566,7 @@ export function ScraperOverview({
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
+            <TrendingUp className="inline mr-2 h-4 w-4" />
             Job History
           </button>
         </div>

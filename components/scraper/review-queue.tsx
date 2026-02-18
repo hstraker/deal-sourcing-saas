@@ -43,7 +43,8 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedListing, setSelectedListing] =
     useState<PropertyListingForClient | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submittingIds, setSubmittingIds] = useState<Set<string>>(new Set())
+  const [isBulkSubmitting, setIsBulkSubmitting] = useState(false)
 
   // Sync listings when server re-renders after router.refresh()
   useEffect(() => {
@@ -122,7 +123,7 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
     action: "APPROVED" | "REJECTED",
     notes?: string
   ) => {
-    setIsSubmitting(true)
+    setSubmittingIds((prev) => new Set(prev).add(id))
     try {
       const res = await fetch(`/api/review-queue/${id}/review`, {
         method: "POST",
@@ -156,7 +157,11 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
     } catch (error: any) {
       toast.error(error.message)
     } finally {
-      setIsSubmitting(false)
+      setSubmittingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
     }
   }
 
@@ -170,7 +175,7 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
     )
     if (!confirmed) return
 
-    setIsSubmitting(true)
+    setIsBulkSubmitting(true)
     try {
       const res = await fetch("/api/review-queue/bulk", {
         method: "POST",
@@ -199,7 +204,7 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
     } catch (error: any) {
       toast.error(error.message)
     } finally {
-      setIsSubmitting(false)
+      setIsBulkSubmitting(false)
     }
   }
 
@@ -262,7 +267,7 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
               variant="outline"
               className="text-green-600 border-green-200 hover:bg-green-50"
               onClick={() => handleBulkReview("APPROVED")}
-              disabled={isSubmitting}
+              disabled={isBulkSubmitting}
             >
               <CheckCheck className="mr-1 h-3 w-3" />
               Approve all ({sortedListings.length})
@@ -272,7 +277,7 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
               variant="outline"
               className="text-red-600 border-red-200 hover:bg-red-50"
               onClick={() => handleBulkReview("REJECTED")}
-              disabled={isSubmitting}
+              disabled={isBulkSubmitting}
             >
               <XCircle className="mr-1 h-3 w-3" />
               Reject all
@@ -291,7 +296,7 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
               onApprove={(id) => handleReview(id, "APPROVED")}
               onReject={(id) => handleReview(id, "REJECTED")}
               onViewDetails={setSelectedListing}
-              isSubmitting={isSubmitting}
+              isSubmitting={submittingIds.has(listing.id) || isBulkSubmitting}
             />
           ))}
         </div>
@@ -323,7 +328,7 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
         open={!!selectedListing}
         onClose={() => setSelectedListing(null)}
         onReview={handleReview}
-        isSubmitting={isSubmitting}
+        isSubmitting={selectedListing ? submittingIds.has(selectedListing.id) : false}
       />
     </div>
   )

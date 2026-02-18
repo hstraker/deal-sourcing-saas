@@ -13,18 +13,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { PipelineStage } from "@prisma/client"
 import { cn } from "@/lib/utils"
-import { MessageSquare, Phone, MapPin, Clock, Filter, Download, Table2, Kanban, FileDown, Loader2 } from "lucide-react"
-import { toast } from "sonner"
+import { MessageSquare, Phone, MapPin, Clock, Filter, Download, KeyRound } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { VendorLeadDetailModal } from "./vendor-lead-detail-modal"
 import { PipelineStatsCards } from "./pipeline-stats-cards"
 import { formatCurrency } from "@/lib/format"
@@ -75,6 +72,25 @@ interface VendorLead {
   lastContactAt: Date | null
   conversationStartedAt: Date | null
   dealId: string | null
+  reservedByInvestorId: string | null
+  reservedAt: Date | null
+  reservation?: {
+    id: string
+    dealId: string
+    investorId: string
+    status: string
+    reservationFee: number
+    createdAt: Date
+    updatedAt: Date
+    investor: {
+      id: string
+      user: { firstName: string | null; lastName: string | null; email: string; phone: string | null }
+    }
+  } | null
+  reservedByInvestor?: {
+    id: string
+    user: { firstName: string | null; lastName: string | null; email: string; phone: string | null }
+  } | null
   smsMessages: Array<{
     id: string
     direction: string
@@ -86,6 +102,35 @@ interface VendorLead {
     pipelineEvents: number
   }
 }
+
+const reservationStatusLabels: Record<string, string> = {
+  pending:                "Pending",
+  pack_sent:              "Pack Sent",
+  fee_pending:            "Fee Requested",
+  fee_paid:               "Fee Paid",
+  proof_of_funds_pending: "POF Requested",
+  pof_received:           "POF Received",
+  verified:               "POF Verified",
+  lock_out_sent:          "Lock-out Sent",
+  locked_out:             "Lock-out Signed",
+  completed:              "Completed",
+}
+
+const reservationStatusColors: Record<string, string> = {
+  pending:                "bg-gray-100 text-gray-700 border-gray-200",
+  pack_sent:              "bg-blue-100 text-blue-700 border-blue-200",
+  fee_pending:            "bg-yellow-100 text-yellow-700 border-yellow-200",
+  fee_paid:               "bg-emerald-100 text-emerald-700 border-emerald-200",
+  proof_of_funds_pending: "bg-orange-100 text-orange-700 border-orange-200",
+  pof_received:           "bg-sky-100 text-sky-700 border-sky-200",
+  verified:               "bg-green-100 text-green-700 border-green-200",
+  lock_out_sent:          "bg-purple-100 text-purple-700 border-purple-200",
+  locked_out:             "bg-violet-100 text-violet-700 border-violet-200",
+  completed:              "bg-emerald-100 text-emerald-700 border-emerald-200",
+}
+
+const getInvestorName = (user: { firstName: string | null; lastName: string | null; email: string }) =>
+  [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email
 
 const PIPELINE_COLUMNS: Array<{
   id: PipelineStage
@@ -194,10 +239,8 @@ export function VendorPipelineKanbanBoard() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedLead, setSelectedLead] = useState<VendorLead | null>(null)
   const [refreshing, setRefreshing] = useState(false)
-  const [generatingPackId, setGeneratingPackId] = useState<string | null>(null)
 
-  // View and filter state
-  const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban")
+  // Filter state
   const [stageFilter, setStageFilter] = useState<string>("all")
   const [motivationFilter, setMotivationFilter] = useState<string>("all")
   const [dateFrom, setDateFrom] = useState<string>("")
@@ -238,6 +281,15 @@ export function VendorPipelineKanbanBoard() {
         offerSentAt: lead.offerSentAt ? new Date(lead.offerSentAt) : null,
         offerAcceptedAt: lead.offerAcceptedAt ? new Date(lead.offerAcceptedAt) : null,
         offerRejectedAt: lead.offerRejectedAt ? new Date(lead.offerRejectedAt) : null,
+        reservedAt: lead.reservedAt ? new Date(lead.reservedAt) : null,
+        reservation: lead.reservation
+          ? {
+              ...lead.reservation,
+              reservationFee: Number(lead.reservation.reservationFee),
+              createdAt: new Date(lead.reservation.createdAt),
+              updatedAt: new Date(lead.reservation.updatedAt),
+            }
+          : null,
         smsMessages: lead.smsMessages?.map((msg: any) => ({
           ...msg,
           createdAt: new Date(msg.createdAt),
@@ -300,60 +352,6 @@ export function VendorPipelineKanbanBoard() {
   }
 
   const leadsByStage = groupLeadsByStage(filteredLeads)
-
-  // Handle generate investor pack
-  const handleGenerateInvestorPack = async (lead: VendorLead, e?: React.MouseEvent) => {
-    if (e) {
-      e.stopPropagation()
-    }
-
-    if (!lead.propertyAddress) {
-      toast.error("Property address is required to generate investor pack")
-      return
-    }
-
-    if (!lead.askingPrice) {
-      toast.error("Asking price is required to generate investor pack")
-      return
-    }
-
-    setGeneratingPackId(lead.id)
-
-    try {
-      const response = await fetch(`/api/vendor-leads/${lead.id}/investor-pack`)
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || "Failed to generate investor pack")
-      }
-
-      // Get the PDF blob
-      const blob = await response.blob()
-
-      // Create a download link and trigger it
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      const fileName = lead.propertyAddress.replace(/[^a-z0-9]/gi, "-").toLowerCase()
-      a.download = `investor-pack-${fileName}.pdf`
-      document.body.appendChild(a)
-      a.click()
-
-      // Cleanup
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-
-      toast.success("Investor pack generated successfully")
-
-      // Refresh data in case a deal was created
-      fetchData()
-    } catch (error: any) {
-      console.error("Error generating investor pack:", error)
-      toast.error(error.message || "Failed to generate investor pack")
-    } finally {
-      setGeneratingPackId(null)
-    }
-  }
 
   // Handle drag and drop
   const handleDragEnd = async (result: DropResult) => {
@@ -469,155 +467,15 @@ export function VendorPipelineKanbanBoard() {
 
             <div className="flex-1" />
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant={viewMode === "kanban" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setViewMode("kanban")}
-              >
-                <Kanban className="h-4 w-4 mr-2" />
-                Kanban
-              </Button>
-              <Button
-                variant={viewMode === "table" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setViewMode("table")}
-              >
-                <Table2 className="h-4 w-4 mr-2" />
-                Table
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleExport}>
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
-            </div>
+            <Button variant="outline" size="sm" onClick={handleExport}>
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
           </div>
         </Card>
 
-        {/* Table View */}
-        {viewMode === "table" && (
-          <Card>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Vendor</TableHead>
-                    <TableHead>Property</TableHead>
-                    <TableHead>Stage</TableHead>
-                    <TableHead>Motivation</TableHead>
-                    <TableHead>Asking Price</TableHead>
-                    <TableHead>BMV Score</TableHead>
-                    <TableHead>Rental Yield</TableHead>
-                    <TableHead>Offer</TableHead>
-                    <TableHead>Last Contact</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredLeads.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
-                        No leads found
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredLeads.map((lead) => (
-                      <TableRow key={lead.id} className="cursor-pointer" onClick={() => setSelectedLead(lead)}>
-                        <TableCell className="font-medium">{lead.vendorName}</TableCell>
-                        <TableCell>
-                          {lead.propertyAddress ? (
-                            <div className="text-sm">
-                              <div>{lead.propertyAddress}</div>
-                              {lead.propertyPostcode && (
-                                <div className="text-muted-foreground">{lead.propertyPostcode}</div>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{lead.pipelineStage}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          {lead.motivationScore !== null ? (
-                            <Badge className={motivationBadgeColor(lead.motivationScore)}>
-                              {lead.motivationScore}/10
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>{formatCurrency(lead.askingPrice)}</TableCell>
-                        <TableCell>
-                          {lead.bmvScore !== null ? (
-                            <span className="text-green-600 font-medium">
-                              {lead.bmvScore.toFixed(1)}%
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {lead.estimatedMonthlyRent && lead.askingPrice ? (
-                            <div>
-                              <span className="text-blue-600 font-medium">
-                                {((Number(lead.estimatedAnnualRent || lead.estimatedMonthlyRent * 12) / Number(lead.askingPrice)) * 100).toFixed(1)}%
-                              </span>
-                              <div className="text-xs text-muted-foreground">
-                                {formatCurrency(lead.estimatedMonthlyRent)}/mo
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {lead.offerAmount ? formatCurrency(lead.offerAmount) : "—"}
-                        </TableCell>
-                        <TableCell suppressHydrationWarning>{formatTimeAgo(lead.lastContactAt)}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleGenerateInvestorPack(lead, e)
-                              }}
-                              disabled={generatingPackId === lead.id || !lead.propertyAddress || !lead.askingPrice}
-                              title={!lead.propertyAddress || !lead.askingPrice ? "Property address and asking price required" : "Generate investor pack"}
-                            >
-                              {generatingPackId === lead.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <FileDown className="h-4 w-4" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setSelectedLead(lead)
-                              }}
-                            >
-                              View
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </Card>
-        )}
-
         {/* Kanban View */}
-        {viewMode === "kanban" && (
-          <DragDropContext onDragEnd={handleDragEnd}>
+        <DragDropContext onDragEnd={handleDragEnd}>
             <div className="flex gap-4 overflow-x-auto pb-4">
               {PIPELINE_COLUMNS.map((column) => {
                 const columnLeads = leadsByStage[column.id]
@@ -735,6 +593,45 @@ export function VendorPipelineKanbanBoard() {
                                         <span suppressHydrationWarning>{formatTimeAgo(lead.lastContactAt)}</span>
                                       </div>
                                     </div>
+
+                                    {/* Investor reservation chip */}
+                                    {lead.reservation && (
+                                      <div className="mt-2 pt-2 border-t">
+                                        <TooltipProvider delayDuration={200}>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <div
+                                                className={cn(
+                                                  "inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-xs font-medium cursor-default w-full",
+                                                  reservationStatusColors[lead.reservation.status] || "bg-gray-100 text-gray-700 border-gray-200"
+                                                )}
+                                              >
+                                                <KeyRound className="h-3 w-3 shrink-0" />
+                                                <span className="shrink-0">{reservationStatusLabels[lead.reservation.status] || lead.reservation.status}</span>
+                                                <span className="opacity-50 shrink-0">·</span>
+                                                <span className="truncate">{getInvestorName(lead.reservation.investor.user)}</span>
+                                              </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="bottom" className="text-xs max-w-[220px]">
+                                              <p className="font-medium mb-1">Investor Reservation</p>
+                                              <p>{getInvestorName(lead.reservation.investor.user)}</p>
+                                              <p className="text-muted-foreground">{lead.reservation.investor.user.email}</p>
+                                              {lead.reservation.investor.user.phone && (
+                                                <p className="text-muted-foreground">{lead.reservation.investor.user.phone}</p>
+                                              )}
+                                              <p className="text-muted-foreground mt-1">
+                                                Fee: £{lead.reservation.reservationFee.toLocaleString()}
+                                              </p>
+                                              {lead.reservedAt && (
+                                                <p suppressHydrationWarning className="text-muted-foreground">
+                                                  Reserved {formatTimeAgo(lead.reservedAt)}
+                                                </p>
+                                              )}
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      </div>
+                                    )}
                                   </div>
                                 </Card>
                               )} 
@@ -754,7 +651,6 @@ export function VendorPipelineKanbanBoard() {
               })}
             </div>
           </DragDropContext>
-        )}
 
         {selectedLead && (
           <VendorLeadDetailModal

@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Play, Loader2, Clock, CheckCircle2, XCircle } from "lucide-react"
@@ -84,6 +85,14 @@ export function ScraperSourceCard({
 }: ScraperSourceCardProps) {
   const cfg = SOURCE_CONFIG[source]
 
+  // Compute relative time client-side only to avoid SSR hydration mismatch
+  const [timeDisplay, setTimeDisplay] = useState<string>("")
+  useEffect(() => {
+    setTimeDisplay(relativeTime(lastJobAt))
+    const id = setInterval(() => setTimeDisplay(relativeTime(lastJobAt)), 30_000)
+    return () => clearInterval(id)
+  }, [lastJobAt])
+
   const statusDot = (() => {
     if (!enabled) return "bg-gray-300 dark:bg-gray-600"
     if (progress?.status === "FAILED" || progress?.status === "CANCELLED") return "bg-red-500"
@@ -149,7 +158,7 @@ export function ScraperSourceCard({
           <div className="flex items-center justify-between text-[11px] text-muted-foreground">
             <span className="flex items-center gap-1">
               <Clock className="h-3 w-3" />
-              <span suppressHydrationWarning>{relativeTime(lastJobAt)}</span>
+              <span>{timeDisplay}</span>
             </span>
             {lastJobCount !== null && lastJobCount > 0 && (
               <span className={`font-medium ${cfg.countColor}`}>

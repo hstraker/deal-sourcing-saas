@@ -51,6 +51,14 @@ import {
   Target,
   Wallet,
   Building2,
+  AlertTriangle,
+  BarChart3,
+  ListChecks,
+  KeyRound,
+  User,
+  Search,
+  BedDouble,
+  Bath,
 } from "lucide-react"
 import { PipelineStage } from "@prisma/client"
 import { cn } from "@/lib/utils"
@@ -110,6 +118,25 @@ interface VendorLead {
   investorPackGenerationCount?: number
   lastInvestorPackGeneratedAt?: Date | null
   dealId: string | null
+  reservedByInvestorId: string | null
+  reservedAt: Date | null
+  reservation?: {
+    id: string
+    dealId: string
+    investorId: string
+    status: string
+    reservationFee: number
+    createdAt: Date
+    updatedAt: Date
+    investor: {
+      id: string
+      user: { firstName: string | null; lastName: string | null; email: string; phone: string | null }
+    }
+  } | null
+  reservedByInvestor?: {
+    id: string
+    user: { firstName: string | null; lastName: string | null; email: string; phone: string | null }
+  } | null
   smsMessages: SMSMessage[]
 }
 
@@ -145,6 +172,176 @@ const formatTimeAgo = (date: Date | null) => {
   return "Just now"
 }
 
+/**
+ * Strips property-listing noise (e.g. "2 bed flat for sale, £120,000", "000 - Zoopla")
+ * from a scraped address string and returns a clean "Street, Town, POSTCODE" form.
+ *
+ * Handles two cases:
+ *  1. Postcode embedded in address — extract clean prefix then reattach postcode
+ *  2. Postcode stored separately   — clean address then append postcode
+ *
+ * Examples:
+ *   "Ffordd Coed Darcy, Llandarcy, Neath SA10, 2 bed flat for sale, £120,000, SA10 6FR"
+ *   → "Ffordd Coed Darcy, Llandarcy, Neath SA10 6FR"
+ *
+ *   "Phoebe Road, Copper Quarter, Swansea"  +  postcode "SA1 7FL"
+ *   → "Phoebe Road, Copper Quarter, Swansea, SA1 7FL"
+ */
+const isJunkSegment = (s: string): boolean => {
+  if (!s) return true
+  if (s.includes("£")) return true
+  if (/\d+\s*(bed|bath|studio|reception)/i.test(s)) return true
+  if (/(for\s+sale|to\s+let|for\s+rent|sold\s+subject|under\s+offer)/i.test(s)) return true
+  if (/\b(zoopla|rightmove|onthemarket|primelocation|nethouseprices|mouseprice|spareroom)\b/i.test(s)) return true
+  // Pure digit / punctuation fragment — price tail e.g. "000" from "£250,000"
+  if (/^[\d\s\-–—,]+$/.test(s)) return true
+  return false
+}
+
+const cleanPropertyAddress = (address: string | null, postcode: string | null): string => {
+  if (!address) return postcode ?? "No Address"
+
+  if (postcode && address.includes(postcode)) {
+    // ── Case 1: postcode is already embedded — strip junk between location and postcode ──
+    const pcIdx = address.indexOf(postcode)
+    const before = address.slice(0, pcIdx).trimEnd().replace(/,\s*$/, "")
+    const segments = before.split(",").map((s) => s.trim()).filter((s) => !isJunkSegment(s))
+    const cleanBefore = segments.join(", ")
+    const outcode = postcode.split(" ")[0]
+    const incode = postcode.split(" ")[1] ?? ""
+    // If prefix already ends with the outcode, append only the incode (no duplicate)
+    if (cleanBefore.endsWith(outcode)) {
+      return incode ? `${cleanBefore} ${incode}` : cleanBefore
+    }
+    const sep = /[a-zA-Z0-9]/.test(cleanBefore.slice(-1)) ? " " : ""
+    return `${cleanBefore}${sep}${postcode}`
+  }
+
+  // ── Case 2: postcode is separate — clean address then append postcode ──
+  const segments = address.split(",").map((s) => s.trim()).filter((s) => !isJunkSegment(s))
+  const cleanAddress = segments.join(", ")
+  if (!postcode) return cleanAddress || address
+  return `${cleanAddress}, ${postcode}`
+}
+
+interface ParsedStrategy {
+  key: string
+  name: string
+  emoji: string
+  maxOffer: number
+  yield: number | null
+  viable: boolean
+}
+
+interface ParsedNotes {
+  comparables: Array<{ address: string; price: number; beds?: number; date?: string; distance?: string }>
+  rentalYield: {
+    monthlyRent?: number; weeklyRent?: number; annualRent?: number
+    grossYield?: number; grossYieldLabel?: string; netYield?: number
+    cashFlow?: number; dataSource?: string; confidence?: string
+    passed?: boolean; note?: string
+  } | null
+  marketValueSource: { source: string; confidence: string; count?: number } | null
+  creditsUsed: number | null
+  failureReasons: string[]
+  strategyData: { recommended: string; strategies: ParsedStrategy[] } | null
+}
+
+function parseValidationNotes(notes: string | null): ParsedNotes | null {
+  if (!notes) return null
+
+  // Parse comparable properties
+  const comparables: ParsedNotes["comparables"] = []
+  const lines = notes.split("\n")
+  for (let i = 0; i < lines.length; i++) {
+    const propMatch = lines[i].match(/^\s+(\d+)\.\s+(.+)$/)
+    if (propMatch && i + 1 < lines.length) {
+      const detailMatch = lines[i + 1].match(/💷 £([\d,]+) \| 🛏️ (\d+) bed \| 📅 (.+?) \| ([\d.]+) mi/)
+      if (detailMatch) {
+        comparables.push({
+          address: propMatch[2].trim(),
+          price: parseInt(detailMatch[1].replace(/,/g, "")),
+          beds: parseInt(detailMatch[2]),
+          date: detailMatch[3],
+          distance: detailMatch[4] + " mi",
+        })
+      }
+    }
+  }
+
+  // Parse market value source (from 📊 section)
+  let marketValueSource: ParsedNotes["marketValueSource"] = null
+  const mvIdx = notes.indexOf("📊 MARKET VALUE ANALYSIS")
+  if (mvIdx !== -1) {
+    const mvSlice = notes.slice(mvIdx, mvIdx + 400)
+    const sourceMatch = mvSlice.match(/Data Source: (.+)/)
+    const confMatch = mvSlice.match(/Confidence: (\w+)/)
+    const countMatch = mvSlice.match(/\((\d+) properties\)/)
+    marketValueSource = {
+      source: sourceMatch ? sourceMatch[1].trim() : "Unknown",
+      confidence: confMatch ? confMatch[1].trim() : "",
+      count: countMatch ? parseInt(countMatch[1]) : undefined,
+    }
+  }
+
+  // Parse rental yield section
+  let rentalYield: ParsedNotes["rentalYield"] = null
+  const yieldIdx = notes.indexOf("🏠 RENTAL YIELD ANALYSIS")
+  if (yieldIdx !== -1) {
+    const yieldSlice = notes.slice(yieldIdx)
+    const passed = yieldSlice.includes("✅")
+    const monthlyMatch = yieldSlice.match(/Monthly Rent: £([\d,]+)/)
+    const weeklyMatch = yieldSlice.match(/Weekly Rent: £([\d,]+)/)
+    const annualMatch = yieldSlice.match(/Annual Rent: £([\d,]+)/)
+    const grossMatch = yieldSlice.match(/Gross Yield: ([\d.]+)%\s*\((.+?)\)/)
+    const netMatch = yieldSlice.match(/Net Yield: ([\d.]+)%/)
+    const cashFlowMatch = yieldSlice.match(/Monthly Cash Flow: £([\d,]+)/)
+    const sourceMatch = yieldSlice.match(/Data Source: (.+)/)
+    const confMatch = yieldSlice.match(/Confidence: (\w+)/)
+    const noteMatch = yieldSlice.match(/💡 Note: (.+)/)
+    rentalYield = {
+      monthlyRent: monthlyMatch ? parseInt(monthlyMatch[1].replace(/,/g, "")) : undefined,
+      weeklyRent: weeklyMatch ? parseInt(weeklyMatch[1].replace(/,/g, "")) : undefined,
+      annualRent: annualMatch ? parseInt(annualMatch[1].replace(/,/g, "")) : undefined,
+      grossYield: grossMatch ? parseFloat(grossMatch[1]) : undefined,
+      grossYieldLabel: grossMatch ? grossMatch[2] : undefined,
+      netYield: netMatch ? parseFloat(netMatch[1]) : undefined,
+      cashFlow: cashFlowMatch ? parseInt(cashFlowMatch[1].replace(/,/g, "")) : undefined,
+      dataSource: sourceMatch ? sourceMatch[1].trim() : undefined,
+      confidence: confMatch ? confMatch[1].trim() : undefined,
+      passed,
+      note: noteMatch ? noteMatch[1].trim() : undefined,
+    }
+  }
+
+  // Parse credits used
+  const creditsMatch = notes.match(/PropertyData API Credits Used: (\d+)/)
+  const creditsUsed = creditsMatch ? parseInt(creditsMatch[1]) : null
+
+  // Parse failure reasons
+  const failureReasons: string[] = []
+  const failIdx = notes.indexOf("REASONS FOR FAILURE")
+  if (failIdx !== -1) {
+    const failSlice = notes.slice(failIdx)
+    for (const m of failSlice.matchAll(/\d+\. (.+)/g)) {
+      failureReasons.push(m[1].trim())
+    }
+  }
+
+  // Parse machine-readable strategy data
+  let strategyData: ParsedNotes["strategyData"] = null
+  const stratMatch = notes.match(/\[STRATEGY_DATA\](.*?)\[\/STRATEGY_DATA\]/)
+  if (stratMatch) {
+    try {
+      strategyData = JSON.parse(stratMatch[1])
+    } catch {
+      // malformed — ignore
+    }
+  }
+
+  return { comparables, rentalYield, marketValueSource, creditsUsed, failureReasons, strategyData }
+}
+
 export function VendorLeadDetailModal({
   lead,
   open,
@@ -159,6 +356,7 @@ export function VendorLeadDetailModal({
   const [isDeleting, setIsDeleting] = useState(false)
   const [isCalculating, setIsCalculating] = useState(false)
   const [isGeneratingPack, setIsGeneratingPack] = useState(false)
+  const [isFixingPostcode, setIsFixingPostcode] = useState(false)
   const [bmvResult, setBmvResult] = useState<any>(null)
   const [editForm, setEditForm] = useState<any>({})
   const [templates, setTemplates] = useState<any[]>([])
@@ -177,6 +375,15 @@ export function VendorLeadDetailModal({
     motivationScore: leadData.motivationScore ? Number(leadData.motivationScore) : null,
     estimatedMonthlyRent: leadData.estimatedMonthlyRent ? Number(leadData.estimatedMonthlyRent) : null,
     estimatedAnnualRent: leadData.estimatedAnnualRent ? Number(leadData.estimatedAnnualRent) : null,
+    reservedAt: leadData.reservedAt ? new Date(leadData.reservedAt) : null,
+    reservation: leadData.reservation
+      ? {
+          ...leadData.reservation,
+          reservationFee: Number(leadData.reservation.reservationFee),
+          createdAt: new Date(leadData.reservation.createdAt),
+          updatedAt: new Date(leadData.reservation.updatedAt),
+        }
+      : null,
   })
 
   useEffect(() => {
@@ -233,6 +440,7 @@ export function VendorLeadDetailModal({
   }, [open])
 
   const currentLead = fullLead || transformLead(lead)
+  const parsedNotes = parseValidationNotes(currentLead.validationNotes)
 
   const handleSendManualMessage = async () => {
     if (!manualMessage.trim()) return
@@ -286,6 +494,36 @@ export function VendorLeadDetailModal({
       toast.error(error.message || "Failed to send message")
     } finally {
       setSendingMessage(false)
+    }
+  }
+
+  const handleFixPostcode = async () => {
+    if (!currentLead.propertyAddress) {
+      toast.error("Add a property address first")
+      return
+    }
+    setIsFixingPostcode(true)
+    try {
+      const res = await fetch(`/api/vendor-pipeline/leads/${currentLead.id}/fix-postcode`, {
+        method: "POST",
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? "Failed to resolve postcode")
+        return
+      }
+      if (data.corrected) {
+        // Update the edit form and the display
+        setEditForm((prev: any) => ({ ...prev, propertyPostcode: data.postcode }))
+        toast.success(`Postcode resolved: ${data.postcode} (via ${data.source.replace(/_/g, " ")})`)
+        onUpdate?.()
+      } else {
+        toast.info(`Postcode is already correct: ${data.postcode}`)
+      }
+    } catch {
+      toast.error("Failed to resolve postcode")
+    } finally {
+      setIsFixingPostcode(false)
     }
   }
 
@@ -579,229 +817,209 @@ export function VendorLeadDetailModal({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <DialogTitle>Vendor Lead Details</DialogTitle>
-                <div className="mt-2 flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-primary" />
-                    <span className="font-medium text-primary">
-                      {currentLead.propertyAddress
-                        ? currentLead.propertyPostcode &&
-                          !currentLead.propertyAddress.includes(currentLead.propertyPostcode)
-                          ? `${currentLead.propertyAddress}, ${currentLead.propertyPostcode}`
-                          : currentLead.propertyAddress
-                        : currentLead.propertyPostcode || "No Address"}
-                    </span>
-                  </div>
-                  {currentLead.vendorName && (
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                      {currentLead.vendorName}
-                    </Badge>
-                  )}
-                  {currentLead.askingPrice && (
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                      {formatCurrency(currentLead.askingPrice)}
-                    </Badge>
-                  )}
-                  {currentLead.dealId ? (
-                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                      ✓ Deal Created
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                      Vendor Pipeline
-                    </Badge>
-                  )}
-                </div>
+          <DialogHeader className="pb-2 border-b">
+            {/* ── Row 1: stage pill + action buttons ──────────────────────────── */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Badge className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border-0">
+                  {currentLead.pipelineStage.replace(/_/g, " ")}
+                </Badge>
+                {currentLead.dealId ? (
+                  <Badge className="text-[11px] bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-950/30 dark:text-emerald-400">
+                    <CheckCircle2 className="h-2.5 w-2.5 mr-1" />
+                    Deal Created
+                  </Badge>
+                ) : null}
               </div>
-              <div className="flex gap-2 flex-shrink-0">
+
+              <div className="flex items-center gap-1.5">
                 {!isEditing ? (
                   <>
-                    {templates.length > 0 && (
-                      <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                        <SelectTrigger className="w-[200px]">
-                          <SelectValue placeholder="Select template" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {templates.filter((t: any) => t.isActive).map((template: any) => (
-                            <SelectItem key={template.id} value={template.id}>
-                              {template.name} {template.isDefault && "(Default)"}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                    <TooltipProvider>
+                    {/* Template selector + Pack button — grouped */}
+                    <div className="flex items-center rounded-md border bg-background overflow-hidden">
+                      {templates.length > 0 && (
+                        <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                          <SelectTrigger className="h-8 w-36 border-0 border-r rounded-none shadow-none focus:ring-0 text-xs pl-2.5 pr-1">
+                            <SelectValue placeholder="Template" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {templates.filter((t: any) => t.isActive).map((template: any) => (
+                              <SelectItem key={template.id} value={template.id}>
+                                {template.name}{template.isDefault ? " ✓" : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <TooltipProvider delayDuration={300}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="relative">
+                              <Button
+                                size="sm"
+                                className="h-8 rounded-none border-0 gap-1.5 text-xs px-3"
+                                onClick={handleGenerateInvestorPack}
+                                disabled={isGeneratingPack || !currentLead.propertyAddress || !currentLead.askingPrice || !selectedTemplateId}
+                              >
+                                {isGeneratingPack
+                                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  : <FileDown className="h-3.5 w-3.5" />}
+                                {isGeneratingPack ? "Generating…" : "Investor Pack"}
+                              </Button>
+                              {currentLead.investorPackGenerationCount != null && currentLead.investorPackGenerationCount > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 bg-green-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center leading-none z-10">
+                                  {currentLead.investorPackGenerationCount}
+                                </span>
+                              )}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="text-xs">
+                            <p suppressHydrationWarning>
+                              {currentLead.investorPackGenerationCount && currentLead.investorPackGenerationCount > 0
+                                ? `Generated ${currentLead.investorPackGenerationCount}×${currentLead.lastInvestorPackGeneratedAt ? ` · Last: ${formatTimeAgo(currentLead.lastInvestorPackGeneratedAt)}` : ""}`
+                                : "Generate professional investor pack PDF"}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+
+                    {/* Edit — icon button */}
+                    <TooltipProvider delayDuration={300}>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <div className="relative">
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={handleGenerateInvestorPack}
-                              disabled={isGeneratingPack || !currentLead.propertyAddress || !currentLead.askingPrice || !selectedTemplateId}
-                            >
-                              {isGeneratingPack ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Generating...
-                                </>
-                              ) : (
-                                <>
-                                  <FileDown className="h-4 w-4 mr-2" />
-                                  Investor Pack
-                                </>
-                              )}
-                            </Button>
-                            {currentLead.investorPackGenerationCount && currentLead.investorPackGenerationCount > 0 && (
-                              <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                                {currentLead.investorPackGenerationCount}
-                              </span>
-                            )}
-                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={handleEdit}
+                            disabled={isSaving}
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
                         </TooltipTrigger>
-                        <TooltipContent>
-                          <p suppressHydrationWarning>
-                            {currentLead.investorPackGenerationCount && currentLead.investorPackGenerationCount > 0
-                              ? `Generated ${currentLead.investorPackGenerationCount} time${currentLead.investorPackGenerationCount > 1 ? "s" : ""}${
-                                  currentLead.lastInvestorPackGeneratedAt
-                                    ? ` • Last: ${formatTimeAgo(currentLead.lastInvestorPackGeneratedAt)}`
-                                    : ""
-                                }`
-                              : "Generate professional investor pack PDF"}
-                          </p>
-                        </TooltipContent>
+                        <TooltipContent side="bottom" className="text-xs">Edit lead</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    <Button variant="outline" size="sm" onClick={handleEdit} disabled={isSaving}>
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={handleDelete}
-                      disabled={isSaving || isDeleting}
-                    >
-                      {isDeleting ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4 mr-2" />
-                      )}
-                      Delete
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-                      <X className="h-4 w-4 mr-2" />
-                      Close
-                    </Button>
+
+                    {/* Delete — icon button, red tint */}
+                    <TooltipProvider delayDuration={300}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 dark:border-red-900 dark:hover:bg-red-950/30"
+                            onClick={handleDelete}
+                            disabled={isSaving || isDeleting}
+                          >
+                            {isDeleting
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : <Trash2 className="h-3.5 w-3.5" />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs text-red-600">Delete lead</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </>
                 ) : (
                   <>
-                    <Button variant="outline" size="sm" onClick={handleCancelEdit} disabled={isSaving}>
-                      <X className="h-4 w-4 mr-2" />
+                    <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleCancelEdit} disabled={isSaving}>
+                      <X className="h-3.5 w-3.5" />
                       Cancel
                     </Button>
-                    <Button size="sm" onClick={handleSave} disabled={isSaving}>
-                      {isSaving ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Save className="h-4 w-4 mr-2" />
-                      )}
-                      Save
+                    <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={handleSave} disabled={isSaving}>
+                      {isSaving
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <Save className="h-3.5 w-3.5" />}
+                      Save changes
                     </Button>
                   </>
                 )}
               </div>
             </div>
+
+            {/* ── Row 2: property address as title ────────────────────────────── */}
+            <DialogTitle className="mt-3 flex items-start gap-2 text-base font-semibold leading-snug">
+              <MapPin className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+              <span>{cleanPropertyAddress(currentLead.propertyAddress, currentLead.propertyPostcode)}</span>
+            </DialogTitle>
+
+            {/* ── Row 3: meta chips ────────────────────────────────────────────── */}
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {currentLead.vendorName && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/20 dark:text-blue-300 dark:border-blue-800 rounded-md px-2 py-0.5">
+                  <User className="h-3 w-3" />
+                  {currentLead.vendorName}
+                </span>
+              )}
+              {currentLead.vendorPhone && (
+                <a
+                  href={`tel:${currentLead.vendorPhone}`}
+                  className="inline-flex items-center gap-1 text-[11px] font-medium bg-green-50 text-green-700 border border-green-200 dark:bg-green-950/20 dark:text-green-300 dark:border-green-800 rounded-md px-2 py-0.5 hover:bg-green-100 transition-colors"
+                >
+                  <Phone className="h-3 w-3" />
+                  {currentLead.vendorPhone}
+                </a>
+              )}
+              {currentLead.askingPrice && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-green-50 text-green-800 border border-green-300 dark:bg-green-950/20 dark:text-green-300 dark:border-green-700 rounded-md px-2 py-0.5">
+                  <PoundSterling className="h-3 w-3" />
+                  {formatCurrency(currentLead.askingPrice)}
+                </span>
+              )}
+              {currentLead.bmvScore !== null && (
+                <span className={cn(
+                  "inline-flex items-center gap-1 text-[11px] font-semibold rounded-md px-2 py-0.5 border",
+                  Number(currentLead.bmvScore) >= 15
+                    ? "bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/20 dark:text-emerald-300"
+                    : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-300"
+                )}>
+                  <TrendingUp className="h-3 w-3" />
+                  {Number(currentLead.bmvScore).toFixed(1)}% BMV
+                </span>
+              )}
+              {currentLead.validationPassed !== null && (
+                <span className={cn(
+                  "inline-flex items-center gap-1 text-[11px] font-medium rounded-md px-2 py-0.5 border",
+                  currentLead.validationPassed
+                    ? "bg-green-50 text-green-700 border-green-200"
+                    : "bg-red-50 text-red-600 border-red-200"
+                )}>
+                  {currentLead.validationPassed
+                    ? <CheckCircle2 className="h-3 w-3" />
+                    : <XCircle className="h-3 w-3" />}
+                  {currentLead.validationPassed ? "Validated" : "Not Validated"}
+                </span>
+              )}
+            </div>
           </DialogHeader>
 
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="details" className="relative">
+              Details
+              {currentLead.reservation && (
+                <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-violet-500 align-middle" />
+              )}
+            </TabsTrigger>
             <TabsTrigger value="validation">Validation</TabsTrigger>
             <TabsTrigger value="comparables">Comparables</TabsTrigger>
             <TabsTrigger value="offer">Offer</TabsTrigger>
-            <TabsTrigger value="conversation">Conversation</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="conversation" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>SMS Conversation History</CardTitle>
-                <CardDescription>
-                  {currentLead.smsMessages.length} message{currentLead.smsMessages.length !== 1 ? "s" : ""} exchanged
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4 max-h-96 overflow-y-auto p-4 bg-muted/30 rounded-lg">
-                  {currentLead.smsMessages.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">
-                      No messages yet
-                    </p>
-                  ) : (
-                    currentLead.smsMessages.map((message: any) => {
-                      const isOutbound = message.direction === "outbound"
-                      return (
-                        <div
-                          key={message.id}
-                          className={cn(
-                            "flex",
-                            isOutbound ? "justify-end" : "justify-start"
-                          )}
-                        >
-                          <div
-                            className={cn(
-                              "max-w-[75%] rounded-lg px-4 py-2",
-                              isOutbound
-                                ? "bg-blue-500 text-white"
-                                : "bg-white border"
-                            )}
-                          >
-                            <p className="text-sm whitespace-pre-wrap">{message.messageBody}</p>
-                            <p
-                              suppressHydrationWarning
-                              className={cn(
-                                "text-xs mt-1",
-                                isOutbound ? "text-blue-100" : "text-muted-foreground"
-                              )}
-                            >
-                              {formatTimeAgo(message.createdAt)}
-                            </p>
-                          </div>
-                        </div>
-                      )
-                    })
-                  )}
-                </div>
-
-                <div className="mt-4 space-y-2">
-                  <Textarea
-                    placeholder="Send a manual message to the vendor..."
-                    value={manualMessage}
-                    onChange={(e) => setManualMessage(e.target.value)}
-                    rows={3}
-                  />
-                  <Button
-                    onClick={handleSendManualMessage}
-                    disabled={!manualMessage.trim() || sendingMessage}
-                    className="w-full"
-                  >
-                    {sendingMessage ? "Sending..." : "Send Message"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           <TabsContent value="details" className="space-y-4">
+            {/* ── Row 1: Contact + Property ──────────────────────────────────────── */}
             <div className="grid grid-cols-2 gap-4">
+              {/* Contact */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Contact Details</CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <User className="h-4 w-4 text-primary" />
+                    Vendor Contact
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-2">
                   {isEditing ? (
                     <>
                       <div>
@@ -832,34 +1050,38 @@ export function VendorLeadDetailModal({
                     </>
                   ) : (
                     <>
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Name</p>
-                        <p className="text-base">{currentLead.vendorName}</p>
+                      <div className="flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-2">
+                        <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="font-semibold text-sm">{currentLead.vendorName}</span>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Phone</p>
-                        <p className="text-base flex items-center gap-2">
-                          <Phone className="h-4 w-4" />
-                          {currentLead.vendorPhone}
-                        </p>
-                      </div>
+                      <a
+                        href={`tel:${currentLead.vendorPhone}`}
+                        className="flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 px-3 py-2 hover:bg-green-100 dark:hover:bg-green-950/40 transition-colors"
+                      >
+                        <Phone className="h-4 w-4 text-green-700 dark:text-green-400 shrink-0" />
+                        <span className="font-medium text-sm text-green-800 dark:text-green-300">{currentLead.vendorPhone}</span>
+                      </a>
                       {currentLead.vendorEmail && (
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Email</p>
-                          <p className="text-base flex items-center gap-2">
-                            <Mail className="h-4 w-4" />
-                            {currentLead.vendorEmail}
-                          </p>
-                        </div>
+                        <a
+                          href={`mailto:${currentLead.vendorEmail}`}
+                          className="flex items-center gap-2 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 px-3 py-2 hover:bg-blue-100 dark:hover:bg-blue-950/40 transition-colors"
+                        >
+                          <Mail className="h-4 w-4 text-blue-700 dark:text-blue-400 shrink-0" />
+                          <span className="font-medium text-sm text-blue-800 dark:text-blue-300 truncate">{currentLead.vendorEmail}</span>
+                        </a>
                       )}
                     </>
                   )}
                 </CardContent>
               </Card>
 
+              {/* Property */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Property Information</CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Home className="h-4 w-4 text-primary" />
+                    Property
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {isEditing ? (
@@ -875,11 +1097,39 @@ export function VendorLeadDetailModal({
                       </div>
                       <div>
                         <Label htmlFor="propertyPostcode">Postcode</Label>
-                        <Input
-                          id="propertyPostcode"
-                          value={editForm.propertyPostcode || ""}
-                          onChange={(e) => setEditForm({ ...editForm, propertyPostcode: e.target.value })}
-                        />
+                        <div className="flex gap-2">
+                          <Input
+                            id="propertyPostcode"
+                            value={editForm.propertyPostcode || ""}
+                            onChange={(e) => setEditForm({ ...editForm, propertyPostcode: e.target.value })}
+                            placeholder="e.g. SA5 7AB"
+                          />
+                          <TooltipProvider delayDuration={200}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="shrink-0 px-3"
+                                  onClick={handleFixPostcode}
+                                  disabled={isFixingPostcode || !editForm.propertyAddress}
+                                >
+                                  {isFixingPostcode ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Search className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs max-w-[200px]">
+                                {editForm.propertyAddress
+                                  ? "Look up postcode from address using Land Registry data"
+                                  : "Add a property address first"}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                       </div>
                       <div>
                         <Label htmlFor="propertyType">Type</Label>
@@ -980,79 +1230,94 @@ export function VendorLeadDetailModal({
                   ) : (
                     <>
                       {(currentLead.propertyAddress || currentLead.propertyPostcode) && (
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Address</p>
-                          <p className="text-base flex items-center gap-2">
-                            <MapPin className="h-4 w-4" />
-                            {currentLead.propertyAddress
-                              ? currentLead.propertyPostcode &&
-                                !currentLead.propertyAddress.includes(currentLead.propertyPostcode)
-                                ? `${currentLead.propertyAddress}, ${currentLead.propertyPostcode}`
-                                : currentLead.propertyAddress
-                              : currentLead.propertyPostcode}
-                          </p>
+                        <div className="rounded-lg bg-muted/60 px-3 py-2">
+                          <div className="flex items-start gap-2">
+                            <MapPin className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                            <span className="font-medium text-sm leading-snug">
+                              {cleanPropertyAddress(currentLead.propertyAddress, currentLead.propertyPostcode)}
+                            </span>
+                          </div>
                         </div>
                       )}
-                      {currentLead.propertyType && (
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Type</p>
-                          <p className="text-base capitalize">{currentLead.propertyType}</p>
+                      {/* Spec chips */}
+                      {(currentLead.propertyType || currentLead.bedrooms != null || currentLead.bathrooms != null || currentLead.squareFeet || currentLead.condition) && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {currentLead.propertyType && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-muted px-2 py-0.5 rounded-full capitalize">
+                              <Building2 className="h-3 w-3" />
+                              {currentLead.propertyType}
+                            </span>
+                          )}
+                          {currentLead.bedrooms != null && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-muted px-2 py-0.5 rounded-full">
+                              <BedDouble className="h-3 w-3" />
+                              {currentLead.bedrooms} bed
+                            </span>
+                          )}
+                          {currentLead.bathrooms != null && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-muted px-2 py-0.5 rounded-full">
+                              <Bath className="h-3 w-3" />
+                              {currentLead.bathrooms} bath
+                            </span>
+                          )}
+                          {currentLead.squareFeet && (
+                            <span suppressHydrationWarning className="inline-flex items-center gap-1 text-[11px] font-medium bg-muted px-2 py-0.5 rounded-full">
+                              {currentLead.squareFeet.toLocaleString()} sq ft
+                            </span>
+                          )}
+                          {currentLead.condition && (
+                            <span className={cn(
+                              "inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full capitalize",
+                              currentLead.condition === "excellent" || currentLead.condition === "good"
+                                ? "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-300"
+                                : currentLead.condition === "needs_work" || currentLead.condition === "needs_modernisation"
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-red-100 text-red-800"
+                            )}>
+                              {currentLead.condition.replace(/_/g, " ")}
+                            </span>
+                          )}
                         </div>
                       )}
-                      {(currentLead.bedrooms != null || currentLead.bathrooms != null) && (
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Size</p>
-                          <p className="text-base">
-                            {currentLead.bedrooms ? `${currentLead.bedrooms} bed${currentLead.bedrooms > 1 ? "s" : ""}` : null}
-                            {currentLead.bedrooms && currentLead.bathrooms ? ", " : null}
-                            {currentLead.bathrooms ? `${currentLead.bathrooms} bath${currentLead.bathrooms > 1 ? "s" : ""}` : null}
-                          </p>
-                        </div>
-                      )}
-                      {currentLead.condition && (
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Condition</p>
-                          <p className="text-base capitalize">{currentLead.condition.replace(/_/g, " ")}</p>
-                        </div>
-                      )}
-                      {currentLead.squareFeet && (
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Square Footage</p>
-                          <p suppressHydrationWarning className="text-base">{currentLead.squareFeet.toLocaleString()} sq ft</p>
-                        </div>
-                      )}
+                      {/* Asking price highlight */}
                       {currentLead.askingPrice && (
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Asking Price</p>
-                          <p className="text-base font-semibold text-green-700">{formatCurrency(currentLead.askingPrice)}</p>
+                        <div className="flex items-center justify-between rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 px-3 py-2">
+                          <div className="flex items-center gap-1.5">
+                            <PoundSterling className="h-4 w-4 text-green-700 dark:text-green-400" />
+                            <span className="text-xs font-medium text-green-700 dark:text-green-400">Asking Price</span>
+                          </div>
+                          <span className="font-bold text-green-800 dark:text-green-300">{formatCurrency(currentLead.askingPrice)}</span>
                         </div>
                       )}
+                      {/* Rental estimate */}
                       {currentLead.estimatedMonthlyRent && (
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Rental Income</p>
-                          <p className="text-base font-semibold">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-xs text-muted-foreground">Rental estimate</span>
+                          <span className="font-medium text-sm">
                             {formatCurrency(currentLead.estimatedMonthlyRent)}/mo
-                            {currentLead.estimatedAnnualRent && (
-                              <span className="text-sm text-muted-foreground font-normal">
-                                {" "}({formatCurrency(currentLead.estimatedAnnualRent)}/yr)
+                            {currentLead.askingPrice && currentLead.estimatedAnnualRent && (
+                              <span className="text-xs text-green-600 dark:text-green-400 font-normal ml-1.5">
+                                ({((Number(currentLead.estimatedAnnualRent) / Number(currentLead.askingPrice)) * 100).toFixed(1)}% yield)
                               </span>
                             )}
-                          </p>
-                          {currentLead.askingPrice && currentLead.estimatedAnnualRent && (
-                            <p className="text-sm text-green-600 font-medium mt-1">
-                              {((Number(currentLead.estimatedAnnualRent) / Number(currentLead.askingPrice)) * 100).toFixed(2)}% gross yield
-                            </p>
-                          )}
+                          </span>
                         </div>
                       )}
                     </>
                   )}
                 </CardContent>
               </Card>
+            </div>
 
+            {/* ── Row 2: Seller Intel + Activity ─────────────────────────────────── */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Seller Intelligence */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Motivation & Timeline</CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                    Seller Intelligence
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {isEditing ? (
@@ -1129,21 +1394,19 @@ export function VendorLeadDetailModal({
                   ) : (
                     <>
                       {currentLead.motivationScore !== null && (
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-sm font-medium text-muted-foreground">Motivation Score</p>
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-muted-foreground">Motivation</span>
                             <Badge className={motivationBadgeColor(currentLead.motivationScore)}>
                               {currentLead.motivationScore}/10
                             </Badge>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div className="w-full bg-muted rounded-full h-1.5">
                             <div
                               className={cn(
-                                "h-2 rounded-full",
-                                currentLead.motivationScore >= 8
-                                  ? "bg-green-500"
-                                  : currentLead.motivationScore >= 5
-                                  ? "bg-yellow-500"
+                                "h-1.5 rounded-full transition-all",
+                                currentLead.motivationScore >= 8 ? "bg-green-500"
+                                  : currentLead.motivationScore >= 5 ? "bg-yellow-500"
                                   : "bg-red-500"
                               )}
                               style={{ width: `${(currentLead.motivationScore / 10) * 100}%` }}
@@ -1151,41 +1414,58 @@ export function VendorLeadDetailModal({
                           </div>
                         </div>
                       )}
-                      {currentLead.urgencyLevel && (
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Urgency</p>
-                          <p className="text-base capitalize">{currentLead.urgencyLevel}</p>
-                        </div>
-                      )}
-                      {currentLead.timelineDays && (
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Timeline</p>
-                          <p className="text-base flex items-center gap-2">
-                            <Clock className="h-4 w-4" />
-                            {currentLead.timelineDays} day{currentLead.timelineDays > 1 ? "s" : ""}
-                          </p>
-                        </div>
-                      )}
-                      {currentLead.reasonForSelling && (
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Reason for Selling</p>
-                          <p className="text-base capitalize">{currentLead.reasonForSelling.replace("_", " ")}</p>
-                        </div>
-                      )}
-                      {currentLead.competingOffers !== null && (
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Competing Offers</p>
-                          <p className="text-base">{currentLead.competingOffers ? "Yes" : "No"}</p>
-                        </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {currentLead.urgencyLevel && (
+                          <TooltipProvider delayDuration={200}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className={cn(
+                                  "inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full cursor-default",
+                                  currentLead.urgencyLevel === "urgent" ? "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-300"
+                                    : currentLead.urgencyLevel === "quick" ? "bg-orange-100 text-orange-800"
+                                    : currentLead.urgencyLevel === "moderate" ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-muted text-muted-foreground"
+                                )}>
+                                  <AlertTriangle className="h-2.5 w-2.5" />
+                                  {currentLead.urgencyLevel}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="text-xs">Urgency level</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        {currentLead.timelineDays && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                            <Clock className="h-2.5 w-2.5" />
+                            {currentLead.timelineDays}d timeline
+                          </span>
+                        )}
+                        {currentLead.reasonForSelling && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-muted text-muted-foreground px-2 py-0.5 rounded-full capitalize">
+                            {currentLead.reasonForSelling.replace(/_/g, " ")}
+                          </span>
+                        )}
+                        {currentLead.competingOffers && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                            ⚠ Competing offers
+                          </span>
+                        )}
+                      </div>
+                      {currentLead.motivationScore === null && !currentLead.urgencyLevel && !currentLead.reasonForSelling && (
+                        <p className="text-xs text-muted-foreground italic">No seller intelligence gathered yet</p>
                       )}
                     </>
                   )}
                 </CardContent>
               </Card>
 
+              {/* Activity */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Activity</CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-primary" />
+                    Activity
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {isEditing ? (
@@ -1217,33 +1497,197 @@ export function VendorLeadDetailModal({
                       </Select>
                     </div>
                   ) : (
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Stage</p>
-                      <Badge className="mt-1">{currentLead.pipelineStage}</Badge>
-                    </div>
-                  )}
-                  {currentLead.conversationStartedAt && (
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Conversation Started</p>
-                      <p className="text-base">{formatDate(currentLead.conversationStartedAt)}</p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Last Contact</p>
-                    <p suppressHydrationWarning className="text-base">{formatTimeAgo(currentLead.lastContactAt)}</p>
-                  </div>
-                  {currentLead.retryCount > 0 && (
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Retry Count</p>
-                      <p className="text-base">{currentLead.retryCount}</p>
-                    </div>
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground">Stage</span>
+                        <Badge className="text-xs">{currentLead.pipelineStage.replace(/_/g, " ")}</Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Clock className="h-3.5 w-3.5" />
+                          <span className="text-xs">Last contact</span>
+                        </div>
+                        <span suppressHydrationWarning className="text-xs font-medium">{formatTimeAgo(currentLead.lastContactAt)}</span>
+                      </div>
+                      {currentLead.conversationStartedAt && (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-muted-foreground">
+                            <MessageSquare className="h-3.5 w-3.5" />
+                            <span className="text-xs">Conv. started</span>
+                          </div>
+                          <span className="text-xs">{formatDate(currentLead.conversationStartedAt)}</span>
+                        </div>
+                      )}
+                      {currentLead.retryCount > 0 && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">Follow-up attempts</span>
+                          <Badge variant="outline" className="text-xs">{currentLead.retryCount}</Badge>
+                        </div>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>
             </div>
+
+            {/* ── Investor Reservation ─────────────────────────────────────────────── */}
+            {(() => {
+              const statusLabel: Record<string, string> = {
+                pending: "Pending", pack_sent: "Pack Sent", fee_pending: "Fee Requested",
+                fee_paid: "Fee Paid", proof_of_funds_pending: "POF Requested",
+                pof_received: "POF Received", verified: "POF Verified",
+                lock_out_sent: "Lock-out Sent", locked_out: "Lock-out Signed",
+                completed: "Completed", cancelled: "Cancelled",
+              }
+              const statusColor: Record<string, string> = {
+                pending: "bg-gray-100 text-gray-700 border-gray-200",
+                pack_sent: "bg-blue-100 text-blue-700 border-blue-200",
+                fee_pending: "bg-yellow-100 text-yellow-700 border-yellow-200",
+                fee_paid: "bg-emerald-100 text-emerald-700 border-emerald-200",
+                proof_of_funds_pending: "bg-orange-100 text-orange-700 border-orange-200",
+                pof_received: "bg-sky-100 text-sky-700 border-sky-200",
+                verified: "bg-green-100 text-green-700 border-green-200",
+                lock_out_sent: "bg-purple-100 text-purple-700 border-purple-200",
+                locked_out: "bg-violet-100 text-violet-700 border-violet-200",
+                completed: "bg-emerald-100 text-emerald-700 border-emerald-200",
+              }
+              const res = currentLead.reservation
+              return (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <KeyRound className="h-4 w-4 text-primary" />
+                        Investor Reservation
+                      </CardTitle>
+                      {res && (
+                        <Badge variant="outline" className={cn("text-xs border", statusColor[res.status] || "")}>
+                          {statusLabel[res.status] || res.status}
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {res ? (() => {
+                      const inv = res.investor
+                      const investorName = [inv.user.firstName, inv.user.lastName].filter(Boolean).join(" ") || inv.user.email
+                      const steps = [
+                        "pending", "pack_sent", "fee_pending", "fee_paid",
+                        "proof_of_funds_pending", "pof_received", "verified",
+                        "lock_out_sent", "locked_out", "completed",
+                      ]
+                      const currentStep = steps.indexOf(res.status)
+                      return (
+                        <div className="space-y-3">
+                          <div className="flex gap-0.5">
+                            {steps.map((step, i) => (
+                              <div
+                                key={step}
+                                className={cn(
+                                  "h-1.5 flex-1 rounded-full transition-colors",
+                                  i < currentStep ? "bg-violet-500" : i === currentStep ? "bg-violet-400" : "bg-muted"
+                                )}
+                              />
+                            ))}
+                          </div>
+                          <div className="flex justify-between text-[10px] text-muted-foreground">
+                            <span>Pending</span>
+                            <span>Step {Math.max(currentStep + 1, 1)} / {steps.length}</span>
+                            <span>Completed</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-3 pt-1 text-sm border-t">
+                            <div>
+                              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Investor</p>
+                              <p className="font-medium text-xs truncate">{investorName}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Contact</p>
+                              <a href={`mailto:${inv.user.email}`} className="text-blue-600 hover:underline text-xs truncate block">{inv.user.email}</a>
+                              {inv.user.phone && (
+                                <a href={`tel:${inv.user.phone}`} className="text-blue-600 hover:underline text-xs">{inv.user.phone}</a>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Reservation Fee</p>
+                              <p className="font-semibold text-emerald-700">£{res.reservationFee.toLocaleString()}</p>
+                              <p suppressHydrationWarning className="text-[10px] text-muted-foreground mt-0.5">
+                                {currentLead.reservedAt ? formatDate(currentLead.reservedAt) : formatDate(res.createdAt)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })() : (
+                      <div className="flex items-center gap-2 text-muted-foreground py-1">
+                        <KeyRound className="h-4 w-4 shrink-0" />
+                        <p className="text-xs">No investor reservation — will appear once an investor reserves the linked deal.</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })()}
+
+            {/* ── Conversation ─────────────────────────────────────────────────────── */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-primary" />
+                    Conversation
+                  </CardTitle>
+                  <Badge variant="secondary" className="text-xs">
+                    {currentLead.smsMessages.length} message{currentLead.smsMessages.length !== 1 ? "s" : ""}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 max-h-80 overflow-y-auto p-3 bg-muted/30 rounded-lg mb-4">
+                  {currentLead.smsMessages.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-6 text-sm">No messages yet</p>
+                  ) : (
+                    currentLead.smsMessages.map((message: any) => {
+                      const isOutbound = message.direction === "outbound"
+                      return (
+                        <div key={message.id} className={cn("flex", isOutbound ? "justify-end" : "justify-start")}>
+                          <div className={cn(
+                            "max-w-[75%] rounded-lg px-3 py-2",
+                            isOutbound ? "bg-blue-500 text-white" : "bg-white border"
+                          )}>
+                            <p className="text-sm whitespace-pre-wrap">{message.messageBody}</p>
+                            <p
+                              suppressHydrationWarning
+                              className={cn("text-xs mt-1", isOutbound ? "text-blue-100" : "text-muted-foreground")}
+                            >
+                              {formatTimeAgo(message.createdAt)}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Textarea
+                    placeholder="Send a manual message to the vendor..."
+                    value={manualMessage}
+                    onChange={(e) => setManualMessage(e.target.value)}
+                    rows={3}
+                  />
+                  <Button
+                    onClick={handleSendManualMessage}
+                    disabled={!manualMessage.trim() || sendingMessage}
+                    className="w-full"
+                  >
+                    {sendingMessage ? "Sending..." : "Send Message"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="validation" className="space-y-4">
+            {/* ── Header card: title + Calculate BMV action ────────────────────── */}
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -1252,7 +1696,6 @@ export function VendorLeadDetailModal({
                     <CardDescription>
                       {currentLead.validatedAt ? `Validated on ${formatDate(currentLead.validatedAt)}` : "Not yet validated"}
                     </CardDescription>
-                    {/* Land Registry indicator */}
                     {landRegistryUsed && (
                       <div className="flex items-center gap-2 mt-2">
                         <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 border gap-1 font-medium">
@@ -1313,177 +1756,531 @@ export function VendorLeadDetailModal({
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {isEditing ? (
-                  <>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="estimatedMarketValue">Estimated Market Value (£)</Label>
-                          <Input
-                            id="estimatedMarketValue"
-                            type="number"
-                            value={editForm.estimatedMarketValue || ""}
-                            onChange={(e) => setEditForm({ ...editForm, estimatedMarketValue: e.target.value })}
-                            placeholder="Auto-estimated if blank"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="estimatedRefurbCost">Estimated Refurb Cost (£)</Label>
-                          <Input
-                            id="estimatedRefurbCost"
-                            type="number"
-                            value={editForm.estimatedRefurbCost || ""}
-                            onChange={(e) => setEditForm({ ...editForm, estimatedRefurbCost: e.target.value })}
-                            placeholder="0"
-                          />
-                        </div>
-                      </div>
-                      <div className="bg-amber-50 border border-amber-400 p-4 rounded-lg text-sm text-amber-900">
-                        <p className="font-bold mb-1">⚠️ Important: After Saving Edits</p>
-                        <p className="mb-2">
-                          If you change asking price, market value, condition, motivation, or refurb costs, you must click <strong>&quot;Calculate BMV&quot;</strong> button in the Validation tab to recalculate the deal metrics.
-                        </p>
-                        <p className="text-xs">
-                          BMV calculations are not automatic to give you full control over when they&apos;re performed.
-                        </p>
-                      </div>
-                      <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg text-sm text-blue-700">
-                        <p className="font-medium mb-1">How BMV Calculation Works</p>
-                        <p className="mb-2">
-                          The system calculates BMV (Below Market Value) percentage and offer amount based on:
-                        </p>
-                        <ul className="list-disc list-inside space-y-1 text-xs">
-                          <li><strong>Market Value:</strong> Estimated from asking price if not provided</li>
-                          <li><strong>BMV %:</strong> (Market Value - Asking Price) / Market Value × 100</li>
-                          <li><strong>Offer Amount:</strong> 70-85% of market value (adjusted by motivation, condition, urgency)</li>
-                          <li><strong>Profit:</strong> Market Value - Offer Amount - Refurb Cost</li>
-                        </ul>
-                        <p className="mt-2 font-medium">
-                          To pass validation: BMV ≥ 15% AND Profit ≥ £10,000
-                        </p>
-                      </div>
+              {isEditing && (
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="estimatedMarketValue">Estimated Market Value (£)</Label>
+                      <Input
+                        id="estimatedMarketValue"
+                        type="number"
+                        value={editForm.estimatedMarketValue || ""}
+                        onChange={(e) => setEditForm({ ...editForm, estimatedMarketValue: e.target.value })}
+                        placeholder="Auto-estimated if blank"
+                      />
                     </div>
-                  </>
-                ) : (
-                  <>
-                    {currentLead.bmvScore === null && currentLead.askingPrice !== null && (
-                      <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg text-sm text-amber-800 mb-4">
-                        <p className="font-medium mb-1">📊 BMV Not Calculated</p>
-                        <p>
-                          Click &quot;Calculate BMV&quot; above to analyze this deal. The system will estimate market value based on asking price, motivation, and property condition if not already provided.
-                        </p>
-                      </div>
-                    )}
-                    {currentLead.bmvScore !== null && currentLead.validatedAt && (
-                      <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg text-sm text-blue-800 mb-4">
-                        <p className="font-medium mb-1">ℹ️ Last Calculated: {formatDate(currentLead.validatedAt)}</p>
-                        <p>
-                          If you&apos;ve edited asking price, market value, condition, motivation, or refurb costs since this time, click &quot;Calculate BMV&quot; above to refresh these metrics.
-                        </p>
-                      </div>
-                    )}
-                    {!currentLead.askingPrice && (
-                      <div className="bg-red-50 border border-red-200 p-4 rounded-lg text-sm text-red-800 mb-4">
-                        <p className="font-medium mb-1">Missing Asking Price</p>
-                        <p>
-                          Add an asking price in the Details tab before calculating BMV.
-                        </p>
-                      </div>
-                    )}
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-3 gap-4">
-                        {currentLead.estimatedMarketValue !== null && (
-                          <div>
-                            <p className="text-sm font-medium text-muted-foreground">Estimated Market Value</p>
-                            <p className="text-2xl font-bold">{formatCurrency(currentLead.estimatedMarketValue)}</p>
-                          </div>
-                        )}
-                        {currentLead.askingPrice !== null && (
-                          <div>
-                            <p className="text-sm font-medium text-muted-foreground">Asking Price</p>
-                            <p className="text-2xl font-bold">{formatCurrency(currentLead.askingPrice)}</p>
-                          </div>
-                        )}
-                        {currentLead.bmvScore !== null && (
-                          <div>
-                            <p className="text-sm font-medium text-muted-foreground">BMV Percentage</p>
-                            <p className={`text-2xl font-bold flex items-center gap-2 ${Number(currentLead.bmvScore) >= 15 ? "text-green-600" : "text-red-600"}`}>
-                              <TrendingUp className="h-5 w-5" />
-                              {Number(currentLead.bmvScore).toFixed(1)}%
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {Number(currentLead.bmvScore) >= 15 ? "Meets 15% threshold ✓" : "Below 15% threshold ✗"}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                      {currentLead.offerAmount !== null && (
-                        <div className="border-t pt-4">
-                          <p className="text-sm font-medium text-muted-foreground mb-3">Offer Calculation Breakdown</p>
-                          <div className="grid grid-cols-3 gap-4">
-                            <div>
-                              <p className="text-sm font-medium text-muted-foreground">Calculated Offer</p>
-                              <p className="text-xl font-bold">{formatCurrency(currentLead.offerAmount)}</p>
-                              {currentLead.offerPercentage && (
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {Number(currentLead.offerPercentage).toFixed(1)}% of market value
-                                </p>
-                              )}
-                            </div>
-                            {currentLead.estimatedRefurbCost !== null && currentLead.estimatedRefurbCost > 0 && (
-                              <div>
-                                <p className="text-sm font-medium text-muted-foreground">Less: Refurb Cost</p>
-                                <p className="text-xl font-bold text-red-600">-{formatCurrency(currentLead.estimatedRefurbCost)}</p>
-                              </div>
-                            )}
-                            {currentLead.profitPotential !== null && (
-                              <div>
-                                <p className="text-sm font-medium text-muted-foreground">Net Profit Potential</p>
-                                <p className={`text-xl font-bold ${Number(currentLead.profitPotential) >= 10000 ? "text-green-600" : "text-red-600"}`}>
-                                  {formatCurrency(currentLead.profitPotential)}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {Number(currentLead.profitPotential) >= 10000 ? "Meets £10k threshold ✓" : "Below £10k threshold ✗"}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-
-                {currentLead.validationPassed !== null && (
-                  <div className="pt-4 border-t">
-                    <div className="flex items-center gap-2">
-                      {currentLead.validationPassed ? (
-                        <>
-                          <CheckCircle2 className="h-5 w-5 text-green-600" />
-                          <span className="font-semibold text-green-600">Validation Passed</span>
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="h-5 w-5 text-red-600" />
-                          <span className="font-semibold text-red-600">Validation Failed</span>
-                        </>
-                      )}
+                    <div>
+                      <Label htmlFor="estimatedRefurbCost">Estimated Refurb Cost (£)</Label>
+                      <Input
+                        id="estimatedRefurbCost"
+                        type="number"
+                        value={editForm.estimatedRefurbCost || ""}
+                        onChange={(e) => setEditForm({ ...editForm, estimatedRefurbCost: e.target.value })}
+                        placeholder="0"
+                      />
                     </div>
                   </div>
-                )}
-
-                {currentLead.validationNotes && (
-                  <div className="pt-4 border-t">
-                    <p className="text-sm font-medium text-muted-foreground mb-2">Validation Notes</p>
-                    <p className="text-sm whitespace-pre-wrap bg-muted p-3 rounded-lg">
-                      {currentLead.validationNotes}
+                  <div className="bg-amber-50 border border-amber-400 p-4 rounded-lg text-sm text-amber-900">
+                    <p className="font-bold mb-1">⚠️ Important: After Saving Edits</p>
+                    <p className="mb-2">
+                      If you change asking price, market value, condition, motivation, or refurb costs, you must click <strong>&quot;Calculate BMV&quot;</strong> to recalculate the deal metrics.
+                    </p>
+                    <p className="text-xs">
+                      BMV calculations are not automatic to give you full control over when they&apos;re performed.
                     </p>
                   </div>
-                )}
-              </CardContent>
+                  <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg text-sm text-blue-700">
+                    <p className="font-medium mb-1">How BMV Calculation Works</p>
+                    <ul className="list-disc list-inside space-y-1 text-xs mt-2">
+                      <li><strong>Market Value:</strong> Estimated from asking price if not provided</li>
+                      <li><strong>BMV %:</strong> (Market Value − Asking Price) / Market Value × 100</li>
+                      <li><strong>Offer Amount:</strong> 70–85% of market value (adjusted by motivation, condition, urgency)</li>
+                      <li><strong>Profit:</strong> Market Value − Offer Amount − Refurb Cost</li>
+                    </ul>
+                    <p className="mt-2 font-medium">To pass validation: BMV ≥ 15% AND Profit ≥ £10,000</p>
+                  </div>
+                </CardContent>
+              )}
             </Card>
+
+            {/* ── Empty state: missing asking price ────────────────────────────── */}
+            {!isEditing && !currentLead.askingPrice && (
+              <div className="flex flex-col items-center justify-center py-12 gap-3 rounded-xl border-2 border-dashed border-muted text-center">
+                <PoundSterling className="h-10 w-10 text-muted-foreground/30" />
+                <p className="font-medium text-muted-foreground">Missing Asking Price</p>
+                <p className="text-sm text-muted-foreground max-w-xs">Add an asking price in the Details tab before calculating BMV.</p>
+              </div>
+            )}
+
+            {/* ── Empty state: not yet calculated ──────────────────────────────── */}
+            {!isEditing && currentLead.askingPrice !== null && currentLead.bmvScore === null && (
+              <div className="flex flex-col items-center justify-center py-12 gap-3 rounded-xl border-2 border-dashed border-muted text-center">
+                <BarChart3 className="h-10 w-10 text-muted-foreground/30" />
+                <p className="font-medium text-muted-foreground">BMV Not Yet Calculated</p>
+                <p className="text-sm text-muted-foreground max-w-xs">
+                  Click &quot;Calculate BMV&quot; above to analyse this deal and get offer recommendations.
+                </p>
+              </div>
+            )}
+
+            {/* ── Full results (only when calculated and not editing) ───────────── */}
+            {!isEditing && currentLead.bmvScore !== null && (
+              <>
+                {/* Stale data notice */}
+                {currentLead.validatedAt && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5 px-1">
+                    <Clock className="h-3 w-3 shrink-0" />
+                    Last calculated {formatDate(currentLead.validatedAt)} — recalculate if you&apos;ve changed property details.
+                  </p>
+                )}
+
+                {/* ── Status Banner ─────────────────────────────────────────────── */}
+                <div className={cn(
+                  "rounded-xl p-5 border-2",
+                  currentLead.validationPassed
+                    ? "bg-green-50 border-green-300 dark:bg-green-950/30 dark:border-green-700"
+                    : "bg-red-50 border-red-300 dark:bg-red-950/30 dark:border-red-700"
+                )}>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      {currentLead.validationPassed ? (
+                        <CheckCircle2 className="h-9 w-9 text-green-600 shrink-0" />
+                      ) : (
+                        <XCircle className="h-9 w-9 text-red-600 shrink-0" />
+                      )}
+                      <div>
+                        <p className={cn("text-xl font-bold", currentLead.validationPassed ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400")}>
+                          {currentLead.validationPassed ? "Validation Passed" : "Validation Failed"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {currentLead.validationPassed
+                            ? "This deal meets minimum investment criteria"
+                            : "This deal does not meet minimum investment criteria"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6 shrink-0">
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">BMV</p>
+                        <p className={cn("text-2xl font-bold", Number(currentLead.bmvScore) >= 15 ? "text-green-600" : "text-red-600")}>
+                          {Number(currentLead.bmvScore).toFixed(1)}%
+                        </p>
+                      </div>
+                      {currentLead.offerAmount !== null && (
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Our Offer</p>
+                          <p className="text-2xl font-bold">{formatCurrency(currentLead.offerAmount)}</p>
+                        </div>
+                      )}
+                      {currentLead.profitPotential !== null && (
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Net Profit</p>
+                          <p className={cn("text-2xl font-bold", Number(currentLead.profitPotential) >= 10000 ? "text-green-600" : "text-amber-600")}>
+                            {formatCurrency(currentLead.profitPotential)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Key Metrics Row ────────────────────────────────────────────── */}
+                <div className="grid grid-cols-3 gap-4">
+                  {currentLead.estimatedMarketValue !== null && (
+                    <Card>
+                      <CardContent className="pt-5">
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <TrendingUp className="h-3.5 w-3.5 text-blue-500" />
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Market Value</p>
+                        </div>
+                        <p className="text-2xl font-bold">{formatCurrency(currentLead.estimatedMarketValue)}</p>
+                        {parsedNotes?.marketValueSource?.count && (
+                          <p className="text-xs text-muted-foreground mt-1.5">{parsedNotes.marketValueSource.count} comparable sales</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+                  {currentLead.askingPrice !== null && (
+                    <Card>
+                      <CardContent className="pt-5">
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <PoundSterling className="h-3.5 w-3.5 text-muted-foreground" />
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Asking Price</p>
+                        </div>
+                        <p className="text-2xl font-bold">{formatCurrency(currentLead.askingPrice)}</p>
+                        {currentLead.estimatedMarketValue !== null && (
+                          <p className="text-xs text-muted-foreground mt-1.5">
+                            £{(currentLead.estimatedMarketValue - currentLead.askingPrice).toLocaleString()} below market
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+                  <Card className={cn("border", Number(currentLead.bmvScore) >= 15 ? "border-green-300" : "border-red-300")}>
+                    <CardContent className="pt-5">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <Percent className="h-3.5 w-3.5 text-muted-foreground" />
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">BMV Discount</p>
+                      </div>
+                      <p className={cn("text-2xl font-bold", Number(currentLead.bmvScore) >= 15 ? "text-green-600" : "text-red-600")}>
+                        {Number(currentLead.bmvScore).toFixed(1)}%
+                      </p>
+                      <div className="flex items-center gap-1 mt-1.5">
+                        {Number(currentLead.bmvScore) >= 15 ? (
+                          <CheckCircle2 className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <XCircle className="h-3 w-3 text-red-500" />
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          {Number(currentLead.bmvScore) >= 15
+                            ? "Meets 15% threshold"
+                            : `${(15 - Number(currentLead.bmvScore)).toFixed(1)}% below threshold`}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* ── Offer + Profit Cards ───────────────────────────────────────── */}
+                {currentLead.offerAmount !== null && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                          <Calculator className="h-4 w-4 text-muted-foreground" />
+                          Offer Calculation
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2.5">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">Market Value</span>
+                          <span className="font-medium">{formatCurrency(currentLead.estimatedMarketValue)}</span>
+                        </div>
+                        {currentLead.offerPercentage !== null && (
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">
+                              Offer at {Number(currentLead.offerPercentage).toFixed(1)}% of MV
+                            </span>
+                            <span className="font-medium text-blue-600">{formatCurrency(currentLead.offerAmount)}</span>
+                          </div>
+                        )}
+                        {currentLead.estimatedRefurbCost !== null && currentLead.estimatedRefurbCost > 0 && (
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">Refurb Allowance</span>
+                            <span className="font-medium text-orange-600">−{formatCurrency(currentLead.estimatedRefurbCost)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center pt-2 border-t">
+                          <span className="text-sm font-semibold">Recommended Offer</span>
+                          <span className="font-bold">{formatCurrency(currentLead.offerAmount)}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {currentLead.profitPotential !== null && (
+                      <Card className={cn("border", Number(currentLead.profitPotential) >= 10000 ? "border-green-300" : "border-red-300")}>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                            <Target className="h-4 w-4 text-muted-foreground" />
+                            Profit Analysis
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2.5">
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">Market Value</span>
+                            <span className="font-medium">{formatCurrency(currentLead.estimatedMarketValue)}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">Less: Our Offer</span>
+                            <span className="font-medium text-red-600">−{formatCurrency(currentLead.offerAmount)}</span>
+                          </div>
+                          {currentLead.estimatedRefurbCost !== null && currentLead.estimatedRefurbCost > 0 && (
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-muted-foreground">Less: Refurb Cost</span>
+                              <span className="font-medium text-red-600">−{formatCurrency(currentLead.estimatedRefurbCost)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center pt-2 border-t">
+                            <span className="text-sm font-semibold">Net Profit Potential</span>
+                            <div className="text-right">
+                              <p className={cn("font-bold", Number(currentLead.profitPotential) >= 10000 ? "text-green-600" : "text-red-600")}>
+                                {formatCurrency(currentLead.profitPotential)}
+                              </p>
+                              <div className="flex items-center justify-end gap-1 mt-0.5">
+                                {Number(currentLead.profitPotential) >= 10000 ? (
+                                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                ) : (
+                                  <XCircle className="h-3 w-3 text-red-500" />
+                                )}
+                                <p className="text-xs text-muted-foreground">
+                                  {Number(currentLead.profitPotential) >= 10000 ? "Meets £10k threshold" : "Below £10k threshold"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Strategy Analysis ─────────────────────────────────────────── */}
+                {parsedNotes?.strategyData && (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-semibold flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                          <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                          Investment Strategy Analysis
+                        </span>
+                        <Badge className="bg-blue-100 text-blue-800 border-blue-300 border text-xs font-semibold">
+                          Recommended: {parsedNotes.strategyData.strategies.find(s => s.key === parsedNotes.strategyData!.recommended)?.name ?? parsedNotes.strategyData.recommended}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 gap-3">
+                        {parsedNotes.strategyData.strategies.map((s) => {
+                          const isRec = s.key === parsedNotes.strategyData!.recommended
+                          return (
+                            <div
+                              key={s.key}
+                              className={cn(
+                                "rounded-lg border p-3 flex flex-col gap-1.5",
+                                isRec
+                                  ? "border-blue-300 bg-blue-50 dark:bg-blue-950/20"
+                                  : s.viable
+                                  ? "border-green-200 bg-green-50/50 dark:bg-green-950/10"
+                                  : "border-muted bg-muted/30 opacity-60"
+                              )}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-semibold flex items-center gap-1.5">
+                                  <span>{s.emoji}</span>
+                                  <span>{s.name}</span>
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  {isRec && <Badge className="text-[10px] px-1.5 py-0 bg-blue-600 text-white border-0">★ Best fit</Badge>}
+                                  {s.viable
+                                    ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                                    : <XCircle className="h-3.5 w-3.5 text-red-400" />}
+                                </div>
+                              </div>
+                              <div className="space-y-0.5 text-xs text-muted-foreground">
+                                <div className="flex justify-between">
+                                  <span>Max offer</span>
+                                  <span className={cn("font-medium", s.viable ? "text-foreground" : "")}>
+                                    {formatCurrency(s.maxOffer)}
+                                  </span>
+                                </div>
+                                {s.yield !== null && (
+                                  <div className="flex justify-between">
+                                    <span>Gross yield</span>
+                                    <span className={cn("font-medium", s.yield >= 7 ? "text-green-600" : "text-amber-600")}>
+                                      {s.yield.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between">
+                                  <span>Status</span>
+                                  <span className={cn("font-medium", s.viable ? "text-green-600" : "text-red-500")}>
+                                    {s.viable ? "Viable" : "Not viable"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* ── Investment Criteria Checklist ──────────────────────────────── */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <ListChecks className="h-4 w-4 text-muted-foreground" />
+                      Investment Criteria
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {currentLead.bmvScore !== null && (() => {
+                        const pass = Number(currentLead.bmvScore) >= 15
+                        return (
+                          <div className={cn("flex items-center justify-between p-3 rounded-lg", pass ? "bg-green-50 dark:bg-green-950/20" : "bg-red-50 dark:bg-red-950/20")}>
+                            <div className="flex items-center gap-2 min-w-0">
+                              {pass ? <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" /> : <XCircle className="h-4 w-4 text-red-600 shrink-0" />}
+                              <span className="text-sm font-medium">BMV ≥ 15%</span>
+                              <span className="text-xs text-muted-foreground hidden sm:inline">asking price discount from market value</span>
+                            </div>
+                            <div className="text-right shrink-0 ml-4">
+                              <span className={cn("text-sm font-bold", pass ? "text-green-600" : "text-red-600")}>
+                                {Number(currentLead.bmvScore).toFixed(1)}%
+                              </span>
+                              {!pass && (
+                                <p className="text-xs text-muted-foreground">{(15 - Number(currentLead.bmvScore)).toFixed(1)}% short</p>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })()}
+                      {currentLead.profitPotential !== null && (() => {
+                        const pass = Number(currentLead.profitPotential) >= 10000
+                        return (
+                          <div className={cn("flex items-center justify-between p-3 rounded-lg", pass ? "bg-green-50 dark:bg-green-950/20" : "bg-red-50 dark:bg-red-950/20")}>
+                            <div className="flex items-center gap-2 min-w-0">
+                              {pass ? <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" /> : <XCircle className="h-4 w-4 text-red-600 shrink-0" />}
+                              <span className="text-sm font-medium">Net Profit ≥ £10,000</span>
+                              <span className="text-xs text-muted-foreground hidden sm:inline">market value minus offer and refurb</span>
+                            </div>
+                            <div className="text-right shrink-0 ml-4">
+                              <span className={cn("text-sm font-bold", pass ? "text-green-600" : "text-red-600")}>
+                                {formatCurrency(currentLead.profitPotential)}
+                              </span>
+                              {!pass && Number(currentLead.profitPotential) > 0 && (
+                                <p className="text-xs text-muted-foreground">£{(10000 - Number(currentLead.profitPotential)).toLocaleString()} short</p>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* ── Rental Yield Analysis ─────────────────────────────────────── */}
+                {parsedNotes?.rentalYield && (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                          <Home className="h-4 w-4 text-muted-foreground" />
+                          Rental Yield Analysis
+                        </CardTitle>
+                        {parsedNotes.rentalYield.passed !== undefined && (
+                          <Badge className={cn("border text-xs", parsedNotes.rentalYield.passed
+                            ? "bg-green-100 text-green-800 border-green-300"
+                            : "bg-amber-100 text-amber-800 border-amber-300")}>
+                            {parsedNotes.rentalYield.passed ? "✓ Pass" : "Unverified"}
+                          </Badge>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-2.5">
+                        {parsedNotes.rentalYield.monthlyRent !== undefined && (
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">Monthly Rent</span>
+                            <span className="font-medium">£{parsedNotes.rentalYield.monthlyRent.toLocaleString()}</span>
+                          </div>
+                        )}
+                        {parsedNotes.rentalYield.annualRent !== undefined && (
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">Annual Rent</span>
+                            <span className="font-medium">£{parsedNotes.rentalYield.annualRent.toLocaleString()}</span>
+                          </div>
+                        )}
+                        {parsedNotes.rentalYield.grossYield !== undefined && (
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">Gross Yield</span>
+                            <div className="text-right">
+                              <span className={cn("font-bold", parsedNotes.rentalYield.grossYield >= 7 ? "text-green-600" : "text-amber-600")}>
+                                {parsedNotes.rentalYield.grossYield.toFixed(2)}%
+                              </span>
+                              {parsedNotes.rentalYield.grossYieldLabel && (
+                                <span className="text-xs text-muted-foreground ml-1.5">({parsedNotes.rentalYield.grossYieldLabel})</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {parsedNotes.rentalYield.netYield !== undefined && (
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">Net Yield</span>
+                            <span className="font-medium">{parsedNotes.rentalYield.netYield.toFixed(2)}%</span>
+                          </div>
+                        )}
+                        {parsedNotes.rentalYield.cashFlow !== undefined && (
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">Est. Monthly Cash Flow</span>
+                            <span className={cn("font-medium", parsedNotes.rentalYield.cashFlow >= 0 ? "text-green-600" : "text-red-600")}>
+                              £{parsedNotes.rentalYield.cashFlow.toLocaleString()}/mo
+                            </span>
+                          </div>
+                        )}
+                        {parsedNotes.rentalYield.dataSource !== undefined && (
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">Data Source</span>
+                            <span>{parsedNotes.rentalYield.dataSource}</span>
+                          </div>
+                        )}
+                      </div>
+                      {parsedNotes.rentalYield.note && (
+                        <p className="mt-3 text-xs text-muted-foreground italic border-t pt-2">
+                          💡 {parsedNotes.rentalYield.note}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* ── Market Value Source ───────────────────────────────────────── */}
+                {parsedNotes?.marketValueSource && (
+                  <Card className="bg-muted/30">
+                    <CardContent className="py-3 px-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex items-center gap-2 mr-1">
+                          <BarChart3 className="h-4 w-4 text-blue-500" />
+                          <span className="text-sm font-medium">Market Value Source</span>
+                        </div>
+                        <Badge variant="outline" className="text-xs">{parsedNotes.marketValueSource.source}</Badge>
+                        {parsedNotes.marketValueSource.count && (
+                          <Badge variant="outline" className="text-xs">{parsedNotes.marketValueSource.count} comparable sales</Badge>
+                        )}
+                        {parsedNotes.marketValueSource.confidence && (
+                          <Badge className={cn("text-xs border", parsedNotes.marketValueSource.confidence === "HIGH"
+                            ? "bg-green-100 text-green-800 border-green-300"
+                            : parsedNotes.marketValueSource.confidence === "MEDIUM"
+                            ? "bg-amber-100 text-amber-800 border-amber-300"
+                            : "bg-red-100 text-red-800 border-red-300"
+                          )}>
+                            {parsedNotes.marketValueSource.confidence} confidence
+                          </Badge>
+                        )}
+                        {parsedNotes.creditsUsed !== null && (
+                          <span className="text-xs text-muted-foreground ml-auto">
+                            {parsedNotes.creditsUsed} API credit{parsedNotes.creditsUsed !== 1 ? "s" : ""} used
+                          </span>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* ── Failure Reasons ───────────────────────────────────────────── */}
+                {!currentLead.validationPassed && parsedNotes?.failureReasons && parsedNotes.failureReasons.length > 0 && (
+                  <Card className="border-red-200 dark:border-red-900">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-semibold text-red-700 dark:text-red-400 flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        Why This Deal Failed
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {parsedNotes.failureReasons.map((reason, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm">
+                            <XCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                            <span>{reason}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            )}
           </TabsContent>
 
           <TabsContent value="offer" className="space-y-4">
@@ -1646,16 +2443,31 @@ export function VendorLeadDetailModal({
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3 text-sm">
+                      {currentLead.offerAmount !== null && currentLead.askingPrice !== null && (
+                        <div className="flex items-start gap-3">
+                          <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-medium text-slate-900">
+                              Offer {formatCurrency(currentLead.offerAmount)} — {(((Number(currentLead.askingPrice) - Number(currentLead.offerAmount)) / Number(currentLead.askingPrice)) * 100).toFixed(1)}% below asking
+                            </p>
+                            <p className="text-slate-600 mt-1">
+                              Saving of {formatCurrency(Number(currentLead.askingPrice) - Number(currentLead.offerAmount))} vs asking price.
+                              {currentLead.estimatedMarketValue && currentLead.offerPercentage && (
+                                <> Represents {Number(currentLead.offerPercentage).toFixed(1)}% of market value ({formatCurrency(currentLead.estimatedMarketValue)}).</>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                       {currentLead.offerPercentage && (
                         <div className="flex items-start gap-3">
                           <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                           <div>
-                            <p className="font-medium text-slate-900">Offer set at {Number(currentLead.offerPercentage).toFixed(1)}% of market value</p>
+                            <p className="font-medium text-slate-900">Adjusted based on vendor motivation</p>
                             <p className="text-slate-600 mt-1">
-                              Adjusted based on vendor motivation
-                              {currentLead.motivationScore && ` (${currentLead.motivationScore}/10)`}
-                              {currentLead.urgencyLevel && `, urgency (${currentLead.urgencyLevel})`}
-                              {currentLead.condition && `, and property condition (${currentLead.condition.replace(/_/g, ' ')})`}
+                              {currentLead.motivationScore && `Motivation ${currentLead.motivationScore}/10`}
+                              {currentLead.urgencyLevel && ` · Urgency: ${currentLead.urgencyLevel}`}
+                              {currentLead.condition && ` · Condition: ${currentLead.condition.replace(/_/g, ' ')}`}
                             </p>
                           </div>
                         </div>

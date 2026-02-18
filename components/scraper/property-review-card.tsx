@@ -18,11 +18,15 @@ import {
   Bed,
   Bath,
   ExternalLink,
-  HelpCircle,
   ChevronDown,
   ChevronUp,
+  MapPin,
+  MapPinOff,
+  Shield,
+  Globe,
 } from "lucide-react"
 import type { PropertyListingForClient, BmvIndicatorsData, PriceHistoryEntry } from "@/types/property-listing"
+import { buildBmvBreakdown, bmvGrade } from "@/lib/scrapers/bmv-score-breakdown"
 
 function stripHtml(html: string): string {
   if (!html) return ""
@@ -71,17 +75,11 @@ export function PropertyReviewCard({
   isSubmitting,
 }: PropertyReviewCardProps) {
   const [descExpanded, setDescExpanded] = useState(false)
+  const [breakdownOpen, setBreakdownOpen] = useState(false)
   const bmv = listing.bmvIndicators as BmvIndicatorsData
   const address = listing.address as any
   const images = listing.images as string[]
   const firstImage = images?.[0]
-
-  const bmvScoreColor =
-    bmv.bmvScore >= 60
-      ? "text-green-600"
-      : bmv.bmvScore >= 30
-        ? "text-yellow-600"
-        : "text-muted-foreground"
 
   // Most recent price change date (for "Reduced X days ago" display)
   // priceHistory stores PREVIOUS prices; if current price < most recent history entry → price was reduced
@@ -158,30 +156,7 @@ export function PropertyReviewCard({
             {address?.displayAddress}
           </p>
           {/* Postcode badge */}
-          {(() => {
-            const pc: string | null | undefined = address?.postcode
-            const isFullPostcode = pc && /^[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}$/i.test(pc.trim())
-            const isOutcodeOnly = pc && !isFullPostcode && /^[A-Z]{1,2}\d{1,2}[A-Z]?$/i.test(pc.trim())
-            if (isFullPostcode) {
-              return (
-                <span className="inline-flex items-center rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-[10px] font-medium px-2 py-0.5">
-                  {pc!.trim().toUpperCase()}
-                </span>
-              )
-            }
-            if (isOutcodeOnly) {
-              return (
-                <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-[10px] font-medium px-2 py-0.5">
-                  {pc!.trim().toUpperCase()} (outcode only)
-                </span>
-              )
-            }
-            return (
-              <span className="inline-flex items-center rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 text-[10px] font-medium px-2 py-0.5">
-                No postcode
-              </span>
-            )
-          })()}
+          <PostcodeBadge address={address} />
         </div>
 
         {/* Price & Details */}
@@ -239,53 +214,104 @@ export function PropertyReviewCard({
           </div>
         )}
 
-        {/* BMV Score */}
-        {bmv.bmvScore > 0 && (
-          <div>
-            <div className="flex items-center justify-between text-xs mb-1">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="text-muted-foreground flex items-center gap-1 cursor-help">
-                      BMV Score
-                      <HelpCircle className="h-3 w-3" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-[220px] text-xs">
-                    <p className="font-semibold mb-1">BMV Indicator Score (0–100)</p>
-                    <p className="mb-1">Signals detected in this listing suggesting below-market-value potential:</p>
-                    <ul className="space-y-0.5 list-disc list-inside">
-                      <li>Price reduction history</li>
-                      <li>"Needs work", "probate", "motivated seller" keywords</li>
-                      <li>Auction / repossession / cash only</li>
-                      <li>Long time on market</li>
-                    </ul>
-                    <p className="mt-1.5">
-                      <span className="text-green-500 font-medium">60+</span> Strong ·{" "}
-                      <span className="text-yellow-500 font-medium">30–59</span> Moderate ·{" "}
-                      <span className="text-muted-foreground">0–29</span> Weak
+        {/* BMV Score + Breakdown */}
+        {bmv.bmvScore > 0 && (() => {
+          const breakdown = buildBmvBreakdown(bmv)
+          const activeItems = breakdown.filter((i) => i.active)
+          const inactiveItems = breakdown.filter((i) => !i.active)
+          const computedPts = activeItems.reduce((s, i) => s + i.points, 0)
+          const grade = bmvGrade(computedPts)
+          return (
+            <div className="space-y-1.5">
+              {/* Score header row */}
+              <div className="flex items-center gap-2">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span
+                        className={`inline-flex items-center rounded-full text-[10px] font-semibold px-2 py-0.5 ring-1 cursor-help ${grade.bgColor} ${grade.textColor} ${grade.ringColor}`}
+                      >
+                        {grade.grade}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[200px] text-xs">
+                      <p className="font-semibold mb-1">BMV Signal Score</p>
+                      <p>{grade.description}</p>
+                      <p className="mt-1.5 text-muted-foreground">
+                        Exceptional 80+ · Strong 60–79 · Moderate 30–59 · Weak 0–29
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${
+                      computedPts >= 80
+                        ? "bg-blue-500"
+                        : computedPts >= 60
+                          ? "bg-green-500"
+                          : computedPts >= 30
+                            ? "bg-amber-500"
+                            : "bg-gray-400"
+                    }`}
+                    style={{ width: `${computedPts}%` }}
+                  />
+                </div>
+
+                <span className={`text-xs font-semibold tabular-nums ${grade.textColor}`}>
+                  {computedPts}/100
+                </span>
+
+                <button
+                  onClick={() => setBreakdownOpen((v) => !v)}
+                  className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
+                >
+                  why?
+                  {breakdownOpen ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
+                </button>
+              </div>
+
+              {/* Expandable breakdown */}
+              {breakdownOpen && (
+                <div className="rounded-md border bg-muted/30 p-2 space-y-1 text-[10px]">
+                  {activeItems.map((item) => (
+                    <div key={item.label} className="flex items-start justify-between gap-2">
+                      <span className="text-foreground font-medium">
+                        {item.label}
+                        {item.detail && (
+                          <span className="font-normal text-muted-foreground ml-1">— {item.detail}</span>
+                        )}
+                      </span>
+                      <span className="text-green-600 font-semibold tabular-nums flex-shrink-0">
+                        +{item.points}
+                      </span>
+                    </div>
+                  ))}
+                  {inactiveItems.length > 0 && (
+                    <div className="pt-1 border-t mt-1 space-y-0.5">
+                      {inactiveItems.map((item) => (
+                        <div key={item.label} className="text-muted-foreground/60">
+                          No {item.label.toLowerCase()}
+                          {item.detail && ` (${item.detail})`}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="pt-1 border-t flex justify-between font-semibold">
+                    <span>Total</span>
+                    <span className={grade.textColor}>{computedPts} / 100</span>
+                  </div>
+                  {computedPts !== bmv.bmvScore && (
+                    <p className="text-[9px] text-muted-foreground/60 leading-tight">
+                      Originally scored {bmv.bmvScore} — re-scraping will refresh signals
                     </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <span className={`font-semibold ${bmvScoreColor}`}>
-                {bmv.bmvScore}/100
-              </span>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-              <div
-                className={`h-full rounded-full ${
-                  bmv.bmvScore >= 60
-                    ? "bg-green-500"
-                    : bmv.bmvScore >= 30
-                      ? "bg-yellow-500"
-                      : "bg-gray-400"
-                }`}
-                style={{ width: `${bmv.bmvScore}%` }}
-              />
-            </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* BMV Indicator Tags */}
         {bmvIndicatorTags.length > 0 && (
@@ -350,7 +376,7 @@ export function PropertyReviewCard({
                   : "— days on market"}
           </span>
           {daysSinceReduction !== null ? (
-            <span className="text-orange-500 font-medium">
+            <span suppressHydrationWarning className="text-orange-500 font-medium">
               Reduced {daysSinceReduction === 0 ? "today" : `${daysSinceReduction}d ago`}
             </span>
           ) : (
@@ -401,5 +427,84 @@ export function PropertyReviewCard({
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+// ── Postcode badge ────────────────────────────────────────────────────────────
+
+function PostcodeBadge({ address }: { address: Record<string, unknown> | null | undefined }) {
+  const pc = typeof address?.postcode === "string" ? address.postcode.trim().toUpperCase() : null
+  const source = typeof address?.postcodeSource === "string" ? address.postcodeSource : null
+  const fixed = address?.postcodeFixed === true
+
+  const isFullPostcode = pc ? /^[A-Z]{1,2}\d{1,2}[A-Z]?\s\d[A-Z]{2}$/.test(pc) : false
+  const isOutcodeOnly = pc && !isFullPostcode && /^[A-Z]{1,2}\d{1,2}[A-Z]?$/.test(pc)
+
+  // No postcode at all
+  if (!pc || (!isFullPostcode && !isOutcodeOnly)) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 text-[10px] font-medium px-2 py-0.5">
+        <MapPinOff className="h-2.5 w-2.5 shrink-0" />
+        No postcode
+      </span>
+    )
+  }
+
+  // Outcode only (e.g. "SA6")
+  if (isOutcodeOnly) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-[10px] font-medium px-2 py-0.5">
+        <MapPin className="h-2.5 w-2.5 shrink-0" />
+        {pc} (outcode only)
+      </span>
+    )
+  }
+
+  // Full postcode — fixed via Land Registry / PPD
+  if (fixed && source === "land_registry") {
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 text-[10px] font-medium px-2 py-0.5 cursor-default">
+              <MapPin className="h-2.5 w-2.5 shrink-0" />
+              {pc}
+              <Shield className="h-2.5 w-2.5 shrink-0" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            Postcode resolved via Land Registry / Price Paid Data
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+
+  // Full postcode — fixed via postcodes.io
+  if (fixed && source === "postcodes_io") {
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex items-center gap-1 rounded-full bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200 text-[10px] font-medium px-2 py-0.5 cursor-default">
+              <MapPin className="h-2.5 w-2.5 shrink-0" />
+              {pc}
+              <Globe className="h-2.5 w-2.5 shrink-0" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            Postcode resolved via postcodes.io (representative for area)
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+
+  // Full postcode — scraped correctly, no fix needed
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-[10px] font-medium px-2 py-0.5">
+      <MapPin className="h-2.5 w-2.5 shrink-0" />
+      {pc}
+    </span>
   )
 }

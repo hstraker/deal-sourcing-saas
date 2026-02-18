@@ -89,9 +89,13 @@ enum VendorDecision {
 
 enum ReservationStatus {
   pending
+  pack_sent
   fee_pending
+  fee_paid
   proof_of_funds_pending
+  pof_received
   verified
+  lock_out_sent
   locked_out
   completed
   cancelled
@@ -760,6 +764,7 @@ model InvestorReservation {
 
   // Proof of Funds
   proofOfFundsProvided      Boolean   @default(false) @map("proof_of_funds_provided")
+  proofOfFundsReceivedAt    DateTime? @map("proof_of_funds_received_at")
   proofOfFundsDocumentS3Key String?   @map("proof_of_funds_document_s3_key")
   proofOfFundsVerified      Boolean   @default(false) @map("proof_of_funds_verified")
   proofOfFundsVerifiedAt    DateTime? @map("proof_of_funds_verified_at")
@@ -882,8 +887,22 @@ model VendorLead {
   lockoutAgreementSignedAt DateTime? @map("lockout_agreement_signed_at")
   lockoutAgreementS3Key    String?   @map("lockout_agreement_s3_key")
 
+  // Postcode resolution tracking
+  propertyPostcodeSource String? @map("property_postcode_source") // "land_registry" | "postcodes_io" | "manual"
+  propertyPostcodeFixed  Boolean @default(false) @map("property_postcode_fixed") // true = was corrected automatically
+
+  // Investment Strategy (for offer calculator)
+  investmentStrategy  String? @map("investment_strategy")   // "Flip" | "BRR" | "BuyHold" | "BTL"
+  chainStatus         String? @map("chain_status")          // "NoChain" | "ShortChain" | "LongChain"
+  postcodeDemandScore Int?    @map("postcode_demand_score") // 1-10
+  tenureType          String? @map("tenure_type")           // "Freehold" | "Leasehold"
+
   // Link to Deal
   dealId String? @map("deal_id")
+
+  // Investor Reservation Link — set when an investor locks out / completes a reservation on the linked deal
+  reservedByInvestorId String?   @map("reserved_by_investor_id") // Investor.id
+  reservedAt           DateTime? @map("reserved_at")
 
   // Investor Pack Tracking
   investorPackGenerationCount Int       @default(0) @map("investor_pack_generation_count")
@@ -1257,6 +1276,10 @@ model InvestorPackDelivery {
   recipientEmail String? @map("recipient_email")
   partNumber Int? @map("part_number") // For 4-part templates: 1, 2, 3, 4. NULL for single pack
 
+  // Email Status
+  emailStatus  String?  @default("pending") @map("email_status") // pending | sent | failed | no_smtp
+  emailError   String?  @db.Text @map("email_error")
+
   // Tracking
   sentAt DateTime @default(now()) @map("sent_at")
   viewedAt DateTime? @map("viewed_at")
@@ -1466,6 +1489,88 @@ model ScraperSettings {
   updatedAt             DateTime @updatedAt @map("updated_at")
 
   @@map("scraper_settings")
+}
+
+// ─── Offer Calculator Config ──────────────────────────────────────────────────
+// Singleton row that controls how the professional BMV offer calculator works.
+// When enableStrategyMode = false, the legacy motivation-based calculation runs.
+model OfferCalculatorConfig {
+  id String @id @default(cuid())
+
+  // Master toggle
+  enableStrategyMode Boolean  @default(false) @map("enable_strategy_mode")
+
+  // Strategy targeting
+  activeStrategies String[] @default(["BuyHold", "BTL"]) @map("active_strategies")
+  defaultStrategy  String   @default("BuyHold")          @map("default_strategy")
+
+  // Base discount range (% off market value)
+  baseDiscountMin Decimal @default(10) @map("base_discount_min") @db.Decimal(5, 2)
+  baseDiscountMax Decimal @default(40) @map("base_discount_max") @db.Decimal(5, 2)
+
+  // Risk adjustment factors (all increase the discount)
+  poorConditionDiscount Decimal @default(10) @map("poor_condition_discount") @db.Decimal(5, 2)
+  avgConditionDiscount  Decimal @default(3)  @map("avg_condition_discount")  @db.Decimal(5, 2)
+  leaseholdDiscount     Decimal @default(5)  @map("leasehold_discount")      @db.Decimal(5, 2)
+  longChainDiscount     Decimal @default(5)  @map("long_chain_discount")     @db.Decimal(5, 2)
+  shortChainDiscount    Decimal @default(2)  @map("short_chain_discount")    @db.Decimal(5, 2)
+
+  // Demand reduction (reduces the discount when area has strong demand)
+  highDemandThreshold Int     @default(8) @map("high_demand_threshold")
+  highDemandReduction Decimal @default(5) @map("high_demand_reduction") @db.Decimal(5, 2)
+
+  // Strategy-specific targets
+  flipMarketValuePct Decimal @default(70) @map("flip_market_value_pct") @db.Decimal(5, 2)
+  brrLtvPercent      Decimal @default(75) @map("brr_ltv_percent")       @db.Decimal(5, 2)
+  buyHoldMinYield    Decimal @default(8)  @map("buy_hold_min_yield")    @db.Decimal(5, 2)
+  btlMinYield        Decimal @default(7)  @map("btl_min_yield")         @db.Decimal(5, 2)
+
+  // Validation thresholds
+  minBmvPercentage   Decimal @default(15)    @map("min_bmv_percentage")   @db.Decimal(5, 2)
+  minProfitPotential Decimal @default(10000) @map("min_profit_potential") @db.Decimal(12, 2)
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("offer_calculator_config")
+}
+
+// ============================================================================
+// HM LAND REGISTRY — PRICE PAID DATA (PPD)
+// ============================================================================
+
+// Deduplicated street → postcode mapping sourced from the PPD CSV.
+// One row per (streetNorm, postcode) pair to keep the table compact.
+// Used for postcode resolution when CCOD/OCOD has no matching record.
+model PricePaidAddress {
+  id         String @id @default(cuid())
+  street     String @db.Text         // raw street name from PPD (field index 9)
+  streetNorm String @map("street_norm") // lowercase, trimmed, collapsed spaces
+  postcode   String                   // full postcode e.g. "SA6 8DU"
+  town       String?                  // field index 11 (district/town)
+
+  @@unique([streetNorm, postcode])
+  @@index([streetNorm])
+  @@index([postcode])
+  @@map("price_paid_addresses")
+}
+
+// Import job tracking for PPD CSV downloads
+model PricePaidImport {
+  id              String    @id @default(uuid())
+  year            Int                             // e.g. 2024 (or 0 = "full" all years)
+  status          String    @default("PENDING")   // PENDING | RUNNING | PAUSED | COMPLETED | FAILED | CANCELLED
+  recordsRead     Int       @default(0) @map("records_read")
+  recordsInserted Int       @default(0) @map("records_inserted")
+  errorMessage    String?   @map("error_message") @db.Text
+  startedAt       DateTime? @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  cancelledAt     DateTime? @map("cancelled_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([year])
+  @@map("price_paid_imports")
 }
 
 // Export tracking - records of CSV/Excel/JSON exports

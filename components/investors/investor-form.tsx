@@ -18,7 +18,7 @@ import { Loader2 } from "lucide-react"
 import { z } from "zod"
 
 const investorSchema = z.object({
-  email: z.string().email("Invalid email address"),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   phone: z.string().optional(),
@@ -119,17 +119,24 @@ export function InvestorForm({ investor, onSuccess, onCancel }: InvestorFormProp
           ? data.preferredAreas.split(",").map((a) => a.trim()).filter(Boolean)
           : []
 
+        // Only send email if the user actually changed it — avoids false conflicts
+        const { email: formEmail, ...rest } = data
+        const payload: Record<string, any> = {
+          ...rest,
+          preferredAreas: preferredAreasArray,
+          strategy: selectedStrategies,
+          phone: data.phone || undefined,
+          minBudget: data.minBudget || null,
+          maxBudget: data.maxBudget || null,
+        }
+        if (formEmail && formEmail !== investor.user.email) {
+          payload.email = formEmail
+        }
+
         const response = await fetch(`/api/investors/${investor.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...data,
-            preferredAreas: preferredAreasArray,
-            strategy: selectedStrategies,
-            phone: data.phone || undefined,
-            minBudget: data.minBudget || null,
-            maxBudget: data.maxBudget || null,
-          }),
+          body: JSON.stringify(payload),
         })
 
         if (!response.ok) {
@@ -137,13 +144,12 @@ export function InvestorForm({ investor, onSuccess, onCancel }: InvestorFormProp
           throw new Error(errorData.error || "Failed to update investor")
         }
       } else {
-        // Create new investor (create user first, then investor)
+        // Create new investor — single call handles find-or-create user logic on the server
         const preferredAreasArray = data.preferredAreas
           ? data.preferredAreas.split(",").map((a) => a.trim()).filter(Boolean)
           : []
 
-        // First create the user
-        const userResponse = await fetch("/api/users", {
+        const investorResponse = await fetch("/api/investors", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -151,24 +157,6 @@ export function InvestorForm({ investor, onSuccess, onCancel }: InvestorFormProp
             firstName: data.firstName,
             lastName: data.lastName,
             phone: data.phone || undefined,
-            role: "investor",
-            password: "TempPassword123!", // Temporary password - should be reset
-          }),
-        })
-
-        if (!userResponse.ok) {
-          const errorData = await userResponse.json()
-          throw new Error(errorData.error || "Failed to create user")
-        }
-
-        const user = await userResponse.json()
-
-        // Then create the investor profile
-        const investorResponse = await fetch("/api/investors", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: user.id,
             minBudget: data.minBudget || null,
             maxBudget: data.maxBudget || null,
             preferredAreas: preferredAreasArray,
@@ -227,8 +215,20 @@ export function InvestorForm({ investor, onSuccess, onCancel }: InvestorFormProp
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email *</Label>
-              <Input id="email" type="email" {...register("email")} required />
+              <Label htmlFor="email">Email {isEditMode ? "" : "*"}</Label>
+              <Input
+                id="email"
+                type="email"
+                {...register("email")}
+                required={!isEditMode}
+                disabled={isEditMode}
+                className={isEditMode ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
+              />
+              {isEditMode && (
+                <p className="text-xs text-muted-foreground">
+                  Email is linked to the investor's login account and cannot be changed here.
+                </p>
+              )}
               {errors.email && (
                 <p className="text-sm text-destructive">{errors.email.message}</p>
               )}

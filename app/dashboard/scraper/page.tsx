@@ -103,7 +103,7 @@ export default async function ScraperDashboardPage() {
       COUNT(*) FILTER (WHERE address->>'postcode' ~ '^[A-Z]{1,2}[0-9]{1,2}[A-Z]?$'
                          AND address->>'postcode' !~ '^[A-Z]{1,2}[0-9]{1,2}[A-Z]?\\s[0-9][A-Z]{2}$') AS has_outcode,
       COUNT(*) FILTER (WHERE address->>'postcode' IS NULL OR address->>'postcode' = '') AS has_none
-    FROM "PropertyListing"
+    FROM "property_listings"
   `
 
   const stats = {

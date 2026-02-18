@@ -4,9 +4,10 @@ import "./globals.css"
 import { Providers } from "./providers"
 import { Toaster } from "@/components/ui/toaster"
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ["latin"],
   display: "swap",
+  preload: false,          // avoids Google Fonts network fetch in offline/WSL envs
   fallback: ["system-ui", "arial"],
   adjustFontFallback: false,
 })

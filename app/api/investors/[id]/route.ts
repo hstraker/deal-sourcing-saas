@@ -101,15 +101,35 @@ export async function PUT(
     }
 
     // Update user data if provided
-    if (validatedData.firstName !== undefined || validatedData.lastName !== undefined || validatedData.phone !== undefined || validatedData.email !== undefined) {
+    const userFieldsToUpdate: Record<string, any> = {}
+    if (validatedData.firstName !== undefined) userFieldsToUpdate.firstName = validatedData.firstName || null
+    if (validatedData.lastName  !== undefined) userFieldsToUpdate.lastName  = validatedData.lastName  || null
+    if (validatedData.phone     !== undefined) userFieldsToUpdate.phone     = validatedData.phone     || null
+
+    // Only update email if it has actually changed
+    if (validatedData.email !== undefined && validatedData.email !== investor.user.email) {
+      // Check no other user already owns this email
+      const existing = await prisma.user.findUnique({
+        where: { email: validatedData.email },
+        select: { id: true, role: true },
+      })
+      if (existing) {
+        const roleLabel =
+          existing.role === "admin"   ? "an admin account" :
+          existing.role === "sourcer" ? "a team member account" :
+                                       "another investor account"
+        return NextResponse.json(
+          { error: `That email address is already in use by ${roleLabel}. Please use a different email.` },
+          { status: 409 }
+        )
+      }
+      userFieldsToUpdate.email = validatedData.email
+    }
+
+    if (Object.keys(userFieldsToUpdate).length > 0) {
       await prisma.user.update({
         where: { id: investor.userId },
-        data: {
-          ...(validatedData.firstName !== undefined && { firstName: validatedData.firstName || null }),
-          ...(validatedData.lastName !== undefined && { lastName: validatedData.lastName || null }),
-          ...(validatedData.phone !== undefined && { phone: validatedData.phone || null }),
-          ...(validatedData.email !== undefined && { email: validatedData.email }),
-        },
+        data: userFieldsToUpdate,
       })
     }
 
@@ -148,11 +168,19 @@ export async function PUT(
     })
 
     return NextResponse.json(updatedInvestor)
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Validation error", details: error.errors },
         { status: 400 }
+      )
+    }
+
+    // Unique constraint on email (P2002) — surface a readable message
+    if (error?.code === "P2002" && error?.meta?.target?.includes("email")) {
+      return NextResponse.json(
+        { error: "That email address is already in use. Please choose a different email." },
+        { status: 409 }
       )
     }
 

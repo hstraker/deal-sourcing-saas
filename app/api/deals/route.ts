@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
     const postcode = searchParams.get("postcode")
     const assignedToId = searchParams.get("assignedToId")
     const hasInvestorPack = searchParams.get("hasInvestorPack")
+    const forReservation = searchParams.get("forReservation")
 
     const where: any = {}
 
@@ -46,13 +47,47 @@ export async function GET(request: NextRequest) {
       where.investorPackSent = true
     }
 
+    // forReservation=true — only return deals eligible for investor reservations:
+    //   1. Deals linked to a VendorLead (vendor pipeline sourced)
+    //   2. Deals linked to an approved scraped PropertyListing
+    //   3. Deals linked to the old Vendor model
+    //   Archived and sold deals are excluded.
+    if (forReservation === "true") {
+      const [vendorLeadDealIds, approvedListingDealIds] = await Promise.all([
+        prisma.vendorLead
+          .findMany({ where: { dealId: { not: null } }, select: { dealId: true } })
+          .then((rows) => rows.map((r) => r.dealId as string)),
+        prisma.propertyListing
+          .findMany({
+            where: { reviewStatus: "APPROVED", dealId: { not: null } },
+            select: { dealId: true },
+          })
+          .then((rows) => rows.map((r) => r.dealId as string)),
+      ])
+
+      const eligibleDealIds = Array.from(new Set([...vendorLeadDealIds, ...approvedListingDealIds]))
+
+      where.OR = [
+        { id: { in: eligibleDealIds } },
+        { vendor: { isNot: null } }, // old Vendor model link
+      ]
+      where.status = { notIn: ["archived", "sold"] }
+    }
+
     // Sourcers can only see their own deals or unassigned deals
     if (session.user.role === "sourcer") {
-      where.OR = [
+      const sourcerFilter = [
         { assignedToId: session.user.id },
         { assignedToId: null },
         { createdById: session.user.id },
       ]
+      // Merge with any existing OR from forReservation
+      if (where.OR) {
+        where.AND = [{ OR: where.OR }, { OR: sourcerFilter }]
+        delete where.OR
+      } else {
+        where.OR = sourcerFilter
+      }
     }
 
     const deals = await prisma.deal.findMany({

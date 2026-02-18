@@ -33,6 +33,7 @@ import {
   X,
   HelpCircle,
   Star,
+  SearchCheck,
 } from "lucide-react"
 import {
   Tooltip,
@@ -154,6 +155,15 @@ export default function ScraperSettingsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [locationSearch, setLocationSearch] = useState("")
+  const [isFixingPostcodes, setIsFixingPostcodes] = useState(false)
+  const [isDryRunning, setIsDryRunning] = useState(false)
+  const [postcodeFixResult, setPostcodeFixResult] = useState<{
+    totalProcessed: number
+    totalCorrected: number
+    propertyListings: { processed: number; corrected: number; failed: number }
+    vendorLeads: { processed: number; corrected: number; failed: number }
+    dryRun: boolean
+  } | null>(null)
 
   useEffect(() => {
     fetchSettings()
@@ -234,6 +244,38 @@ export default function ScraperSettingsPage() {
       loc.displayName.toLowerCase().includes(locationSearch.toLowerCase()) &&
       !criteria.locations.some((l) => l.outcode === loc.outcode)
   )
+
+  const runPostcodeFix = async (dryRun: boolean) => {
+    if (!dryRun && !confirm("This will update postcodes for all scraped properties and vendor leads with missing or incorrect postcodes. Continue?")) {
+      return
+    }
+    if (dryRun) setIsDryRunning(true)
+    else setIsFixingPostcodes(true)
+    setPostcodeFixResult(null)
+    try {
+      const res = await fetch("/api/admin/fix-postcodes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dryRun }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? "Postcode fix failed")
+        return
+      }
+      setPostcodeFixResult({ ...data.summary, dryRun: data.dryRun })
+      toast.success(
+        dryRun
+          ? `Dry run: ${data.summary?.totalCorrected ?? 0} of ${data.summary?.totalProcessed ?? 0} records would be corrected`
+          : `Fixed ${data.summary?.totalCorrected ?? 0} of ${data.summary?.totalProcessed ?? 0} records`
+      )
+    } catch {
+      toast.error("Postcode fix failed")
+    } finally {
+      if (dryRun) setIsDryRunning(false)
+      else setIsFixingPostcodes(false)
+    }
+  }
 
   if (isLoading || !settings) {
     return (
@@ -635,20 +677,25 @@ export default function ScraperSettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Row 3: Analysis | Advanced */}
+        {/* Row 3: Analysis | Advanced | Data Quality */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-          {/* Analysis */}
+          {/* Auto-Approve */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Zap className="h-4 w-4" />
-                Analysis
+                Auto-Approve
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="autoAnalysis">Auto-analysis</Label>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <Label htmlFor="autoAnalysis">Auto-approve high-scoring properties</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Properties scoring at or above the threshold skip the review queue (unless flagged as ambiguous)
+                  </p>
+                </div>
                 <Switch
                   id="autoAnalysis"
                   checked={settings.autoAnalysisEnabled}
@@ -658,24 +705,31 @@ export default function ScraperSettingsPage() {
               {settings.autoAnalysisEnabled && (
                 <div className="flex items-center gap-3">
                   <Label htmlFor="threshold" className="whitespace-nowrap text-sm text-muted-foreground">
-                    Min BMV score
+                    Auto-approve if BMV score ≥
                   </Label>
                   <Input
                     id="threshold"
                     type="number"
                     min={0}
                     max={100}
+                    placeholder="e.g. 60"
                     value={settings.autoAnalysisThreshold ?? ""}
                     onChange={(e) =>
                       updateSetting("autoAnalysisThreshold", e.target.value ? parseInt(e.target.value) : null)
                     }
-                    className="w-20"
+                    className="w-24"
                   />
+                  <span className="text-xs text-muted-foreground">/ 100</span>
                 </div>
               )}
               <Separator />
-              <div className="flex items-center justify-between">
-                <Label htmlFor="manualReview">Require manual review</Label>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <Label htmlFor="manualReview">Require manual review</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    All properties go to the review queue — unless the score threshold above is met
+                  </p>
+                </div>
                 <Switch
                   id="manualReview"
                   checked={settings.requireManualReview}
@@ -748,6 +802,69 @@ export default function ScraperSettingsPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Data Quality: Postcode Repair */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <SearchCheck className="h-4 w-4" />
+              Postcode Repair
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Cross-checks all scraped property listings and vendor leads against Land Registry data to
+              validate and fill in missing or incorrect postcodes. Uses a 3-step process: stored postcode
+              validation → Land Registry street lookup → postcodes.io fallback.
+            </p>
+
+            {postcodeFixResult && (
+              <div className="rounded-md border bg-muted/40 p-3 text-sm space-y-2">
+                <p className="font-medium">
+                  {postcodeFixResult.dryRun ? "Dry run complete — no changes saved" : "Postcode repair complete"}
+                </p>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-muted-foreground">
+                  <span>Scraped properties scanned:</span>
+                  <span className="font-medium text-foreground">{postcodeFixResult.propertyListings.processed}</span>
+                  <span>Scraped properties corrected:</span>
+                  <span className="font-medium text-green-600">{postcodeFixResult.propertyListings.corrected}</span>
+                  <span>Vendor leads scanned:</span>
+                  <span className="font-medium text-foreground">{postcodeFixResult.vendorLeads.processed}</span>
+                  <span>Vendor leads corrected:</span>
+                  <span className="font-medium text-green-600">{postcodeFixResult.vendorLeads.corrected}</span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => runPostcodeFix(true)}
+                disabled={isDryRunning || isFixingPostcodes}
+              >
+                {isDryRunning ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <SearchCheck className="mr-2 h-4 w-4" />
+                )}
+                Dry Run
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => runPostcodeFix(false)}
+                disabled={isDryRunning || isFixingPostcodes}
+              >
+                {isFixingPostcodes ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <SearchCheck className="mr-2 h-4 w-4" />
+                )}
+                Fix Postcodes
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

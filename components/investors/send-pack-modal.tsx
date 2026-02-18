@@ -20,8 +20,11 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, FileText, Info, User } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { Loader2, FileText, Info, User, CheckCircle, XCircle, AlertTriangle, Download, RefreshCw, Mail } from "lucide-react"
 import { toast } from "sonner"
+import { format } from "date-fns"
 
 interface SendPackModalProps {
   open: boolean
@@ -35,7 +38,17 @@ interface Deal {
   id: string
   address: string
   askingPrice: number
+  status: string
   investorPackSent: boolean
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  new: "New",
+  review: "In Review",
+  in_progress: "In Progress",
+  ready: "Ready",
+  listed: "Listed",
+  reserved: "Reserved",
 }
 
 interface Investor {
@@ -47,6 +60,19 @@ interface Investor {
   }
 }
 
+interface DeliveryRecord {
+  id: string
+  dealId: string
+  deal: { address: string; askingPrice: number }
+  investor: { user: { firstName: string | null; lastName: string | null; email: string } }
+  partNumber: number | null
+  recipientEmail: string | null
+  emailStatus: string | null
+  emailError: string | null
+  sentAt: string
+  deliveryMethod: string
+}
+
 const PART_OPTIONS = [
   { value: 0, label: 'Complete Pack (Single Template)', description: 'Send the full investor pack' },
   { value: 1, label: 'Part 1: Company Executive Summary', description: '1 page - Pique interest, no asking for money' },
@@ -54,6 +80,25 @@ const PART_OPTIONS = [
   { value: 3, label: 'Part 3: Case Studies', description: 'Build authority with track record' },
   { value: 4, label: 'Part 4: Investment Offering', description: '8-15 pages - HNWI/SI only (FCA compliance required)' },
 ]
+
+function EmailStatusBadge({ status }: { status: string | null }) {
+  if (!status || status === "pending") {
+    return <Badge variant="outline" className="text-xs gap-1"><Mail className="h-3 w-3" />Pending</Badge>
+  }
+  if (status === "sent") {
+    return <Badge variant="outline" className="text-xs gap-1 text-green-700 border-green-300 bg-green-50"><CheckCircle className="h-3 w-3" />Email Sent</Badge>
+  }
+  if (status === "failed") {
+    return <Badge variant="outline" className="text-xs gap-1 text-red-700 border-red-300 bg-red-50"><XCircle className="h-3 w-3" />Email Failed</Badge>
+  }
+  if (status === "no_smtp") {
+    return <Badge variant="outline" className="text-xs gap-1 text-amber-700 border-amber-300 bg-amber-50"><AlertTriangle className="h-3 w-3" />SMTP Not Configured</Badge>
+  }
+  if (status === "not_applicable") {
+    return <Badge variant="outline" className="text-xs gap-1 text-gray-500">Manual Delivery</Badge>
+  }
+  return null
+}
 
 export function SendPackModal({
   open,
@@ -65,34 +110,44 @@ export function SendPackModal({
   const [loading, setLoading] = useState(false)
   const [loadingDeals, setLoadingDeals] = useState(false)
   const [loadingInvestors, setLoadingInvestors] = useState(false)
+  const [loadingHistory, setLoadingHistory] = useState(false)
   const [deals, setDeals] = useState<Deal[]>([])
   const [investors, setInvestors] = useState<Investor[]>([])
   const [selectedDealId, setSelectedDealId] = useState("")
   const [selectedInvestorId, setSelectedInvestorId] = useState(initialInvestorId || "")
   const [selectedPart, setSelectedPart] = useState<number>(0)
   const [notes, setNotes] = useState("")
+  const [lastDelivery, setLastDelivery] = useState<DeliveryRecord | null>(null)
+  const [deliveryHistory, setDeliveryHistory] = useState<DeliveryRecord[]>([])
+  const [resendingId, setResendingId] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
-      // Always fetch both investors and deals when modal opens
       fetchDeals()
       fetchInvestors()
+    } else {
+      // Reset on close
+      setLastDelivery(null)
+      setDeliveryHistory([])
     }
   }, [open])
+
+  useEffect(() => {
+    if (selectedDealId && selectedInvestorId) {
+      fetchDeliveryHistory()
+    }
+  }, [selectedDealId, selectedInvestorId])
 
   const fetchDeals = async () => {
     setLoadingDeals(true)
     try {
-      // Fetch deals that are ready for investor marketing
       const response = await fetch("/api/deals")
       if (response.ok) {
         const data = await response.json()
-        // Filter to show deals that can have investor packs generated
-        // Show all deals except those that are archived or in very early stages
         const availableDeals = (data.deals || []).filter(
           (deal: any) =>
             deal.status !== "archived" &&
-            deal.status !== "new"
+            deal.status !== "sold"
         )
         setDeals(availableDeals)
       } else {
@@ -121,6 +176,23 @@ export function SendPackModal({
       toast.error("Error loading investors. Please try again.")
     } finally {
       setLoadingInvestors(false)
+    }
+  }
+
+  const fetchDeliveryHistory = async () => {
+    setLoadingHistory(true)
+    try {
+      const response = await fetch(
+        `/api/investors/pack-delivery?investorId=${selectedInvestorId}&dealId=${selectedDealId}`
+      )
+      if (response.ok) {
+        const data = await response.json()
+        setDeliveryHistory(data.deliveries || [])
+      }
+    } catch (error) {
+      console.error("Error fetching delivery history:", error)
+    } finally {
+      setLoadingHistory(false)
     }
   }
 
@@ -154,20 +226,38 @@ export function SendPackModal({
         throw new Error(error.error || "Failed to send pack")
       }
 
-      const partLabel = selectedPart === 0
-        ? 'Complete investor pack'
-        : `Part ${selectedPart}`
+      const data = await response.json()
+      const emailStatus: string = data.emailStatus || "pending"
 
-      const investorName = initialInvestorName ||
-        investors.find(i => i.id === selectedInvestorId)?.user.firstName + " " +
-        investors.find(i => i.id === selectedInvestorId)?.user.lastName ||
-        "investor"
+      // Show delivery result
+      setLastDelivery({
+        ...data.delivery,
+        emailStatus,
+        deal: deals.find(d => d.id === selectedDealId) as any,
+        investor: investors.find(i => i.id === selectedInvestorId) as any,
+      })
 
-      toast.success(`${partLabel} sent to ${investorName}`)
-      onOpenChange(false)
-      setSelectedDealId("")
-      setSelectedInvestorId(initialInvestorId || "")
-      setSelectedPart(0)
+      // Refresh history
+      await fetchDeliveryHistory()
+
+      const partLabel = selectedPart === 0 ? "Complete investor pack" : `Part ${selectedPart}`
+      const investorDisplay =
+        initialInvestorName ||
+        (() => {
+          const inv = investors.find(i => i.id === selectedInvestorId)
+          return inv ? `${inv.user.firstName} ${inv.user.lastName}`.trim() : "investor"
+        })()
+
+      if (emailStatus === "sent") {
+        toast.success(`${partLabel} sent to ${investorDisplay} — email delivered`)
+      } else if (emailStatus === "no_smtp") {
+        toast.warning(`Pack recorded for ${investorDisplay} — email not sent (SMTP not configured)`)
+      } else if (emailStatus === "failed") {
+        toast.error(`Pack recorded but email failed. Use the Resend button below.`)
+      } else {
+        toast.success(`${partLabel} sent to ${investorDisplay}`)
+      }
+
       setNotes("")
       if (onSuccess) onSuccess()
     } catch (error: any) {
@@ -176,6 +266,43 @@ export function SendPackModal({
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleResend = async (deliveryId: string) => {
+    setResendingId(deliveryId)
+    try {
+      const response = await fetch(`/api/investors/pack-delivery/${deliveryId}/resend`, {
+        method: "POST",
+      })
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success("Email resent successfully")
+      } else if (data.noSmtp) {
+        toast.warning("Cannot resend: SMTP email is not configured. Contact your administrator.")
+      } else {
+        toast.error(`Resend failed: ${data.error || "Unknown error"}`)
+      }
+
+      // Refresh history to show updated status
+      await fetchDeliveryHistory()
+    } catch (error: any) {
+      toast.error("Failed to resend email")
+    } finally {
+      setResendingId(null)
+    }
+  }
+
+  const handleViewPdf = (dealId: string, deliveryId: string) => {
+    // Track the view
+    fetch(`/api/investors/pack-delivery/${deliveryId}/track`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "view" }),
+    }).catch(() => {})
+
+    // Open PDF in new tab
+    window.open(`/api/deals/${dealId}/investor-pack`, "_blank")
   }
 
   const selectedDeal = deals.find((d) => d.id === selectedDealId)
@@ -194,7 +321,7 @@ export function SendPackModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Investor Selection - always show */}
+          {/* Investor Selection */}
           <div className="space-y-2">
             <Label htmlFor="investor">
               <User className="h-4 w-4 inline mr-2" />
@@ -247,12 +374,18 @@ export function SendPackModal({
                   </div>
                 ) : deals.length === 0 ? (
                   <div className="p-2 text-sm text-muted-foreground">
-                    No deals with investor packs available. Generate an investor pack first.
+                    No deals available.
                   </div>
                 ) : (
                   deals.map((deal) => (
                     <SelectItem suppressHydrationWarning key={deal.id} value={deal.id}>
-                      {deal.address} - £{deal.askingPrice.toLocaleString()}
+                      <span>{deal.address}</span>
+                      <span className="ml-1 text-muted-foreground">
+                        · £{deal.askingPrice?.toLocaleString() ?? "—"}
+                        {deal.status && deal.status !== "ready" && deal.status !== "listed"
+                          ? ` · ${STATUS_LABELS[deal.status] ?? deal.status}`
+                          : ""}
+                      </span>
                     </SelectItem>
                   ))
                 )}
@@ -324,6 +457,108 @@ export function SendPackModal({
               rows={3}
             />
           </div>
+
+          {/* Last delivery result */}
+          {lastDelivery && (
+            <div className="rounded-lg border p-3 bg-muted/30 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Last delivery</p>
+                <EmailStatusBadge status={lastDelivery.emailStatus} />
+              </div>
+              {(lastDelivery.emailStatus === "failed" || lastDelivery.emailStatus === "no_smtp") && lastDelivery.emailError && (
+                <p className="text-xs text-muted-foreground">{lastDelivery.emailError}</p>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 text-xs"
+                  onClick={() => handleViewPdf(selectedDealId, lastDelivery.id)}
+                >
+                  <Download className="h-3 w-3 mr-1" />
+                  View / Download PDF
+                </Button>
+                {(lastDelivery.emailStatus === "failed" || lastDelivery.emailStatus === "no_smtp" || lastDelivery.emailStatus === "pending") && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs"
+                    onClick={() => handleResend(lastDelivery.id)}
+                    disabled={resendingId === lastDelivery.id}
+                  >
+                    {resendingId === lastDelivery.id ? (
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                    )}
+                    Resend Email
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Delivery history */}
+          {selectedDealId && selectedInvestorId && deliveryHistory.length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">Delivery History</p>
+                {loadingHistory ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Loading history...
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {deliveryHistory.slice(0, 5).map((record) => (
+                      <div key={record.id} className="rounded-md border p-2 bg-background space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {record.partNumber ? `Part ${record.partNumber}` : "Complete Pack"} •{" "}
+                            {format(new Date(record.sentAt), "dd MMM yyyy HH:mm")}
+                          </span>
+                          <EmailStatusBadge status={record.emailStatus} />
+                        </div>
+                        {record.emailError && (
+                          <p className="text-xs text-red-600">{record.emailError}</p>
+                        )}
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs px-2"
+                            onClick={() => handleViewPdf(record.dealId, record.id)}
+                          >
+                            <Download className="h-3 w-3 mr-1" />
+                            View PDF
+                          </Button>
+                          {(record.emailStatus === "failed" ||
+                            record.emailStatus === "no_smtp" ||
+                            record.emailStatus === "pending") && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs px-2"
+                              onClick={() => handleResend(record.id)}
+                              disabled={resendingId === record.id}
+                            >
+                              {resendingId === record.id ? (
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              ) : (
+                                <RefreshCw className="h-3 w-3 mr-1" />
+                              )}
+                              Resend
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         <DialogFooter>

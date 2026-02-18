@@ -47,7 +47,43 @@ export async function GET(
       return NextResponse.json({ error: "Lead not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ lead })
+    // Enrich with active reservation info (if lead has a linked deal)
+    let reservation = null
+    let reservedByInvestor = null
+
+    if (lead.dealId) {
+      reservation = await prisma.investorReservation.findFirst({
+        where: { dealId: lead.dealId, status: { notIn: ["cancelled"] } },
+        orderBy: { updatedAt: "desc" },
+        select: {
+          id: true,
+          dealId: true,
+          investorId: true,
+          status: true,
+          reservationFee: true,
+          createdAt: true,
+          updatedAt: true,
+          investor: {
+            select: {
+              id: true,
+              user: { select: { firstName: true, lastName: true, email: true, phone: true } },
+            },
+          },
+        },
+      })
+    }
+
+    if (lead.reservedByInvestorId) {
+      reservedByInvestor = await prisma.investor.findUnique({
+        where: { id: lead.reservedByInvestorId },
+        select: {
+          id: true,
+          user: { select: { firstName: true, lastName: true, email: true, phone: true } },
+        },
+      })
+    }
+
+    return NextResponse.json({ lead: { ...lead, reservation, reservedByInvestor } })
   } catch (error: any) {
     console.error("Error fetching vendor lead:", error)
     return NextResponse.json(

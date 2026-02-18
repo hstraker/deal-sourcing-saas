@@ -77,8 +77,66 @@ export async function GET(request: NextRequest) {
       prisma.vendorLead.count({ where }),
     ])
 
+    // Batch-fetch investor reservations and investor details for enrichment
+    const dealIds = leads.filter((l) => l.dealId).map((l) => l.dealId as string)
+    const reservedInvestorIds = leads
+      .filter((l) => l.reservedByInvestorId)
+      .map((l) => l.reservedByInvestorId as string)
+
+    const [activeReservations, reservedInvestors] = await Promise.all([
+      dealIds.length > 0
+        ? prisma.investorReservation.findMany({
+            where: { dealId: { in: dealIds }, status: { notIn: ["cancelled"] } },
+            orderBy: { updatedAt: "desc" },
+            select: {
+              id: true,
+              dealId: true,
+              investorId: true,
+              status: true,
+              reservationFee: true,
+              createdAt: true,
+              updatedAt: true,
+              investor: {
+                select: {
+                  id: true,
+                  user: {
+                    select: { firstName: true, lastName: true, email: true, phone: true },
+                  },
+                },
+              },
+            },
+          })
+        : [],
+      reservedInvestorIds.length > 0
+        ? prisma.investor.findMany({
+            where: { id: { in: reservedInvestorIds } },
+            select: {
+              id: true,
+              user: { select: { firstName: true, lastName: true, email: true, phone: true } },
+            },
+          })
+        : [],
+    ])
+
+    // Map most-recent reservation per deal (first = most recent due to orderBy updatedAt desc)
+    const reservationByDealId = new Map<string, (typeof activeReservations)[0]>()
+    for (const res of activeReservations) {
+      if (!reservationByDealId.has(res.dealId)) {
+        reservationByDealId.set(res.dealId, res)
+      }
+    }
+    const investorById = new Map(reservedInvestors.map((i) => [i.id, i]))
+
+    const enrichedLeads = leads.map((lead) => ({
+      ...lead,
+      reservation: lead.dealId ? (reservationByDealId.get(lead.dealId) ?? null) : null,
+      reservedByInvestor: lead.reservedByInvestorId
+        ? (investorById.get(lead.reservedByInvestorId) ?? null)
+        : null,
+    }))
+
     return NextResponse.json({
-      leads,
+      leads: enrichedLeads,
       total,
       page,
       pages: Math.ceil(total / limit),

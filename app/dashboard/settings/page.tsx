@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-import { Settings, DollarSign, Eye, TrendingUp, Terminal, Play, Trash2, ExternalLink, Loader2, CheckCircle, XCircle, Send, Shuffle, Facebook, FileText, Building2, Search } from "lucide-react"
+import { Settings, DollarSign, Eye, TrendingUp, Terminal, Play, Trash2, ExternalLink, Loader2, CheckCircle, XCircle, Send, Shuffle, Facebook, FileText, Building2, Search, Calculator, Mail, AlertTriangle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -53,6 +53,60 @@ export default function SettingsPage() {
     showBMVHighlight: true,
     showConfidenceScores: true,
   })
+
+  // Email settings state
+  const [emailStatus, setEmailStatus] = useState<{
+    configured: boolean
+    host: string | null
+    port: string | null
+    user: string | null
+    fromName: string | null
+    connected: boolean
+    error: string | null
+  } | null>(null)
+  const [emailStatusLoading, setEmailStatusLoading] = useState(false)
+  const [testEmailTo, setTestEmailTo] = useState("")
+  const [sendingTestEmail, setSendingTestEmail] = useState(false)
+  const [testEmailResult, setTestEmailResult] = useState<{ success: boolean; error?: string } | null>(null)
+
+  const checkEmailStatus = async () => {
+    setEmailStatusLoading(true)
+    try {
+      const res = await fetch("/api/settings/email-test")
+      if (res.ok) setEmailStatus(await res.json())
+    } catch {
+      // ignore
+    } finally {
+      setEmailStatusLoading(false)
+    }
+  }
+
+  const sendTestEmail = async () => {
+    if (!testEmailTo) {
+      toast({ title: "Enter an email address", variant: "destructive" })
+      return
+    }
+    setSendingTestEmail(true)
+    setTestEmailResult(null)
+    try {
+      const res = await fetch("/api/settings/email-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: testEmailTo }),
+      })
+      const data = await res.json()
+      setTestEmailResult(data)
+      if (data.success) {
+        toast({ title: "Test email sent!", description: `Delivered to ${testEmailTo}` })
+      } else {
+        toast({ title: "Failed to send", description: data.error, variant: "destructive" })
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" })
+    } finally {
+      setSendingTestEmail(false)
+    }
+  }
 
   // Development mode state
   const [isTestRunning, setIsTestRunning] = useState(false)
@@ -409,6 +463,129 @@ export default function SettingsPage() {
                 Manage
               </Button>
             </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* BMV Offer Calculator Settings */}
+      <Card className="border-emerald-200 dark:border-emerald-800">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calculator className="h-5 w-5 text-emerald-600" />
+            BMV Offer Calculator
+          </CardTitle>
+          <CardDescription>
+            Configure strategy-specific offer formulae (Flip, BRR, BuyHold, BTL), discount
+            ranges, risk adjustments, and validation thresholds.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">
+                Professional investor offer pricing — discount from market value with per-strategy ceilings
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Toggle between legacy motivation-based and strategy-aware calculation modes
+              </p>
+            </div>
+            <Link href="/dashboard/settings/offer-calculator">
+              <Button>
+                <Calculator className="h-4 w-4 mr-2" />
+                Configure
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Email / SMTP Settings */}
+      <Card className="border-sky-200 dark:border-sky-800">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5 text-sky-600" />
+            Email Settings (SMTP)
+          </CardTitle>
+          <CardDescription>
+            Configure Hostinger SMTP for sending investor packs and communications
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Config summary */}
+          {emailStatus ? (
+            <div className="space-y-3">
+              <div className={`flex items-center gap-2 text-sm font-medium ${emailStatus.connected ? "text-green-700" : "text-red-700"}`}>
+                {emailStatus.connected
+                  ? <><CheckCircle className="h-4 w-4" /> Connected to {emailStatus.host}</>
+                  : <><XCircle className="h-4 w-4" /> {emailStatus.error || "Connection failed"}</>}
+              </div>
+              {emailStatus.configured && (
+                <div className="bg-muted/50 rounded-md p-3 text-xs space-y-1 font-mono">
+                  <div><span className="text-muted-foreground">Host:</span> {emailStatus.host}:{emailStatus.port}</div>
+                  <div><span className="text-muted-foreground">User:</span> {emailStatus.user}</div>
+                  {emailStatus.fromName && <div><span className="text-muted-foreground">From:</span> {emailStatus.fromName}</div>}
+                </div>
+              )}
+              {!emailStatus.configured && (
+                <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-3">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">SMTP not configured</p>
+                    <p className="text-xs mt-1">Add <code>SMTP_HOST</code>, <code>SMTP_USER</code>, and <code>SMTP_PASSWORD</code> to your <code>.env</code> file. See instructions below.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Click "Check Connection" to verify your SMTP settings.</p>
+          )}
+
+          {/* Check connection */}
+          <Button variant="outline" size="sm" onClick={checkEmailStatus} disabled={emailStatusLoading}>
+            {emailStatusLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Mail className="h-4 w-4 mr-2" />}
+            Check Connection
+          </Button>
+
+          {/* Send test email */}
+          {emailStatus?.configured && (
+            <div className="space-y-2 pt-2 border-t">
+              <p className="text-sm font-medium">Send Test Email</p>
+              <div className="flex gap-2">
+                <Input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={testEmailTo}
+                  onChange={(e) => setTestEmailTo(e.target.value)}
+                  className="max-w-xs"
+                />
+                <Button size="sm" onClick={sendTestEmail} disabled={sendingTestEmail}>
+                  {sendingTestEmail ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                  Send Test
+                </Button>
+              </div>
+              {testEmailResult && (
+                <p className={`text-xs font-medium ${testEmailResult.success ? "text-green-700" : "text-red-700"}`}>
+                  {testEmailResult.success ? "✓ Test email delivered successfully" : `✗ ${testEmailResult.error}`}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Hostinger setup instructions */}
+          <div className="bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800 rounded-md p-4 text-sm space-y-2">
+            <p className="font-semibold text-sky-900 dark:text-sky-100">Hostinger Setup Instructions</p>
+            <ol className="list-decimal list-inside space-y-1.5 text-sky-800 dark:text-sky-200 text-xs">
+              <li>Log into <strong>hPanel</strong> → <strong>Emails</strong> → <strong>Email Accounts</strong></li>
+              <li>Create an email address e.g. <code>deals@yourdomain.com</code></li>
+              <li>Set a strong password for it</li>
+              <li>In your <code>.env</code> file set these values:</li>
+            </ol>
+            <pre className="bg-sky-100 dark:bg-sky-900/50 rounded p-2 text-xs font-mono text-sky-900 dark:text-sky-100 mt-2 overflow-x-auto">{`SMTP_HOST="smtp.hostinger.com"
+SMTP_PORT=465
+SMTP_USER="deals@yourdomain.com"
+SMTP_PASSWORD="your-email-password"
+SMTP_FROM_NAME="Your Company Name"`}</pre>
+            <p className="text-xs text-sky-700 dark:text-sky-300">After editing <code>.env</code>, restart the dev server and click <strong>Check Connection</strong>.</p>
           </div>
         </CardContent>
       </Card>

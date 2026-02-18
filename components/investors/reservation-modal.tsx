@@ -127,7 +127,7 @@ export function ReservationModal({
   const fetchDeals = async () => {
     setLoadingDeals(true)
     try {
-      const response = await fetch("/api/deals")
+      const response = await fetch("/api/deals?forReservation=true")
       if (response.ok) {
         const data = await response.json()
         setDeals(data.deals || [])
@@ -431,10 +431,13 @@ export function ReservationModal({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="fee_pending">Fee Pending</SelectItem>
-                      <SelectItem value="proof_of_funds_pending">Proof of Funds Pending</SelectItem>
-                      <SelectItem value="verified">Verified</SelectItem>
-                      <SelectItem value="locked_out">Locked Out</SelectItem>
+                      <SelectItem value="pack_sent">Pack Sent</SelectItem>
+                      <SelectItem value="fee_pending">Fee Requested</SelectItem>
+                      <SelectItem value="fee_paid">Fee Paid</SelectItem>
+                      <SelectItem value="proof_of_funds_pending">POF Requested</SelectItem>
+                      <SelectItem value="pof_received">POF Received</SelectItem>
+                      <SelectItem value="lock_out_sent">Lock-out Sent</SelectItem>
+                      <SelectItem value="locked_out">Lock-out Signed</SelectItem>
                       <SelectItem value="completed">Completed</SelectItem>
                       <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
@@ -460,24 +463,15 @@ export function ReservationModal({
                     <Checkbox
                       id="proofOfFundsProvided"
                       checked={proofOfFundsProvided}
-                      onCheckedChange={(checked) => setProofOfFundsProvided(checked as boolean)}
+                      onCheckedChange={(checked) => {
+                        const val = checked as boolean
+                        setProofOfFundsProvided(val)
+                        setProofOfFundsVerified(val)
+                      }}
                     />
                     <Label htmlFor="proofOfFundsProvided" className="cursor-pointer">
                       <FileText className="h-4 w-4 inline mr-2 text-blue-600" />
-                      Proof of Funds Provided
-                    </Label>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="proofOfFundsVerified"
-                      checked={proofOfFundsVerified}
-                      onCheckedChange={(checked) => setProofOfFundsVerified(checked as boolean)}
-                      disabled={!proofOfFundsProvided}
-                    />
-                    <Label htmlFor="proofOfFundsVerified" className="cursor-pointer">
-                      <CheckCircle className="h-4 w-4 inline mr-2 text-green-600" />
-                      Proof of Funds Verified
+                      Proof of Funds Received
                     </Label>
                   </div>
 

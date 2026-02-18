@@ -21,8 +21,10 @@ import {
   Play,
   X,
   Gauge,
+  Home,
 } from "lucide-react"
 import { toast } from "sonner"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface ImportRecord {
   id: string
@@ -50,6 +52,24 @@ interface ImportStats {
   lastOcodImport: string | null
 }
 
+interface PpdImportRecord {
+  id: string
+  year: number
+  status: string
+  recordsRead: number
+  recordsInserted: number
+  errorMessage: string | null
+  startedAt: string | null
+  completedAt: string | null
+  cancelledAt: string | null
+  createdAt: string
+}
+
+interface PpdStats {
+  addressCount: number
+  lastImport: { year: number; completedAt: string | null; recordsInserted: number } | null
+}
+
 export function LandRegistrySettings() {
   const [stats, setStats] = useState<ImportStats | null>(null)
   const [recentImports, setRecentImports] = useState<ImportRecord[]>([])
@@ -57,6 +77,13 @@ export function LandRegistrySettings() {
   const [importing, setImporting] = useState<string | null>(null) // "ccod" | "ocod" | "both"
   const [dryRunning, setDryRunning] = useState(false)
   const [fixing, setFixing] = useState(false)
+
+  // PPD state
+  const [ppdStats, setPpdStats] = useState<PpdStats | null>(null)
+  const [ppdImports, setPpdImports] = useState<PpdImportRecord[]>([])
+  const [ppdYear, setPpdYear] = useState<string>(String(new Date().getFullYear() - 1))
+  const [ppdImporting, setPpdImporting] = useState(false)
+
   const [fixResult, setFixResult] = useState<{
     summary: {
       totalProcessed: number
@@ -81,12 +108,28 @@ export function LandRegistrySettings() {
     }
   }, [])
 
+  const fetchPpdStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/price-paid/status")
+      if (!res.ok) return
+      const data = await res.json()
+      setPpdStats(data.stats)
+      setPpdImports(data.recentImports ?? [])
+    } catch {
+      // silently fail on polling
+    }
+  }, [])
+
   useEffect(() => {
     fetchStatus()
-  }, [fetchStatus])
+    fetchPpdStatus()
+  }, [fetchStatus, fetchPpdStatus])
 
   // Poll more frequently while an import is running (every 2 seconds)
   const hasRunningImport = recentImports.some(
+    (r) => r.status === "PENDING" || r.status === "RUNNING"
+  )
+  const hasRunningPpdImport = ppdImports.some(
     (r) => r.status === "PENDING" || r.status === "RUNNING"
   )
 
@@ -95,6 +138,12 @@ export function LandRegistrySettings() {
     const interval = setInterval(fetchStatus, 2000)
     return () => clearInterval(interval)
   }, [hasRunningImport, fetchStatus])
+
+  useEffect(() => {
+    if (!hasRunningPpdImport) return
+    const interval = setInterval(fetchPpdStatus, 3000)
+    return () => clearInterval(interval)
+  }, [hasRunningPpdImport, fetchPpdStatus])
 
   const triggerImport = async (datasetType: "ccod" | "ocod" | "both") => {
     // Check if there's already data
@@ -208,6 +257,56 @@ export function LandRegistrySettings() {
     } finally {
       if (dryRun) setDryRunning(false)
       else setFixing(false)
+    }
+  }
+
+  const triggerPpdImport = async () => {
+    const year = parseInt(ppdYear, 10)
+    if (
+      ppdStats?.addressCount &&
+      ppdStats.addressCount > 0 &&
+      !confirm(
+        `Price Paid Data already has ${ppdStats.addressCount.toLocaleString()} records. Import will add new unique street→postcode pairs. Continue?`
+      )
+    ) {
+      return
+    }
+    setPpdImporting(true)
+    try {
+      const res = await fetch("/api/admin/price-paid/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ year }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? "PPD import failed to start")
+        return
+      }
+      toast.success(data.message ?? "PPD import started")
+      await fetchPpdStatus()
+    } catch {
+      toast.error("Failed to start PPD import")
+    } finally {
+      setPpdImporting(false)
+    }
+  }
+
+  const cancelPpdImport = async (importId: string) => {
+    if (!confirm("Cancel this PPD import?")) return
+    try {
+      const res = await fetch(`/api/admin/price-paid/import/${importId}/cancel`, {
+        method: "POST",
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? "Failed to cancel")
+        return
+      }
+      toast.success("PPD import cancelled")
+      await fetchPpdStatus()
+    } catch {
+      toast.error("Failed to cancel PPD import")
     }
   }
 
@@ -462,6 +561,97 @@ export function LandRegistrySettings() {
         </CardContent>
       </Card>
 
+      {/* Price Paid Data */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Home className="h-4 w-4 text-emerald-500" />
+            Price Paid Data (PPD)
+          </CardTitle>
+          <CardDescription>
+            HM Land Registry Price Paid Data covers <strong>all residential property sales</strong> since 1995
+            in England &amp; Wales (~28M transactions). Imported as a deduplicated street→postcode mapping and
+            used for postcode resolution when CCOD/OCOD has no matching record (which is &gt;95% of properties).
+            Download one year at a time (fast, ~50–100 MB) or the complete dataset (~5 GB).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="rounded-md border p-3">
+              <p className="text-muted-foreground text-xs mb-1">Street→Postcode pairs</p>
+              <p className="text-xl font-bold">
+                {ppdStats?.addressCount != null ? ppdStats.addressCount.toLocaleString() : "—"}
+              </p>
+            </div>
+            <div className="rounded-md border p-3">
+              <p className="text-muted-foreground text-xs mb-1">Last import</p>
+              <p className="text-sm font-medium">
+                {ppdStats?.lastImport
+                  ? `${ppdStats.lastImport.year === 0 ? "Full dataset" : `Year ${ppdStats.lastImport.year}`} — ${ppdStats.lastImport.recordsInserted.toLocaleString()} pairs`
+                  : "Never imported"}
+              </p>
+              {ppdStats?.lastImport?.completedAt && (
+                <p className="text-xs text-muted-foreground">
+                  {new Date(ppdStats.lastImport.completedAt).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Year selector + import button */}
+          <div className="flex flex-wrap items-center gap-3">
+            <Select value={ppdYear} onValueChange={setPpdYear} disabled={ppdImporting || hasRunningPpdImport}>
+              <SelectTrigger className="w-44">
+                <SelectValue placeholder="Select year" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">Full dataset (all years)</SelectItem>
+                {Array.from({ length: new Date().getFullYear() - 1994 }, (_, i) => {
+                  const y = new Date().getFullYear() - i
+                  return (
+                    <SelectItem key={y} value={String(y)}>
+                      {y}
+                    </SelectItem>
+                  )
+                })}
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={triggerPpdImport}
+              disabled={ppdImporting || hasRunningPpdImport}
+              variant="outline"
+            >
+              {ppdImporting || hasRunningPpdImport ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4 text-emerald-500" />
+              )}
+              {hasRunningPpdImport ? "Import running…" : "Import PPD"}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={fetchPpdStatus} title="Refresh">
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Start with a recent year (e.g. {new Date().getFullYear() - 1}) for fast coverage of recently sold streets.
+            The full dataset gives the best postcode coverage but takes significantly longer to download and process.
+            No API key required — data is publicly available.
+          </p>
+
+          {/* Recent PPD imports */}
+          {ppdImports.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recent imports</p>
+              {ppdImports.slice(0, 5).map((imp) => (
+                <PpdImportRow key={imp.id} record={imp} onCancel={cancelPpdImport} />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* BMV scoring info */}
       <Card>
         <CardHeader>
@@ -496,6 +686,69 @@ export function LandRegistrySettings() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+function PpdImportRow({
+  record,
+  onCancel,
+}: {
+  record: PpdImportRecord
+  onCancel: (id: string) => void
+}) {
+  const isRunning = record.status === "PENDING" || record.status === "RUNNING"
+  const yearLabel = record.year === 0 ? "Full dataset" : `Year ${record.year}`
+
+  return (
+    <div className="rounded-md border p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <StatusIcon status={record.status} />
+          <span className="text-sm font-medium">{yearLabel}</span>
+          <StatusBadge status={record.status} />
+        </div>
+        <div className="flex items-center gap-2">
+          {isRunning && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onCancel(record.id)}
+              className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
+          <span className="text-xs text-muted-foreground">
+            {new Date(record.createdAt).toLocaleString()}
+          </span>
+        </div>
+      </div>
+
+      {isRunning && (
+        <p className="text-xs text-muted-foreground animate-pulse">
+          {record.recordsRead.toLocaleString()} rows read, {record.recordsInserted.toLocaleString()} unique pairs inserted…
+        </p>
+      )}
+
+      {record.status === "COMPLETED" && (
+        <p className="text-xs text-green-700 font-medium">
+          ✓ {record.recordsRead.toLocaleString()} rows read → {record.recordsInserted.toLocaleString()} unique street→postcode pairs
+        </p>
+      )}
+
+      {record.status === "FAILED" && record.errorMessage && (
+        <div className="bg-red-50 border border-red-200 rounded p-2">
+          <p className="text-xs text-red-800 font-medium">Import failed</p>
+          <p className="text-xs text-red-600 mt-1">{record.errorMessage}</p>
+        </div>
+      )}
+
+      {record.status === "CANCELLED" && (
+        <p className="text-xs text-muted-foreground">
+          Cancelled after {record.recordsRead.toLocaleString()} rows
+        </p>
+      )}
     </div>
   )
 }

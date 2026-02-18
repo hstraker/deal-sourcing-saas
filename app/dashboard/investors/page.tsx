@@ -73,6 +73,27 @@ export default async function InvestorsPage() {
     },
   })
 
+  // Batch-fetch pack deliveries for all reservation investor+deal combos
+  const packDeliveries = reservations.length > 0
+    ? await prisma.investorPackDelivery.findMany({
+        where: {
+          OR: reservations.map((r) => ({ investorId: r.investorId, dealId: r.dealId })),
+        },
+        orderBy: { sentAt: "desc" },
+        select: {
+          id: true,
+          dealId: true,
+          investorId: true,
+          partNumber: true,
+          recipientEmail: true,
+          emailStatus: true,
+          emailError: true,
+          sentAt: true,
+          deliveryMethod: true,
+        },
+      })
+    : []
+
   // Convert Decimal fields to numbers and include all fields
   const investorsForClient = investors.map((investor) => ({
     ...investor,
@@ -90,6 +111,9 @@ export default async function InvestorsPage() {
       ...reservation.deal,
       askingPrice: Number(reservation.deal.askingPrice),
     },
+    packDeliveries: packDeliveries.filter(
+      (d) => d.investorId === reservation.investorId && d.dealId === reservation.dealId
+    ),
   }))
 
   return (

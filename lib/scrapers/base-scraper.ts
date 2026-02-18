@@ -323,6 +323,8 @@ export abstract class BaseScraper {
               `${LOG_PREFIX} Postcode resolved for ${property.sourceId}: ` +
               `"${property.address.postcode ?? "none"}" → "${resolved.postcode}" (via ${resolved.source})`
             )
+            ;(property.address as any).postcodeFixed = true
+            ;(property.address as any).postcodeSource = resolved.source
           }
           property.address.postcode = resolved.postcode
         }
@@ -428,8 +430,21 @@ export abstract class BaseScraper {
 
     // New property — determine review status
     let reviewStatus: "PENDING" | "AUTO_APPROVED" = "PENDING"
-    if (!property.isAmbiguous && !this.settings.requireManualReview) {
-      reviewStatus = "AUTO_APPROVED"
+    if (!property.isAmbiguous) {
+      if (!this.settings.requireManualReview) {
+        // Manual review globally disabled — fast-track all non-ambiguous properties
+        reviewStatus = "AUTO_APPROVED"
+      } else if (
+        this.settings.autoAnalysisEnabled &&
+        this.settings.autoAnalysisThreshold != null &&
+        property.bmvIndicators.bmvScore >= this.settings.autoAnalysisThreshold
+      ) {
+        // BMV score meets the auto-approve threshold — fast-track high-scoring properties
+        reviewStatus = "AUTO_APPROVED"
+        console.log(
+          `${LOG_PREFIX} Auto-approved (BMV score ${property.bmvIndicators.bmvScore} ≥ threshold ${this.settings.autoAnalysisThreshold}): ${property.address?.displayAddress ?? property.sourceId}`
+        )
+      }
     }
 
     const created = await prisma.propertyListing.create({

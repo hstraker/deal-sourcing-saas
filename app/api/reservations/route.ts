@@ -81,7 +81,35 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(reservations)
+    // Batch-fetch pack deliveries for all investor+deal combos
+    const packDeliveries = reservations.length > 0
+      ? await prisma.investorPackDelivery.findMany({
+          where: {
+            OR: reservations.map((r) => ({ investorId: r.investorId, dealId: r.dealId })),
+          },
+          orderBy: { sentAt: "desc" },
+          select: {
+            id: true,
+            dealId: true,
+            investorId: true,
+            partNumber: true,
+            recipientEmail: true,
+            emailStatus: true,
+            emailError: true,
+            sentAt: true,
+            deliveryMethod: true,
+          },
+        })
+      : []
+
+    const reservationsWithPacks = reservations.map((r) => ({
+      ...r,
+      packDeliveries: packDeliveries.filter(
+        (d) => d.investorId === r.investorId && d.dealId === r.dealId
+      ),
+    }))
+
+    return NextResponse.json(reservationsWithPacks)
   } catch (error) {
     console.error("Error fetching reservations:", error)
     return NextResponse.json(
@@ -180,6 +208,28 @@ export async function POST(request: NextRequest) {
     await prisma.deal.update({
       where: { id: validatedData.dealId },
       data: { reservationCount },
+    })
+
+    // Move investor pipeline to RESERVED if not already at a later stage
+    const laterStages = ["RESERVED", "PURCHASED"]
+    if (!laterStages.includes(investor.pipelineStage)) {
+      await prisma.investor.update({
+        where: { id: validatedData.investorId },
+        data: {
+          pipelineStage: "RESERVED",
+          lastActivityAt: new Date(),
+        },
+      })
+    }
+
+    await prisma.investorActivity.create({
+      data: {
+        investorId: validatedData.investorId,
+        activityType: "RESERVATION_MADE",
+        description: `Reservation created for ${deal.address}`,
+        dealId: validatedData.dealId,
+        triggeredById: session.user.id,
+      },
     })
 
     return NextResponse.json(reservation, { status: 201 })

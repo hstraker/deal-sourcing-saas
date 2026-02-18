@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { Decimal } from "@prisma/client/runtime/library"
+import bcrypt from "bcryptjs"
 
 // GET /api/investors - Get all investors
 export async function GET(request: NextRequest) {
@@ -34,6 +35,17 @@ export async function GET(request: NextRequest) {
             reservations: true,
           },
         },
+        // Include ALL active reservations so InvestorList can show each deal's workflow status
+        reservations: {
+          where: { status: { notIn: ["cancelled", "completed"] } },
+          orderBy: { updatedAt: "desc" },
+          select: {
+            id: true,
+            status: true,
+            dealId: true,
+            deal: { select: { address: true } },
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -51,6 +63,9 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/investors - Create a new investor
+// Accepts either { userId } (legacy) or { email, firstName, lastName, phone, ...investorFields }
+// If the email already belongs to an existing user (e.g. admin), that user's account is reused
+// and an investor profile is created for them without changing their role.
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -64,30 +79,68 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { userId, minBudget, maxBudget, preferredAreas, strategy, experienceLevel, financingStatus, emailAlerts, smsAlerts } = body
+    const { userId: providedUserId, email, firstName, lastName, phone,
+            minBudget, maxBudget, preferredAreas, strategy,
+            experienceLevel, financingStatus, emailAlerts, smsAlerts } = body
 
-    // Verify user exists and is an investor
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { investor: true },
-    })
+    let resolvedUserId: string
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    if (providedUserId) {
+      // Legacy path: caller already has a userId
+      const user = await prisma.user.findUnique({
+        where: { id: providedUserId },
+        include: { investor: true },
+      })
+      if (!user) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 })
+      }
+      if (user.investor) {
+        return NextResponse.json({ error: "This user already has an investor profile" }, { status: 409 })
+      }
+      resolvedUserId = providedUserId
+    } else {
+      // Email-based path: find existing user or create a new one
+      if (!email) {
+        return NextResponse.json({ error: "email is required" }, { status: 400 })
+      }
+
+      const existingUser = await prisma.user.findUnique({
+        where: { email },
+        include: { investor: true },
+      })
+
+      if (existingUser) {
+        // User account already exists (could be admin, sourcer, or investor)
+        if (existingUser.investor) {
+          return NextResponse.json(
+            { error: "An investor profile already exists for this email address" },
+            { status: 409 }
+          )
+        }
+        // Reuse the existing account — no role change needed
+        resolvedUserId = existingUser.id
+      } else {
+        // Create a brand-new user account with investor role
+        const passwordHash = await bcrypt.hash("TempPassword123!", 10)
+        const newUser = await prisma.user.create({
+          data: {
+            email,
+            firstName: firstName || null,
+            lastName: lastName || null,
+            phone: phone || null,
+            role: "investor",
+            passwordHash,
+            isActive: true,
+          },
+        })
+        resolvedUserId = newUser.id
+      }
     }
 
-    if (user.role !== "investor") {
-      return NextResponse.json({ error: "User must have investor role" }, { status: 400 })
-    }
-
-    if (user.investor) {
-      return NextResponse.json({ error: "Investor profile already exists for this user" }, { status: 400 })
-    }
-
-    // Create investor profile
+    // Create the investor profile
     const investor = await prisma.investor.create({
       data: {
-        userId,
+        userId: resolvedUserId,
         minBudget: (minBudget ? new Decimal(minBudget) : null) as any,
         maxBudget: (maxBudget ? new Decimal(maxBudget) : null) as any,
         preferredAreas: preferredAreas || [],

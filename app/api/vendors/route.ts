@@ -83,7 +83,62 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(vendorLeads)
+    // Batch-enrich with active reservation + investor details
+    const dealIds = vendorLeads.filter((l) => l.dealId).map((l) => l.dealId as string)
+    const reservedInvestorIds = vendorLeads
+      .filter((l) => l.reservedByInvestorId)
+      .map((l) => l.reservedByInvestorId as string)
+
+    const [activeReservations, reservedInvestors] = await Promise.all([
+      dealIds.length > 0
+        ? prisma.investorReservation.findMany({
+            where: { dealId: { in: dealIds }, status: { notIn: ["cancelled"] } },
+            orderBy: { updatedAt: "desc" },
+            select: {
+              id: true,
+              dealId: true,
+              investorId: true,
+              status: true,
+              reservationFee: true,
+              createdAt: true,
+              updatedAt: true,
+              investor: {
+                select: {
+                  id: true,
+                  user: { select: { firstName: true, lastName: true, email: true, phone: true } },
+                },
+              },
+            },
+          })
+        : [],
+      reservedInvestorIds.length > 0
+        ? prisma.investor.findMany({
+            where: { id: { in: reservedInvestorIds } },
+            select: {
+              id: true,
+              user: { select: { firstName: true, lastName: true, email: true, phone: true } },
+            },
+          })
+        : [],
+    ])
+
+    const reservationByDealId = new Map<string, (typeof activeReservations)[0]>()
+    for (const res of activeReservations) {
+      if (!reservationByDealId.has(res.dealId)) {
+        reservationByDealId.set(res.dealId, res)
+      }
+    }
+    const investorById = new Map(reservedInvestors.map((i) => [i.id, i]))
+
+    const enriched = vendorLeads.map((lead) => ({
+      ...lead,
+      reservation: lead.dealId ? (reservationByDealId.get(lead.dealId) ?? null) : null,
+      reservedByInvestor: lead.reservedByInvestorId
+        ? (investorById.get(lead.reservedByInvestorId) ?? null)
+        : null,
+    }))
+
+    return NextResponse.json(enriched)
   } catch (error) {
     console.error("Error fetching vendors:", error)
     return NextResponse.json(

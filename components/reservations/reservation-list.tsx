@@ -77,20 +77,26 @@ interface ReservationListProps {
 
 const statusColors: Record<string, string> = {
   pending: "bg-gray-100 text-gray-800",
+  pack_sent: "bg-blue-100 text-blue-800",
   fee_pending: "bg-yellow-100 text-yellow-800",
-  proof_of_funds_pending: "bg-blue-100 text-blue-800",
-  verified: "bg-green-100 text-green-800",
-  locked_out: "bg-purple-100 text-purple-800",
-  completed: "bg-emerald-100 text-emerald-800",
+  fee_paid: "bg-emerald-100 text-emerald-800",
+  proof_of_funds_pending: "bg-orange-100 text-orange-800",
+  pof_received: "bg-sky-100 text-sky-800",
+  lock_out_sent: "bg-purple-100 text-purple-800",
+  locked_out: "bg-violet-100 text-violet-800",
+  completed: "bg-teal-100 text-teal-800",
   cancelled: "bg-red-100 text-red-800",
 }
 
 const statusLabels: Record<string, string> = {
   pending: "Pending",
-  fee_pending: "Fee Pending",
-  proof_of_funds_pending: "Proof of Funds Pending",
-  verified: "Verified",
-  locked_out: "Locked Out",
+  pack_sent: "Pack Sent",
+  fee_pending: "Fee Requested",
+  fee_paid: "Fee Paid",
+  proof_of_funds_pending: "POF Requested",
+  pof_received: "POF Received",
+  lock_out_sent: "Lock-out Sent",
+  locked_out: "Lock-out Signed",
   completed: "Completed",
   cancelled: "Cancelled",
 }

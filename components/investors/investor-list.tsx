@@ -20,7 +20,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Loader2, Search, Mail, Phone, PoundSterling, Plus, Edit, Trash2, Send, FileCheck } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
+  Loader2, Search, Mail, Phone, PoundSterling, Plus, Edit, Trash2, Send, FileCheck,
+  UserRound, MessageCircle, BadgeCheck, Eye, KeyRound, Trophy, CircleOff, Layers,
+} from "lucide-react"
 import Link from "next/link"
 import { format } from "date-fns"
 import { InvestorForm } from "./investor-form"
@@ -51,6 +60,8 @@ interface Investor {
   _count?: {
     reservations: number
   }
+  // All active reservations (not cancelled/completed), each with deal address
+  reservations?: { id: string; status: string; dealId: string; deal?: { address: string } }[]
 }
 
 interface InvestorListProps {
@@ -96,6 +107,39 @@ const pipelineStageColors: Record<string, string> = {
   INACTIVE: "bg-red-100 text-red-700 border-red-200",
 }
 
+const pipelineStageIcons: Record<string, React.ReactNode> = {
+  LEAD:          <UserRound    className="h-3.5 w-3.5" />,
+  CONTACTED:     <MessageCircle className="h-3.5 w-3.5" />,
+  QUALIFIED:     <BadgeCheck   className="h-3.5 w-3.5" />,
+  VIEWING_DEALS: <Eye          className="h-3.5 w-3.5" />,
+  RESERVED:      <KeyRound     className="h-3.5 w-3.5" />,
+  PURCHASED:     <Trophy       className="h-3.5 w-3.5" />,
+  INACTIVE:      <CircleOff   className="h-3.5 w-3.5" />,
+}
+
+// Reservation workflow status labels/colours — mirrors reservation-overview
+const reservationStatusLabels: Record<string, string> = {
+  pending:                "Pending",
+  pack_sent:              "Pack Sent",
+  fee_pending:            "Fee Requested",
+  fee_paid:               "Fee Paid",
+  proof_of_funds_pending: "POF Requested",
+  pof_received:           "POF Received",
+  lock_out_sent:          "Lock-out Sent",
+  locked_out:             "Lock-out Signed",
+}
+
+const reservationStatusColors: Record<string, string> = {
+  pending:                "bg-gray-100 text-gray-700 border-gray-200",
+  pack_sent:              "bg-blue-100 text-blue-700 border-blue-200",
+  fee_pending:            "bg-yellow-100 text-yellow-700 border-yellow-200",
+  fee_paid:               "bg-emerald-100 text-emerald-700 border-emerald-200",
+  proof_of_funds_pending: "bg-orange-100 text-orange-700 border-orange-200",
+  pof_received:           "bg-sky-100 text-sky-700 border-sky-200",
+  lock_out_sent:          "bg-purple-100 text-purple-700 border-purple-200",
+  locked_out:             "bg-violet-100 text-violet-700 border-violet-200",
+}
+
 export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
   const [investors, setInvestors] = useState<Investor[]>(initialInvestors)
   const [isLoading, setIsLoading] = useState(false)
@@ -129,9 +173,11 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
 
   useEffect(() => {
     setIsMounted(true)
-    if (initialInvestors.length === 0) {
-      fetchInvestors()
-    }
+    fetchInvestors()
+
+    // Re-fetch when a reservation status changes (dispatched by ReservationOverview)
+    window.addEventListener("reservationUpdated", fetchInvestors)
+    return () => window.removeEventListener("reservationUpdated", fetchInvestors)
   }, [])
 
   const filteredInvestors = investors.filter((investor) => {
@@ -279,21 +325,60 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {investor.pipelineStage ? (
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${
-                            pipelineStageColors[investor.pipelineStage] ||
-                            "bg-gray-100 text-gray-800 border-gray-200"
-                          }`}
-                        >
-                          {pipelineStageLabels[investor.pipelineStage] || investor.pipelineStage}
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-xs bg-gray-100 text-gray-700 border-gray-200">
-                          Lead
-                        </Badge>
-                      )}
+                      {(() => {
+                        const stage = investor.pipelineStage || "LEAD"
+                        const activeReservations = investor.reservations?.filter(
+                          (r) => reservationStatusLabels[r.status]
+                        ) ?? []
+                        return (
+                          <TooltipProvider delayDuration={200}>
+                            <div className="flex items-center gap-1.5">
+                              {/* Stage icon — color matches stage, hover shows stage name */}
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div
+                                    className={`h-6 w-6 rounded flex items-center justify-center border cursor-default shrink-0 ${pipelineStageColors[stage] || "bg-gray-100 text-gray-700 border-gray-200"}`}
+                                  >
+                                    {pipelineStageIcons[stage] ?? <UserRound className="h-3.5 w-3.5" />}
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-xs">
+                                  <p className="font-medium">{pipelineStageLabels[stage] || stage}</p>
+                                </TooltipContent>
+                              </Tooltip>
+
+                              {/* Reservation count — hover lists each deal + status */}
+                              {activeReservations.length > 0 && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="h-6 min-w-[24px] px-1.5 rounded flex items-center justify-center gap-1 border cursor-default shrink-0 bg-background border-border text-xs font-semibold tabular-nums">
+                                      <Layers className="h-3 w-3 text-muted-foreground" />
+                                      {activeReservations.length}
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="text-xs max-w-[220px]">
+                                    <p className="font-medium mb-1.5">
+                                      {activeReservations.length} active reservation{activeReservations.length !== 1 ? "s" : ""}
+                                    </p>
+                                    <div className="space-y-1">
+                                      {activeReservations.map((res) => (
+                                        <div key={res.id} className="flex items-start gap-1.5">
+                                          <span className="text-muted-foreground leading-tight truncate max-w-[140px]">
+                                            {res.deal?.address ?? "—"}
+                                          </span>
+                                          <span className={`shrink-0 px-1 py-px rounded text-[10px] font-medium ${reservationStatusColors[res.status]}`}>
+                                            {reservationStatusLabels[res.status]}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                          </TooltipProvider>
+                        )
+                      })()}
                     </TableCell>
                     <TableCell>
                       {investor.minBudget || investor.maxBudget ? (

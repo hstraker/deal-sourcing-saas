@@ -11,6 +11,7 @@ import { prisma } from "./db"
 import { parse } from "csv-parse"
 import * as unzipper from "unzipper"
 import { PassThrough } from "stream"
+import { lookupPostcodeFromPpd } from "./price-paid"
 
 const API_BASE = "https://use-land-property-data.service.gov.uk/api/v1"
 
@@ -670,9 +671,29 @@ export async function resolvePostcodeFromAddress(
   const outcode = candidates.length > 0 ? candidates[candidates.length - 1] : null
 
   if (!outcode) {
-    // No outcode found in address — just validate the stored postcode format
+    // No outcode found in address — validate stored postcode first
     if (storedPostcode && FULL_PC_RE.test(storedPostcode.trim())) {
       return { postcode: storedPostcode.trim().toUpperCase().replace(/\s+/g, " "), source: "stored", corrected: false }
+    }
+
+    // No outcode AND no valid stored postcode — try PPD using town name only.
+    // Addresses like "Penlan Crescent, Uplands, Swansea" land here.
+    // Extract: street = first segment, town = last meaningful segment (skip
+    // short words and suburb names).
+    const segments = displayAddress.split(",").map((s) => s.trim()).filter(Boolean)
+    if (segments.length >= 2) {
+      const ppdHasData = await prisma.pricePaidAddress.findFirst({ select: { id: true } })
+      if (ppdHasData) {
+        const streetSeg = segments[0]
+        // Town candidate: last segment that is long enough to be a town name
+        const townSeg = segments.slice(1).reverse().find((s) => s.length > 3) ?? null
+        const ppdPostcode = await lookupPostcodeFromPpd(streetSeg, "", townSeg)
+        if (ppdPostcode) {
+          const resolved = ppdPostcode.trim().toUpperCase().replace(/\s+/g, " ")
+          console.log(`[LandRegistry] Resolved postcode "${resolved}" for "${streetSeg}" / "${townSeg}" via PPD (no outcode)`)
+          return { postcode: resolved, source: "land_registry", corrected: true }
+        }
+      }
     }
     return null
   }
@@ -738,7 +759,24 @@ export async function resolvePostcodeFromAddress(
     }
   }
 
-  // Step 2: postcodes.io free API — fallback for outcodes not in Land Registry data
+  // Step 2: Price Paid Data — residential sales database (28M+ transactions)
+  // This covers the vast majority of individually-owned residential properties that
+  // CCOD/OCOD misses (those datasets only cover company-owned property, ~5% of stock).
+  // lookupPostcodeFromPpd handles stripping leading house-number tokens automatically.
+  const ppdHasData = await prisma.pricePaidAddress.findFirst({ select: { id: true } })
+  if (ppdHasData) {
+    const segments = displayAddress.split(",").map((s) => s.trim()).filter(Boolean)
+    const streetSeg = segments[0] ?? ""
+    const ppdPostcode = await lookupPostcodeFromPpd(streetSeg, outcode)
+    if (ppdPostcode) {
+      const resolved = ppdPostcode.trim().toUpperCase().replace(/\s+/g, " ")
+      console.log(`[LandRegistry] Resolved postcode "${resolved}" for "${streetSeg}" via Price Paid Data`)
+      outcodeCache?.set(outcode, resolved)
+      return { postcode: resolved, source: "land_registry", corrected: true }
+    }
+  }
+
+  // Step 3: postcodes.io free API — fallback for outcodes not in Land Registry data
   // Check caller-provided cache first to avoid redundant API calls for the same outcode
   if (outcodeCache?.has(outcode)) {
     const cached = outcodeCache.get(outcode)

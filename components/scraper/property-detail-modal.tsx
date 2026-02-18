@@ -43,6 +43,7 @@ import {
   Maximize2,
 } from "lucide-react"
 import type { PropertyListingForClient, BmvIndicatorsData } from "@/types/property-listing"
+import { buildBmvBreakdown, bmvGrade } from "@/lib/scrapers/bmv-score-breakdown"
 
 /** Strip HTML tags and decode common HTML entities from a raw HTML string. */
 function stripHtml(html: string): string {
@@ -347,92 +348,94 @@ export function PropertyDetailModal({
 
         <Separator />
 
-        {/* BMV Indicators */}
+        {/* BMV Indicators — full breakdown */}
         <div>
-          <div className="flex items-center gap-1.5 mb-2">
-            <h4 className="font-semibold text-sm">BMV Indicators</h4>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent side="right" className="max-w-xs text-xs leading-relaxed">
-                  <p className="font-semibold mb-1">BMV Indicator Score (0–100)</p>
-                  <p className="mb-2">
-                    A pre-approval signal score based on keywords and market signals detected in
-                    the listing. Higher = more likely to be priced below market value.
-                  </p>
-                  <p className="font-medium mb-0.5">Signals checked:</p>
-                  <ul className="space-y-0.5 list-disc list-inside">
-                    <li>Price reduction history</li>
-                    <li>Keywords: "needs work", "probate", "motivated seller", "chain free", etc.</li>
-                    <li>Auction or repossession listing</li>
-                    <li>Cash buyers only</li>
-                    <li>Long time on market (&gt;90 days)</li>
-                  </ul>
-                  <p className="mt-2 font-medium">Thresholds:</p>
-                  <ul className="space-y-0.5">
-                    <li><span className="text-green-500">●</span> 60–100: Strong signals</li>
-                    <li><span className="text-yellow-500">●</span> 30–59: Moderate signals</li>
-                    <li><span className="text-muted-foreground">●</span> 0–29: Weak / none</li>
-                  </ul>
-                  <p className="mt-2 text-muted-foreground">
-                    A full Deal Score (BMV%, yield, location, condition) is calculated when a listing is approved.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm">Score:</span>
-            <span
-              className={`font-bold ${
-                bmv.bmvScore >= 60
-                  ? "text-green-600"
-                  : bmv.bmvScore >= 30
-                    ? "text-yellow-600"
-                    : "text-muted-foreground"
-              }`}
-            >
-              {bmv.bmvScore}/100
-            </span>
-            <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-              <div
-                className={`h-full rounded-full ${
-                  bmv.bmvScore >= 60
-                    ? "bg-green-500"
-                    : bmv.bmvScore >= 30
-                      ? "bg-yellow-500"
-                      : "bg-gray-400"
-                }`}
-                style={{ width: `${bmv.bmvScore}%` }}
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            {bmv.hasReduction && (
-              <div suppressHydrationWarning className="flex items-center gap-1 text-red-600">
-                <TrendingDown className="h-3 w-3" />
-                Price reduced{bmv.reductionPercentage ? ` ${bmv.reductionPercentage}%` : ""}
-                {bmv.originalPrice && ` (was £${bmv.originalPrice.toLocaleString()})`}
-              </div>
-            )}
-            {bmv.isAuction && <Badge variant="secondary">Auction</Badge>}
-            {bmv.isRepossession && <Badge variant="secondary">Repossession</Badge>}
-            {bmv.isProbate && <Badge variant="secondary">Probate</Badge>}
-            {bmv.isCashBuyersOnly && <Badge variant="secondary">Cash buyers only</Badge>}
-            {bmv.longTimeOnMarket && <Badge variant="secondary">Long on market ({bmv.daysOnMarket}d)</Badge>}
-            {bmv.needsWorkKeywords?.length > 0 && (
-              <Badge variant="secondary">
-                Needs work: {bmv.needsWorkKeywords.join(", ")}
-              </Badge>
-            )}
-            {bmv.motivatedSellerKeywords?.length > 0 && (
-              <Badge variant="secondary">
-                Motivated: {bmv.motivatedSellerKeywords.join(", ")}
-              </Badge>
-            )}
-          </div>
+          {(() => {
+            const breakdown = buildBmvBreakdown(bmv)
+            const activeItems = breakdown.filter((i) => i.active)
+            const inactiveItems = breakdown.filter((i) => !i.active)
+            const computedPts = activeItems.reduce((s, i) => s + i.points, 0)
+            const grade = bmvGrade(computedPts)
+            return (
+              <>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <h4 className="font-semibold text-sm">BMV Signal Score</h4>
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center rounded-full text-xs font-semibold px-2.5 py-0.5 ring-1 ${grade.bgColor} ${grade.textColor} ${grade.ringColor}`}>
+                      {grade.grade}
+                    </span>
+                    <span className={`font-bold text-base ${grade.textColor}`}>{computedPts}/100</span>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="h-2 rounded-full bg-muted overflow-hidden mb-3">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      computedPts >= 80 ? "bg-blue-500" :
+                      computedPts >= 60 ? "bg-green-500" :
+                      computedPts >= 30 ? "bg-amber-500" : "bg-gray-400"
+                    }`}
+                    style={{ width: `${computedPts}%` }}
+                  />
+                </div>
+
+                {/* Grade legend */}
+                <div className="flex gap-3 text-[11px] text-muted-foreground mb-3">
+                  <span><span className="text-blue-500 font-semibold">Exceptional</span> 80+</span>
+                  <span>·</span>
+                  <span><span className="text-green-600 font-semibold">Strong</span> 60–79</span>
+                  <span>·</span>
+                  <span><span className="text-amber-600 font-semibold">Moderate</span> 30–59</span>
+                  <span>·</span>
+                  <span><span className="text-gray-500 font-semibold">Weak</span> 0–29</span>
+                </div>
+
+                {/* Signal breakdown table */}
+                <div>
+                  <div className="rounded-md border overflow-hidden text-xs">
+                    <div className="bg-muted/40 px-3 py-1.5 font-medium text-muted-foreground flex justify-between">
+                      <span>Signal</span>
+                      <span>Points</span>
+                    </div>
+                    {activeItems.map((item) => (
+                      <div key={item.label} className="flex items-start justify-between gap-2 px-3 py-1.5 border-t">
+                        <span>
+                          <span className="font-medium text-foreground">{item.label}</span>
+                          {item.detail && (
+                            <span className="text-muted-foreground ml-1.5">— {item.detail}</span>
+                          )}
+                        </span>
+                        <span className="font-semibold text-green-600 tabular-nums flex-shrink-0">+{item.points}</span>
+                      </div>
+                    ))}
+                    {inactiveItems.map((item) => (
+                      <div key={item.label} className="flex items-start justify-between gap-2 px-3 py-1.5 border-t text-muted-foreground/50">
+                        <span>No {item.label.toLowerCase()}{item.detail ? ` (${item.detail})` : ""}</span>
+                        <span className="tabular-nums flex-shrink-0">—</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between px-3 py-1.5 border-t bg-muted/40 font-semibold">
+                      <span>Total</span>
+                      <span className={grade.textColor}>{computedPts} / 100</span>
+                    </div>
+                  </div>
+                  {computedPts !== bmv.bmvScore && (
+                    <p className="mt-1.5 text-[11px] text-muted-foreground/70 leading-tight">
+                      Originally scored {bmv.bmvScore} — re-scraping will refresh signals
+                    </p>
+                  )}
+                </div>
+              </>
+            )
+          })()}
+
+          {/* Footnote */}
+          <p className="mt-2 text-[11px] text-muted-foreground leading-relaxed">
+            Score uses listing signals only (text keywords + price history + days on market).
+            Full market-value BMV analysis — PropertyData comparable sales + Land Registry
+            ownership — runs in the vendor pipeline after approval.
+          </p>
         </div>
 
         {/* Ambiguity Reasons */}

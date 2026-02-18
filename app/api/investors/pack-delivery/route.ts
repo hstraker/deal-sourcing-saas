@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
+import { sendInvestorPackEmail } from "@/lib/email"
 
 // POST /api/investors/pack-delivery - Send investor pack to specific investor
 export async function POST(request: NextRequest) {
@@ -63,30 +64,75 @@ export async function POST(request: NextRequest) {
     }
 
     // Create delivery record (or update if exists with same generation)
-    const delivery = await prisma.investorPackDelivery.upsert({
+    // Note: Prisma upsert does not support null in composite unique keys,
+    // so we use findFirst + create/update instead.
+    const existingDelivery = await prisma.investorPackDelivery.findFirst({
       where: {
-        investorId_dealId_generationId_partNumber: {
-          investorId,
-          dealId,
-          generationId: packGenerationId,
-          partNumber: partNumber || null,
-        },
-      },
-      create: {
         investorId,
         dealId,
         generationId: packGenerationId,
-        partNumber: partNumber || null,
-        deliveryMethod: deliveryMethod || "email",
-        recipientEmail: recipientEmail || investor.user.email,
-        notes,
-        sentAt: new Date(),
-      },
-      update: {
-        sentAt: new Date(),
-        notes,
+        partNumber: partNumber ?? null,
       },
     })
+
+    const delivery = existingDelivery
+      ? await prisma.investorPackDelivery.update({
+          where: { id: existingDelivery.id },
+          data: { sentAt: new Date(), notes },
+        })
+      : await prisma.investorPackDelivery.create({
+          data: {
+            investorId,
+            dealId,
+            generationId: packGenerationId,
+            partNumber: partNumber ?? null,
+            deliveryMethod: deliveryMethod || "email",
+            recipientEmail: recipientEmail || investor.user.email,
+            notes,
+            sentAt: new Date(),
+          },
+        })
+
+    // Send email if delivery method is email
+    let emailStatus = "pending"
+    let emailError: string | undefined
+
+    if (!deliveryMethod || deliveryMethod === "email") {
+      const recipientEmailAddress = recipientEmail || investor.user.email
+      const appUrl = process.env.APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000"
+      const partLabel = partNumber ? `Part ${partNumber} of investor pack` : "Complete investor pack"
+
+      const emailResult = await sendInvestorPackEmail({
+        to: recipientEmailAddress,
+        investorName: `${investor.user.firstName || ""} ${investor.user.lastName || ""}`.trim() || recipientEmailAddress,
+        dealAddress: deal.address,
+        dealId,
+        packLabel: partLabel,
+        appUrl,
+      })
+
+      if (emailResult.noSmtp) {
+        emailStatus = "no_smtp"
+        emailError = emailResult.error
+      } else if (emailResult.success) {
+        emailStatus = "sent"
+      } else {
+        emailStatus = "failed"
+        emailError = emailResult.error
+      }
+
+      // Update delivery with email status
+      await prisma.investorPackDelivery.update({
+        where: { id: delivery.id },
+        data: { emailStatus, emailError: emailError || null },
+      })
+    } else {
+      emailStatus = "not_applicable"
+      await prisma.investorPackDelivery.update({
+        where: { id: delivery.id },
+        data: { emailStatus },
+      })
+    }
 
     // Update investor stats
     await prisma.investor.update({
@@ -127,7 +173,17 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return NextResponse.json({ delivery }, { status: 201 })
+    // Auto-advance reservation status to pack_sent if currently pending
+    await prisma.investorReservation.updateMany({
+      where: {
+        investorId,
+        dealId,
+        status: "pending",
+      },
+      data: { status: "pack_sent" },
+    })
+
+    return NextResponse.json({ delivery, emailStatus }, { status: 201 })
   } catch (error: any) {
     console.error("Error creating pack delivery:", error)
     return NextResponse.json(
