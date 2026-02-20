@@ -1409,6 +1409,7 @@ model PropertyListing {
   scrapedAt       DateTime         @default(now()) @map("scraped_at")
   lastChecked     DateTime         @default(now()) @map("last_checked")
   checksum        String?
+  isFavorited     Boolean          @default(false) @map("is_favorited")
 
   // Link to Deal (when promoted)
   dealId          String?          @map("deal_id")
@@ -1423,6 +1424,7 @@ model PropertyListing {
   @@index([scrapedAt])
   @@index([status])
   @@index([dealId])
+  @@index([isFavorited])
   @@map("property_listings")
 }
 

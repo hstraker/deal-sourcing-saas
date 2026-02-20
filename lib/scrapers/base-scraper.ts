@@ -153,9 +153,24 @@ export abstract class BaseScraper {
                 detailPage,
                 detailUrl
               )
-              const listingId = await this.saveProperty(property)
-              this.progress.successful++
-              this.progress.propertiesFound.push(listingId)
+
+              // Post-scrape property type filter (applies to all sources, ensures
+              // OTM/PrimeLocation/Zoopla honour the propertyTypes setting since
+              // those sites don't support native URL-level type filtering)
+              if (
+                criteria.propertyTypes &&
+                criteria.propertyTypes.length > 0 &&
+                !this.propertyTypeMatchesFilter(property.propertyType, criteria.propertyTypes)
+              ) {
+                console.log(
+                  `${LOG_PREFIX} Skipping "${property.address?.displayAddress || property.sourceId}" — ` +
+                  `type "${property.propertyType}" excluded by filter [${criteria.propertyTypes.join(", ")}]`
+                )
+              } else {
+                const listingId = await this.saveProperty(property)
+                this.progress.successful++
+                this.progress.propertiesFound.push(listingId)
+              }
             } catch (error: any) {
               this.progress.failed++
               this.progress.errors.push({
@@ -503,6 +518,51 @@ export abstract class BaseScraper {
     )
     this.triggerOwnershipEnrichment(created.id, property.address?.postcode)
     return created.id
+  }
+
+  /**
+   * Maps a scraped propertyType string against the criteria propertyTypes array
+   * (values: "flat", "terraced", "semi-detached", "detached", "bungalow", "land").
+   * Returns true if the property should be kept, false if it should be filtered out.
+   * Properties with an unrecognised/generic type are always kept.
+   */
+  private propertyTypeMatchesFilter(propertyType: string, allowedTypes: string[]): boolean {
+    const type = (propertyType || "property").toLowerCase()
+    // Unknown/generic type — can't determine, let it through
+    if (type === "property") return true
+
+    for (const allowed of allowedTypes) {
+      switch (allowed.toLowerCase()) {
+        case "flat":
+          if (["flat", "apartment", "maisonette", "studio", "penthouse"].some(t => type.includes(t)))
+            return true
+          break
+        case "terraced":
+          if (type.includes("terraced") || type.includes("end of terrace") || type === "town house")
+            return true
+          break
+        case "semi-detached":
+          if (type.includes("semi-detached") || type.includes("semi detached"))
+            return true
+          break
+        case "detached":
+          if (type.includes("detached") && !type.includes("semi"))
+            return true
+          break
+        case "bungalow":
+          if (type.includes("bungalow"))
+            return true
+          break
+        case "land":
+          if (type.includes("land") || type.includes("plot") || type.includes("farm"))
+            return true
+          break
+        default:
+          if (type.includes(allowed.toLowerCase()))
+            return true
+      }
+    }
+    return false
   }
 
   /** Fire-and-forget Land Registry ownership enrichment — never blocks the scraper */

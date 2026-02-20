@@ -1,0 +1,127 @@
+{
+  "testedAt": "2026-02-17T18:10:48.814Z",
+  "ppdCount": 705737,
+  "ccodCount": 4457395,
+  "results": [
+    {
+      "id": "7f565e96-a467-4af5-a44a-460b0646500d",
+      "table": "PropertyListing (PRIMELOCATION)",
+      "address": "St. Leger Crescent, St. Thomas, Swansea SA1, 3 bed flat for sale, £120,000",
+      "storedPostcode": "SA1 6BG",
+      "outcode": "SA1",
+      "outcome": "STORED_OK"
+    },
+    {
+      "id": "c6b2b33a-f3a9-4723-8b79-f02d66015609",
+      "table": "PropertyListing (ONTHEMARKET)",
+      "address": "Tudor Court, Murton, Swansea",
+      "storedPostcode": null,
+      "outcode": null,
+      "outcome": "NO_OUTCODE"
+    },
+    {
+      "id": "3288bbac-d6cf-4d25-a344-7cb36441d454",
+      "table": "PropertyListing (ONTHEMARKET)",
+      "address": "Iscoed Road, Hendy",
+      "storedPostcode": null,
+      "outcode": null,
+      "outcome": "NO_OUTCODE"
+    },
+    {
+      "id": "fa99d285-6d80-48ce-8f4d-b66cf3eccd36",
+      "table": "PropertyListing (PRIMELOCATION)",
+      "address": "Cadle Crescent, Portmead, Swansea, West Glamorgan SA5, 2 bed end terrace house for sale, £120,000",
+      "storedPostcode": "SA5 5HP",
+      "outcode": "SA5",
+      "outcome": "STORED_OK"
+    },
+    {
+      "id": "5b8713a4-48bf-4728-87b7-6e804952b032",
+      "table": "PropertyListing (ONTHEMARKET)",
+      "address": "Neath Road, Hafod, Swansea, SA1",
+      "storedPostcode": "SA1 2HW",
+      "outcode": "SA1",
+      "outcome": "STORED_OK"
+    },
+    {
+      "id": "cf0f3ffe-c555-438b-b48a-b57a8f56b31c",
+      "table": "PropertyListing (PRIMELOCATION)",
+      "address": "Oxwich, Swansea SA3, 2 bed hotel for sale, £120,000",
+      "storedPostcode": "SA3 1LU",
+      "outcode": "SA3",
+      "outcome": "STORED_OK"
+    },
+    {
+      "id": "1ac4a075-fa74-4561-abb5-c4bafa861b02",
+      "table": "PropertyListing (ONTHEMARKET)",
+      "address": "Cadle Crescent, Portmead, Swansea, West Glamorgan, SA5",
+      "storedPostcode": "SA5 5HP",
+      "outcode": "SA5",
+      "outcome": "STORED_OK"
+    },
+    {
+      "id": "3d3e4774-0365-4eb6-8867-0690eff849cd",
+      "table": "PropertyListing (PRIMELOCATION)",
+      "address": "Parklands Court, Sketty, Swansea SA2, 2 bed flat for sale, £120,000",
+      "storedPostcode": "SA2 8LZ",
+      "outcode": "SA2",
+      "outcome": "STORED_OK"
+    },
+    {
+      "id": "84f49848-4cfa-4ca3-89d7-b92315538218",
+      "table": "VendorLead",
+      "address": "Trawler Road, Maritime Quarter, Swansea, West Glamorgan SA1, 2 bed flat for sale, £115,000 - Zoopla, SA1 1UW",
+      "storedPostcode": "SA1 1UW",
+      "outcode": "SA1",
+      "outcome": "STORED_OK"
+    },
+    {
+      "id": "b815bccc-2154-41eb-aadd-8070699b8d71",
+      "table": "VendorLead",
+      "address": "Clyndu Street, Morriston, Swansea SA6, 2 bed terraced house for sale, £124,950, SA6 7BQ",
+      "storedPostcode": "SA6 7BQ",
+      "outcode": "SA6",
+      "outcome": "STORED_OK"
+    },
+    {
+      "id": "6ce8a66d-ce2f-4989-9df2-e0a698de3367",
+      "table": "VendorLead",
+      "address": "Penlan Crescent, Uplands, Swansea",
+      "storedPostcode": null,
+      "outcode": null,
+      "outcome": "NO_OUTCODE"
+    },
+    {
+      "id": "416fb385-0750-4d65-927d-98cfb0a51302",
+      "table": "VendorLead",
+      "address": "Maxime Court, Sketty, Swansea, SA2, SA2 9FB",
+      "storedPostcode": "SA2 9FB",
+      "outcode": "SA2",
+      "outcome": "STORED_OK"
+    },
+    {
+      "id": "180dc493-2353-4f2e-9d7d-4d964b7c9cfd",
+      "table": "VendorLead",
+      "address": "Llangyfelach Road, Brynhyfryd, Swansea, SA5 9EP",
+      "storedPostcode": "SA5 9EP",
+      "outcode": "SA5",
+      "outcome": "STORED_OK"
+    },
+    {
+      "id": "48423958-e902-4306-a6e3-323ae214d3e3",
+      "table": "VendorLead",
+      "address": "Phoebe Road, Copper Quarter, Swansea",
+      "storedPostcode": null,
+      "outcode": null,
+      "outcome": "NO_OUTCODE"
+    },
+    {
+      "id": "a04fe62a-1b5f-429e-897d-4f569fe9b821",
+      "table": "VendorLead",
+      "address": "Neath Road, Hafod, Swansea, SA1, SA1 2ES",
+      "storedPostcode": "SA1 2ES",
+      "outcode": "SA1",
+      "outcome": "STORED_OK"
+    }
+  ]
+}

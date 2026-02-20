@@ -38,6 +38,7 @@ export interface PropertyListingForClient {
   lastChecked: string
   checksum: string | null
   dealId: string | null
+  isFavorited: boolean
   // Property feature fields
   keyFeatures: string[]
   epcRating: string | null

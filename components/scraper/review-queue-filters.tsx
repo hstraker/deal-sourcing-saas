@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Filter, X } from "lucide-react"
+import { Filter, X, Star } from "lucide-react"
 import { useState } from "react"
 
 export interface ReviewFilters {
@@ -18,6 +18,7 @@ export interface ReviewFilters {
   category: string | null
   isAmbiguous: boolean | null
   minBmvScore: number | null
+  favoritesOnly: boolean
 }
 
 interface ReviewQueueFiltersProps {
@@ -30,6 +31,7 @@ const defaultFilters: ReviewFilters = {
   category: null,
   isAmbiguous: null,
   minBmvScore: null,
+  favoritesOnly: false,
 }
 
 export function ReviewQueueFilters({
@@ -38,9 +40,13 @@ export function ReviewQueueFilters({
 }: ReviewQueueFiltersProps) {
   const [showFilters, setShowFilters] = useState(false)
 
-  const activeFilterCount = Object.values(filters).filter(
-    (v) => v !== null
-  ).length
+  const activeFilterCount = [
+    filters.source,
+    filters.category,
+    filters.isAmbiguous,
+    filters.minBmvScore,
+    filters.favoritesOnly || null,
+  ].filter((v) => v !== null && v !== false).length
 
   const handleClear = () => {
     onFiltersChange(defaultFilters)
@@ -49,6 +55,17 @@ export function ReviewQueueFilters({
   return (
     <div>
       <div className="flex items-center gap-2">
+        {/* Favourites quick-toggle — always visible */}
+        <Button
+          variant={filters.favoritesOnly ? "default" : "outline"}
+          size="sm"
+          onClick={() => onFiltersChange({ ...filters, favoritesOnly: !filters.favoritesOnly })}
+          className={filters.favoritesOnly ? "bg-amber-500 hover:bg-amber-600 border-amber-500 text-white" : ""}
+        >
+          <Star className={`mr-1.5 h-3.5 w-3.5 ${filters.favoritesOnly ? "fill-white" : ""}`} />
+          Favourites
+        </Button>
+
         <Button
           variant="outline"
           size="sm"

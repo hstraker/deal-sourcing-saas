@@ -79,6 +79,7 @@ const SOURCE_LABELS: Record<string, string> = {
 
 interface PropertyDetailModalProps {
   listing: PropertyListingForClient | null
+  duplicates?: PropertyListingForClient[]
   open: boolean
   onClose: () => void
   onReview: (id: string, action: "APPROVED" | "REJECTED", notes?: string) => void
@@ -87,6 +88,7 @@ interface PropertyDetailModalProps {
 
 export function PropertyDetailModal({
   listing,
+  duplicates = [],
   open,
   onClose,
   onReview,
@@ -147,9 +149,20 @@ export function PropertyDetailModal({
   const bmv = listing.bmvIndicators as BmvIndicatorsData
   const address = listing.address as any
   const agent = listing.agent as any
-  const images = listing.images as string[]
-  const floorPlans = listing.floorPlans as string[]
   const priceHistory = listing.priceHistory as any[]
+
+  // Merge images from all sources in this postcode group, deduplicated by URL
+  const allImageUrls = new Set<string>()
+  const primaryImgs = listing.images as string[]
+  primaryImgs.forEach((u) => allImageUrls.add(u))
+  duplicates.forEach((d) => (d.images as string[]).forEach((u) => allImageUrls.add(u)))
+  const images = Array.from(allImageUrls)
+
+  // Merge floor plans similarly
+  const allFloorPlanUrls = new Set<string>()
+  ;(listing.floorPlans as string[]).forEach((u) => allFloorPlanUrls.add(u))
+  duplicates.forEach((d) => (d.floorPlans as string[]).forEach((u) => allFloorPlanUrls.add(u)))
+  const floorPlans = Array.from(allFloorPlanUrls)
 
   const handleReview = (action: "APPROVED" | "REJECTED") => {
     onReview(listing.id, action, notes || undefined)
@@ -166,10 +179,15 @@ export function PropertyDetailModal({
         onInteractOutside={(e) => { if (lightbox) e.preventDefault() }}
       >
         <DialogHeader>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge className={SOURCE_COLORS[listing.source]}>
               {SOURCE_LABELS[listing.source]}
             </Badge>
+            {duplicates.map((d) => (
+              <Badge key={d.id} className={SOURCE_COLORS[d.source]}>
+                {SOURCE_LABELS[d.source]}
+              </Badge>
+            ))}
             {listing.category === "COMMERCIAL" && (
               <Badge variant="outline">Commercial</Badge>
             )}
@@ -398,6 +416,11 @@ export function PropertyDetailModal({
                       <span>Signal</span>
                       <span>Points</span>
                     </div>
+                    {activeItems.length === 0 && (
+                      <div className="px-3 py-3 text-center text-xs text-muted-foreground/70">
+                        No BMV signals detected in listing text
+                      </div>
+                    )}
                     {activeItems.map((item) => (
                       <div key={item.label} className="flex items-start justify-between gap-2 px-3 py-1.5 border-t">
                         <span>
@@ -407,12 +430,6 @@ export function PropertyDetailModal({
                           )}
                         </span>
                         <span className="font-semibold text-green-600 tabular-nums flex-shrink-0">+{item.points}</span>
-                      </div>
-                    ))}
-                    {inactiveItems.map((item) => (
-                      <div key={item.label} className="flex items-start justify-between gap-2 px-3 py-1.5 border-t text-muted-foreground/50">
-                        <span>No {item.label.toLowerCase()}{item.detail ? ` (${item.detail})` : ""}</span>
-                        <span className="tabular-nums flex-shrink-0">—</span>
                       </div>
                     ))}
                     <div className="flex justify-between px-3 py-1.5 border-t bg-muted/40 font-semibold">
@@ -560,8 +577,22 @@ export function PropertyDetailModal({
               className="flex items-center gap-1 text-primary hover:underline"
             >
               <ExternalLink className="h-3 w-3" />
-              View original
+              {SOURCE_LABELS[listing.source]}
             </a>
+          )}
+          {duplicates.map((d) =>
+            d.listingUrl ? (
+              <a
+                key={d.id}
+                href={d.listingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-primary hover:underline"
+              >
+                <ExternalLink className="h-3 w-3" />
+                {SOURCE_LABELS[d.source]}
+              </a>
+            ) : null
           )}
         </div>
 

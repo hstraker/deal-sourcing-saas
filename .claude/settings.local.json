@@ -13,7 +13,9 @@
       "Bash(npm install:*)",
       "Bash(npx prisma migrate dev:*)",
       "Bash(curl:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(find:*)",
+      "Bash(npx prisma migrate:*)"
     ]
   }
 }

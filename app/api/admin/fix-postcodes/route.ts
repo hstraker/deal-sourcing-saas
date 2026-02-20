@@ -36,6 +36,22 @@ type Correction = {
   via: string
 }
 
+const FULL_POSTCODE_RE = /^[A-Z]{1,2}\d{1,2}[A-Z]?\s\d[A-Z]{2}$/
+
+/**
+ * Normalise address into "street|area" key — same logic as the client review-queue.
+ * E.g. "Lon Camlad, Morriston, Swansea" → "lon camlad|morriston"
+ */
+function addressKey(addr: string): string {
+  const parts = addr.split(",").map((p) =>
+    p.trim().toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim()
+  )
+  const street = parts[0] ?? ""
+  const area   = parts[1] ?? ""
+  if (street.length < 5) return ""
+  return area ? `${street}|${area}` : street
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -53,6 +69,36 @@ export async function POST(request: NextRequest) {
     const outcodeCache = new Map<string, string | null>()
 
     const corrections: Correction[] = []
+
+    // ── Pre-build cross-source address → postcode map ─────────────────────────
+    // Indexes every PropertyListing that already has a valid full postcode so
+    // that listings from other sources with the same address (but no postcode)
+    // can inherit the postcode without needing an outcode in their address string.
+    console.log("[FixPostcodes] Building cross-source address index...")
+    const crossSourceMap = new Map<string, string>() // addressKey → full postcode
+    {
+      type PcRow = { address: unknown }
+      let cur: string | undefined
+      for (;;) {
+        const rows: (PcRow & { id: string })[] = await prisma.propertyListing.findMany({
+          take: 500,
+          ...(cur ? { skip: 1, cursor: { id: cur } } : {}),
+          select: { id: true, address: true },
+          orderBy: { id: "asc" },
+        })
+        if (rows.length === 0) break
+        cur = rows[rows.length - 1].id
+        for (const row of rows) {
+          const addr = row.address as Record<string, unknown> | null
+          const pc = typeof addr?.postcode === "string" ? addr.postcode.trim().toUpperCase() : ""
+          if (!FULL_POSTCODE_RE.test(pc)) continue
+          const display = typeof addr?.displayAddress === "string" ? addr.displayAddress : ""
+          const key = addressKey(display)
+          if (key && !crossSourceMap.has(key)) crossSourceMap.set(key, pc)
+        }
+      }
+    }
+    console.log(`[FixPostcodes] Cross-source index: ${crossSourceMap.size} address keys`)
 
     // ── Step 1: PropertyListing records ──────────────────────────────────────
     const plStats = { processed: 0, corrected: 0, failed: 0 }
@@ -79,7 +125,17 @@ export async function POST(request: NextRequest) {
         if (!displayAddress) continue
 
         try {
-          const resolved = await resolvePostcodeFromAddress(displayAddress, storedPostcode, outcodeCache)
+          let resolved = await resolvePostcodeFromAddress(displayAddress, storedPostcode, outcodeCache)
+
+          // Tier 4: cross-source fallback — same street from another source
+          if ((!resolved || !resolved.corrected) && !FULL_POSTCODE_RE.test(storedPostcode ?? "")) {
+            const key = addressKey(displayAddress)
+            const crossPc = key ? crossSourceMap.get(key) : undefined
+            if (crossPc && crossPc !== storedPostcode) {
+              resolved = { postcode: crossPc, corrected: true, source: "cross_source" as any }
+            }
+          }
+
           if (!resolved || !resolved.corrected) continue
 
           corrections.push({

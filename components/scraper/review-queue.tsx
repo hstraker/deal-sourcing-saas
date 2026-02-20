@@ -10,7 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
 import { Search, CheckCheck, XCircle, ArrowUpDown } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -22,7 +21,48 @@ import type { PropertyListingForClient, BmvIndicatorsData } from "@/types/proper
 
 const ITEMS_PER_PAGE = 12
 
-type SortField = "scrapedAt" | "price" | "bmvScore" | "daysOnMarket"
+type SortField = "scrapedAt" | "price" | "bmvScore" | "daysOnMarket" | "bedrooms" | "propertyType"
+
+// Numeric order for property type sort (smallest unit → largest)
+const PROPERTY_TYPE_ORDER: Record<string, number> = {
+  "studio": 0,
+  "studio flat": 1,
+  "flat": 2,
+  "maisonette": 3,
+  "terraced house": 4,
+  "end of terrace house": 5,
+  "semi-detached house": 6,
+  "detached house": 7,
+  "bungalow": 8,
+  "semi-detached bungalow": 9,
+  "detached bungalow": 10,
+  "cottage": 11,
+  "villa": 12,
+  "land": 13,
+  "commercial property": 14,
+}
+
+// Listings grouped by postcode (duplicates share a single card)
+type ListingGroup = {
+  primary: PropertyListingForClient
+  duplicates: PropertyListingForClient[]
+}
+
+const FULL_POSTCODE_RE = /^[A-Z]{1,2}\d{1,2}[A-Z]?\s\d[A-Z]{2}$/
+
+/**
+ * Normalise a display address into a "street|area" key for fuzzy deduplication.
+ * E.g. "Lon Camlad, Morriston, Swansea, ..." → "lon camlad|morriston"
+ * Used as a fallback when one listing has no postcode.
+ */
+function addressKey(displayAddress: string): string {
+  const parts = displayAddress.split(",").map((p) => p.trim().toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim())
+  const street = parts[0] ?? ""
+  const area   = parts[1] ?? ""
+  // Require at least 5 chars for the street to avoid matching "flat" or "1" etc.
+  if (street.length < 5) return ""
+  return area ? `${street}|${area}` : street
+}
 
 interface ReviewQueueProps {
   listings: PropertyListingForClient[]
@@ -43,6 +83,7 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedListing, setSelectedListing] =
     useState<PropertyListingForClient | null>(null)
+  const [selectedDuplicates, setSelectedDuplicates] = useState<PropertyListingForClient[]>([])
   const [submittingIds, setSubmittingIds] = useState<Set<string>>(new Set())
   const [isBulkSubmitting, setIsBulkSubmitting] = useState(false)
 
@@ -51,7 +92,7 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
     setListings(initialListings)
   }, [initialListings])
 
-  // Reset page when filters/search change
+  // Reset page when filters/search/sort change
   useEffect(() => {
     setCurrentPage(1)
   }, [filters, searchQuery, sortField, sortDirection])
@@ -85,6 +126,13 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
   // Sorting
   const sortedListings = useMemo(() => {
     return [...filteredListings].sort((a, b) => {
+      // String-based sort for property type
+      if (sortField === "propertyType") {
+        const aOrder = PROPERTY_TYPE_ORDER[a.propertyType?.toLowerCase() ?? ""] ?? 50
+        const bOrder = PROPERTY_TYPE_ORDER[b.propertyType?.toLowerCase() ?? ""] ?? 50
+        return sortDirection === "asc" ? aOrder - bOrder : bOrder - aOrder
+      }
+
       let aVal: number
       let bVal: number
 
@@ -101,7 +149,11 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
           aVal = a.daysOnMarket
           bVal = b.daysOnMarket
           break
-        default:
+        case "bedrooms":
+          aVal = a.bedrooms
+          bVal = b.bedrooms
+          break
+        default: // scrapedAt
           aVal = new Date(a.scrapedAt).getTime()
           bVal = new Date(b.scrapedAt).getTime()
       }
@@ -110,48 +162,137 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
     })
   }, [filteredListings, sortField, sortDirection])
 
-  // Pagination
-  const totalPages = Math.ceil(sortedListings.length / ITEMS_PER_PAGE)
-  const paginatedListings = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE
-    return sortedListings.slice(start, start + ITEMS_PER_PAGE)
-  }, [sortedListings, currentPage])
+  // Group by postcode (pass 1) then by address key (pass 2 fallback for no-postcode listings)
+  const groupedListings = useMemo<ListingGroup[]>(() => {
+    const consumed = new Set<string>()
+    const groups: ListingGroup[] = []
 
-  // Review handler
+    // ── Pass 1: group by exact full postcode ──────────────────────────────────
+    for (const listing of sortedListings) {
+      if (consumed.has(listing.id)) continue
+
+      const pc = ((listing.address as any)?.postcode ?? "").trim().toUpperCase()
+      const isFullPostcode = FULL_POSTCODE_RE.test(pc)
+
+      const duplicates: PropertyListingForClient[] = []
+      if (isFullPostcode) {
+        for (const other of sortedListings) {
+          if (other.id === listing.id || consumed.has(other.id)) continue
+          const otherPc = ((other.address as any)?.postcode ?? "").trim().toUpperCase()
+          if (otherPc === pc) {
+            duplicates.push(other)
+            consumed.add(other.id)
+          }
+        }
+      }
+
+      consumed.add(listing.id)
+      groups.push({ primary: listing, duplicates })
+    }
+
+    // ── Pass 2: fold no-postcode listings into an existing group if the
+    //            normalised street+area matches (catches OTM/PL address-only duplicates)
+    // Build address-key → group index map for groups that have a full postcode
+    const addrKeyToGroup = new Map<string, number>()
+    groups.forEach((g, idx) => {
+      const pc = ((g.primary.address as any)?.postcode ?? "").trim().toUpperCase()
+      if (!FULL_POSTCODE_RE.test(pc)) return
+      const key = addressKey((g.primary.address as any)?.displayAddress ?? "")
+      if (key) addrKeyToGroup.set(key, idx)
+    })
+
+    // Walk groups that have NO full postcode and try to fold them
+    const toRemove = new Set<number>()
+    groups.forEach((g, idx) => {
+      const pc = ((g.primary.address as any)?.postcode ?? "").trim().toUpperCase()
+      if (FULL_POSTCODE_RE.test(pc)) return  // already has a postcode — skip
+      const key = addressKey((g.primary.address as any)?.displayAddress ?? "")
+      if (!key) return
+      const targetIdx = addrKeyToGroup.get(key)
+      if (targetIdx === undefined || targetIdx === idx) return
+
+      // Merge this group into the target group as duplicates
+      groups[targetIdx].duplicates.push(g.primary, ...g.duplicates)
+      toRemove.add(idx)
+    })
+
+    return toRemove.size > 0 ? groups.filter((_, i) => !toRemove.has(i)) : groups
+  }, [sortedListings])
+
+  // Pagination (over groups, not raw listings)
+  const totalPages = Math.ceil(groupedListings.length / ITEMS_PER_PAGE)
+  const paginatedGroups = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    return groupedListings.slice(start, start + ITEMS_PER_PAGE)
+  }, [groupedListings, currentPage])
+
+  // Review handler — handles single listing OR a postcode group
   const handleReview = async (
     id: string,
     action: "APPROVED" | "REJECTED",
-    notes?: string
+    notes?: string,
+    extraIds?: string[]
   ) => {
-    setSubmittingIds((prev) => new Set(prev).add(id))
-    try {
-      const res = await fetch(`/api/review-queue/${id}/review`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, notes }),
-      })
+    const allIds = extraIds?.length ? [id, ...extraIds] : [id]
+    setSubmittingIds((prev) => {
+      const next = new Set(prev)
+      allIds.forEach((i) => next.add(i))
+      return next
+    })
 
-      if (!res.ok) {
+    try {
+      let dealId: string | null = null
+
+      if (allIds.length === 1) {
+        // Single review
+        const res = await fetch(`/api/review-queue/${id}/review`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action, notes }),
+        })
+        if (!res.ok) {
+          const data = await res.json()
+          throw new Error(data.error || "Failed to review property")
+        }
         const data = await res.json()
-        throw new Error(data.error || "Failed to review property")
+        dealId = data.dealId || null
+      } else {
+        // Grouped review — use bulk endpoint
+        const res = await fetch("/api/review-queue/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action, ids: allIds }),
+        })
+        if (!res.ok) {
+          const data = await res.json()
+          throw new Error(data.error || "Failed to review properties")
+        }
+        const data = await res.json()
+        dealId = data.dealIds?.[0] || null
       }
 
-      const data = await res.json()
-
-      // Remove from local state
-      setListings((prev) => prev.filter((l) => l.id !== id))
+      // Remove all reviewed listings from local state
+      setListings((prev) => prev.filter((l) => !allIds.includes(l.id)))
       setSelectedListing(null)
+      setSelectedDuplicates([])
 
-      if (action === "APPROVED" && data.dealId) {
-        toast.success("Approved — added to Vendor pipeline", {
-          action: {
-            label: "View Vendors",
-            onClick: () => router.push("/dashboard/vendors"),
-          },
-        })
+      if (action === "APPROVED" && dealId) {
+        toast.success(
+          allIds.length > 1
+            ? `${allIds.length} listings approved — added to Vendor pipeline`
+            : "Approved — added to Vendor pipeline",
+          {
+            action: {
+              label: "View Vendors",
+              onClick: () => router.push("/dashboard/vendors"),
+            },
+          }
+        )
       } else {
         toast.success(
-          `Property ${action === "APPROVED" ? "approved" : "rejected"}`
+          allIds.length > 1
+            ? `${allIds.length} listings ${action === "APPROVED" ? "approved" : "rejected"}`
+            : `Property ${action === "APPROVED" ? "approved" : "rejected"}`
         )
       }
     } catch (error: any) {
@@ -159,13 +300,13 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
     } finally {
       setSubmittingIds((prev) => {
         const next = new Set(prev)
-        next.delete(id)
+        allIds.forEach((i) => next.delete(i))
         return next
       })
     }
   }
 
-  // Bulk review handler
+  // Bulk review handler (applies to all currently filtered listings)
   const handleBulkReview = async (action: "APPROVED" | "REJECTED") => {
     const ids = sortedListings.map((l) => l.id)
     if (ids.length === 0) return
@@ -208,6 +349,9 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
     }
   }
 
+  // How many postcode duplicates exist in the current filtered view
+  const dupGroupCount = groupedListings.filter((g) => g.duplicates.length > 0).length
+
   return (
     <div className="space-y-4">
       {/* Search + Sort */}
@@ -228,7 +372,7 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
             value={sortField}
             onValueChange={(v) => setSortField(v as SortField)}
           >
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-44">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -236,6 +380,8 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
               <SelectItem value="price">Price</SelectItem>
               <SelectItem value="bmvScore">BMV Score</SelectItem>
               <SelectItem value="daysOnMarket">Days on market</SelectItem>
+              <SelectItem value="bedrooms">Bedrooms</SelectItem>
+              <SelectItem value="propertyType">Property type</SelectItem>
             </SelectContent>
           </Select>
           <Button
@@ -257,6 +403,11 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           {sortedListings.length} properties
+          {dupGroupCount > 0 && (
+            <span className="ml-1 text-muted-foreground/60">
+              · {dupGroupCount} postcode {dupGroupCount === 1 ? "group" : "groups"}
+            </span>
+          )}
           {sortedListings.length !== listings.length &&
             ` (filtered from ${listings.length})`}
         </p>
@@ -287,16 +438,28 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
       </div>
 
       {/* Card Grid */}
-      {paginatedListings.length > 0 ? (
+      {paginatedGroups.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {paginatedListings.map((listing) => (
+          {paginatedGroups.map((group) => (
             <PropertyReviewCard
-              key={listing.id}
-              listing={listing}
-              onApprove={(id) => handleReview(id, "APPROVED")}
-              onReject={(id) => handleReview(id, "REJECTED")}
-              onViewDetails={setSelectedListing}
-              isSubmitting={submittingIds.has(listing.id) || isBulkSubmitting}
+              key={group.primary.id}
+              listing={group.primary}
+              duplicates={group.duplicates}
+              onApprove={(id) =>
+                handleReview(id, "APPROVED", undefined, group.duplicates.map((d) => d.id))
+              }
+              onReject={(id) =>
+                handleReview(id, "REJECTED", undefined, group.duplicates.map((d) => d.id))
+              }
+              onViewDetails={() => {
+                setSelectedListing(group.primary)
+                setSelectedDuplicates(group.duplicates)
+              }}
+              isSubmitting={
+                submittingIds.has(group.primary.id) ||
+                group.duplicates.some((d) => submittingIds.has(d.id)) ||
+                isBulkSubmitting
+              }
             />
           ))}
         </div>
@@ -318,16 +481,22 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
-        totalItems={sortedListings.length}
+        totalItems={groupedListings.length}
         itemsPerPage={ITEMS_PER_PAGE}
       />
 
       {/* Detail Modal */}
       <PropertyDetailModal
         listing={selectedListing}
+        duplicates={selectedDuplicates}
         open={!!selectedListing}
-        onClose={() => setSelectedListing(null)}
-        onReview={handleReview}
+        onClose={() => {
+          setSelectedListing(null)
+          setSelectedDuplicates([])
+        }}
+        onReview={(id, action, notes) =>
+          handleReview(id, action, notes, selectedDuplicates.map((d) => d.id))
+        }
         isSubmitting={selectedListing ? submittingIds.has(selectedListing.id) : false}
       />
     </div>

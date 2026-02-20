@@ -24,6 +24,7 @@ import {
   MapPinOff,
   Shield,
   Globe,
+  Star,
 } from "lucide-react"
 import type { PropertyListingForClient, BmvIndicatorsData, PriceHistoryEntry } from "@/types/property-listing"
 import { buildBmvBreakdown, bmvGrade } from "@/lib/scrapers/bmv-score-breakdown"
@@ -61,14 +62,16 @@ const SOURCE_LABELS: Record<string, string> = {
 
 interface PropertyReviewCardProps {
   listing: PropertyListingForClient
+  duplicates?: PropertyListingForClient[]
   onApprove: (id: string) => void
   onReject: (id: string) => void
-  onViewDetails: (listing: PropertyListingForClient) => void
+  onViewDetails: () => void
   isSubmitting: boolean
 }
 
 export function PropertyReviewCard({
   listing,
+  duplicates = [],
   onApprove,
   onReject,
   onViewDetails,
@@ -76,6 +79,26 @@ export function PropertyReviewCard({
 }: PropertyReviewCardProps) {
   const [descExpanded, setDescExpanded] = useState(false)
   const [breakdownOpen, setBreakdownOpen] = useState(false)
+  const [favorited, setFavorited] = useState(listing.isFavorited)
+  const [favLoading, setFavLoading] = useState(false)
+
+  const toggleFavorite = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const next = !favorited
+    setFavorited(next)
+    setFavLoading(true)
+    try {
+      await fetch(`/api/properties/listings/${listing.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isFavorited: next }),
+      })
+    } catch {
+      setFavorited(!next) // revert on error
+    } finally {
+      setFavLoading(false)
+    }
+  }
   const bmv = listing.bmvIndicators as BmvIndicatorsData
   const address = listing.address as any
   const images = listing.images as string[]
@@ -134,18 +157,28 @@ export function PropertyReviewCard({
             No image
           </div>
         )}
-        <div className="absolute top-2 left-2">
+        <div className="absolute top-2 left-2 flex flex-wrap gap-1">
           <Badge className={SOURCE_COLORS[listing.source]}>
             {SOURCE_LABELS[listing.source]}
           </Badge>
+          {duplicates.map((d) => (
+            <Badge key={d.id} className={SOURCE_COLORS[d.source]}>
+              {SOURCE_LABELS[d.source]}
+            </Badge>
+          ))}
         </div>
-        {listing.category === "COMMERCIAL" && (
-          <div className="absolute top-2 right-2">
+        <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+          {favorited && (
+            <span className="inline-flex items-center rounded-full bg-amber-400/90 p-1 shadow">
+              <Star className="h-3 w-3 fill-white text-white" />
+            </span>
+          )}
+          {listing.category === "COMMERCIAL" && (
             <Badge variant="outline" className="bg-background/80">
               Commercial
             </Badge>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <CardContent className="p-4 space-y-3">
@@ -288,16 +321,6 @@ export function PropertyReviewCard({
                       </span>
                     </div>
                   ))}
-                  {inactiveItems.length > 0 && (
-                    <div className="pt-1 border-t mt-1 space-y-0.5">
-                      {inactiveItems.map((item) => (
-                        <div key={item.label} className="text-muted-foreground/60">
-                          No {item.label.toLowerCase()}
-                          {item.detail && ` (${item.detail})`}
-                        </div>
-                      ))}
-                    </div>
-                  )}
                   <div className="pt-1 border-t flex justify-between font-semibold">
                     <span>Total</span>
                     <span className={grade.textColor}>{computedPts} / 100</span>
@@ -409,7 +432,16 @@ export function PropertyReviewCard({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => onViewDetails(listing)}
+            onClick={toggleFavorite}
+            disabled={favLoading}
+            className={favorited ? "text-amber-500 border-amber-300 hover:bg-amber-50" : ""}
+          >
+            <Star className={`h-3 w-3 ${favorited ? "fill-amber-400" : ""}`} />
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onViewDetails()}
           >
             <Eye className="h-3 w-3" />
           </Button>
@@ -494,6 +526,26 @@ function PostcodeBadge({ address }: { address: Record<string, unknown> | null | 
           </TooltipTrigger>
           <TooltipContent side="top" className="text-xs">
             Postcode resolved via postcodes.io (representative for area)
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+
+  // Full postcode — copied from another source listing at same address
+  if (fixed && source === "cross_source") {
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200 text-[10px] font-medium px-2 py-0.5 cursor-default">
+              <MapPin className="h-2.5 w-2.5 shrink-0" />
+              {pc}
+              <span className="text-[9px] font-bold shrink-0">×2</span>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            Postcode matched from another source listing at the same address
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

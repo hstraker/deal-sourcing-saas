@@ -189,15 +189,19 @@ export class PrimeLocationScraper extends BaseScraper {
     await this.handlePrimeLocationCookieConsent(page)
     await this.delay(1500)
 
-    // Strategy 1: Extract __NEXT_DATA__ from detail page
-    const nextData = await page.evaluate(() => {
+    // Extract all property images from raw HTML first.
+    // PrimeLocation uses the same Next.js App Router / RSC streaming as Zoopla
+    // (both are part of Zoopla Group). Photos are embedded as lid.zoocdn.com
+    // URLs in the RSC payload — regex extraction is far more reliable than
+    // __NEXT_DATA__ parsing (which no longer exists on these pages).
+    const htmlImages = await this.extractZoodcnImages(page)
+    console.log(`${LOG_PREFIX} HTML regex extracted ${htmlImages.length} image(s) for ${url}`)
+
+    // Strategy 1: __NEXT_DATA__ (kept for legacy Pages Router compatibility)
+    const nextData = await page.evaluate(function() {
       const script = document.querySelector("#__NEXT_DATA__")
       if (script?.textContent) {
-        try {
-          return JSON.parse(script.textContent)
-        } catch {
-          return null
-        }
+        try { return JSON.parse(script.textContent) } catch { return null }
       }
       return null
     })
@@ -214,14 +218,17 @@ export class PrimeLocationScraper extends BaseScraper {
         pp.data?.propertyDetails
       if (listingData) {
         console.log(`${LOG_PREFIX} Using __NEXT_DATA__ for ${url}`)
-        return this.parseNextData(listingData, url)
+        const property = this.parseNextData(listingData, url)
+        if (htmlImages.length > property.images.length) property.images = htmlImages
+        return property
       }
 
-      // Deep search for listing data
       const deepListing = this.findListingDataDeep(pp)
       if (deepListing) {
         console.log(`${LOG_PREFIX} Using __NEXT_DATA__ (deep search) for ${url}`)
-        return this.parseNextData(deepListing, url)
+        const property = this.parseNextData(deepListing, url)
+        if (htmlImages.length > property.images.length) property.images = htmlImages
+        return property
       }
 
       console.warn(
@@ -229,11 +236,47 @@ export class PrimeLocationScraper extends BaseScraper {
       )
     }
 
-    // Strategy 2: DOM scraping fallback
-    console.log(
-      `${LOG_PREFIX} __NEXT_DATA__ not found or empty, using DOM fallback for ${url}`
-    )
-    return this.parseDomFallback(page, url)
+    // Strategy 2: DOM fallback (primary path for App Router / RSC pages)
+    console.log(`${LOG_PREFIX} Using DOM fallback for ${url}`)
+    const property = await this.parseDomFallback(page, url)
+    if (htmlImages.length > property.images.length) property.images = htmlImages
+    return property
+  }
+
+  /**
+   * Extract property photo URLs from the raw page HTML.
+   * PrimeLocation embeds photos as lid.zoocdn.com CDN URLs in RSC streaming
+   * payload chunks. Collect every unique image hash and keep the highest-res
+   * variant (1024/768 preferred over 480/360 preferred over 645/430).
+   */
+  private async extractZoodcnImages(page: Page): Promise<string[]> {
+    const html: string = await page.evaluate(function() {
+      return document.documentElement.outerHTML
+    })
+
+    // Primary: lid.zoocdn.com/u/WIDTH/HEIGHT/HASH (App Router format)
+    const pattern = /https:\/\/lid\.zoocdn\.com\/u\/(\d+)\/(\d+)\/([a-f0-9]+\.(?:jpg|jpeg|png|webp))/gi
+    const byHash = new Map<string, { width: number; url: string }>()
+    let m: RegExpExecArray | null
+    while ((m = pattern.exec(html)) !== null) {
+      const width = parseInt(m[1])
+      const hash = m[3]
+      const existing = byHash.get(hash)
+      if (!existing || width > existing.width) {
+        byHash.set(hash, { width, url: m[0] })
+      }
+    }
+
+    // Fallback: older-format (e.g. 645/430 without /u/) if no high-res found
+    const thumbPattern = /https:\/\/lid\.zoocdn\.com\/(\d+)\/(\d+)\/([a-f0-9]+\.(?:jpg|jpeg|png|webp))/gi
+    while ((m = thumbPattern.exec(html)) !== null) {
+      const hash = m[3]
+      if (!byHash.has(hash)) {
+        byHash.set(hash, { width: parseInt(m[1]), url: m[0] })
+      }
+    }
+
+    return Array.from(byHash.values()).map(v => v.url)
   }
 
   /**
@@ -327,18 +370,13 @@ export class PrimeLocationScraper extends BaseScraper {
       }
     }
 
-    // Images
-    const images: string[] = (data.images || data.propertyImages || [])
-      .map(
-        (img: any) =>
-          img.src || img.url || img.filename || img.original || img.caption?.url
-      )
-      .filter(Boolean)
+    // Images — PrimeLocation may store as plain string arrays or as objects
+    const images = this.extractImageUrls(
+      data.images || data.propertyImages || data.propertyImage || data.gallery || []
+    )
 
     // Floor plans
-    const floorPlans: string[] = (data.floorPlan || data.floorPlans || [])
-      .map((fp: any) => fp.src || fp.url || fp.image)
-      .filter(Boolean)
+    const floorPlans = this.extractImageUrls(data.floorPlan || data.floorPlans || [])
 
     // Agent
     const agentData = data.branch || data.agent || data.customer || {}
@@ -638,6 +676,8 @@ export class PrimeLocationScraper extends BaseScraper {
       daysOnMarket,
     })
 
+    const features = extractFeaturesFromText(extracted.description, [])
+
     const property: ScrapedProperty = {
       sourceId,
       source: "PRIMELOCATION",
@@ -671,6 +711,13 @@ export class PrimeLocationScraper extends BaseScraper {
         price,
         extracted.description
       ),
+      tenure: features.tenure,
+      isChainFree: features.isChainFree,
+      isNewBuild: features.isNewBuild,
+      isRetirement: features.isRetirement,
+      leaseYearsRemaining: features.leaseYearsRemaining,
+      groundRent: features.groundRent,
+      serviceCharge: features.serviceCharge,
     }
 
     const ambiguity = detectAmbiguity(property)
@@ -719,6 +766,21 @@ export class PrimeLocationScraper extends BaseScraper {
   }
 
   // ---- Utility methods ----
+
+  /**
+   * Extract image URLs from an array that may contain plain strings or
+   * objects (various field names used by different Zoopla/PL API versions).
+   */
+  private extractImageUrls(rawArr: any[]): string[] {
+    if (!Array.isArray(rawArr)) return []
+    return rawArr
+      .map((img: any) =>
+        typeof img === "string"
+          ? img
+          : img.src || img.url || img.filename || img.original || img.largeUrl || img.caption?.url
+      )
+      .filter((x: any): x is string => typeof x === "string" && x.length > 0)
+  }
 
   private extractIdFromUrl(url: string): string {
     const match = url.match(/\/details\/(\d+)/)

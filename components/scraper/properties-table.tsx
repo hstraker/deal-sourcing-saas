@@ -75,7 +75,7 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 type ViewMode = "table" | "grid"
-type SortField = "scrapedAt" | "price" | "daysOnMarket" | "title"
+type SortField = "scrapedAt" | "price" | "daysOnMarket" | "title" | "bedrooms" | "propertyType"
 
 interface Filters {
   search: string
@@ -337,6 +337,32 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
               </Badge>
             </Button>
           )}
+
+          {/* Sort */}
+          <div className="flex items-center gap-1">
+            <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <Select value={sortField} onValueChange={(v) => { setSortField(v as SortField); setSortDirection("desc") }}>
+              <SelectTrigger className="w-40 h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="scrapedAt">Date scraped</SelectItem>
+                <SelectItem value="price">Price</SelectItem>
+                <SelectItem value="daysOnMarket">Days on market</SelectItem>
+                <SelectItem value="bedrooms">Bedrooms</SelectItem>
+                <SelectItem value="propertyType">Property type</SelectItem>
+                <SelectItem value="title">Title</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 px-2.5"
+              onClick={() => setSortDirection(d => d === "asc" ? "desc" : "asc")}
+            >
+              {sortDirection === "asc" ? "Asc" : "Desc"}
+            </Button>
+          </div>
 
           {/* View toggle */}
           <div className="flex rounded-md border overflow-hidden">
@@ -630,7 +656,7 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
                 listing={listing}
                 onApprove={id => handleReview(id, "APPROVED")}
                 onReject={id => handleReview(id, "REJECTED")}
-                onViewDetails={setSelectedListing}
+                onViewDetails={() => setSelectedListing(listing)}
                 isSubmitting={isSubmitting}
               />
             ))}

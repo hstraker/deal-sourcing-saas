@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search")
     const sortField = searchParams.get("sortField") || "scrapedAt"
     const sortDirection = (searchParams.get("sortDirection") || "desc") as "asc" | "desc"
+    const favoritesOnly = searchParams.get("favoritesOnly") === "true"
 
     // Build where clause
     const where: any = {}
@@ -32,6 +33,7 @@ export async function GET(request: NextRequest) {
     if (category) where.category = category
     if (reviewStatus) where.reviewStatus = reviewStatus
     if (status) where.status = status
+    if (favoritesOnly) where.isFavorited = true
     if (search) {
       where.OR = [
         { title: { contains: search, mode: "insensitive" } },
@@ -45,6 +47,8 @@ export async function GET(request: NextRequest) {
       daysOnMarket: "daysOnMarket",
       title: "title",
       listedDate: "listedDate",
+      bedrooms: "bedrooms",
+      propertyType: "propertyType",
     }
     const orderByField = validSortFields[sortField] || "scrapedAt"
     const orderBy = { [orderByField]: sortDirection }

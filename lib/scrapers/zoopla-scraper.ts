@@ -201,22 +201,25 @@ export class ZooplaScraper extends BaseScraper {
     await this.handleZooplaCookieConsent(page)
     await this.delay(1500)
 
-    // Strategy 1: Extract __NEXT_DATA__ from detail page (try multiple paths)
-    const nextData = await page.evaluate(() => {
+    // Extract all property images from raw HTML first.
+    // Zoopla now uses Next.js App Router (RSC streaming via self.__next_f.push),
+    // not __NEXT_DATA__. All photo URLs are embedded as lid.zoocdn.com strings
+    // in the RSC payload chunks — pull them with a regex before any parse path.
+    const htmlImages = await this.extractZoodcnImages(page)
+    console.log(`${LOG_PREFIX} HTML regex extracted ${htmlImages.length} image(s) for ${url}`)
+
+    // Strategy 1: Extract __NEXT_DATA__ from detail page (legacy path, kept for
+    // any future Zoopla A/B tests that revert to Pages Router)
+    const nextData = await page.evaluate(function() {
       const script = document.querySelector("#__NEXT_DATA__")
       if (script?.textContent) {
-        try {
-          return JSON.parse(script.textContent)
-        } catch {
-          return null
-        }
+        try { return JSON.parse(script.textContent) } catch { return null }
       }
       return null
     })
 
     if (nextData?.props?.pageProps) {
       const pp = nextData.props.pageProps
-      // Try all known paths for Zoopla listing data
       const listingData =
         pp.listingDetails ||
         pp.data?.listing ||
@@ -227,14 +230,17 @@ export class ZooplaScraper extends BaseScraper {
         pp.data?.propertyDetails
       if (listingData) {
         console.log(`${LOG_PREFIX} Using __NEXT_DATA__ for ${url}`)
-        return this.parseNextData(listingData, url)
+        const property = this.parseNextData(listingData, url)
+        if (htmlImages.length > property.images.length) property.images = htmlImages
+        return property
       }
 
-      // If pageProps exists but no known path, try to find listing data dynamically
       const deepListing = this.findListingDataDeep(pp)
       if (deepListing) {
         console.log(`${LOG_PREFIX} Using __NEXT_DATA__ (deep search) for ${url}`)
-        return this.parseNextData(deepListing, url)
+        const property = this.parseNextData(deepListing, url)
+        if (htmlImages.length > property.images.length) property.images = htmlImages
+        return property
       }
 
       console.warn(
@@ -242,11 +248,48 @@ export class ZooplaScraper extends BaseScraper {
       )
     }
 
-    // Strategy 2: Enhanced DOM scraping with og: meta tags
-    console.log(
-      `${LOG_PREFIX} __NEXT_DATA__ not found or empty, using DOM fallback for ${url}`
-    )
-    return this.parseDomFallback(page, url)
+    // Strategy 2: DOM fallback (primary path for App Router / RSC pages)
+    console.log(`${LOG_PREFIX} Using DOM fallback for ${url}`)
+    const property = await this.parseDomFallback(page, url)
+    if (htmlImages.length > property.images.length) property.images = htmlImages
+    return property
+  }
+
+  /**
+   * Extract property photo URLs from the raw page HTML.
+   * Zoopla / PrimeLocation embed photos as lid.zoocdn.com CDN URLs inside
+   * RSC streaming payload chunks (self.__next_f.push). We collect every unique
+   * image hash and keep only the highest-resolution variant.
+   */
+  private async extractZoodcnImages(page: Page): Promise<string[]> {
+    const html: string = await page.evaluate(function() {
+      return document.documentElement.outerHTML
+    })
+
+    // Match lid.zoocdn.com/u/WIDTH/HEIGHT/HASH.jpg (App Router / RSC format)
+    const pattern = /https:\/\/lid\.zoocdn\.com\/u\/(\d+)\/(\d+)\/([a-f0-9]+\.(?:jpg|jpeg|png|webp))/gi
+    const byHash = new Map<string, { width: number; url: string }>()
+    let m: RegExpExecArray | null
+    while ((m = pattern.exec(html)) !== null) {
+      const width = parseInt(m[1])
+      const hash = m[3]
+      const existing = byHash.get(hash)
+      if (!existing || width > existing.width) {
+        byHash.set(hash, { width, url: m[0] })
+      }
+    }
+
+    // Fallback: also match older-format thumbnails (e.g. 645/430 without /u/)
+    // Only include these if no high-res URLs were found for this hash
+    const thumbPattern = /https:\/\/lid\.zoocdn\.com\/(\d+)\/(\d+)\/([a-f0-9]+\.(?:jpg|jpeg|png|webp))/gi
+    while ((m = thumbPattern.exec(html)) !== null) {
+      const hash = m[3]
+      if (!byHash.has(hash)) {
+        byHash.set(hash, { width: parseInt(m[1]), url: m[0] })
+      }
+    }
+
+    return Array.from(byHash.values()).map(v => v.url)
   }
 
   /**
@@ -357,18 +400,13 @@ export class ZooplaScraper extends BaseScraper {
       }
     }
 
-    // Images
-    const images: string[] = (data.images || data.propertyImages || [])
-      .map(
-        (img: any) =>
-          img.src || img.url || img.filename || img.original || img.caption?.url
-      )
-      .filter(Boolean)
+    // Images — Zoopla may store as plain string arrays or as objects
+    const images = this.extractImageUrls(
+      data.images || data.propertyImages || data.propertyImage || data.gallery || []
+    )
 
     // Floor plans
-    const floorPlans: string[] = (data.floorPlan || data.floorPlans || [])
-      .map((fp: any) => fp.src || fp.url || fp.image)
-      .filter(Boolean)
+    const floorPlans = this.extractImageUrls(data.floorPlan || data.floorPlans || [])
 
     // Agent
     const agentData = data.branch || data.agent || data.customer || {}
@@ -833,6 +871,17 @@ export class ZooplaScraper extends BaseScraper {
   }
 
   // ---- Utility methods ----
+
+  private extractImageUrls(rawArr: any[]): string[] {
+    if (!Array.isArray(rawArr)) return []
+    return rawArr
+      .map((img: any) =>
+        typeof img === "string"
+          ? img
+          : img.src || img.url || img.filename || img.original || img.largeUrl || img.caption?.url
+      )
+      .filter((x: any): x is string => typeof x === "string" && x.length > 0)
+  }
 
   private extractIdFromUrl(url: string): string {
     const match = url.match(/\/details\/(\d+)/)
