@@ -467,26 +467,26 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* BMV Offer Calculator Settings */}
+      {/* Underwriting Engine (BMV & Capital Allocator) */}
       <Card className="border-emerald-200 dark:border-emerald-800">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calculator className="h-5 w-5 text-emerald-600" />
-            BMV Offer Calculator
+            Underwriting Engine (BMV & Capital Allocator)
           </CardTitle>
           <CardDescription>
-            Configure strategy-specific offer formulae (Flip, BRR, BuyHold, BTL), discount
-            ranges, risk adjustments, and validation thresholds.
+            BMV screening and capital allocation: configure offer formulae and validation thresholds,
+            and test the workflow using a vendor lead or scraped property.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-sm font-medium">
-                Professional investor offer pricing — discount from market value with per-strategy ceilings
+                Screening plus strategy-specific pricing (Flip, BRR, BuyHold, BTL) and test workflow
               </p>
               <p className="text-sm text-muted-foreground">
-                Toggle between legacy motivation-based and strategy-aware calculation modes
+                Run screening on a listing or vendor lead; when score is good, run the Capital Allocator for the final decision summary
               </p>
             </div>
             <Link href="/dashboard/settings/offer-calculator">

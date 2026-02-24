@@ -150,7 +150,7 @@ export function ComparablesAnalysis({
 
   return (
     <TooltipProvider>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-w-0 w-full">
         {/* Summary Statistics Card */}
         <Card>
           <CardHeader>
@@ -306,7 +306,7 @@ export function ComparablesAnalysis({
 
         {/* Yield Distribution Chart */}
         {showRentalData && yieldDistribution.length > 0 && (
-          <Card>
+          <Card className="min-w-0">
             <CardHeader>
               <CardTitle className="text-lg">Rental Yield Distribution</CardTitle>
               <CardDescription>

@@ -72,9 +72,9 @@ export async function enrichDealData(
     console.log(`${LOG_PREFIX} Fetching comparables for ${input.postcode}...`)
     const soldPricesResult = await fetchSoldPrices(
       input.postcode,
-      input.bedrooms || undefined,
+      undefined, // no bedroom filter at API level — filter ourselves for ±1 tolerance
       3, // 3 miles radius
-      50
+      200
     )
 
     if (soldPricesResult && soldPricesResult.soldProperties.length > 0) {
@@ -84,9 +84,10 @@ export async function enrichDealData(
         soldPricesResult.soldProperties,
         input.bedrooms || undefined,
         input.propertyType || undefined,
-        12, // last 12 months
-        5, // top 5
-        input.postcode || undefined
+        24, // last 24 months
+        10, // top 10
+        input.postcode || undefined,
+        1 // ±1 bedroom tolerance
       )
 
       result.comparablesCount = comparables.length

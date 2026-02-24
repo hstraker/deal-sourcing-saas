@@ -432,6 +432,22 @@ model Deal {
   investorPackSentAt    DateTime? @map("investor_pack_sent_at")
   investorPackSentCount Int       @default(0) @map("investor_pack_sent_count")
 
+  // Offer Engine
+  offerCalculation      Json?      @map("offer_calculation")
+  offerCalculatedAt     DateTime?  @map("offer_calculated_at")
+  flipOfferPrice        Decimal?   @map("flip_offer_price") @db.Decimal(10, 2)
+  holdOfferPrice        Decimal?   @map("hold_offer_price") @db.Decimal(10, 2)
+  recommendedStrategy   String?    @map("recommended_strategy")
+
+  // Negotiation Ladder
+  negotiationLadder     Json?      @map("negotiation_ladder")
+  negotiationStrategy   String?    @map("negotiation_strategy")  // 'flip' | 'hold'
+  currentOfferRound     Int        @default(0) @map("current_offer_round")
+  currentOfferPrice     Float?     @map("current_offer_price")
+  offerOutcome          String?    @map("offer_outcome")          // 'in_progress' | 'accepted' | 'walked_away'
+  dealAgreedPrice       Float?     @map("deal_agreed_price")
+  dealAgreedAt          DateTime?  @map("deal_agreed_at")
+
   // Investor Reservations
   reservationCount             Int @default(0) @map("reservation_count")
   reservationsWithProofOfFunds Int @default(0) @map("reservations_with_proof_of_funds")
@@ -1530,6 +1546,10 @@ model OfferCalculatorConfig {
   // Validation thresholds
   minBmvPercentage   Decimal @default(15)    @map("min_bmv_percentage")   @db.Decimal(5, 2)
   minProfitPotential Decimal @default(10000) @map("min_profit_potential") @db.Decimal(12, 2)
+
+  // Investor constraint: offer must always be at least this % below asking price
+  // Prevents offers at or above asking even when the deal is already priced BMV
+  minDiscountFromAsking Decimal @default(5) @map("min_discount_from_asking") @db.Decimal(5, 2)
 
   updatedAt DateTime @updatedAt @map("updated_at")
 

@@ -220,3 +220,158 @@ export async function sendInvestorPackEmail({
     return { success: false, error: err.message || "Failed to send email" }
   }
 }
+
+// ─── Offer to investor email ───────────────────────────────────────────────────
+
+export async function sendOfferToInvestorEmail({
+  to,
+  investorName,
+  propertyAddress,
+  offerAmount,
+  askingPrice,
+  bmvPct,
+  message,
+  appUrl,
+}: {
+  to: string
+  investorName: string
+  propertyAddress: string
+  offerAmount: number
+  askingPrice: number
+  bmvPct: number
+  message: string
+  appUrl: string
+}): Promise<EmailResult> {
+  const transporter = getTransporter()
+  if (!transporter) {
+    console.warn("[email] SMTP not configured — offer email not sent")
+    return { success: false, noSmtp: true, error: "SMTP not configured" }
+  }
+
+  const fromName = process.env.SMTP_FROM_NAME || "DealStack"
+  const formattedOffer = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(offerAmount)
+  const formattedAsking = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(askingPrice)
+
+  // Convert plain-text message to HTML paragraphs
+  const messageHtml = message
+    .split("\n")
+    .map((line) => (line.trim() ? `<p style="margin:0 0 8px;">${line}</p>` : "<br>"))
+    .join("")
+
+  try {
+    await transporter.sendMail({
+      from: fromAddress(),
+      to,
+      subject: `Investment Opportunity: ${propertyAddress}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+        <body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+          <div style="background:#1e3a8a;padding:28px 28px 20px;border-radius:8px 8px 0 0;">
+            <h1 style="color:white;margin:0;font-size:22px;">${fromName}</h1>
+            <p style="color:rgba(255,255,255,0.8);margin:6px 0 0;font-size:13px;">Investment Opportunity</p>
+          </div>
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-top:none;padding:28px;border-radius:0 0 8px 8px;">
+            <h2 style="color:#1e293b;margin-top:0;">Property Investment Opportunity</h2>
+            <p style="color:#475569;">Hi ${investorName},</p>
+            <div style="margin-bottom:16px;color:#475569;">${messageHtml}</div>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:20px;margin:24px 0;">
+              <h3 style="margin:0 0 16px;color:#1e293b;font-size:15px;">Deal Summary</h3>
+              <table style="width:100%;border-collapse:collapse;font-size:14px;">
+                <tr>
+                  <td style="padding:8px 0;color:#64748b;border-bottom:1px solid #f1f5f9;">Property</td>
+                  <td style="padding:8px 0;font-weight:600;text-align:right;border-bottom:1px solid #f1f5f9;">${propertyAddress}</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;color:#64748b;border-bottom:1px solid #f1f5f9;">Asking Price</td>
+                  <td style="padding:8px 0;font-weight:600;text-align:right;border-bottom:1px solid #f1f5f9;">${formattedAsking}</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;color:#64748b;">Our Offer</td>
+                  <td style="padding:8px 0;text-align:right;">
+                    <span style="background:#1e3a8a;color:white;padding:4px 12px;border-radius:4px;font-weight:700;font-size:16px;">${formattedOffer}</span>
+                    <span style="display:block;font-size:12px;color:#64748b;margin-top:4px;">${bmvPct.toFixed(1)}% Below Market Value</span>
+                  </td>
+                </tr>
+              </table>
+            </div>
+            <p style="color:#475569;font-size:14px;">Please let us know if you'd like to discuss further or if you have any questions.</p>
+            <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
+            <p style="font-size:11px;color:#94a3b8;text-align:center;">
+              This is a confidential communication. Please do not forward without permission.<br>
+              © ${new Date().getFullYear()} ${fromName}. All rights reserved.
+            </p>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `Hi ${investorName},\n\n${message}\n\nProperty: ${propertyAddress}\nAsking Price: ${formattedAsking}\nOur Offer: ${formattedOffer} (${bmvPct.toFixed(1)}% BMV)\n\n© ${new Date().getFullYear()} ${fromName}`,
+    })
+    console.log(`[email] Offer email sent to ${to} for ${propertyAddress}`)
+    return { success: true }
+  } catch (err: any) {
+    console.error("[email] Offer email failed:", err)
+    return { success: false, error: err.message || "Failed to send email" }
+  }
+}
+
+// ─── Vendor offer email ───────────────────────────────────────────────────────
+
+export async function sendVendorOfferEmail({
+  to,
+  vendorName,
+  propertyAddress,
+  message,
+}: {
+  to: string
+  vendorName?: string | null
+  propertyAddress: string
+  message: string
+}): Promise<EmailResult> {
+  const transporter = getTransporter()
+  if (!transporter) {
+    console.warn("[email] SMTP not configured — vendor offer email not sent")
+    return { success: false, noSmtp: true, error: "SMTP not configured" }
+  }
+
+  const fromName = process.env.SMTP_FROM_NAME || "DealStack"
+
+  const messageHtml = message
+    .split("\n")
+    .map((line) => (line.trim() ? `<p style="margin:0 0 8px;">${line}</p>` : "<br>"))
+    .join("")
+
+  try {
+    await transporter.sendMail({
+      from: fromAddress(),
+      to,
+      subject: `Offer on Your Property: ${propertyAddress}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+        <body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+          <div style="background:#1e3a8a;padding:28px 28px 20px;border-radius:8px 8px 0 0;">
+            <h1 style="color:white;margin:0;font-size:22px;">${fromName}</h1>
+            <p style="color:rgba(255,255,255,0.8);margin:6px 0 0;font-size:13px;">Property Offer</p>
+          </div>
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-top:none;padding:28px;border-radius:0 0 8px 8px;">
+            <div style="margin-bottom:16px;color:#475569;">${messageHtml}</div>
+            <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
+            <p style="font-size:11px;color:#94a3b8;text-align:center;">
+              This is a confidential communication from ${fromName}.
+            </p>
+          </div>
+        </body>
+        </html>
+      `,
+      text: message,
+    })
+    console.log(`[email] Vendor offer email sent to ${to} for ${propertyAddress}`)
+    return { success: true }
+  } catch (err: any) {
+    console.error("[email] Vendor offer email failed:", err)
+    return { success: false, error: err.message || "Failed to send email" }
+  }
+}

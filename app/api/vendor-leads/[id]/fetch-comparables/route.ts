@@ -185,8 +185,8 @@ export async function POST(
     })
 
     const searchRadius = body.searchRadius ?? userConfig?.searchRadius ?? 3
-    const maxResults = body.maxResults ?? userConfig?.maxResults ?? 50
-    const maxAgeMonths = userConfig?.maxAgeMonths ?? 12
+    const maxResults = body.maxResults ?? userConfig?.maxResults ?? 10
+    const maxAgeMonths = userConfig?.maxAgeMonths ?? 24
     const bedroomTolerance = userConfig?.bedroomTolerance ?? 1
 
     console.log(`[Fetch Comparables] Fetching detailed comparables for lead ${params.id}:`, {
@@ -309,7 +309,12 @@ export async function POST(
       overallConfidence = "MEDIUM"
     }
 
-    // Update vendor lead with comparables stats
+    // Pull rental data from first comparable that has it (all share the same area estimate)
+    const compWithRent = storedComparables.find((c) => c.monthlyRent != null)
+    const areaMonthlyRent = compWithRent?.monthlyRent?.toNumber() ?? null
+    const areaWeeklyRent  = compWithRent?.weeklyRent?.toNumber()  ?? null
+
+    // Update vendor lead with comparables stats AND rental data if obtained
     await prisma.vendorLead.update({
       where: { id: params.id },
       data: {
@@ -318,8 +323,17 @@ export async function POST(
         comparablesSearchRadius: searchRadius,
         avgComparablePrice: avgPrice,
         comparablesConfidence: overallConfidence,
+        // Persist rental data so Offer Analysis can use it immediately
+        ...(areaMonthlyRent != null && {
+          estimatedMonthlyRent: areaMonthlyRent,
+          estimatedAnnualRent: Math.round(areaMonthlyRent * 12),
+        }),
       },
     })
+
+    if (areaMonthlyRent != null) {
+      console.log(`[Fetch Comparables] Saved rental data to lead: £${areaMonthlyRent}/mo (£${areaWeeklyRent}/wk)`)
+    }
 
     console.log(`[Fetch Comparables] Updated vendor lead with stats:`, {
       count: storedComparables.length,
@@ -386,6 +400,9 @@ export async function POST(
         confidence: overallConfidence,
         searchRadius,
         creditsUsed: detailedResult.creditsUsed,
+        // Rental data saved to lead — UI can update state without a full page reload
+        areaMonthlyRent,
+        areaWeeklyRent,
       },
     })
   } catch (error: any) {

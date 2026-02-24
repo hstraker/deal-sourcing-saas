@@ -13,10 +13,16 @@ import type {
 
 const LOG_PREFIX = "[Scraper]"
 
+const ENRICHMENT_CONCURRENCY = 5
+
 export abstract class BaseScraper {
   protected browser: Browser | null = null
   protected settings: ScraperSettingsData
   protected progress: ScraperProgress
+  /** Run-scoped cache for postcode resolution by outcode (avoids repeated Land Registry/PPD/API lookups). */
+  private postcodeOutcodeCache = new Map<string, string | null>()
+  private enrichmentQueue: Array<{ listingId: string; postcode: string }> = []
+  private enrichmentRunning = 0
 
   constructor(settings: ScraperSettingsData, jobId: string) {
     this.settings = settings
@@ -118,6 +124,7 @@ export abstract class BaseScraper {
 
   async run(criteria: ScraperCriteria): Promise<ScraperProgress> {
     await this.initialize()
+    this.postcodeOutcodeCache.clear()
 
     try {
       const searchUrls = this.buildSearchUrls(criteria)
@@ -186,8 +193,8 @@ export abstract class BaseScraper {
               await detailPage.close()
             }
 
-            // Persist progress every 10 properties
-            if (this.progress.processed % 10 === 0) {
+            // Persist progress every 25 properties
+            if (this.progress.processed % 25 === 0) {
               await this.updateJobProgress()
             }
           }
@@ -330,7 +337,8 @@ export abstract class BaseScraper {
       try {
         const resolved = await resolvePostcodeFromAddress(
           property.address.displayAddress,
-          property.address.postcode ?? null
+          property.address.postcode ?? null,
+          this.postcodeOutcodeCache
         )
         if (resolved) {
           if (resolved.corrected) {
@@ -565,14 +573,30 @@ export abstract class BaseScraper {
     return false
   }
 
-  /** Fire-and-forget Land Registry ownership enrichment — never blocks the scraper */
+  /** Fire-and-forget Land Registry ownership enrichment — never blocks the scraper; max N concurrent to reduce DB contention. */
   private triggerOwnershipEnrichment(listingId: string, postcode?: string): void {
     if (!postcode) return
-    enrichPropertyWithOwnership(listingId, postcode).catch((e) =>
-      console.warn(
-        `${LOG_PREFIX} Ownership enrichment failed for ${listingId}: ${e.message}`
-      )
-    )
+
+    const runOne = (lid: string, pc: string): void => {
+      this.enrichmentRunning++
+      enrichPropertyWithOwnership(lid, pc)
+        .catch((e) =>
+          console.warn(
+            `${LOG_PREFIX} Ownership enrichment failed for ${lid}: ${e.message}`
+          )
+        )
+        .finally(() => {
+          this.enrichmentRunning--
+          const next = this.enrichmentQueue.shift()
+          if (next) runOne(next.listingId, next.postcode)
+        })
+    }
+
+    if (this.enrichmentRunning < ENRICHMENT_CONCURRENCY) {
+      runOne(listingId, postcode)
+    } else {
+      this.enrichmentQueue.push({ listingId, postcode })
+    }
   }
 
   // ---- Job progress persistence ----

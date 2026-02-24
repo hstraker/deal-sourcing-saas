@@ -117,13 +117,13 @@ export async function runScraperJob(
   } catch (error: any) {
     console.error(`${LOG_PREFIX} Job ${jobId} failed:`, error.message)
 
-    // Update job to FAILED if it hasn't been updated already
+    // Update job to FAILED if it is still QUEUED or RUNNING (e.g. browser launch failed before RUNNING was set)
     try {
       const job = await prisma.scraperJob.findUnique({
         where: { id: jobId },
         select: { status: true },
       })
-      if (job && job.status === "RUNNING") {
+      if (job && (job.status === "QUEUED" || job.status === "RUNNING")) {
         await prisma.scraperJob.update({
           where: { id: jobId },
           data: {

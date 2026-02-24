@@ -5,14 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
   Loader2,
   TrendingUp,
   TrendingDown,
@@ -21,7 +13,6 @@ import {
   Info,
   RefreshCw,
   MapPin,
-  Home,
   PoundSterling,
   Calendar,
 } from "lucide-react"
@@ -317,44 +308,6 @@ export function PropertyAnalysisPanel({
                       </div>
                     </div>
                   )}
-                </div>
-              </div>
-            )}
-
-            {/* Comparable Sales */}
-            {propertyData.data.comparables && propertyData.data.comparables.length > 0 && (
-              <div>
-                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <Home className="h-4 w-4" />
-                  Comparable Sales ({propertyData.data.comparables.length})
-                </h4>
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Address</TableHead>
-                        <TableHead>Price</TableHead>
-                        <TableHead>Bedrooms</TableHead>
-                        <TableHead>Distance</TableHead>
-                        <TableHead>Date</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {propertyData.data.comparables.slice(0, 10).map((comp, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell className="text-sm">{comp.address}</TableCell>
-                          <TableCell className="font-medium">
-                            {formatCurrency(comp.salePrice)}
-                          </TableCell>
-                          <TableCell>{comp.bedrooms}</TableCell>
-                          <TableCell>{comp.distance.toFixed(1)} mi</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {formatDate(comp.saleDate)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
                 </div>
               </div>
             )}

@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { OfferCalculatorSettings } from "@/components/settings/offer-calculator-settings"
 
-export const metadata = { title: "BMV Offer Calculator Settings" }
+export const metadata = { title: "Underwriting Engine Settings" }
 
 export default async function OfferCalculatorSettingsPage() {
   const session = await getServerSession(authOptions)

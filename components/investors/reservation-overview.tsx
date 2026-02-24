@@ -21,8 +21,16 @@ import {
 import {
   Loader2, CheckCircle2, XCircle, FileText, Clock, Link as LinkIcon,
   Download, RefreshCw, Mail, AlertTriangle, Package, ChevronRight,
-  Banknote, FileCheck, Lock, Trophy, Ban,
+  Banknote, FileCheck, Lock, Trophy, Ban, ChevronDown, Trash2,
 } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { format } from "date-fns"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -194,6 +202,7 @@ export function ReservationOverview({ initialReservations = [] }: ReservationOve
   const [reservations, setReservations] = useState<Reservation[]>(initialReservations)
   const [isLoading, setIsLoading] = useState(false)
   const [advancingId, setAdvancingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   // showSpinner=true for initial load; false for background refresh after mutations
   const fetchReservations = async (showSpinner = false) => {
@@ -287,6 +296,26 @@ export function ReservationOverview({ initialReservations = [] }: ReservationOve
     }
   }
 
+  const deleteReservation = async (reservationId: string) => {
+    if (!confirm("Permanently delete this reservation? This cannot be undone.")) return
+    setDeletingId(reservationId)
+    try {
+      const response = await fetch(`/api/reservations/${reservationId}`, { method: "DELETE" })
+      if (response.ok) {
+        setReservations((prev) => prev.filter((r) => r.id !== reservationId))
+        toast.success("Reservation deleted")
+        window.dispatchEvent(new CustomEvent("reservationUpdated"))
+      } else {
+        const err = await response.json().catch(() => ({}))
+        toast.error(err.error || "Failed to delete reservation")
+      }
+    } catch {
+      toast.error("Failed to delete reservation")
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   const getInvestorName = (investor: Reservation["investor"]) => {
     const name = [investor.user.firstName, investor.user.lastName].filter(Boolean).join(" ")
     return name || investor.user.email
@@ -369,6 +398,8 @@ export function ReservationOverview({ initialReservations = [] }: ReservationOve
                     const wf = getWorkflowItem(r.status)
                     const nextAction = r.status !== "completed" && r.status !== "cancelled" ? NEXT_ACTIONS[r.status] : null
                     const isAdvancing = advancingId === r.id
+                    const isDeleting = deletingId === r.id
+                    const isBusy = isAdvancing || isDeleting
                     const totalForInvestor = reservationCountByInvestor[r.investor.id] ?? 1
                     // Index of this row within the investor's group (1-based)
                     const investorGroupIndex = arr.slice(0, idx).filter((x) => x.investor.id === r.investor.id).length + 1
@@ -424,44 +455,71 @@ export function ReservationOverview({ initialReservations = [] }: ReservationOve
                               <Badge variant="outline" className={`gap-1 text-xs shrink-0 ${wf.color}`}>
                                 {wf.icon}{wf.label}
                               </Badge>
+
+                              {/* Quick next-step button */}
                               {nextAction && (
-                                <>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className={`h-6 w-6 ${nextAction.color}`}
-                                        disabled={isAdvancing}
-                                        onClick={() => advanceStatus(r.id, nextAction.nextStatus, nextAction.label)}
-                                      >
-                                        {isAdvancing
-                                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                          : nextAction.icon
-                                        }
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top" className="text-xs">
-                                      <p className="font-medium">{nextAction.label}</p>
-                                      <p className="text-muted-foreground font-normal">{nextAction.description}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50 font-bold"
-                                        disabled={isAdvancing}
-                                        onClick={() => cancelReservation(r.id)}
-                                      >
-                                        <Ban className="h-3.5 w-3.5 stroke-[2.5]" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top" className="text-xs text-red-600">Cancel reservation</TooltipContent>
-                                  </Tooltip>
-                                </>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className={`h-6 w-6 ${nextAction.color}`}
+                                      disabled={isBusy}
+                                      onClick={() => advanceStatus(r.id, nextAction.nextStatus, nextAction.label)}
+                                    >
+                                      {isAdvancing
+                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        : nextAction.icon
+                                      }
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="text-xs">
+                                    <p className="font-medium">{nextAction.label}</p>
+                                    <p className="text-muted-foreground font-normal">{nextAction.description}</p>
+                                  </TooltipContent>
+                                </Tooltip>
                               )}
+
+                              {/* Manual status + delete dropdown */}
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                    disabled={isBusy}
+                                  >
+                                    {isDeleting
+                                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                      : <ChevronDown className="h-3.5 w-3.5" />
+                                    }
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="w-52">
+                                  <DropdownMenuLabel className="text-xs text-muted-foreground font-normal py-1">Set status</DropdownMenuLabel>
+                                  <DropdownMenuSeparator />
+                                  {WORKFLOW.map((w) => (
+                                    <DropdownMenuItem
+                                      key={w.status}
+                                      disabled={w.status === r.status}
+                                      className={`text-xs gap-2 ${w.status === r.status ? "font-semibold opacity-60 cursor-default" : ""}`}
+                                      onClick={() => w.status !== r.status && advanceStatus(r.id, w.status, w.label)}
+                                    >
+                                      {w.icon}
+                                      {w.label}
+                                      {w.status === r.status && <CheckCircle2 className="h-3 w-3 ml-auto text-primary" />}
+                                    </DropdownMenuItem>
+                                  ))}
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-xs gap-2 text-red-600 focus:text-red-600 focus:bg-red-50"
+                                    onClick={() => deleteReservation(r.id)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                    Delete reservation
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </TooltipProvider>
                         </TableCell>

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, RefreshCw, Home, Settings, TrendingUp } from "lucide-react"
+import { Loader2, RefreshCw, Home, Settings, TrendingUp, Clock } from "lucide-react"
 import {
   ComparablesGrid,
   ComparablesAnalysis,
@@ -12,6 +12,10 @@ import {
   type ComparableProperty,
 } from "@/components/comparables"
 import { toast } from "sonner"
+
+// Module-level cache — survives component unmount/remount (e.g. modal close/reopen)
+// Keyed by vendorLeadId. Data is shown instantly on re-open without a loading spinner.
+const _comparablesCache = new Map<string, ComparablesData>()
 
 interface VendorComparablesTabProps {
   vendorLeadId: string
@@ -40,11 +44,14 @@ export function VendorComparablesTab({
   askingPrice,
   propertyPostcode,
 }: VendorComparablesTabProps) {
-  const [data, setData] = useState<ComparablesData | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  // Seed state from module cache so re-opens are instant (no spinner, no re-fetch)
+  const [data, setData] = useState<ComparablesData | null>(() => _comparablesCache.get(vendorLeadId) ?? null)
+  const [isLoading, setIsLoading] = useState(() => !_comparablesCache.has(vendorLeadId))
   const [isFetching, setIsFetching] = useState(false)
 
   useEffect(() => {
+    // If we already have cached data for this lead, skip the network round-trip
+    if (_comparablesCache.has(vendorLeadId)) return
     fetchComparables()
   }, [vendorLeadId])
 
@@ -54,7 +61,10 @@ export function VendorComparablesTab({
       const response = await fetch(`/api/vendor-leads/${vendorLeadId}/comparables`)
       if (response.ok) {
         const result = await response.json()
-        setData(result.data)
+        if (result.data) {
+          setData(result.data)
+          _comparablesCache.set(vendorLeadId, result.data)
+        }
       }
     } catch (error) {
       console.error("Error fetching comparables:", error)
@@ -85,6 +95,7 @@ export function VendorComparablesTab({
 
       if (response.ok) {
         setData(result.data)
+        _comparablesCache.set(vendorLeadId, result.data)
         toast.success(
           result.cached
             ? "Using cached comparables"
@@ -101,13 +112,21 @@ export function VendorComparablesTab({
     }
   }
 
+  const isStale = (lastFetchedAt: string | null): boolean => {
+    if (!lastFetchedAt) return true
+    const daysSince = (Date.now() - new Date(lastFetchedAt).getTime()) / (1000 * 60 * 60 * 24)
+    return daysSince > 7
+  }
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="min-h-[400px] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     )
   }
+
+  const dataIsStale = data ? isStale(data.lastFetchedAt) : false
 
   return (
     <div className="space-y-6">
@@ -116,8 +135,14 @@ export function VendorComparablesTab({
         <div>
           <h3 className="text-lg font-semibold">Comparable Properties</h3>
           {data && data.lastFetchedAt && (
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
               Last updated: {new Date(data.lastFetchedAt).toLocaleString("en-GB")}
+              {dataIsStale && (
+                <span className="inline-flex items-center gap-1 text-xs text-amber-600 font-medium">
+                  <Clock className="h-3 w-3" />
+                  Stale — over 7 days old
+                </span>
+              )}
             </p>
           )}
         </div>
@@ -134,7 +159,7 @@ export function VendorComparablesTab({
             }}
           />
           <Button
-            variant={data && data.comparables.length > 0 ? "outline" : "default"}
+            variant={dataIsStale || !(data && data.comparables.length > 0) ? "default" : "outline"}
             size="sm"
             onClick={() => handleFetchNew(!!(data && data.comparables.length > 0))}
             disabled={isFetching || !propertyPostcode}
@@ -147,7 +172,7 @@ export function VendorComparablesTab({
             ) : (
               <>
                 <RefreshCw className="h-4 w-4 mr-2" />
-                {data && data.comparables.length > 0 ? "Refresh" : "Fetch Comparables"}
+                {data && data.comparables.length > 0 ? (dataIsStale ? "Refresh (Stale)" : "Refresh") : "Fetch Comparables"}
               </>
             )}
           </Button>

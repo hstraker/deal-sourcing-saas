@@ -77,6 +77,7 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
     category: null,
     isAmbiguous: null,
     minBmvScore: null,
+    favoritesOnly: false,
   })
   const [sortField, setSortField] = useState<SortField>("scrapedAt")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
@@ -119,6 +120,7 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
       const bmvScore = (l.bmvIndicators as BmvIndicatorsData)?.bmvScore ?? 0
       if (filters.minBmvScore !== null && bmvScore < filters.minBmvScore)
         return false
+      if (filters.favoritesOnly && !l.isFavorited) return false
       return true
     })
   }, [searchFiltered, filters])

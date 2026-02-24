@@ -164,6 +164,16 @@ export async function DELETE(
       return NextResponse.json({ error: "Vendor lead not found" }, { status: 404 })
     }
 
+    // Cancel any active investor reservations linked to the deal
+    if (existingLead.dealId) {
+      await prisma.investorReservation.deleteMany({
+        where: {
+          dealId: existingLead.dealId,
+          status: { notIn: ["cancelled", "completed"] },
+        },
+      })
+    }
+
     // Delete the vendor lead (cascade will delete related records)
     await prisma.vendorLead.delete({
       where: { id: params.id },

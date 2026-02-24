@@ -59,11 +59,14 @@ import {
   Search,
   BedDouble,
   Bath,
+  Maximize2,
+  Minimize2,
 } from "lucide-react"
 import { PipelineStage } from "@prisma/client"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { VendorComparablesTab } from "./vendor-comparables-tab"
+import { OfferAnalysisPanel } from "@/components/deals/offer-analysis-panel"
 import { formatCurrency } from "@/lib/format"
 
 interface SMSMessage {
@@ -352,8 +355,11 @@ export function VendorLeadDetailModal({
   const [sendingMessage, setSendingMessage] = useState(false)
   const [fullLead, setFullLead] = useState<VendorLead | null>(null)
   const [isEditing, setIsEditing] = useState(false)
+  const [activeTab, setActiveTab] = useState("details")
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isRemovingReservation, setIsRemovingReservation] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const [isCalculating, setIsCalculating] = useState(false)
   const [isGeneratingPack, setIsGeneratingPack] = useState(false)
   const [isFixingPostcode, setIsFixingPostcode] = useState(false)
@@ -361,6 +367,7 @@ export function VendorLeadDetailModal({
   const [editForm, setEditForm] = useState<any>({})
   const [templates, setTemplates] = useState<any[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("")
+
 
   // Transform initial lead prop to ensure Decimal types are converted to numbers
   const transformLead = (leadData: any) => ({
@@ -438,6 +445,7 @@ export function VendorLeadDetailModal({
         })
     }
   }, [open])
+
 
   const currentLead = fullLead || transformLead(lead)
   const parsedNotes = parseValidationNotes(currentLead.validationNotes)
@@ -662,6 +670,28 @@ export function VendorLeadDetailModal({
     }
   }
 
+  const handleRemoveReservation = async () => {
+    if (!currentLead.reservation) return
+    if (!confirm("Remove this investor reservation? This cannot be undone.")) return
+    setIsRemovingReservation(true)
+    try {
+      const res = await fetch(`/api/reservations/${currentLead.reservation.id}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || "Failed to remove reservation")
+      }
+      setFullLead((prev) => prev ? { ...prev, reservation: null } : prev)
+      toast.success("Reservation removed")
+      if (onUpdate) onUpdate()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to remove reservation")
+    } finally {
+      setIsRemovingReservation(false)
+    }
+  }
+
   const handleGenerateInvestorPack = async () => {
     if (!currentLead.propertyAddress) {
       toast.error("Property address is required to generate investor pack")
@@ -816,8 +846,11 @@ export function VendorLeadDetailModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="pb-2 border-b">
+        <DialogContent className={isFullscreen
+            ? "!fixed !left-2 !top-2 !right-2 !bottom-2 !translate-x-0 !translate-y-0 !max-w-none !w-auto !max-h-none !h-auto rounded-xl overflow-y-auto"
+            : "max-w-6xl w-[95vw] max-h-[90vh] overflow-y-auto"
+          }>
+          <DialogHeader className="pb-2 border-b pr-16">
             {/* ── Row 1: stage pill + action buttons ──────────────────────────── */}
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
@@ -921,6 +954,27 @@ export function VendorLeadDetailModal({
                         <TooltipContent side="bottom" className="text-xs text-red-600">Delete lead</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
+
+                    {/* Fullscreen toggle */}
+                    <TooltipProvider delayDuration={300}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => setIsFullscreen((v) => !v)}
+                          >
+                            {isFullscreen
+                              ? <Minimize2 className="h-3.5 w-3.5" />
+                              : <Maximize2 className="h-3.5 w-3.5" />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs">
+                          {isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </>
                 ) : (
                   <>
@@ -995,17 +1049,51 @@ export function VendorLeadDetailModal({
             </div>
           </DialogHeader>
 
-        <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="details" className="relative">
-              Details
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="w-full"
+        >
+          <TabsList className="grid w-full grid-cols-4 h-auto p-1 gap-0.5 bg-muted/60">
+            <TabsTrigger
+              value="details"
+              className="relative flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
+                hover:bg-background hover:text-primary hover:shadow-sm
+                data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
+            >
+              <User className="h-3.5 w-3.5" />
+              <span>Contact Info</span>
               {currentLead.reservation && (
-                <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-violet-500 align-middle" />
+                <span className="absolute top-1.5 right-2 inline-block h-1.5 w-1.5 rounded-full bg-violet-500" />
               )}
             </TabsTrigger>
-            <TabsTrigger value="validation">Validation</TabsTrigger>
-            <TabsTrigger value="comparables">Comparables</TabsTrigger>
-            <TabsTrigger value="offer">Offer</TabsTrigger>
+            <TabsTrigger
+              value="validation"
+              className="flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
+                hover:bg-background hover:text-primary hover:shadow-sm
+                data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              <span>Validation</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="comparables"
+              className="flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
+                hover:bg-background hover:text-primary hover:shadow-sm
+                data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
+            >
+              <BarChart3 className="h-3.5 w-3.5" />
+              <span>Comparables</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="offer"
+              className="flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
+                hover:bg-background hover:text-primary hover:shadow-sm
+                data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
+            >
+              <Calculator className="h-3.5 w-3.5" />
+              <span>Offer Analysis</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="details" className="space-y-4">
@@ -1233,10 +1321,34 @@ export function VendorLeadDetailModal({
                         <div className="rounded-lg bg-muted/60 px-3 py-2">
                           <div className="flex items-start gap-2">
                             <MapPin className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                            <span className="font-medium text-sm leading-snug">
+                            <span className="font-medium text-sm leading-snug flex-1">
                               {cleanPropertyAddress(currentLead.propertyAddress, currentLead.propertyPostcode)}
                             </span>
                           </div>
+                          {/* Show resolve button when postcode is missing or outcode-only */}
+                          {currentLead.propertyAddress && !/\b[A-Z]{1,2}\d{1,2}[A-Z]?\s\d[A-Z]{2}\b/i.test(currentLead.propertyPostcode ?? "") && (
+                            <div className="mt-2 flex items-center gap-2 rounded-md bg-amber-50 border border-amber-200 px-2 py-1.5">
+                              <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                              <span className="text-xs text-amber-700 flex-1">
+                                {currentLead.propertyPostcode ? `"${currentLead.propertyPostcode}" is not a full postcode` : "No postcode set"}
+                              </span>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-6 px-2 text-xs border-amber-300 text-amber-700 hover:bg-amber-100 shrink-0"
+                                onClick={handleFixPostcode}
+                                disabled={isFixingPostcode}
+                              >
+                                {isFixingPostcode ? (
+                                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                ) : (
+                                  <Search className="h-3 w-3 mr-1" />
+                                )}
+                                Resolve
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       )}
                       {/* Spec chips */}
@@ -1561,9 +1673,24 @@ export function VendorLeadDetailModal({
                         Investor Reservation
                       </CardTitle>
                       {res && (
-                        <Badge variant="outline" className={cn("text-xs border", statusColor[res.status] || "")}>
-                          {statusLabel[res.status] || res.status}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className={cn("text-xs border", statusColor[res.status] || "")}>
+                            {statusLabel[res.status] || res.status}
+                          </Badge>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={handleRemoveReservation}
+                            disabled={isRemovingReservation}
+                          >
+                            {isRemovingReservation
+                              ? <Loader2 className="h-3 w-3 animate-spin" />
+                              : <X className="h-3 w-3 mr-0.5" />
+                            }
+                            Remove
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </CardHeader>
@@ -2284,6 +2411,26 @@ export function VendorLeadDetailModal({
           </TabsContent>
 
           <TabsContent value="offer" className="space-y-4">
+            {/* Excel Offer Engine */}
+            <OfferAnalysisPanel
+              dealId={currentLead.dealId}
+              askingPrice={currentLead.askingPrice ?? 0}
+              gdv={currentLead.estimatedMarketValue}
+              estimatedRent={currentLead.estimatedMonthlyRent ?? parsedNotes?.rentalYield?.monthlyRent ?? null}
+              totalRefurbishment={currentLead.estimatedRefurbCost}
+              vendorLeadId={lead.id}
+              vendorName={currentLead.vendorName}
+              vendorEmail={currentLead.vendorEmail}
+              vendorPhone={currentLead.vendorPhone}
+              missingInputsHint={
+                (!currentLead.estimatedMarketValue || !currentLead.estimatedRefurbCost)
+                  ? "Go to the Validation tab → click Edit to set Market Value and Refurb Cost."
+                  : (!currentLead.estimatedMonthlyRent && !parsedNotes?.rentalYield?.monthlyRent)
+                  ? "Go to the Details tab → click Edit to set Monthly Rent."
+                  : undefined
+              }
+            />
+
             {/* Offer Status Banner */}
             {currentLead.offerAcceptedAt && (
               <div className="bg-green-50 border-2 border-green-500 rounded-lg p-4">
@@ -2442,85 +2589,83 @@ export function VendorLeadDetailModal({
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3 text-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                       {currentLead.offerAmount !== null && currentLead.askingPrice !== null && (
-                        <div className="flex items-start gap-3">
-                          <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                          <div>
-                            <p className="font-medium text-slate-900">
-                              Offer {formatCurrency(currentLead.offerAmount)} — {(((Number(currentLead.askingPrice) - Number(currentLead.offerAmount)) / Number(currentLead.askingPrice)) * 100).toFixed(1)}% below asking
+                        <div className="flex items-start gap-2.5 rounded-lg bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-slate-700 p-3">
+                          <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-900 dark:text-slate-100">
+                              {formatCurrency(currentLead.offerAmount)} — {(((Number(currentLead.askingPrice) - Number(currentLead.offerAmount)) / Number(currentLead.askingPrice)) * 100).toFixed(1)}% below asking
                             </p>
-                            <p className="text-slate-600 mt-1">
-                              Saving of {formatCurrency(Number(currentLead.askingPrice) - Number(currentLead.offerAmount))} vs asking price.
-                              {currentLead.estimatedMarketValue && currentLead.offerPercentage && (
-                                <> Represents {Number(currentLead.offerPercentage).toFixed(1)}% of market value ({formatCurrency(currentLead.estimatedMarketValue)}).</>
+                            <p className="text-slate-500 text-xs mt-0.5">
+                              Saving {formatCurrency(Number(currentLead.askingPrice) - Number(currentLead.offerAmount))}
+                              {currentLead.offerPercentage && (
+                                <> · {Number(currentLead.offerPercentage).toFixed(1)}% of MV</>
                               )}
                             </p>
                           </div>
                         </div>
                       )}
+
                       {currentLead.offerPercentage && (
-                        <div className="flex items-start gap-3">
-                          <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                          <div>
-                            <p className="font-medium text-slate-900">Adjusted based on vendor motivation</p>
-                            <p className="text-slate-600 mt-1">
+                        <div className="flex items-start gap-2.5 rounded-lg bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-slate-700 p-3">
+                          <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-900 dark:text-slate-100">Vendor motivation adjusted</p>
+                            <p className="text-slate-500 text-xs mt-0.5">
                               {currentLead.motivationScore && `Motivation ${currentLead.motivationScore}/10`}
-                              {currentLead.urgencyLevel && ` · Urgency: ${currentLead.urgencyLevel}`}
-                              {currentLead.condition && ` · Condition: ${currentLead.condition.replace(/_/g, ' ')}`}
+                              {currentLead.urgencyLevel && ` · ${currentLead.urgencyLevel}`}
+                              {currentLead.condition && ` · ${currentLead.condition.replace(/_/g, " ")}`}
                             </p>
                           </div>
                         </div>
                       )}
 
                       {landRegistryUsed && landRegistryOwnership && (
-                        <div className="flex items-start gap-3">
-                          <Building2 className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                          <div>
-                            <p className="font-medium text-slate-900">
-                              Land Registry ownership data applied
-                            </p>
-                            <p className="text-slate-600 mt-1">
-                              Owner: <span className="font-medium">{landRegistryOwnership.companyName}</span>
-                              {landRegistryOwnership.isCorporateOwned && " · Corporate owner (-2% offer)"}
-                              {landRegistryOwnership.isOverseasOwned && " · Overseas owner (-2% offer)"}
-                              {landRegistryOwnership.isPortfolioOwner && " · Portfolio owner (-1% offer)"}
+                        <div className="flex items-start gap-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 p-3">
+                          <Building2 className="h-4 w-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-900 dark:text-slate-100">Land Registry applied</p>
+                            <p className="text-slate-500 text-xs mt-0.5">
+                              {landRegistryOwnership.companyName}
+                              {landRegistryOwnership.isCorporateOwned && " · Corporate (-2%)"}
+                              {landRegistryOwnership.isOverseasOwned && " · Overseas (-2%)"}
+                              {landRegistryOwnership.isPortfolioOwner && " · Portfolio (-1%)"}
                             </p>
                           </div>
                         </div>
                       )}
 
                       {currentLead.bmvScore && Number(currentLead.bmvScore) >= 15 && (
-                        <div className="flex items-start gap-3">
-                          <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                          <div>
-                            <p className="font-medium text-slate-900">Deal meets {Number(currentLead.bmvScore).toFixed(1)}% BMV threshold</p>
-                            <p className="text-slate-600 mt-1">Target is 15%+ BMV for profitable investment opportunity</p>
+                        <div className="flex items-start gap-2.5 rounded-lg bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-slate-700 p-3">
+                          <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-900 dark:text-slate-100">{Number(currentLead.bmvScore).toFixed(1)}% BMV ✓</p>
+                            <p className="text-slate-500 text-xs mt-0.5">Exceeds 15% minimum threshold</p>
                           </div>
                         </div>
                       )}
 
                       {currentLead.profitPotential && Number(currentLead.profitPotential) >= 10000 && (
-                        <div className="flex items-start gap-3">
-                          <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                          <div>
-                            <p className="font-medium text-slate-900">Profit potential exceeds £10,000 minimum</p>
-                            <p className="text-slate-600 mt-1">
-                              Net profit of {formatCurrency(currentLead.profitPotential)} after purchase and refurb
+                        <div className="flex items-start gap-2.5 rounded-lg bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-slate-700 p-3">
+                          <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-900 dark:text-slate-100">Profit potential ✓</p>
+                            <p className="text-slate-500 text-xs mt-0.5">
+                              {formatCurrency(currentLead.profitPotential)} net after costs
                             </p>
                           </div>
                         </div>
                       )}
 
                       {currentLead.estimatedMonthlyRent && (
-                        <div className="flex items-start gap-3">
-                          <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                          <div>
-                            <p className="font-medium text-slate-900">Rental income of {formatCurrency(currentLead.estimatedMonthlyRent)}/month</p>
-                            <p className="text-slate-600 mt-1">
-                              Provides cash flow and
+                        <div className="flex items-start gap-2.5 rounded-lg bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-slate-700 p-3">
+                          <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(currentLead.estimatedMonthlyRent)}/mo rental</p>
+                            <p className="text-slate-500 text-xs mt-0.5">
                               {currentLead.offerAmount && currentLead.estimatedAnnualRent && (
-                                <> {((Number(currentLead.estimatedAnnualRent) / Number(currentLead.offerAmount)) * 100).toFixed(2)}% gross yield</>
+                                <>{((Number(currentLead.estimatedAnnualRent) / Number(currentLead.offerAmount)) * 100).toFixed(2)}% gross yield</>
                               )}
                             </p>
                           </div>
@@ -2556,7 +2701,7 @@ export function VendorLeadDetailModal({
             )}
           </TabsContent>
 
-          <TabsContent value="comparables" className="space-y-4">
+          <TabsContent value="comparables" className="space-y-4 w-full min-w-0 overflow-hidden">
             <VendorComparablesTab
               vendorLeadId={lead.id}
               askingPrice={typeof currentLead.askingPrice === 'number' ? currentLead.askingPrice : (currentLead.askingPrice ? Number(currentLead.askingPrice) : undefined)}
@@ -2566,6 +2711,7 @@ export function VendorLeadDetailModal({
         </Tabs>
       </DialogContent>
     </Dialog>
+
   </>
   )
 }

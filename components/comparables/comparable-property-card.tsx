@@ -364,7 +364,7 @@ export function ComparablePropertyCard({
           )}
 
           {/* Market Indicators */}
-          {!compact && (property.daysOnMarket || property.priceReductions) && (
+          {!compact && (property.daysOnMarket !== undefined || (property.priceReductions !== undefined && property.priceReductions > 0)) && (
             <div className="flex gap-3 text-xs text-muted-foreground">
               {property.daysOnMarket !== undefined && (
                 <Tooltip>

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Tooltip,
   TooltipContent,
@@ -31,8 +32,12 @@ import {
   RefreshCw,
   Building,
   CheckCircle2,
+  Play,
+  Building2,
+  FileText,
 } from "lucide-react"
 import { toast } from "sonner"
+import { buildTestUnderwritingInput } from "@/lib/engine/test-defaults"
 
 const ALL_STRATEGIES = ["BTL", "BuyHold", "Flip", "BRR"] as const
 type Strategy = (typeof ALL_STRATEGIES)[number]
@@ -55,6 +60,7 @@ interface ConfigState {
   enableStrategyMode: boolean
   activeStrategies: string[]
   defaultStrategy: string
+  minDiscountFromAsking: number
   baseDiscountMin: number
   baseDiscountMax: number
   poorConditionDiscount: number
@@ -76,6 +82,7 @@ const DEFAULT_CONFIG: ConfigState = {
   enableStrategyMode: false,
   activeStrategies: ["BuyHold", "BTL"],
   defaultStrategy: "BuyHold",
+  minDiscountFromAsking: 5,
   baseDiscountMin: 10,
   baseDiscountMax: 40,
   poorConditionDiscount: 10,
@@ -144,11 +151,72 @@ function PctInput({
   )
 }
 
+type TestSource = "vendor" | "listing"
+
+interface VendorLeadOption {
+  id: string
+  vendorName: string
+  propertyAddress: string | null
+  askingPrice: number | null
+}
+
+interface ListingOption {
+  id: string
+  title: string
+  price: number
+  address?: { displayAddress?: string }
+  propertyDataAnalysis?: { marketValue?: number; estimatedMonthlyRent?: number; refurbCost?: number } | null
+}
+
+interface ScreeningResult {
+  passesScreening: boolean
+  discountPercent: number
+  grossYield: number
+  basicROI: number
+  quickScore: number
+}
+
+interface StrategyResult {
+  strategy: string
+  metrics: Record<string, number>
+  maxAllowableOffer: number
+  pass: boolean
+  score: number
+}
+
+interface CapitalAllocationResult {
+  recommendedStrategy: string
+  finalMaxOffer: number
+  strategies: StrategyResult[]
+  institutionalScore: number
+}
+
 export function OfferCalculatorSettings() {
   const [config, setConfig] = useState<ConfigState>(DEFAULT_CONFIG)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isDirty, setIsDirty] = useState(false)
+
+  // Test workflow state
+  const [testSource, setTestSource] = useState<TestSource>("vendor")
+  const [vendorLeads, setVendorLeads] = useState<VendorLeadOption[]>([])
+  const [listings, setListings] = useState<ListingOption[]>([])
+  const [selectedVendorId, setSelectedVendorId] = useState<string>("")
+  const [selectedListing, setSelectedListing] = useState<ListingOption | null>(null)
+  const [selectedVendorFull, setSelectedVendorFull] = useState<{
+    askingPrice: number
+    estimatedMarketValue: number | null
+    estimatedRefurbCost: number | null
+    estimatedMonthlyRent: number | null
+    estimatedAnnualRent: number | null
+  } | null>(null)
+  const [screeningResult, setScreeningResult] = useState<ScreeningResult | null>(null)
+  const [allocationResult, setAllocationResult] = useState<CapitalAllocationResult | null>(null)
+  /** Listing/asking price used for the last allocation run — used to cap displayed "recommended offer" at list price. */
+  const [allocationAskingPrice, setAllocationAskingPrice] = useState<number | null>(null)
+  const [loadingScreening, setLoadingScreening] = useState(false)
+  const [loadingAllocation, setLoadingAllocation] = useState(false)
+  const [activeTab, setActiveTab] = useState("configuration")
 
   const fetchConfig = useCallback(async () => {
     try {
@@ -163,6 +231,7 @@ export function OfferCalculatorSettings() {
             enableStrategyMode:    Boolean(c.enableStrategyMode),
             activeStrategies:      Array.isArray(c.activeStrategies) ? c.activeStrategies : DEFAULT_CONFIG.activeStrategies,
             defaultStrategy:       c.defaultStrategy ?? DEFAULT_CONFIG.defaultStrategy,
+            minDiscountFromAsking: c.minDiscountFromAsking != null ? toNumber(c.minDiscountFromAsking) : DEFAULT_CONFIG.minDiscountFromAsking,
             baseDiscountMin:       toNumber(c.baseDiscountMin),
             baseDiscountMax:       toNumber(c.baseDiscountMax),
             poorConditionDiscount: toNumber(c.poorConditionDiscount),
@@ -193,6 +262,170 @@ export function OfferCalculatorSettings() {
   useEffect(() => {
     fetchConfig()
   }, [fetchConfig])
+
+  // Fetch vendor leads and listings for test workflow
+  const fetchTestOptions = useCallback(async () => {
+    try {
+      const [leadsRes, listRes] = await Promise.all([
+        fetch("/api/vendor-pipeline/leads?limit=100"),
+        fetch("/api/properties/listings?limit=100"),
+      ])
+      if (leadsRes.ok) {
+        const data = await leadsRes.json()
+        const leads = (data.leads ?? data ?? []).map((l: any) => ({
+          id: l.id,
+          vendorName: l.vendorName ?? "—",
+          propertyAddress: l.propertyAddress ?? null,
+          askingPrice: l.askingPrice != null ? Number(l.askingPrice) : null,
+        }))
+        setVendorLeads(leads)
+      }
+      if (listRes.ok) {
+        const data = await listRes.json()
+        const items = (data.listings ?? data?.listings ?? []).map((l: any) => ({
+          id: l.id,
+          title: l.title ?? l.address?.displayAddress ?? "—",
+          price: typeof l.price === "number" ? l.price : Number(l.price) || 0,
+          address: l.address,
+          propertyDataAnalysis: l.propertyDataAnalysis ?? null,
+        }))
+        setListings(items)
+      }
+    } catch (e) {
+      console.error("[Test workflow] fetch options:", e)
+    }
+  }, [])
+
+  // Only fetch vendor leads and listings when user opens the Test workflow tab (avoids slow load on settings page)
+  useEffect(() => {
+    if (activeTab === "test") fetchTestOptions()
+  }, [activeTab, fetchTestOptions])
+
+  const loadVendorFull = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`/api/vendor-leads/${id}`)
+      if (!res.ok) return
+      const lead = await res.json()
+      setSelectedVendorFull({
+        askingPrice: lead.askingPrice != null ? Number(lead.askingPrice) : 0,
+        estimatedMarketValue: lead.estimatedMarketValue != null ? Number(lead.estimatedMarketValue) : null,
+        estimatedRefurbCost: lead.estimatedRefurbCost != null ? Number(lead.estimatedRefurbCost) : null,
+        estimatedMonthlyRent: lead.estimatedMonthlyRent != null ? Number(lead.estimatedMonthlyRent) : null,
+        estimatedAnnualRent: lead.estimatedAnnualRent != null ? Number(lead.estimatedAnnualRent) : null,
+      })
+    } catch (e) {
+      console.error("[Test workflow] load vendor:", e)
+      setSelectedVendorFull(null)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (testSource === "vendor" && selectedVendorId) loadVendorFull(selectedVendorId)
+    else setSelectedVendorFull(null)
+  }, [testSource, selectedVendorId, loadVendorFull])
+
+  const runScreening = useCallback(async () => {
+    let askingPrice: number
+    let marketValue: number
+    let monthlyRent: number
+    let refurbCost: number
+
+    if (testSource === "vendor") {
+      if (!selectedVendorFull?.askingPrice) {
+        toast.error("Select a vendor lead with an asking price")
+        return
+      }
+      askingPrice = selectedVendorFull.askingPrice
+      marketValue = selectedVendorFull.estimatedMarketValue ?? askingPrice * 1.1
+      monthlyRent = selectedVendorFull.estimatedMonthlyRent ?? (selectedVendorFull.estimatedAnnualRent ?? 0) / 12
+      refurbCost = selectedVendorFull.estimatedRefurbCost ?? 0
+    } else {
+      if (!selectedListing?.price) {
+        toast.error("Select a scraped listing with a price")
+        return
+      }
+      askingPrice = selectedListing.price
+      marketValue = selectedListing.propertyDataAnalysis?.marketValue ?? selectedListing.price * 1.15
+      monthlyRent = selectedListing.propertyDataAnalysis?.estimatedMonthlyRent ?? 0
+      refurbCost = selectedListing.propertyDataAnalysis?.refurbCost ?? 0
+    }
+
+    setLoadingScreening(true)
+    setScreeningResult(null)
+    setAllocationResult(null)
+    setAllocationAskingPrice(null)
+    try {
+      const res = await fetch("/api/underwriting/screening", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ askingPrice, marketValue, monthlyRent, refurbCost }),
+      })
+      if (!res.ok) throw new Error("Screening failed")
+      const result = await res.json()
+      setScreeningResult(result)
+      if (result.passesScreening) {
+        toast.success("Screening passed — run Capital Allocator for full decision")
+      } else {
+        toast.info("Screening did not pass — adjust deal or criteria")
+      }
+    } catch (e: any) {
+      toast.error(e.message ?? "Screening failed")
+    } finally {
+      setLoadingScreening(false)
+    }
+  }, [testSource, selectedVendorFull, selectedListing])
+
+  const runCapitalAllocator = useCallback(async () => {
+    if (!screeningResult?.passesScreening) {
+      toast.error("Run screening first and ensure it passes")
+      return
+    }
+    let askingPrice: number
+    let marketValue: number
+    let monthlyRent: number
+    let refurbCost: number
+
+    if (testSource === "vendor") {
+      if (!selectedVendorFull?.askingPrice) return
+      askingPrice = selectedVendorFull.askingPrice
+      marketValue = selectedVendorFull.estimatedMarketValue ?? askingPrice * 1.1
+      monthlyRent = selectedVendorFull.estimatedMonthlyRent ?? (selectedVendorFull.estimatedAnnualRent ?? 0) / 12
+      refurbCost = selectedVendorFull.estimatedRefurbCost ?? 0
+    } else {
+      if (!selectedListing?.price) return
+      askingPrice = selectedListing.price
+      marketValue = selectedListing.propertyDataAnalysis?.marketValue ?? selectedListing.price * 1.15
+      monthlyRent = selectedListing.propertyDataAnalysis?.estimatedMonthlyRent ?? 0
+      refurbCost = selectedListing.propertyDataAnalysis?.refurbCost ?? 0
+    }
+
+    setLoadingAllocation(true)
+    setAllocationResult(null)
+    setAllocationAskingPrice(null)
+    try {
+      const input = buildTestUnderwritingInput({
+        purchasePrice: askingPrice,
+        askingPrice,
+        marketValue,
+        refurbCost,
+        monthlyRent,
+      })
+      const res = await fetch("/api/underwriting/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      })
+      if (!res.ok) throw new Error("Capital Allocator failed")
+      const data = await res.json()
+      setAllocationResult(data.capitalAllocation)
+      setAllocationAskingPrice(askingPrice)
+      toast.success("Capital Allocator complete")
+    } catch (e: any) {
+      toast.error(e.message ?? "Capital Allocator failed")
+    } finally {
+      setLoadingAllocation(false)
+    }
+  }, [screeningResult, testSource, selectedVendorFull, selectedListing])
 
   const update = <K extends keyof ConfigState>(key: K, value: ConfigState[K]) => {
     setConfig((prev) => ({ ...prev, [key]: value }))
@@ -258,9 +491,9 @@ export function OfferCalculatorSettings() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">BMV Offer Calculator</h2>
+          <h2 className="text-2xl font-bold tracking-tight">BMV Offer Analysis</h2>
           <p className="text-muted-foreground text-sm mt-1">
-            Configure how the system calculates maximum offer prices for vendor leads.
+            Global settings that control how offer prices are calculated across vendor leads. All formula variables are configurable here.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -275,6 +508,113 @@ export function OfferCalculatorSettings() {
           </Button>
         </div>
       </div>
+
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v ?? "configuration")} className="space-y-6">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="configuration">Configuration</TabsTrigger>
+          <TabsTrigger value="test">Test workflow</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="configuration" className="space-y-6 mt-6">
+      {/* ── Card 0: Investor Constraints (always visible, most impactful) ──── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-primary" />
+            Investor Offer Constraints
+          </CardTitle>
+          <CardDescription>
+            Hard rules applied to every offer regardless of strategy. These ensure the calculator
+            always behaves like a professional investor — offering below asking and requiring
+            a minimum profit margin.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Min discount from asking — THE key investor rule */}
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="flex-1 space-y-1">
+                <Label className="text-sm font-semibold">
+                  Minimum discount from asking price
+                  <InfoTip text="An investor always offers below asking — even when the deal is already BMV. This floor is applied after all other formula steps to guarantee the offer never reaches or exceeds the asking price." />
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  The offer will always be at least this % below asking price.
+                  At 5%, a £120,000 asking price becomes a max offer of £114,000.
+                  Increase to 10–15% for more aggressive negotiation.
+                </p>
+              </div>
+              <PctInput
+                value={config.minDiscountFromAsking}
+                onChange={(v) => update("minDiscountFromAsking", v)}
+                min={1}
+                max={30}
+                step={1}
+              />
+            </div>
+            {/* Live example */}
+            <div className="rounded-md bg-background border px-3 py-2 text-xs space-y-1">
+              <p className="text-muted-foreground font-medium">Live example</p>
+              <div className="flex gap-6">
+                <span>Asking: <strong>£119,950</strong></span>
+                <span>Max offer: <strong className="text-primary">
+                  £{Math.floor(119950 * (1 - config.minDiscountFromAsking / 100) / 1000) * 1000 < 119950
+                    ? (Math.floor(119950 * (1 - config.minDiscountFromAsking / 100) / 1000) * 1000).toLocaleString("en-GB")
+                    : Math.floor(119950 * (1 - config.minDiscountFromAsking / 100)).toLocaleString("en-GB")}
+                </strong></span>
+                <span className="text-muted-foreground">({config.minDiscountFromAsking}% below asking)</span>
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Validation thresholds — moved here from Card 5 */}
+          <div>
+            <p className="text-sm font-semibold mb-3">Deal validation thresholds</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                  Minimum BMV discount
+                  <InfoTip text="The asking price must be at least this far below market value for the deal to pass validation. Industry standard is 15–20%." />
+                </Label>
+                <PctInput
+                  value={config.minBmvPercentage}
+                  onChange={(v) => update("minBmvPercentage", v)}
+                  min={5}
+                  max={40}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Asking price must be ≥ {config.minBmvPercentage}% below market value
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                  Minimum profit potential
+                  <InfoTip text="Market value minus offer price minus refurb cost must exceed this figure. Protects against deals where margins are too thin." />
+                </Label>
+                <div className="relative w-36">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                    £
+                  </span>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1000}
+                    value={config.minProfitPotential}
+                    onChange={(e) => update("minProfitPotential", toNumber(e.target.value))}
+                    className="pl-6 text-sm h-8"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Net profit ≥ £{config.minProfitPotential.toLocaleString("en-GB")} after refurb
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* ── Card 1: Calculator Mode ─────────────────────────────────────────── */}
       <Card>
@@ -720,71 +1060,6 @@ export function OfferCalculatorSettings() {
         </Card>
       )}
 
-      {/* ── Card 5: Validation Thresholds ────────────────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-primary" />
-            Validation Thresholds
-          </CardTitle>
-          <CardDescription>
-            Deals that don't meet these criteria are flagged as not passing investment validation.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                Minimum BMV discount
-                <InfoTip text="The asking price must be at least this far below market value for the deal to pass validation. Industry standard is 15–20%." />
-              </Label>
-              <PctInput
-                value={config.minBmvPercentage}
-                onChange={(v) => update("minBmvPercentage", v)}
-                min={5}
-                max={40}
-              />
-              <p className="text-xs text-muted-foreground">
-                Asking price must be at least {config.minBmvPercentage}% below market value
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                Minimum profit potential
-                <InfoTip text="Market value minus offer price minus refurb cost must exceed this figure. Protects against deals where margins are too thin." />
-              </Label>
-              <div className="relative w-36">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                  £
-                </span>
-                <Input
-                  type="number"
-                  min={0}
-                  step={1000}
-                  value={config.minProfitPotential}
-                  onChange={(e) => update("minProfitPotential", toNumber(e.target.value))}
-                  className="pl-6 text-sm h-8"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Net profit ≥ £{config.minProfitPotential.toLocaleString("en-GB")} after refurb
-              </p>
-            </div>
-          </div>
-
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertDescription className="text-xs">
-              <strong>How validation works:</strong> A deal passes when (1) the asking price is at
-              least {config.minBmvPercentage}% below market value AND (2) the estimated profit
-              (market value − offer − refurb) is at least £{config.minProfitPotential.toLocaleString("en-GB")}.
-              Failing deals are still shown but flagged clearly in the pipeline.
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
-
       {/* Bottom save */}
       <div className="flex justify-end pt-2">
         <Button onClick={save} disabled={isSaving || !isDirty} size="lg">
@@ -792,6 +1067,168 @@ export function OfferCalculatorSettings() {
           Save All Changes
         </Button>
       </div>
+        </TabsContent>
+
+        <TabsContent value="test" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Play className="h-5 w-5 text-primary" />
+                Test workflow
+              </CardTitle>
+              <CardDescription>
+                Run BMV screening on a vendor lead or scraped listing. If screening passes, run the Capital Allocator for the full decision summary and best-fit strategy.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label>Source</Label>
+                <Select value={testSource} onValueChange={(v: TestSource) => { setTestSource(v); setScreeningResult(null); setAllocationResult(null); setAllocationAskingPrice(null) }}>
+                  <SelectTrigger className="w-[240px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="vendor">
+                      <span className="flex items-center gap-2"><Building2 className="h-4 w-4" /> Vendor lead</span>
+                    </SelectItem>
+                    <SelectItem value="listing">
+                      <span className="flex items-center gap-2"><FileText className="h-4 w-4" /> Scraped listing</span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {testSource === "vendor" && (
+                <div className="space-y-2">
+                  <Label>Vendor lead</Label>
+                  <Select
+                    value={selectedVendorId}
+                    onValueChange={(v) => { setSelectedVendorId(v); setScreeningResult(null); setAllocationResult(null); setAllocationAskingPrice(null) }}
+                  >
+                    <SelectTrigger className="w-full max-w-md">
+                      <SelectValue placeholder="Select a vendor lead (with asking price)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vendorLeads.length === 0 && (
+                        <SelectItem value="__none" disabled>No vendor leads — add leads first</SelectItem>
+                      )}
+                      {vendorLeads.map((l) => (
+                        <SelectItem key={l.id} value={l.id}>
+                          {l.vendorName} — {l.askingPrice != null ? `£${Number(l.askingPrice).toLocaleString()}` : "No price"} {l.propertyAddress ? ` · ${l.propertyAddress}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {testSource === "listing" && (
+                <div className="space-y-2">
+                  <Label>Scraped listing</Label>
+                  <Select
+                    value={selectedListing?.id ?? ""}
+                    onValueChange={(v) => {
+                      const item = listings.find((l) => l.id === v) ?? null
+                      setSelectedListing(item)
+                      setScreeningResult(null)
+                      setAllocationResult(null)
+                      setAllocationAskingPrice(null)
+                    }}
+                  >
+                    <SelectTrigger className="w-full max-w-md">
+                      <SelectValue placeholder="Select a scraped listing" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {listings.length === 0 && (
+                        <SelectItem value="__none" disabled>No listings — run scraper first</SelectItem>
+                      )}
+                      {listings.map((l) => (
+                        <SelectItem key={l.id} value={l.id}>
+                          £{l.price.toLocaleString()} — {l.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={runScreening}
+                  disabled={loadingScreening || (testSource === "vendor" ? !selectedVendorId || !selectedVendorFull?.askingPrice : !selectedListing?.price)}
+                >
+                  {loadingScreening ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
+                  Run screening
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={runCapitalAllocator}
+                  disabled={loadingAllocation || !screeningResult?.passesScreening}
+                >
+                  {loadingAllocation ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                  Run Capital Allocator
+                </Button>
+              </div>
+
+              {screeningResult && (
+                <Card className="border-muted">
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-base">Screening result</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Pass:</span>
+                      <Badge variant={screeningResult.passesScreening ? "default" : "secondary"}>
+                        {screeningResult.passesScreening ? "Pass" : "Fail"}
+                      </Badge>
+                    </div>
+                    <p>Discount: {screeningResult.discountPercent.toFixed(1)}% · Gross yield: {screeningResult.grossYield.toFixed(1)}% · Basic ROI: {screeningResult.basicROI.toFixed(1)}% · Quick score: {screeningResult.quickScore}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {allocationResult && (
+                <Card className="border-primary/30">
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-base">Capital Allocator result</CardTitle>
+                    <CardDescription>
+                      <div className="space-y-1">
+                        <span>
+                          Recommended: {allocationResult.recommendedStrategy} · Recommended offer: £{(allocationAskingPrice != null ? Math.min(allocationResult.finalMaxOffer, allocationAskingPrice) : allocationResult.finalMaxOffer).toLocaleString("en-GB")} · Institutional score: {allocationResult.institutionalScore.toFixed(1)}
+                        </span>
+                        {allocationAskingPrice != null && allocationResult.finalMaxOffer > allocationAskingPrice && (
+                          <p className="text-xs text-muted-foreground">
+                            Model ceiling £{allocationResult.finalMaxOffer.toLocaleString("en-GB")} — listing is below ceiling (deal has headroom).
+                          </p>
+                        )}
+                      </div>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase text-muted-foreground">Strategies (max offer = highest price model allows and still meets targets)</Label>
+                      <div className="rounded-md border divide-y">
+                        {allocationResult.strategies.map((s) => (
+                          <div key={s.strategy} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
+                            <div className="font-medium">{s.strategy}</div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={s.pass ? "default" : "secondary"}>{s.pass ? "Pass" : "Fail"}</Badge>
+                              <span className="text-muted-foreground">Score: {s.score} · Max offer (model): £{s.maxAllowableOffer.toLocaleString("en-GB")}</span>
+                            </div>
+                            <div className="w-full text-xs text-muted-foreground">
+                              {Object.entries(s.metrics).map(([k, v]) => `${k}: ${typeof v === "number" ? v.toFixed(2) : v}`).join(" · ")}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

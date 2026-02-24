@@ -44,11 +44,17 @@ export interface OfferConfig {
   minBmvPercentage: number
   /** Validation: minimum profit £ for deal to pass — default 10000 */
   minProfitPotential: number
+  /**
+   * Hard floor: offer must always be at least this % BELOW the asking price.
+   * Ensures investors never offer at or above asking — even when the asking
+   * price is already below the formula ceiling (BMV scenario). Default 5%.
+   */
+  minDiscountFromAsking: number
 }
 
 export const DEFAULT_OFFER_CONFIG: OfferConfig = {
-  baseDiscountMin:      10,
-  baseDiscountMax:      40,
+  baseDiscountMin:       10,
+  baseDiscountMax:       40,
   poorConditionDiscount: 10,
   avgConditionDiscount:   3,
   leaseholdDiscount:      5,
@@ -62,6 +68,7 @@ export const DEFAULT_OFFER_CONFIG: OfferConfig = {
   btlMinYield:            7,
   minBmvPercentage:      15,
   minProfitPotential: 10000,
+  minDiscountFromAsking:  5,
 }
 
 export interface OfferInput {
@@ -151,6 +158,7 @@ export function toOfferConfig(db: {
   btlMinYield: { toNumber(): number } | number
   minBmvPercentage: { toNumber(): number } | number
   minProfitPotential: { toNumber(): number } | number
+  minDiscountFromAsking?: { toNumber(): number } | number | null
 }): OfferConfig {
   const n = (v: { toNumber(): number } | number) =>
     typeof v === "number" ? v : v.toNumber()
@@ -170,6 +178,9 @@ export function toOfferConfig(db: {
     btlMinYield:           n(db.btlMinYield),
     minBmvPercentage:      n(db.minBmvPercentage),
     minProfitPotential:    n(db.minProfitPotential),
+    minDiscountFromAsking: db.minDiscountFromAsking != null
+      ? n(db.minDiscountFromAsking as { toNumber(): number } | number)
+      : DEFAULT_OFFER_CONFIG.minDiscountFromAsking,
   }
 }
 
@@ -309,7 +320,7 @@ export function calculateOffer(input: OfferInput): OfferResult {
     }
   }
 
-  // ── Step 10: Final offer (min of adjusted, ceiling, asking price) ──────────
+  // ── Step 10: Final offer (min of adjusted, ceiling, investor floor) ─────────
   let finalOffer = adjustedOffer
   const ceilingApplied = strategyCeiling !== null && strategyCeiling < adjustedOffer
 
@@ -320,13 +331,22 @@ export function calculateOffer(input: OfferInput): OfferResult {
     explanation.push(`10. Strategy ceiling (${fmt(strategyCeiling)}) is not binding — discount-based offer (${fmt(adjustedOffer)}) stands`)
   }
 
-  // Never exceed asking price
-  if (finalOffer > askingPrice) {
-    finalOffer = askingPrice
-    explanation.push(`    Capped at asking price: ${fmt(askingPrice)}`)
+  // ── Investor floor: always offer below asking price ────────────────────────
+  // An investor never pays asking price. Even when the deal is already BMV
+  // (asking < formula ceiling), we enforce a minimum negotiation discount.
+  const minDiscPct = config.minDiscountFromAsking ?? DEFAULT_OFFER_CONFIG.minDiscountFromAsking
+  const maxAllowedOffer = askingPrice * (1 - minDiscPct / 100)
+  if (finalOffer > maxAllowedOffer) {
+    finalOffer = maxAllowedOffer
+    explanation.push(`    Investor floor: minimum ${minDiscPct}% below asking → offer capped at ${fmt(maxAllowedOffer)} (asking is already BMV)`)
   }
 
-  const rounded = roundToNearest1000(Math.max(0, finalOffer))
+  // Round to nearest £1,000 — but floor (not round) if rounding would push
+  // the offer back above the asking-price cap (avoids the £119,950 → £120,000 bug)
+  let rounded = roundToNearest1000(Math.max(0, finalOffer))
+  if (rounded > maxAllowedOffer) {
+    rounded = Math.floor(finalOffer / 1000) * 1000
+  }
   explanation.push(`    Rounded to nearest £1,000: ${fmt(rounded)}`)
 
   // ── Step 11: Validation ────────────────────────────────────────────────────

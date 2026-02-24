@@ -604,9 +604,10 @@ export function filterComparables(
   soldProperties: SoldProperty[],
   targetBedrooms?: number,
   targetPropertyType?: string,
-  maxAgeMonths: number = 12,
-  maxResults: number = 5,
-  targetPostcode?: string
+  maxAgeMonths: number = 24,
+  maxResults: number = 10,
+  targetPostcode?: string,
+  bedroomTolerance: number = 1
 ): SoldProperty[] {
   const now = new Date()
   const maxAgeMs = maxAgeMonths * 30 * 24 * 60 * 60 * 1000
@@ -632,10 +633,10 @@ export function filterComparables(
     const ageMs = now.getTime() - saleDate.getTime()
     if (ageMs > maxAgeMs) return false
 
-    // Filter by bedrooms (±1 bedroom)
+    // Filter by bedrooms (±bedroomTolerance)
     if (targetBedrooms !== undefined && prop.bedrooms > 0) {
       const bedroomDiff = Math.abs(prop.bedrooms - targetBedrooms)
-      if (bedroomDiff > 1) return false
+      if (bedroomDiff > bedroomTolerance) return false
     }
 
     // Filter by property type (if provided and matches)
@@ -1183,13 +1184,15 @@ export async function fetchDetailedComparables(
   try {
     let totalCreditsUsed = 0
 
-    // Step 1: Fetch sold prices (comparables)
-    console.log(`[PropertyData] Fetching sold prices for postcode: ${postcode}`)
+    // Step 1: Fetch sold prices — do NOT filter by bedrooms at the API level.
+    // The PropertyData API applies an exact bedroom match, which kills our ±tolerance.
+    // Instead we fetch a broad pool (all bedroom counts) and filter ourselves below.
+    console.log(`[PropertyData] Fetching sold prices for postcode: ${postcode} (no bedroom filter at API level)`)
     const soldPricesResult = await fetchSoldPrices(
       postcode,
-      bedrooms,
+      undefined,     // no bedrooms param — let API return all sizes
       searchRadius,
-      maxResults * 2 // Fetch more to account for filtering
+      Math.max(maxResults * 4, 200) // fetch a generous pool to filter from
     )
 
     if (!soldPricesResult || soldPricesResult.soldProperties.length === 0) {
@@ -1206,17 +1209,48 @@ export async function fetchDetailedComparables(
 
     totalCreditsUsed += soldPricesResult.creditsUsed
 
-    // Step 2: Filter comparables by age, bedrooms, property type, and postcode area
-    const filteredComparables = filterComparables(
+    // Step 2: Progressive relaxation — broaden criteria until we have ≥5 comparables.
+    // Pass 1: strict  — ±1 bedroom, configured age window
+    let filteredComparables = filterComparables(
       soldPricesResult.soldProperties,
       bedrooms,
       propertyType,
       maxAgeMonths,
       maxResults,
-      postcode
+      postcode,
+      1 // ±1 bedroom
     )
+    console.log(`[PropertyData] Pass 1 (±1 bed, ${maxAgeMonths}mo): ${filteredComparables.length} comparables`)
 
-    console.log(`[PropertyData] Filtered to ${filteredComparables.length} comparables`)
+    // Pass 2: relax bedroom tolerance to ±2 and extend age to at least 24 months
+    if (filteredComparables.length < 5 && bedrooms !== undefined) {
+      filteredComparables = filterComparables(
+        soldPricesResult.soldProperties,
+        bedrooms,
+        propertyType,
+        Math.max(maxAgeMonths, 24),
+        maxResults,
+        postcode,
+        2 // ±2 bedrooms
+      )
+      console.log(`[PropertyData] Pass 2 (±2 bed, ${Math.max(maxAgeMonths, 24)}mo): ${filteredComparables.length} comparables`)
+    }
+
+    // Pass 3: remove bedroom filter entirely, extend to 36 months — ensures we always have data
+    if (filteredComparables.length < 3) {
+      filteredComparables = filterComparables(
+        soldPricesResult.soldProperties,
+        undefined, // any bedroom count
+        propertyType,
+        36,
+        maxResults,
+        postcode,
+        1
+      )
+      console.log(`[PropertyData] Pass 3 (any bed, 36mo): ${filteredComparables.length} comparables`)
+    }
+
+    console.log(`[PropertyData] Final comparable count: ${filteredComparables.length}`)
 
     if (filteredComparables.length === 0) {
       return {

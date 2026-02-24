@@ -23,6 +23,7 @@ const configUpdateSchema = z.object({
   btlMinYield:           z.number().min(1).max(20).optional(),
   minBmvPercentage:      z.number().min(0).max(50).optional(),
   minProfitPotential:    z.number().min(0).optional(),
+  minDiscountFromAsking: z.number().min(1).max(30).optional(),
 })
 
 const DEFAULTS = {
@@ -44,6 +45,7 @@ const DEFAULTS = {
   btlMinYield:           7,
   minBmvPercentage:      15,
   minProfitPotential:    10000,
+  minDiscountFromAsking: 5,
 }
 
 async function requireAdmin() {

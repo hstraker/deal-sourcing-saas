@@ -156,9 +156,9 @@ export async function POST(
 
           const soldPricesResult = await fetchSoldPrices(
             effectivePostcode!,
-            lead.bedrooms || undefined,
+            undefined, // no bedroom filter at API level — filter ourselves for ±1 tolerance
             3, // 3 miles radius
-            50 // max 50 results
+            200 // larger pool to filter from
           )
 
           if (soldPricesResult) {
@@ -170,9 +170,10 @@ export async function POST(
               soldPricesResult.soldProperties,
               lead.bedrooms || undefined,
               lead.propertyType || undefined,
-              12, // last 12 months
-              5, // top 5 comparables
-              effectivePostcode || undefined
+              24, // last 24 months
+              10, // top 10 comparables
+              effectivePostcode || undefined,
+              1 // ±1 bedroom tolerance
             )
 
             console.log(`[BMV Calculator] Filtered to ${comparables.length} comparable properties`)
@@ -386,8 +387,9 @@ export async function POST(
       offerCappedAtAsking = rawCalculatedOffer >= askingPrice
       if (offerCappedAtAsking) {
         // Asking is already below our formula offer (great deal already priced).
-        // As a cash buyer, still negotiate 5% below asking to maximise margin.
-        calculatedOffer = Math.round(askingPrice * 0.95)
+        // As a cash buyer, still negotiate minDiscountFromAsking% below asking to maximise margin.
+        const minDiscPct = Number(offerCalcConfig?.minDiscountFromAsking ?? 5)
+        calculatedOffer = Math.round(askingPrice * (1 - minDiscPct / 100))
       } else {
         calculatedOffer = rawCalculatedOffer
       }
@@ -589,9 +591,10 @@ export async function POST(
       validationNotes += `💵 OFFER DETAILS\n`
       validationNotes += `${"─".repeat(60)}\n`
       if (offerCappedAtAsking) {
-        validationNotes += `  💼 Offer: £${calculatedOffer.toLocaleString()} (negotiated 5% below asking — ${offerPercentage.toFixed(1)}% of MV)\n`
+        const minDiscPct = Number(offerCalcConfig?.minDiscountFromAsking ?? 5)
+        validationNotes += `  💼 Offer: £${calculatedOffer.toLocaleString()} (negotiated ${minDiscPct}% below asking — ${offerPercentage.toFixed(1)}% of MV)\n`
         validationNotes += `  ℹ️  Formula max was £${rawCalculatedOffer.toLocaleString()} but vendor is already pricing below that.\n`
-        validationNotes += `     Cash-buyer negotiation applied: asking £${askingPrice.toLocaleString()} × 95% = £${calculatedOffer.toLocaleString()}\n`
+        validationNotes += `     Cash-buyer negotiation applied: asking £${askingPrice.toLocaleString()} × ${100 - minDiscPct}% = £${calculatedOffer.toLocaleString()}\n`
       } else {
         validationNotes += `  💼 Calculated Offer: £${calculatedOffer.toLocaleString()} (${offerPercentage.toFixed(1)}% of market value)\n`
       }

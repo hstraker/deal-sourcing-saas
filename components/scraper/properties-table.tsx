@@ -38,6 +38,7 @@ import {
   XCircle,
   Bed,
   Bath,
+  Star,
 } from "lucide-react"
 import { toast } from "sonner"
 import { PropertyDetailModal } from "./property-detail-modal"
@@ -82,6 +83,7 @@ interface Filters {
   source: string
   reviewStatus: string
   category: string
+  favoritesOnly: boolean
 }
 
 interface PaginationInfo {
@@ -103,7 +105,7 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [sortField, setSortField] = useState<SortField>("scrapedAt")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
-  const [filters, setFilters] = useState<Filters>({ search: "", source: "", reviewStatus: "", category: "" })
+  const [filters, setFilters] = useState<Filters>({ search: "", source: "", reviewStatus: "", category: "", favoritesOnly: false })
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [selectedListing, setSelectedListing] = useState<PropertyListingForClient | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -131,6 +133,7 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
       if (filters.source) params.set("source", filters.source)
       if (filters.reviewStatus) params.set("reviewStatus", filters.reviewStatus)
       if (filters.category) params.set("category", filters.category)
+      if (filters.favoritesOnly) params.set("favoritesOnly", "true")
 
       const res = await fetch(`/api/properties/listings?${params}`)
       const data = await res.json()
@@ -146,7 +149,7 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
     }
   // refreshKey is intentionally included so a completed scrape triggers a re-fetch
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortField, sortDirection, debouncedSearch, filters.source, filters.reviewStatus, filters.category, refreshKey])
+  }, [sortField, sortDirection, debouncedSearch, filters.source, filters.reviewStatus, filters.category, filters.favoritesOnly, refreshKey])
 
   // Reset to page 1 when filters/sort change
   useEffect(() => { fetchListings(1) }, [fetchListings])
@@ -267,7 +270,22 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
     }
   }
 
-  const activeFilterCount = [filters.source, filters.reviewStatus, filters.category].filter(Boolean).length
+  // ── Favorite toggle ──
+  const toggleFavorite = async (id: string, current: boolean) => {
+    const next = !current
+    setListings(prev => prev.map(l => l.id === id ? { ...l, isFavorited: next } : l))
+    try {
+      await fetch(`/api/properties/listings/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isFavorited: next }),
+      })
+    } catch {
+      setListings(prev => prev.map(l => l.id === id ? { ...l, isFavorited: current } : l))
+    }
+  }
+
+  const activeFilterCount = [filters.source, filters.reviewStatus, filters.category].filter(Boolean).length + (filters.favoritesOnly ? 1 : 0)
 
   return (
     <div className="space-y-4">
@@ -324,12 +342,23 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
             </SelectContent>
           </Select>
 
+          {/* Favourites filter */}
+          <Button
+            variant={filters.favoritesOnly ? "default" : "outline"}
+            size="sm"
+            className={`h-9 ${filters.favoritesOnly ? "bg-amber-500 hover:bg-amber-600 border-amber-500 text-white" : ""}`}
+            onClick={() => setFilters(prev => ({ ...prev, favoritesOnly: !prev.favoritesOnly }))}
+          >
+            <Star className={`mr-1.5 h-3.5 w-3.5 ${filters.favoritesOnly ? "fill-white" : ""}`} />
+            Favourites
+          </Button>
+
           {activeFilterCount > 0 && (
             <Button
               variant="ghost"
               size="sm"
               className="h-9 text-muted-foreground"
-              onClick={() => setFilters(prev => ({ ...prev, source: "", reviewStatus: "", category: "" }))}
+              onClick={() => setFilters(prev => ({ ...prev, source: "", reviewStatus: "", category: "", favoritesOnly: false }))}
             >
               Clear filters
               <Badge variant="secondary" className="ml-1.5 h-4 w-4 p-0 flex items-center justify-center text-[10px]">
@@ -591,6 +620,12 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
                         {/* Actions */}
                         <td className="px-3 py-2.5">
                           <div className="flex items-center justify-end gap-1">
+                            <Button size="icon" variant="ghost"
+                              className={`h-7 w-7 ${listing.isFavorited ? "text-amber-500 hover:text-amber-600" : "text-muted-foreground"}`}
+                              title={listing.isFavorited ? "Remove favourite" : "Add to favourites"}
+                              onClick={() => toggleFavorite(listing.id, listing.isFavorited)}>
+                              <Star className={`h-3.5 w-3.5 ${listing.isFavorited ? "fill-amber-400" : ""}`} />
+                            </Button>
                             <Button size="icon" variant="ghost" className="h-7 w-7"
                               title="View details"
                               onClick={() => setSelectedListing(listing)}>

@@ -7,9 +7,13 @@ import { prisma } from "@/lib/db"
 import { calculateBMVPercentage } from "@/lib/calculations/deal-metrics"
 import { calculateDealScore } from "@/lib/deal-scoring"
 import { fetchPropertyValuation } from "@/lib/propertydata"
+import { resolvePostcodeFromAddress } from "@/lib/land-registry"
 import { DealValidationInput, DealValidationResult } from "@/types/vendor-pipeline"
 import { PropertyCondition } from "@prisma/client"
 import { getPipelineConfig } from "./config"
+
+/** Full UK postcode: e.g. "SA6 8DU" */
+const FULL_PC_RE = /\b([A-Z]{1,2}\d{1,2}[A-Z]?\s\d[A-Z]{2})\b/i
 
 export class DealValidator {
   private config = getPipelineConfig()
@@ -38,10 +42,36 @@ export class DealValidator {
       }
     }
 
+    // Auto-resolve postcode if missing or outcode-only (e.g. "SA5" → "SA5 7AB")
+    let resolvedPostcode = lead.propertyPostcode ?? null
+    const storedIsFull = resolvedPostcode ? FULL_PC_RE.test(resolvedPostcode.trim()) : false
+    if (!storedIsFull && lead.propertyAddress) {
+      try {
+        const resolved = await resolvePostcodeFromAddress(lead.propertyAddress, resolvedPostcode, new Map())
+        if (resolved) {
+          resolvedPostcode = resolved.postcode
+          console.log(`[DealValidator] Auto-resolved postcode "${resolvedPostcode}" for lead ${vendorLeadId} (source: ${resolved.source})`)
+          // Persist the resolved postcode so downstream steps (PropertyData, comparables) can use it
+          if (resolved.corrected) {
+            await prisma.vendorLead.update({
+              where: { id: vendorLeadId },
+              data: {
+                propertyPostcode: resolved.postcode,
+                propertyPostcodeSource: resolved.source,
+                propertyPostcodeFixed: true,
+              },
+            })
+          }
+        }
+      } catch (err) {
+        console.warn(`[DealValidator] Postcode auto-resolve failed for lead ${vendorLeadId}:`, err)
+      }
+    }
+
     const input: DealValidationInput = {
       vendorLeadId,
       propertyAddress: lead.propertyAddress,
-      postcode: lead.propertyPostcode || undefined,
+      postcode: resolvedPostcode || undefined,
       askingPrice: Number(lead.askingPrice),
       propertyType: lead.propertyType || undefined,
       bedrooms: lead.bedrooms || undefined,

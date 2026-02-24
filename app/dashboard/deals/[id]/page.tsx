@@ -15,6 +15,7 @@ import { DeleteDealButton } from "@/components/deals/delete-deal-button"
 import { GenerateInvestorPackButton } from "@/components/deals/generate-investor-pack-button"
 import { QuickAssignUser } from "@/components/deals/quick-assign-user"
 import { PropertyAnalysisPanel } from "@/components/deals/property-analysis-panel"
+import { OfferAnalysisPanel } from "@/components/deals/offer-analysis-panel"
 import { VendorSection } from "@/components/vendors/vendor-section"
 import { ReservationList } from "@/components/reservations/reservation-list"
 import { Decimal } from "@prisma/client/runtime/library"
@@ -749,6 +750,15 @@ export default async function DealDetailPage({ params }: DealDetailPageProps) {
               </Card>
             )
           })()}
+
+          {/* Offer Analysis */}
+          <OfferAnalysisPanel
+            dealId={deal.id}
+            askingPrice={Number(deal.askingPrice)}
+            gdv={deal.afterRefurbValue ? Number(deal.afterRefurbValue) : null}
+            estimatedRent={deal.estimatedMonthlyRent ? Number(deal.estimatedMonthlyRent) : null}
+            totalRefurbishment={deal.estimatedRefurbCost ? Number(deal.estimatedRefurbCost) : null}
+          />
 
         </div>
 

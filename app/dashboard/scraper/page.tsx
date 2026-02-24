@@ -77,7 +77,7 @@ export default async function ScraperDashboardPage() {
       orderBy: { completedAt: "desc" },
       select: { completedAt: true },
     }),
-    // Fetch review queue listings
+    // Fetch review queue listings (capped for performance — full list can be huge)
     prisma.propertyListing.findMany({
       where: {
         OR: [
@@ -86,6 +86,7 @@ export default async function ScraperDashboardPage() {
         ],
       },
       orderBy: { scrapedAt: "desc" },
+      take: 500,
     }),
     // Count properties with PropertyData analysis
     prisma.propertyListing.count({
