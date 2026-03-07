@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
+import { sendReservationFeeConfirmedEmail, sendLockOutSentInvestorEmail } from "@/lib/email"
 
 // PATCH /api/investors/reservations/[id] - Update reservation
 export async function PATCH(
@@ -37,7 +38,11 @@ export async function PATCH(
       where: { id: params.id },
       include: {
         deal: true,
-        investor: true,
+        investor: {
+          include: {
+            user: { select: { email: true, firstName: true, lastName: true } },
+          },
+        },
       },
     })
 
@@ -183,6 +188,32 @@ export async function PATCH(
       where: { id: params.id },
       data: updateData,
     })
+
+    // Send lock-out agreement sent email to investor
+    if (lockOutAgreementSent === true && !reservation.lockOutAgreementSent) {
+      const investorEmail = reservation.investor.user.email
+      const investorName =
+        `${reservation.investor.user.firstName || ""} ${reservation.investor.user.lastName || ""}`.trim() ||
+        investorEmail
+      sendLockOutSentInvestorEmail({
+        to: investorEmail,
+        investorName,
+        dealAddress: reservation.deal.address,
+      }).catch((err) => console.error("[reservation] Lock-out sent email failed:", err))
+    }
+
+    // Send fee confirmed email when fee is marked as paid for the first time
+    if ((status === "fee_paid" || feePaid === true) && !reservation.feePaid) {
+      const investorEmail = reservation.investor.user.email
+      const investorName =
+        `${reservation.investor.user.firstName || ""} ${reservation.investor.user.lastName || ""}`.trim() ||
+        investorEmail
+      sendReservationFeeConfirmedEmail({
+        to: investorEmail,
+        investorName,
+        dealAddress: reservation.deal.address,
+      }).catch((err) => console.error("[reservation] Fee confirmed email failed:", err))
+    }
 
     // Create activity logs
     if (activityLogs.length > 0) {

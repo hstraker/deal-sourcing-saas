@@ -192,6 +192,47 @@ export async function PUT(
   }
 }
 
+// PATCH /api/investors/[id] - Partial update (e.g. defaultSolicitorId)
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (session.user.role !== "admin" && session.user.role !== "sourcer") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    const body = await request.json()
+
+    // Allow only safe fields in a PATCH
+    const allowedFields = ["defaultSolicitorId"]
+    const data: Record<string, any> = {}
+    for (const key of allowedFields) {
+      if (key in body) data[key] = body[key]
+    }
+
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json({ error: "No updatable fields provided" }, { status: 400 })
+    }
+
+    const investor = await prisma.investor.update({
+      where: { id: params.id },
+      data,
+    })
+
+    return NextResponse.json({ investor })
+  } catch (error) {
+    console.error("Error patching investor:", error)
+    return NextResponse.json({ error: "Failed to update investor" }, { status: 500 })
+  }
+}
+
 // DELETE /api/investors/[id] - Delete an investor
 export async function DELETE(
   request: NextRequest,

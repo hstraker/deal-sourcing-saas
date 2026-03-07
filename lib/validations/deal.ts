@@ -43,7 +43,7 @@ export const dealSchema = z.object({
   // Property Details
   address: z.string().min(1, "Address is required"),
   postcode: z.string().optional().nullable().or(z.literal("").transform(() => null)),
-  propertyType: z.enum(["terraced", "semi", "detached", "flat"]).optional().nullable(),
+  propertyType: z.enum(["terraced", "semi", "detached", "flat", "maisonette"]).optional().nullable(),
   bedrooms: optionalInt,
   bathrooms: z.preprocess(
     (val) => {

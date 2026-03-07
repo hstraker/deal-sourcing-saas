@@ -9,18 +9,18 @@ export async function GET(request: NextRequest) {
     // Get the first (and should be only) company profile
     const profile = await prisma.companyProfile.findFirst()
 
-    if (!profile) {
-      // Return default if none exists
-      return NextResponse.json({
-        profile: {
-          companyName: "DealStack",
-          primaryColor: "#3b82f6",
-          secondaryColor: "#10b981",
-        },
-      })
+    const cacheHeaders = {
+      "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
     }
 
-    return NextResponse.json({ profile })
+    if (!profile) {
+      return NextResponse.json(
+        { profile: { companyName: "DealStack", primaryColor: "#3b82f6", secondaryColor: "#10b981" } },
+        { headers: cacheHeaders }
+      )
+    }
+
+    return NextResponse.json({ profile }, { headers: cacheHeaders })
   } catch (error: any) {
     console.error("Error fetching company profile:", error)
     return NextResponse.json(

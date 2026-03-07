@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Settings } from "lucide-react"
 import { ScraperOverview } from "@/components/scraper/scraper-overview"
+import { PageHeader } from "@/components/ui/page-header"
 import { toPropertyListingForClient } from "@/types/property-listing"
 
 export const dynamic = "force-dynamic"
@@ -154,21 +155,19 @@ export default async function ScraperDashboardPage() {
   }
 
   return (
-    <div>
-      <div className="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Property Scraper</h1>
-          <p className="text-muted-foreground">
-            Scrape, review, and approve properties
-          </p>
-        </div>
-        <Link href="/dashboard/settings/scraper">
-          <Button variant="outline" className="flex-shrink-0">
-            <Settings className="mr-2 h-4 w-4" />
-            Scraper Settings
-          </Button>
-        </Link>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Property Scraper"
+        subtitle="Scrape, review, and approve properties"
+        actions={
+          <Link href="/dashboard/settings/scraper">
+            <Button variant="outline" className="h-9 text-sm">
+              <Settings className="mr-2 h-4 w-4" />
+              Scraper Settings
+            </Button>
+          </Link>
+        }
+      />
 
       <ScraperOverview
         stats={stats}

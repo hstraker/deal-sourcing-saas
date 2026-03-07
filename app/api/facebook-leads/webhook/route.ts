@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { aiSMSAgent } from "@/lib/vendor-pipeline/ai-sms-agent"
+import { runVendorCheck } from "@/lib/vendor-checks/vendor-check-orchestrator"
 import { PipelineStage } from "@prisma/client"
 
 // Facebook Lead Ad field mapping
@@ -46,6 +47,10 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const leadData: FacebookLeadData = body
+
+    // Test-mode fields (set by simulators)
+    const isTest: boolean = body.isTest === true
+    const testScenario: string | null = typeof body.testScenario === 'string' ? body.testScenario : null
 
     // Extract field values
     const fullName = getFieldValue(leadData.field_data, "full_name")
@@ -103,8 +108,12 @@ export async function POST(request: NextRequest) {
       data: {
         // Facebook Lead Ad info
         facebookLeadId: leadData.leadgen_id,
-        leadSource: "facebook_ads",
+        leadSource: isTest ? "simulator" : "facebook_ads",
         campaignId: body.campaign_id || null,
+
+        // Test mode
+        isTest,
+        testScenario,
 
         // Vendor information
         vendorName: fullName,
@@ -121,7 +130,7 @@ export async function POST(request: NextRequest) {
 
         // Additional metadata
         conversationState: {
-          source: "facebook_lead_ad",
+          source: isTest ? "simulator" : "facebook_lead_ad",
           urgency: urgency || "not_specified",
           sellingReason: sellingReason || "not_specified",
           submittedAt: leadData.created_time || new Date().toISOString()
@@ -141,6 +150,11 @@ export async function POST(request: NextRequest) {
       // The lead is created, AI conversation can be retried
       console.error("⚠️ [Facebook Webhook] Failed to send initial AI message:", error.message)
     }
+
+    // Fire-and-forget portal check (never blocks response)
+    runVendorCheck(lead.id, "auto").catch((err) => {
+      console.error("⚠️ [Facebook Webhook] Portal check failed for lead:", lead.id, err?.message)
+    })
 
     // Return success
     return NextResponse.json({

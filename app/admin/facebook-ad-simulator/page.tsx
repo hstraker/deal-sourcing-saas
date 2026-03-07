@@ -24,9 +24,12 @@ import {
   CheckCircle,
   XCircle,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  FlaskConical
 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { MOCK_SCENARIOS, MOCK_SCENARIO_IDS } from "@/lib/vendor-checks/test-mode/mock-scenarios"
+import type { MockScenarioId } from "@/lib/vendor-checks/test-mode/mock-scenarios"
 
 interface LeadFormData {
   fullName: string
@@ -52,6 +55,7 @@ export default function FacebookAdSimulatorPage() {
     reason: ""
   })
 
+  const [testScenario, setTestScenario] = useState<MockScenarioId>("CLEAR_NEVER_LISTED")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitResult, setSubmitResult] = useState<{
     success: boolean
@@ -134,6 +138,8 @@ export default function FacebookAdSimulatorPage() {
         body: JSON.stringify({
           leadgen_id: `sim_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           created_time: new Date().toISOString(),
+          isTest: true,
+          testScenario,
           field_data: [
             { name: "full_name", values: [formData.fullName] },
             { name: "phone_number", values: [formData.phoneNumber] },
@@ -394,6 +400,32 @@ export default function FacebookAdSimulatorPage() {
                       <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                {/* Portal Check Test Scenario */}
+                <div className="space-y-2">
+                  <Label htmlFor="testScenario" className="flex items-center gap-1">
+                    <FlaskConical className="h-4 w-4 text-purple-500" />
+                    Portal Check Test Scenario
+                  </Label>
+                  <Select
+                    value={testScenario}
+                    onValueChange={(value) => setTestScenario(value as MockScenarioId)}
+                  >
+                    <SelectTrigger id="testScenario">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MOCK_SCENARIO_IDS.map((id) => (
+                        <SelectItem key={id} value={id}>
+                          {MOCK_SCENARIOS[id].label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {MOCK_SCENARIOS[testScenario].description}
+                  </p>
                 </div>
 
                 <Separator />

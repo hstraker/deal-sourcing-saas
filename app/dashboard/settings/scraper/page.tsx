@@ -97,6 +97,7 @@ const PROPERTY_TYPES = [
   { value: "semi-detached", label: "Semi-Detached" },
   { value: "detached", label: "Detached" },
   { value: "flat", label: "Flat" },
+  { value: "maisonette", label: "Maisonette" },
   { value: "bungalow", label: "Bungalow" },
   { value: "land", label: "Land" },
 ]

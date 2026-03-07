@@ -49,6 +49,13 @@ interface PackDelivery {
   deliveryMethod: string
 }
 
+interface StageEmailEntry {
+  status: "sent" | "failed" | "no_smtp" | "skipped"
+  sentAt: string
+  to: string
+  error?: string
+}
+
 interface Reservation {
   id: string
   investor: {
@@ -69,6 +76,7 @@ interface Reservation {
   createdAt: string
   updatedAt: string
   packDeliveries?: PackDelivery[]
+  stageEmails?: Record<string, StageEmailEntry> | null
 }
 
 interface ReservationOverviewProps {
@@ -120,6 +128,73 @@ function EmailStatusBadge({ status }: { status: string | null }) {
   if (status === "no_smtp") return <Badge variant="outline" className="text-xs gap-1 text-amber-700 border-amber-300 bg-amber-50"><AlertTriangle className="h-3 w-3" />No SMTP</Badge>
   if (status === "not_applicable") return <Badge variant="outline" className="text-xs gap-1 text-gray-500">Manual</Badge>
   return null
+}
+
+// ─── Stage email badges ────────────────────────────────────────────────────────
+
+// Maps stage key → short display label
+const STAGE_EMAIL_LABELS: Record<string, { label: string; recipient: "investor" | "vendor" }> = {
+  pack_sent:              { label: "Pack",     recipient: "investor" },
+  fee_pending:            { label: "Fee Req",  recipient: "investor" },
+  fee_paid:               { label: "Fee Paid", recipient: "investor" },
+  proof_of_funds_pending: { label: "POF Req",  recipient: "investor" },
+  pof_received:           { label: "POF Rcvd", recipient: "investor" },
+  completed_investor:     { label: "Complete", recipient: "investor" },
+  lock_out_sent:          { label: "LO Sent",  recipient: "vendor" },
+  locked_out:             { label: "LO Signed",recipient: "vendor" },
+  completed_vendor:       { label: "Complete", recipient: "vendor" },
+}
+
+function StageEmailBadges({ stageEmails }: { stageEmails?: Record<string, StageEmailEntry> | null }) {
+  if (!stageEmails || Object.keys(stageEmails).length === 0) return null
+
+  const entries = Object.entries(stageEmails).filter(([key]) => STAGE_EMAIL_LABELS[key])
+
+  if (entries.length === 0) return null
+
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1">
+      {entries.map(([key, entry]) => {
+        const meta = STAGE_EMAIL_LABELS[key]
+        const isInvestor = meta.recipient === "investor"
+        const sentDate = entry.sentAt ? format(new Date(entry.sentAt), "dd MMM HH:mm") : null
+
+        let badgeClass = ""
+        let icon = <Mail className="h-2.5 w-2.5" />
+        if (entry.status === "sent") {
+          badgeClass = isInvestor
+            ? "text-blue-700 border-blue-200 bg-blue-50"
+            : "text-purple-700 border-purple-200 bg-purple-50"
+          icon = <CheckCircle2 className="h-2.5 w-2.5" />
+        } else if (entry.status === "failed") {
+          badgeClass = "text-red-700 border-red-200 bg-red-50"
+          icon = <XCircle className="h-2.5 w-2.5" />
+        } else if (entry.status === "no_smtp") {
+          badgeClass = "text-amber-700 border-amber-200 bg-amber-50"
+          icon = <AlertTriangle className="h-2.5 w-2.5" />
+        } else {
+          badgeClass = "text-gray-500 border-gray-200"
+        }
+
+        return (
+          <Tooltip key={key}>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className={`gap-1 text-[10px] px-1.5 py-0 h-4 cursor-default ${badgeClass}`}>
+                {icon}
+                {meta.label}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs max-w-[220px]">
+              <p className="font-medium capitalize">{entry.status === "sent" ? "Email sent" : entry.status === "failed" ? "Email failed" : entry.status === "no_smtp" ? "SMTP not configured" : entry.status}</p>
+              <p className="text-muted-foreground font-normal">To: {entry.to}</p>
+              {sentDate && <p className="text-muted-foreground font-normal">{sentDate}</p>}
+              {entry.error && <p className="text-red-500 font-normal mt-0.5">{entry.error}</p>}
+            </TooltipContent>
+          </Tooltip>
+        )
+      })}
+    </div>
+  )
 }
 
 // ─── Pack cell ────────────────────────────────────────────────────────────────
@@ -451,6 +526,7 @@ export function ReservationOverview({ initialReservations = [] }: ReservationOve
                         {/* Workflow */}
                         <TableCell>
                           <TooltipProvider delayDuration={200}>
+                            <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-1.5">
                               <Badge variant="outline" className={`gap-1 text-xs shrink-0 ${wf.color}`}>
                                 {wf.icon}{wf.label}
@@ -520,6 +596,8 @@ export function ReservationOverview({ initialReservations = [] }: ReservationOve
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
+                            </div>
+                            <StageEmailBadges stageEmails={r.stageEmails} />
                             </div>
                           </TooltipProvider>
                         </TableCell>

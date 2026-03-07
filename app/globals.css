@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -70,6 +72,120 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* ── Design system CSS custom properties ──────────────────────────────── */
+  :root {
+    /* Sidebar */
+    --sidebar-bg: #1A1A1F;
+    --sidebar-hover: #2A2A32;
+    --sidebar-active-bg: #F5A623;
+    --sidebar-active-text: #1A1A1F;
+    --sidebar-text: #9CA3AF;
+    --sidebar-text-active: #FFFFFF;
+    --sidebar-border: #2D2D38;
+    --sidebar-width-collapsed: 56px;
+    --sidebar-width-expanded: 240px;
+
+    /* Content area */
+    --bg-canvas: #F4F5F7;
+    --bg-card: #FFFFFF;
+    --bg-card-hover: #FAFAFA;
+    --bg-subtle: #F9FAFB;
+
+    /* Brand */
+    --ds-primary: #2563EB;
+    --ds-primary-hover: #1D4ED8;
+    --ds-primary-light: #EFF6FF;
+    --ds-accent: #F5A623;
+    --ds-accent-light: #FEF3C7;
+
+    /* KPI semantic colours */
+    --value-positive: #16A34A;
+    --value-negative: #DC2626;
+    --value-highlight: #2563EB;
+    --value-neutral: #111827;
+
+    /* Status badge palette */
+    --status-tenanted-bg: #DBEAFE;
+    --status-tenanted-text: #1D4ED8;
+    --status-vacant-bg: #FEF3C7;
+    --status-vacant-text: #92400E;
+    --status-main-residence-bg: #F3F4F6;
+    --status-main-residence-text: #374151;
+    --status-new-bg: #DCFCE7;
+    --status-new-text: #166534;
+    --status-hot-bg: #FEE2E2;
+    --status-hot-text: #991B1B;
+    --status-negotiating-bg: #EDE9FE;
+    --status-negotiating-text: #5B21B6;
+    --status-offer-bg: #FEF9C3;
+    --status-offer-text: #854D0E;
+
+    /* Border & shadow */
+    --ds-border: #E5E7EB;
+    --ds-border-strong: #D1D5DB;
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.08);
+    --shadow-dropdown: 0 10px 25px rgba(0,0,0,0.12);
+
+    /* Spacing */
+    --page-padding: 32px;
+    --card-padding: 24px;
+    --section-gap: 20px;
+  }
+
+  *:focus-visible {
+    outline: 2px solid #2563EB;
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+}
+
+@layer components {
+  /* ── Layout utilities ──────────────────────────────────────────────────── */
+  .page-container {
+    @apply px-8 py-8 min-h-screen;
+    background-color: var(--bg-canvas);
+  }
+  .ds-card {
+    @apply bg-white rounded-xl border shadow-card;
+    border-color: var(--ds-border);
+  }
+  .ds-card-hover {
+    @apply hover:shadow-card-hover transition-shadow duration-200;
+  }
+
+  /* ── KPI value typography ──────────────────────────────────────────────── */
+  .kpi-value-positive  { @apply text-2xl font-bold; color: var(--value-positive); }
+  .kpi-value-negative  { @apply text-2xl font-bold; color: var(--value-negative); }
+  .kpi-value-highlight { @apply text-2xl font-bold; color: var(--value-highlight); }
+  .kpi-value-neutral   { @apply text-2xl font-bold; color: var(--value-neutral); }
+  .kpi-label           { @apply text-xs font-medium text-gray-400 uppercase tracking-wider; }
+
+  /* ── Table utilities ───────────────────────────────────────────────────── */
+  .table-header { @apply text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 px-4 py-3; }
+  .table-row    { @apply border-b hover:bg-gray-50 transition-colors duration-100 cursor-pointer; border-color: var(--ds-border); }
+  .table-cell   { @apply px-4 py-3 text-sm text-gray-700; }
+
+  /* ── Button utilities ──────────────────────────────────────────────────── */
+  .btn-primary {
+    @apply font-medium px-4 py-2 rounded-lg transition-colors text-sm text-white;
+    background-color: var(--ds-primary);
+  }
+  .btn-primary:hover { background-color: var(--ds-primary-hover); }
+
+  .btn-secondary {
+    @apply bg-white hover:bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded-lg transition-colors text-sm border;
+    border-color: var(--ds-border);
+  }
+  .btn-ghost {
+    @apply hover:bg-gray-100 text-gray-500 font-medium px-3 py-2 rounded-lg transition-colors text-sm;
+  }
+
+  /* ── Page fade-in ──────────────────────────────────────────────────────── */
+  .animate-fade-in {
+    animation: fade-in 200ms ease-out both;
   }
 }
 

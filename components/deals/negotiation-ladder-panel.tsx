@@ -114,14 +114,14 @@ function LadderRung({
 
   const borderClass =
     status === "accepted"
-      ? "border-green-500 bg-green-50 dark:bg-green-950/20"
+      ? "border-green-500 bg-green-50"
       : status === "rejected"
-      ? "border-red-300 bg-red-50/50 dark:bg-red-950/10 opacity-70"
+      ? "border-red-300 bg-red-50/50 opacity-70"
       : rung.isAbsoluteMaximum && isActive
-      ? "border-amber-500 bg-amber-50 dark:bg-amber-950/20"
+      ? "border-amber-500 bg-amber-50"
       : isActive
-      ? "border-primary bg-primary/5"
-      : "border-border bg-muted/20"
+      ? "border-[#2563EB] bg-[#EFF6FF]"
+      : "border-[var(--ds-border)] bg-gray-50/50"
 
   const returnDisplay =
     rungState.rung.returnLabel === "Profit on Cost"
@@ -140,8 +140,8 @@ function LadderRung({
             <span
               className={`text-xs font-bold px-1.5 py-0.5 rounded ${
                 rung.isAbsoluteMaximum
-                  ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
-                  : "bg-primary/10 text-primary"
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-[#EFF6FF] text-[#2563EB]"
               }`}
             >
               {rung.label}
@@ -178,8 +178,8 @@ function LadderRung({
         <div
           className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded ${
             rung.returnMeetsCriteria
-              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-              : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+              ? "bg-green-100 text-green-700"
+              : "bg-red-100 text-red-700"
           }`}
         >
           {rung.returnMeetsCriteria ? (
@@ -204,7 +204,7 @@ function LadderRung({
       </div>
 
       {/* Tactical note */}
-      <div className="rounded bg-muted/60 px-3 py-2 mb-3">
+      <div className="rounded bg-gray-100 px-3 py-2 mb-3">
         <p className="text-xs text-muted-foreground italic leading-relaxed">
           &ldquo;{rung.negotiatingNote}&rdquo;
         </p>
@@ -212,9 +212,9 @@ function LadderRung({
 
       {/* Best & final warning */}
       {rung.isAbsoluteMaximum && isActive && status !== "accepted" && (
-        <div className="flex items-start gap-2 rounded bg-amber-100 dark:bg-amber-900/30 px-3 py-2 mb-3">
+        <div className="flex items-start gap-2 rounded bg-amber-100 px-3 py-2 mb-3">
           <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">
+          <p className="text-xs text-amber-800 font-medium">
             YOUR CEILING — DO NOT EXCEED. Walk away if rejected.
           </p>
         </div>
@@ -346,6 +346,8 @@ function LadderView({
           toast.success("Call logged")
         } else if (data.noSmtp) {
           toast.warning("Offer logged (SMTP not configured — email not delivered)")
+        } else if (sendChannel === "email" && data.emailDelivered === false) {
+          toast.warning("Offer logged but email delivery failed — check SMTP settings")
         } else {
           toast.success(`Offer sent via ${sendChannel === "email" ? "email" : "SMS"}`)
         }
@@ -406,6 +408,19 @@ function LadderView({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ round, response: "accepted" }),
+        })
+      } catch {
+        // Non-fatal
+      }
+    }
+
+    // Advance pipeline stage to OFFER_ACCEPTED — this triggers the automated vendor thank-you email
+    if (vendorLeadId) {
+      try {
+        await fetch(`/api/vendor-pipeline/leads/${vendorLeadId}/update-stage`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pipelineStage: "OFFER_ACCEPTED" }),
         })
       } catch {
         // Non-fatal
@@ -486,13 +501,13 @@ function LadderView({
 
       {/* Deal agreed banner */}
       {isDealAgreed && agreedRound && (
-        <div className="rounded-lg border-2 border-green-500 bg-green-50 dark:bg-green-950/30 px-4 py-3 flex items-center gap-3">
+        <div className="rounded-xl border-2 border-green-500 bg-green-50 px-4 py-3 flex items-center gap-3">
           <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0" />
           <div>
-            <p className="font-bold text-green-800 dark:text-green-300">
+            <p className="font-bold text-green-800">
               DEAL AGREED at {fmt(agreedRound.rung.offerPrice)}
             </p>
-            <p className="text-xs text-green-700 dark:text-green-400">
+            <p className="text-xs text-green-700">
               {agreedRound.rung.label} accepted —{" "}
               {pct(agreedRound.rung.discountPercent)} below asking price
             </p>
@@ -502,11 +517,11 @@ function LadderView({
 
       {/* Walk away banner */}
       {isWalkedAway && (
-        <div className="rounded-lg border-2 border-red-400 bg-red-50 dark:bg-red-950/30 px-4 py-3 flex items-center gap-3">
+        <div className="rounded-xl border-2 border-red-400 bg-red-50 px-4 py-3 flex items-center gap-3">
           <TrendingDown className="h-6 w-6 text-red-600 shrink-0" />
           <div>
-            <p className="font-bold text-red-800 dark:text-red-300">WALKED AWAY — Deal Dead</p>
-            <p className="text-xs text-red-700 dark:text-red-400">
+            <p className="font-bold text-red-800">WALKED AWAY — Deal Dead</p>
+            <p className="text-xs text-red-700">
               Vendor rejected Best &amp; Final at {fmt(ladder.ceiling)}. Numbers don&apos;t work
               above this price.
             </p>

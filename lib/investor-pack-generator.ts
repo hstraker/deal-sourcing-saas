@@ -196,9 +196,9 @@ function buildPageFooterContent(
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
-export async function generateInvestorPack(dealId: string, template?: any): Promise<Buffer> {
+export async function generateInvestorPack(dealId: string, template?: any, interestUrl?: string): Promise<Buffer> {
   const data = await fetchDealData(dealId)
-  const html = generateHTML(data, template)
+  const html = generateHTML(data, template, interestUrl)
   return htmlToPDF(html)
 }
 
@@ -336,7 +336,7 @@ function normaliseType(t: string): string {
   return t
 }
 
-function generateHTML(data: InvestorPackData, template?: any): string {
+function generateHTML(data: InvestorPackData, template?: any, interestUrl?: string): string {
   const { deal, comparables, richComparables, listing, allPhotoUrls, companyInfo, rentalMarket } = data
   const metrics  = calculateMetrics(deal)
   const sections = resolveSections(template)
@@ -363,7 +363,7 @@ function generateHTML(data: InvestorPackData, template?: any): string {
     else if (investmentKey === "property")    html = sectionProperty(deal, metrics, listing, allPhotoUrls, sectionCfg)
     else if (investmentKey === "investment")  html = sectionInvestment(deal, metrics, sectionCfg)
     else if (investmentKey === "comparables") html = sectionComparables(deal, comparables, richComparables, metrics, rentalMarket, sectionCfg)
-    else if (investmentKey === "cta")         html = sectionCTA(deal, metrics, companyInfo, sectionCfg)
+    else if (investmentKey === "cta")         html = sectionCTA(deal, metrics, companyInfo, sectionCfg, interestUrl)
 
     if (html) rendered.push(html)
   }
@@ -1037,7 +1037,7 @@ function sectionComparables(deal: any, comparables: any[], richComparables: any[
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION: CTA  (Final page — reserve / contact)
 // ─────────────────────────────────────────────────────────────────────────────
-function sectionCTA(deal: any, m: Metrics, company: CompanyInfo, cfg: Record<string,any> = {}): string {
+function sectionCTA(deal: any, m: Metrics, company: CompanyInfo, cfg: Record<string,any> = {}, interestUrl?: string): string {
   const showProcessSteps = cfg.showProcessSteps !== false
   const showUrgencyNote  = cfg.showUrgencyNote  !== false
   const urgencyText      = cfg.urgencyText?.trim()
@@ -1112,6 +1112,12 @@ function sectionCTA(deal: any, m: Metrics, company: CompanyInfo, cfg: Record<str
         <div class="step-desc">${s3Desc}</div>
       </div>
     </div>
+  </div>` : ""}
+
+  <!-- CTA button (personalised — only present when pack was delivered to a specific investor) -->
+  ${interestUrl ? `<div class="cta-btn-wrap">
+    <a href="${interestUrl}" class="cta-btn">✓ Register My Interest in This Deal</a>
+    <p class="cta-btn-sub">Click to let us know you'd like to proceed — we'll be in touch within 24 hours.</p>
   </div>` : ""}
 
   <!-- Contact card -->
@@ -1940,6 +1946,28 @@ body {
   padding: 0 16px;
   align-self: center;
   margin-bottom: 32px;
+}
+
+/* CTA interest button */
+.cta-btn-wrap {
+  text-align: center;
+  margin: 24px 0 20px;
+}
+.cta-btn {
+  display: inline-block;
+  background: #059669;
+  color: white !important;
+  padding: 14px 40px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  letter-spacing: 0.2px;
+}
+.cta-btn-sub {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #64748b;
 }
 
 /* Contact card */

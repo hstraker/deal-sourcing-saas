@@ -16,21 +16,32 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const delivery = await prisma.investorPackDelivery.findUnique({
-      where: { id: params.id },
-      include: {
-        investor: {
-          include: {
-            user: {
-              select: { email: true, firstName: true, lastName: true },
+    const [delivery, companyProfile] = await Promise.all([
+      prisma.investorPackDelivery.findUnique({
+        where: { id: params.id },
+        include: {
+          investor: {
+            include: {
+              user: {
+                select: { email: true, firstName: true, lastName: true },
+              },
+            },
+          },
+          deal: {
+            select: {
+              id: true,
+              address: true,
+              propertyType: true,
+              bedrooms: true,
+              marketValue: true,
+              estimatedMonthlyRent: true,
+              postcode: true,
             },
           },
         },
-        deal: {
-          select: { id: true, address: true },
-        },
-      },
-    })
+      }),
+      prisma.companyProfile.findFirst(),
+    ])
 
     if (!delivery) {
       return NextResponse.json({ error: "Delivery not found" }, { status: 404 })
@@ -51,6 +62,16 @@ export async function POST(
       dealId: delivery.deal.id,
       packLabel,
       appUrl,
+      downloadToken: (delivery as any).downloadToken ?? undefined,
+      interestToken: (delivery as any).interestToken ?? undefined,
+      propertyType: delivery.deal.propertyType ?? undefined,
+      bedrooms: delivery.deal.bedrooms ?? undefined,
+      marketValue: delivery.deal.marketValue ? Number(delivery.deal.marketValue) : undefined,
+      monthlyRent: delivery.deal.estimatedMonthlyRent ? Number(delivery.deal.estimatedMonthlyRent) : undefined,
+      postcode: delivery.deal.postcode ?? undefined,
+      companyName: companyProfile?.companyName,
+      companyAddress: companyProfile?.companyAddress ?? undefined,
+      companyPhone: companyProfile?.companyPhone ?? undefined,
     })
 
     const emailStatus = emailResult.noSmtp ? "no_smtp" : emailResult.success ? "sent" : "failed"

@@ -16,7 +16,9 @@ import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-import { Settings, DollarSign, Eye, TrendingUp, Terminal, Play, Trash2, ExternalLink, Loader2, CheckCircle, XCircle, Send, Shuffle, Facebook, FileText, Building2, Search, Calculator, Mail, AlertTriangle } from "lucide-react"
+import { Settings, DollarSign, Eye, TrendingUp, Terminal, Play, Trash2, ExternalLink, Loader2, CheckCircle, XCircle, Send, Shuffle, Facebook, FileText, Building2, Search, Calculator, Mail, AlertTriangle, FlaskConical } from "lucide-react"
+import { MOCK_SCENARIOS, MOCK_SCENARIO_IDS } from "@/lib/vendor-checks/test-mode/mock-scenarios"
+import type { MockScenarioId } from "@/lib/vendor-checks/test-mode/mock-scenarios"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -127,6 +129,7 @@ export default function SettingsPage() {
   // Facebook Lead Ad simulator state
   const [isFBSubmitting, setIsFBSubmitting] = useState(false)
   const [fbResult, setFBResult] = useState<any>(null)
+  const [fbTestScenario, setFBTestScenario] = useState<MockScenarioId>("CLEAR_NEVER_LISTED")
   const [fbForm, setFBForm] = useState({
     fullName: "John Smith",
     phoneNumber: "+447700900456",
@@ -294,6 +297,8 @@ export default function SettingsPage() {
         body: JSON.stringify({
           leadgen_id: `sim_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           created_time: new Date().toISOString(),
+          isTest: true,
+          testScenario: fbTestScenario,
           field_data: [
             { name: "full_name", values: [fbForm.fullName] },
             { name: "phone_number", values: [fbForm.phoneNumber] },
@@ -846,6 +851,7 @@ SMTP_FROM_NAME="Your Company Name"`}</pre>
                       <SelectItem value="semi-detached">Semi-Detached</SelectItem>
                       <SelectItem value="detached">Detached</SelectItem>
                       <SelectItem value="flat">Flat</SelectItem>
+                      <SelectItem value="maisonette">Maisonette</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1078,6 +1084,30 @@ SMTP_FROM_NAME="Your Company Name"`}</pre>
                           <SelectItem value="other">Other</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                    <div className="space-y-2 col-span-2">
+                      <Label htmlFor="fbTestScenario" className="text-xs flex items-center gap-1">
+                        <FlaskConical className="h-3 w-3 text-purple-500" />
+                        Portal Check Test Scenario
+                      </Label>
+                      <Select
+                        value={fbTestScenario}
+                        onValueChange={(value) => setFBTestScenario(value as MockScenarioId)}
+                      >
+                        <SelectTrigger id="fbTestScenario" className="text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MOCK_SCENARIO_IDS.map((id) => (
+                            <SelectItem key={id} value={id}>
+                              {MOCK_SCENARIOS[id].label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {MOCK_SCENARIOS[fbTestScenario].description}
+                      </p>
                     </div>
                   </div>
 

@@ -10,6 +10,8 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { PipelineStage } from "@prisma/client"
 import { z } from "zod"
+import { sendVendorOfferMadeEmail, sendVendorOfferAcceptedEmail } from "@/lib/email"
+import { ensureDealForVendorLead } from "@/lib/vendor-pipeline/auto-deal"
 
 const updateStageSchema = z.object({
   pipelineStage: z.string(),
@@ -66,6 +68,27 @@ export async function PATCH(
         pipelineStage: pipelineStage as PipelineStage,
       },
     })
+
+    // Send automated emails on key stage transitions
+    if (pipelineStage !== currentLead.pipelineStage && currentLead.vendorEmail) {
+      if (pipelineStage === "OFFER_MADE") {
+        sendVendorOfferMadeEmail({
+          to: currentLead.vendorEmail,
+          vendorName: currentLead.vendorName,
+          propertyAddress: currentLead.propertyAddress || "your property",
+          offerAmount: currentLead.offerAmount ? Number(currentLead.offerAmount) : null,
+          offerPercentage: currentLead.offerPercentage ? Number(currentLead.offerPercentage) : null,
+        }).catch((e) => console.error("[update-stage] offer-made email failed:", e))
+      } else if (pipelineStage === "OFFER_ACCEPTED") {
+        sendVendorOfferAcceptedEmail({
+          to: currentLead.vendorEmail,
+          vendorName: currentLead.vendorName,
+          propertyAddress: currentLead.propertyAddress || "your property",
+          offerAmount: currentLead.offerAmount ? Number(currentLead.offerAmount) : null,
+        }).catch((e) => console.error("[update-stage] offer-accepted email failed:", e))
+        ensureDealForVendorLead(params.id).catch((e) => console.error("[update-stage] auto-deal failed:", e))
+      }
+    }
 
     return NextResponse.json({ lead })
   } catch (error: any) {

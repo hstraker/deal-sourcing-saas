@@ -3,6 +3,18 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { z } from "zod"
+import {
+  sendReservationPackSentEmail,
+  sendReservationFeeRequestedEmail,
+  sendReservationFeeConfirmedEmail,
+  sendPofRequestedEmail,
+  sendPofReceivedEmail,
+  sendDealCompletedInvestorEmail,
+  sendLockOutSentInvestorEmail,
+  sendLockOutSentVendorEmail,
+  sendLockOutSignedVendorEmail,
+  sendDealCompletedVendorEmail,
+} from "@/lib/email"
 
 const updateReservationSchema = z.object({
   reservationFee: z.number().positive().optional(),
@@ -387,6 +399,95 @@ export async function PUT(
         }
       }
       // All other status advances keep the investor at RESERVED — no deal/vendor change needed
+    }
+
+    // ── Send stage emails and log result ──────────────────────────────────────
+    if (validatedData.status && validatedData.status !== existingReservation.status) {
+      const newStatus = validatedData.status
+      const appUrl = process.env.APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000"
+      const fromName = process.env.SMTP_FROM_NAME || "DealStack"
+      const investorEmail = reservation.investor.user.email
+      const investorName =
+        [reservation.investor.user.firstName, reservation.investor.user.lastName].filter(Boolean).join(" ") ||
+        investorEmail
+      const dealAddress = reservation.deal.address
+      const dealId = reservation.deal.id
+
+      const stageEmailLog: Record<string, { status: string; sentAt: string; to: string; error?: string }> = {}
+
+      // Investor emails
+      if (newStatus === "pack_sent") {
+        const r = await sendReservationPackSentEmail({ to: investorEmail, investorName, dealAddress, dealId, appUrl })
+        stageEmailLog["pack_sent"] = { status: r.success ? "sent" : r.noSmtp ? "no_smtp" : "failed", sentAt: new Date().toISOString(), to: investorEmail, ...(r.error ? { error: r.error } : {}) }
+        console.log(`[reservation email] pack_sent → ${investorEmail}: ${stageEmailLog["pack_sent"].status}`)
+      }
+      if (newStatus === "fee_pending") {
+        const r = await sendReservationFeeRequestedEmail({ to: investorEmail, investorName, dealAddress, feeAmount: Number(existingReservation.reservationFee) })
+        stageEmailLog["fee_pending"] = { status: r.success ? "sent" : r.noSmtp ? "no_smtp" : "failed", sentAt: new Date().toISOString(), to: investorEmail, ...(r.error ? { error: r.error } : {}) }
+        console.log(`[reservation email] fee_pending → ${investorEmail}: ${stageEmailLog["fee_pending"].status}`)
+      }
+      if (newStatus === "fee_paid") {
+        const r = await sendReservationFeeConfirmedEmail({ to: investorEmail, investorName, dealAddress })
+        stageEmailLog["fee_paid"] = { status: r.success ? "sent" : r.noSmtp ? "no_smtp" : "failed", sentAt: new Date().toISOString(), to: investorEmail, ...(r.error ? { error: r.error } : {}) }
+        console.log(`[reservation email] fee_paid → ${investorEmail}: ${stageEmailLog["fee_paid"].status}`)
+      }
+      if (newStatus === "proof_of_funds_pending") {
+        const r = await sendPofRequestedEmail({ to: investorEmail, investorName, dealAddress })
+        stageEmailLog["proof_of_funds_pending"] = { status: r.success ? "sent" : r.noSmtp ? "no_smtp" : "failed", sentAt: new Date().toISOString(), to: investorEmail, ...(r.error ? { error: r.error } : {}) }
+        console.log(`[reservation email] proof_of_funds_pending → ${investorEmail}: ${stageEmailLog["proof_of_funds_pending"].status}`)
+      }
+      if (newStatus === "pof_received") {
+        const r = await sendPofReceivedEmail({ to: investorEmail, investorName, dealAddress })
+        stageEmailLog["pof_received"] = { status: r.success ? "sent" : r.noSmtp ? "no_smtp" : "failed", sentAt: new Date().toISOString(), to: investorEmail, ...(r.error ? { error: r.error } : {}) }
+        console.log(`[reservation email] pof_received → ${investorEmail}: ${stageEmailLog["pof_received"].status}`)
+      }
+
+      // Vendor emails (need to look up linked VendorLead via dealId)
+      if (["lock_out_sent", "locked_out", "completed"].includes(newStatus) && existingReservation.dealId) {
+        const vendorLead = await prisma.vendorLead.findFirst({
+          where: { dealId: existingReservation.dealId },
+          select: { vendorEmail: true, vendorName: true, propertyAddress: true },
+        })
+        if (vendorLead?.vendorEmail) {
+          const vendorEmail = vendorLead.vendorEmail
+          const propertyAddress = vendorLead.propertyAddress || dealAddress
+          if (newStatus === "lock_out_sent") {
+            const r = await sendLockOutSentVendorEmail({ to: vendorEmail, vendorName: vendorLead.vendorName, propertyAddress, companyName: fromName })
+            stageEmailLog["lock_out_sent"] = { status: r.success ? "sent" : r.noSmtp ? "no_smtp" : "failed", sentAt: new Date().toISOString(), to: vendorEmail, ...(r.error ? { error: r.error } : {}) }
+            console.log(`[reservation email] lock_out_sent → ${vendorEmail}: ${stageEmailLog["lock_out_sent"].status}`)
+            // Also notify investor
+            sendLockOutSentInvestorEmail({ to: investorEmail, investorName, dealAddress }).catch(() => {})
+          }
+          if (newStatus === "locked_out") {
+            const r = await sendLockOutSignedVendorEmail({ to: vendorEmail, vendorName: vendorLead.vendorName, propertyAddress, companyName: fromName })
+            stageEmailLog["locked_out"] = { status: r.success ? "sent" : r.noSmtp ? "no_smtp" : "failed", sentAt: new Date().toISOString(), to: vendorEmail, ...(r.error ? { error: r.error } : {}) }
+            console.log(`[reservation email] locked_out (vendor) → ${vendorEmail}: ${stageEmailLog["locked_out"].status}`)
+          }
+          if (newStatus === "completed") {
+            const r = await sendDealCompletedVendorEmail({ to: vendorEmail, vendorName: vendorLead.vendorName, propertyAddress, companyName: fromName })
+            stageEmailLog["completed_vendor"] = { status: r.success ? "sent" : r.noSmtp ? "no_smtp" : "failed", sentAt: new Date().toISOString(), to: vendorEmail, ...(r.error ? { error: r.error } : {}) }
+            console.log(`[reservation email] completed (vendor) → ${vendorEmail}: ${stageEmailLog["completed_vendor"].status}`)
+          }
+        }
+      }
+      // Investor completed email
+      if (newStatus === "completed") {
+        const r = await sendDealCompletedInvestorEmail({ to: investorEmail, investorName, dealAddress })
+        stageEmailLog["completed_investor"] = { status: r.success ? "sent" : r.noSmtp ? "no_smtp" : "failed", sentAt: new Date().toISOString(), to: investorEmail, ...(r.error ? { error: r.error } : {}) }
+        console.log(`[reservation email] completed (investor) → ${investorEmail}: ${stageEmailLog["completed_investor"].status}`)
+      }
+
+      // Persist email log — merge with any existing entries
+      if (Object.keys(stageEmailLog).length > 0) {
+        const existing = ((existingReservation as any).stageEmails ?? {}) as Record<string, unknown>
+        const merged = { ...existing, ...stageEmailLog }
+        await prisma.investorReservation.update({
+          where: { id: params.id },
+          data: { stageEmails: merged as any },
+        })
+        // Attach to the response object so the client gets the updated log immediately
+        ;(reservation as any).stageEmails = merged
+      }
     }
 
     return NextResponse.json(reservation)

@@ -55,7 +55,13 @@ export async function GET(request: NextRequest) {
     if (forReservation === "true") {
       const [vendorLeadDealIds, approvedListingDealIds] = await Promise.all([
         prisma.vendorLead
-          .findMany({ where: { dealId: { not: null } }, select: { dealId: true } })
+          .findMany({
+            where: {
+              dealId: { not: null },
+              pipelineStage: { in: ["OFFER_ACCEPTED", "PAPERWORK_SENT", "READY_FOR_INVESTORS"] },
+            },
+            select: { dealId: true },
+          })
           .then((rows) => rows.map((r) => r.dealId as string)),
         prisma.propertyListing
           .findMany({
@@ -125,6 +131,21 @@ export async function GET(request: NextRequest) {
         createdAt: "desc",
       },
     })
+
+    // Attach isReserved flag when fetching for reservation modal
+    if (forReservation === "true" && deals.length > 0) {
+      const reservedDealIds = new Set(
+        (
+          await prisma.investorReservation.findMany({
+            where: { dealId: { in: deals.map((d) => d.id) }, status: { not: "cancelled" } },
+            select: { dealId: true },
+          })
+        ).map((r) => r.dealId)
+      )
+      return NextResponse.json({
+        deals: deals.map((d) => ({ ...d, isReserved: reservedDealIds.has(d.id) })),
+      })
+    }
 
     return NextResponse.json({ deals })
   } catch (error) {

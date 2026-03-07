@@ -48,6 +48,7 @@ import {
   Zap,
 } from "lucide-react"
 import { VendorLeadDetailModal } from "./vendor-lead-detail-modal"
+import { PortalCheckBadge } from "./portal-check-badge"
 import { toast } from "sonner"
 import { formatCurrency } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -119,6 +120,9 @@ interface VendorLead {
     id: string
     user: { firstName: string | null; lastName: string | null; email: string; phone: string | null }
   } | null
+  latestCheckRisk: string | null
+  latestCheckedAt: Date | null
+  isTest: boolean
   smsMessages: Array<{
     id: string
     direction: string
@@ -133,18 +137,18 @@ interface VendorLead {
 }
 
 const PIPELINE_STAGES = [
-  { id: "NEW_LEAD",           title: "New Leads" },
-  { id: "AI_CONVERSATION",    title: "In Conversation" },
-  { id: "DEAL_VALIDATION",    title: "Validating" },
-  { id: "OFFER_MADE",         title: "Offer Made" },
-  { id: "VIDEO_SENT",         title: "Video Sent" },
-  { id: "RETRY_1",            title: "Retry 1" },
-  { id: "RETRY_2",            title: "Retry 2" },
-  { id: "RETRY_3",            title: "Retry 3" },
-  { id: "OFFER_ACCEPTED",     title: "Accepted" },
-  { id: "PAPERWORK_SENT",     title: "Paperwork" },
-  { id: "READY_FOR_INVESTORS", title: "Ready" },
-  { id: "DEAD_LEAD",          title: "Dead" },
+  { id: "NEW_LEAD",             title: "New Lead" },
+  { id: "AI_CONVERSATION",      title: "AI Conversation" },
+  { id: "DEAL_VALIDATION",      title: "Deal Validation" },
+  { id: "OFFER_MADE",           title: "Email Offer Sent" },
+  { id: "VIDEO_SENT",           title: "Video Sent" },
+  { id: "RETRY_1",              title: "Follow-up 1" },
+  { id: "RETRY_2",              title: "Follow-up 2" },
+  { id: "RETRY_3",              title: "Follow-up 3" },
+  { id: "OFFER_ACCEPTED",       title: "Offer Accepted" },
+  { id: "PAPERWORK_SENT",       title: "Paperwork Sent" },
+  { id: "READY_FOR_INVESTORS",  title: "Ready for Investors" },
+  { id: "DEAD_LEAD",            title: "Dead Lead" },
 ]
 
 const STAGE_COLORS: Record<string, string> = {
@@ -694,6 +698,14 @@ export function VendorList() {
                                   vendor.condition && vendor.condition.replace(/_/g, " "),
                                 ].filter(Boolean).join(" · ")}
                               </div>
+                              {(vendor.latestCheckRisk || vendor.isTest) && (
+                                <div className="mt-1">
+                                  <PortalCheckBadge
+                                    risk={vendor.latestCheckRisk as any}
+                                    isMockData={vendor.isTest}
+                                  />
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <span className="text-muted-foreground text-sm">—</span>

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { sendInvestorPackEmail } from "@/lib/email"
+import { generateDownloadToken, generateInterestToken } from "@/lib/investor-token"
 
 // POST /api/investors/pack-delivery - Send investor pack to specific investor
 export async function POST(request: NextRequest) {
@@ -40,8 +41,20 @@ export async function POST(request: NextRequest) {
     // Check if deal exists
     const deal = await prisma.deal.findUnique({
       where: { id: dealId },
-      select: { id: true, address: true, askingPrice: true },
+      select: {
+        id: true,
+        address: true,
+        askingPrice: true,
+        propertyType: true,
+        bedrooms: true,
+        marketValue: true,
+        estimatedMonthlyRent: true,
+        postcode: true,
+      },
     })
+
+    // Company profile for email footer
+    const companyProfile = await prisma.companyProfile.findFirst()
 
     if (!deal) {
       return NextResponse.json({ error: "Deal not found" }, { status: 404 })
@@ -93,6 +106,14 @@ export async function POST(request: NextRequest) {
           },
         })
 
+    // Generate signed tokens for investor access (download link + CTA interest button)
+    const downloadToken = generateDownloadToken(delivery.id, dealId)
+    const interestToken = generateInterestToken(delivery.id, dealId, investorId)
+    await prisma.investorPackDelivery.update({
+      where: { id: delivery.id },
+      data: { downloadToken, interestToken },
+    })
+
     // Send email if delivery method is email
     let emailStatus = "pending"
     let emailError: string | undefined
@@ -109,6 +130,16 @@ export async function POST(request: NextRequest) {
         dealId,
         packLabel: partLabel,
         appUrl,
+        downloadToken,
+        interestToken,
+        propertyType: deal.propertyType ?? undefined,
+        bedrooms: deal.bedrooms ?? undefined,
+        marketValue: deal.marketValue ? Number(deal.marketValue) : undefined,
+        monthlyRent: deal.estimatedMonthlyRent ? Number(deal.estimatedMonthlyRent) : undefined,
+        postcode: deal.postcode ?? undefined,
+        companyName: companyProfile?.companyName,
+        companyAddress: companyProfile?.companyAddress ?? undefined,
+        companyPhone: companyProfile?.companyPhone ?? undefined,
       })
 
       if (emailResult.noSmtp) {
@@ -183,7 +214,7 @@ export async function POST(request: NextRequest) {
       data: { status: "pack_sent" },
     })
 
-    return NextResponse.json({ delivery, emailStatus }, { status: 201 })
+    return NextResponse.json({ delivery: { ...delivery, downloadToken }, emailStatus }, { status: 201 })
   } catch (error: any) {
     console.error("Error creating pack delivery:", error)
     return NextResponse.json(

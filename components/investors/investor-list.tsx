@@ -29,12 +29,16 @@ import {
 import {
   Loader2, Search, Mail, Phone, PoundSterling, Plus, Edit, Trash2, Send, FileCheck,
   UserRound, MessageCircle, BadgeCheck, Eye, KeyRound, Trophy, CircleOff, Layers,
+  Clock, TrendingUp, ShoppingBag, Activity,
 } from "lucide-react"
 import Link from "next/link"
 import { format } from "date-fns"
 import { InvestorForm } from "./investor-form"
 import { SendPackModal } from "./send-pack-modal"
 import { ReservationModal } from "./reservation-modal"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { SolicitorSelector, type Solicitor as SolicitorType } from "@/components/solicitors/solicitor-selector"
+import { toast } from "sonner"
 
 interface Investor {
   id: string
@@ -57,6 +61,8 @@ interface Investor {
   totalSpent: number
   pipelineStage?: string
   createdAt: string
+  defaultSolicitorId?: string | null
+  defaultSolicitor?: SolicitorType | null
   _count?: {
     reservations: number
   }
@@ -155,6 +161,25 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
   // Reservation modal state
   const [isReservationOpen, setIsReservationOpen] = useState(false)
   const [selectedInvestorForReservation, setSelectedInvestorForReservation] = useState<Investor | null>(null)
+
+  // Activity timeline state
+  const [activities, setActivities] = useState<Array<{ id: string; activityType: string; description: string | null; createdAt: string; dealId?: string | null }>>([])
+  const [loadingActivities, setLoadingActivities] = useState(false)
+
+  const fetchActivities = async (investorId: string) => {
+    setLoadingActivities(true)
+    try {
+      const res = await fetch(`/api/investors/activities?investorId=${investorId}&limit=20`)
+      if (res.ok) {
+        const data = await res.json()
+        setActivities(data.activities ?? [])
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoadingActivities(false)
+    }
+  }
 
   const fetchInvestors = async () => {
     setIsLoading(true)
@@ -485,14 +510,160 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
                 : "Create a new investor profile"}
             </DialogDescription>
           </DialogHeader>
-          <InvestorForm
-            investor={editingInvestor || undefined}
-            onSuccess={handleFormSuccess}
-            onCancel={() => {
-              setIsFormOpen(false)
-              setEditingInvestor(null)
-            }}
-          />
+
+          {editingInvestor ? (() => {
+            const investorName = [editingInvestor.user.firstName, editingInvestor.user.lastName].filter(Boolean).join(" ") || editingInvestor.user.email
+            const initials = [editingInvestor.user.firstName?.[0], editingInvestor.user.lastName?.[0]].filter(Boolean).join("").toUpperCase() || editingInvestor.user.email[0].toUpperCase()
+            const activeReservations = editingInvestor.reservations?.filter(r => r.status !== "cancelled" && r.status !== "completed").length ?? 0
+            const stage = editingInvestor.pipelineStage ?? "LEAD"
+            return (
+            <>
+              {/* ── Investor header: avatar + stats ── */}
+              <div className="flex items-center gap-4 rounded-xl border bg-muted/30 px-4 py-3 mb-2">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-lg select-none">
+                  {initials}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold truncate">{investorName}</p>
+                  <p className="text-xs text-muted-foreground truncate">{editingInvestor.user.email}</p>
+                </div>
+                <div className="flex flex-wrap gap-2 shrink-0">
+                  <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${pipelineStageColors[stage] ?? "bg-gray-100 text-gray-700 border-gray-200"}`}>
+                    {pipelineStageIcons[stage]}
+                    {pipelineStageLabels[stage] ?? stage}
+                  </span>
+                </div>
+              </div>
+
+              {/* ── Quick stats row ── */}
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className="rounded-lg border bg-card px-3 py-2 text-center">
+                  <div className="flex items-center justify-center gap-1 text-muted-foreground mb-0.5">
+                    <ShoppingBag className="h-3.5 w-3.5" />
+                    <span className="text-[11px] font-medium uppercase tracking-wide">Purchased</span>
+                  </div>
+                  <p className="text-xl font-bold">{editingInvestor.dealsPurchased}</p>
+                </div>
+                <div className="rounded-lg border bg-card px-3 py-2 text-center">
+                  <div className="flex items-center justify-center gap-1 text-muted-foreground mb-0.5">
+                    <KeyRound className="h-3.5 w-3.5" />
+                    <span className="text-[11px] font-medium uppercase tracking-wide">Active</span>
+                  </div>
+                  <p className="text-xl font-bold">{activeReservations}</p>
+                </div>
+                <div className="rounded-lg border bg-card px-3 py-2 text-center">
+                  <div className="flex items-center justify-center gap-1 text-muted-foreground mb-0.5">
+                    <TrendingUp className="h-3.5 w-3.5" />
+                    <span className="text-[11px] font-medium uppercase tracking-wide">Spent</span>
+                  </div>
+                  <p className="text-xl font-bold">£{Number(editingInvestor.totalSpent).toLocaleString()}</p>
+                </div>
+              </div>
+
+              <Tabs defaultValue="profile">
+                <TabsList className="mb-2 w-full grid grid-cols-3">
+                  <TabsTrigger value="profile">Profile</TabsTrigger>
+                  <TabsTrigger value="solicitor">Solicitor</TabsTrigger>
+                  <TabsTrigger value="activity" onClick={() => fetchActivities(editingInvestor.id)}>Activity</TabsTrigger>
+                </TabsList>
+                <TabsContent value="profile">
+                  <InvestorForm
+                    investor={editingInvestor}
+                    onSuccess={handleFormSuccess}
+                    onCancel={() => {
+                      setIsFormOpen(false)
+                      setEditingInvestor(null)
+                    }}
+                  />
+                </TabsContent>
+                <TabsContent value="solicitor">
+                  <div className="space-y-3 pt-2">
+                    <div>
+                      <h3 className="text-sm font-semibold">Default Solicitor</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        This solicitor will be used as the default for all deals with this investor. It can be overridden per deal.
+                      </p>
+                    </div>
+                    <SolicitorSelector
+                      value={editingInvestor.defaultSolicitorId ?? null}
+                      initialSolicitor={editingInvestor.defaultSolicitor ?? null}
+                      onChange={async (id, sol) => {
+                        try {
+                          const res = await fetch(`/api/investors/${editingInvestor.id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ defaultSolicitorId: id }),
+                          })
+                          if (!res.ok) throw new Error("Failed to update")
+                          setEditingInvestor({
+                            ...editingInvestor,
+                            defaultSolicitorId: id,
+                            defaultSolicitor: sol,
+                          })
+                          fetchInvestors()
+                          toast.success(id ? "Default solicitor assigned" : "Default solicitor removed")
+                        } catch {
+                          toast.error("Failed to update solicitor")
+                        }
+                      }}
+                    />
+                  </div>
+                </TabsContent>
+                <TabsContent value="activity">
+                  <div className="pt-1 space-y-1">
+                    {loadingActivities ? (
+                      <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="text-sm">Loading activity…</span>
+                      </div>
+                    ) : activities.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-2">
+                        <Activity className="h-8 w-8 opacity-30" />
+                        <p className="text-sm">No activity recorded yet</p>
+                      </div>
+                    ) : (
+                      <div className="relative pl-4">
+                        {/* Timeline line */}
+                        <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" />
+                        <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
+                          {activities.map((act) => (
+                            <div key={act.id} className="relative flex gap-3 items-start">
+                              <div className="absolute -left-4 mt-1.5 h-2.5 w-2.5 rounded-full bg-primary/70 border-2 border-background ring-1 ring-primary/30 shrink-0" />
+                              <div className="flex-1 rounded-lg border bg-card px-3 py-2 min-w-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="text-xs font-medium leading-tight">
+                                    {act.activityType.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}
+                                  </p>
+                                  <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5">
+                                    {new Date(act.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                  </span>
+                                </div>
+                                {act.description && (
+                                  <p className="text-xs text-muted-foreground mt-0.5">{act.description}</p>
+                                )}
+                                {act.dealId && (
+                                  <p className="text-[10px] text-muted-foreground mt-1">Deal linked</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </>
+            )
+          })() : (
+            <InvestorForm
+              onSuccess={handleFormSuccess}
+              onCancel={() => {
+                setIsFormOpen(false)
+                setEditingInvestor(null)
+              }}
+            />
+          )}
         </DialogContent>
       </Dialog>
 

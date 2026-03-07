@@ -266,6 +266,7 @@ export function DealForm({ initialData, dealId, onSubmit }: DealFormProps) {
                   <SelectItem value="semi">Semi-Detached</SelectItem>
                   <SelectItem value="detached">Detached</SelectItem>
                   <SelectItem value="flat">Flat</SelectItem>
+                  <SelectItem value="maisonette">Maisonette</SelectItem>
                 </SelectContent>
               </Select>
             </div>

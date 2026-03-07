@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Dialog,
   DialogContent,
@@ -33,6 +33,8 @@ import {
   User,
   Building,
   Loader2,
+  Search,
+  X,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -60,6 +62,7 @@ interface Deal {
   id: string
   address: string
   askingPrice: number
+  isReserved?: boolean
 }
 
 export function ReservationModal({
@@ -85,6 +88,13 @@ export function ReservationModal({
   const [solicitorFirm, setSolicitorFirm] = useState("")
   const [notes, setNotes] = useState("")
 
+  // Solicitor search
+  const [solicitorSearch, setSolicitorSearch] = useState("")
+  const [solicitorResults, setSolicitorResults] = useState<Array<{ id: string; fullName: string; company: string | null; email: string | null; phone: string | null; mobilePhone: string | null }>>([])
+  const [searchingContacts, setSearchingContacts] = useState(false)
+  const [showSolicitorDropdown, setShowSolicitorDropdown] = useState(false)
+  const solicitorSearchRef = useRef<HTMLDivElement>(null)
+
   // Status management (for editing)
   const [status, setStatus] = useState("pending")
   const [feePaid, setFeePaid] = useState(false)
@@ -95,6 +105,10 @@ export function ReservationModal({
 
   useEffect(() => {
     if (open) {
+      // Re-sync pre-selected IDs each time the modal opens (props may have changed since mount)
+      setSelectedInvestorId(initialInvestorId || "")
+      setSelectedDealId(initialDealId || "")
+
       // Always fetch both investors and deals when modal opens
       fetchInvestors()
       fetchDeals()
@@ -103,7 +117,7 @@ export function ReservationModal({
         fetchReservation()
       }
     }
-  }, [open, reservationId])
+  }, [open, reservationId, initialInvestorId, initialDealId])
 
   const fetchInvestors = async () => {
     setLoadingInvestors(true)
@@ -171,6 +185,60 @@ export function ReservationModal({
     } catch (error) {
       console.error("Error fetching reservation:", error)
     }
+  }
+
+  // Close solicitor dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (solicitorSearchRef.current && !solicitorSearchRef.current.contains(e.target as Node)) {
+        setShowSolicitorDropdown(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  // Search solicitor contacts with debounce
+  useEffect(() => {
+    if (!solicitorSearch.trim()) {
+      setSolicitorResults([])
+      setShowSolicitorDropdown(false)
+      return
+    }
+    const timeout = setTimeout(async () => {
+      setSearchingContacts(true)
+      try {
+        const res = await fetch(`/api/contacts?type=SOLICITOR&search=${encodeURIComponent(solicitorSearch)}&limit=8`)
+        if (res.ok) {
+          const data = await res.json()
+          setSolicitorResults(data.contacts ?? [])
+          setShowSolicitorDropdown(true)
+        }
+      } catch {
+        // silently ignore search errors
+      } finally {
+        setSearchingContacts(false)
+      }
+    }, 250)
+    return () => clearTimeout(timeout)
+  }, [solicitorSearch])
+
+  const applySolicitorContact = (contact: { fullName: string; company: string | null; email: string | null; phone: string | null; mobilePhone: string | null }) => {
+    setSolicitorName(contact.fullName)
+    setSolicitorFirm(contact.company ?? "")
+    setSolicitorEmail(contact.email ?? "")
+    setSolicitorPhone(contact.phone ?? contact.mobilePhone ?? "")
+    setSolicitorSearch("")
+    setSolicitorResults([])
+    setShowSolicitorDropdown(false)
+  }
+
+  const clearSolicitorFields = () => {
+    setSolicitorName("")
+    setSolicitorFirm("")
+    setSolicitorEmail("")
+    setSolicitorPhone("")
+    setSolicitorSearch("")
   }
 
   const handleSubmit = async () => {
@@ -290,8 +358,16 @@ export function ReservationModal({
                       </div>
                     ) : (
                       deals.map((deal) => (
-                        <SelectItem suppressHydrationWarning key={deal.id} value={deal.id}>
+                        <SelectItem
+                          suppressHydrationWarning
+                          key={deal.id}
+                          value={deal.id}
+                          disabled={!!deal.isReserved}
+                        >
                           {deal.address} - £{deal.askingPrice.toLocaleString()}
+                          {deal.isReserved && (
+                            <span className="ml-2 text-xs text-muted-foreground">(Reserved)</span>
+                          )}
                         </SelectItem>
                       ))
                     )}
@@ -304,39 +380,62 @@ export function ReservationModal({
                 )}
               </div>
 
-              {/* Investor Selection - always show */}
+              {/* Investor Selection — read-only when pre-selected from investor row */}
               <div className="space-y-2">
                 <Label htmlFor="investor">
                   <User className="h-4 w-4 inline mr-2" />
                   Investor *
                 </Label>
-                <Select
-                  value={selectedInvestorId}
-                  onValueChange={setSelectedInvestorId}
-                  disabled={!!reservationId || loadingInvestors}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={loadingInvestors ? "Loading investors..." : "Select investor"} />
-                  </SelectTrigger>
-                  <SelectContent>
+                {initialInvestorId ? (
+                  <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2.5">
+                    <User className="h-4 w-4 shrink-0 text-muted-foreground" />
                     {loadingInvestors ? (
-                      <div className="p-2 text-sm text-muted-foreground flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Loading investors...
-                      </div>
-                    ) : investors.length === 0 ? (
-                      <div className="p-2 text-sm text-muted-foreground">
-                        No investors available
-                      </div>
+                      <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Loading…
+                      </span>
+                    ) : selectedInvestor ? (
+                      <span className="text-sm">
+                        <span className="font-medium">
+                          {selectedInvestor.user.firstName} {selectedInvestor.user.lastName}
+                        </span>
+                        <span className="ml-2 text-muted-foreground text-xs">
+                          {selectedInvestor.user.email}
+                        </span>
+                      </span>
                     ) : (
-                      investors.map((investor) => (
-                        <SelectItem key={investor.id} value={investor.id}>
-                          {investor.user.firstName} {investor.user.lastName} ({investor.user.email})
-                        </SelectItem>
-                      ))
+                      <span className="text-sm text-muted-foreground">Investor not found</span>
                     )}
-                  </SelectContent>
-                </Select>
+                  </div>
+                ) : (
+                  <Select
+                    value={selectedInvestorId}
+                    onValueChange={setSelectedInvestorId}
+                    disabled={!!reservationId || loadingInvestors}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={loadingInvestors ? "Loading investors..." : "Select investor"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {loadingInvestors ? (
+                        <div className="p-2 text-sm text-muted-foreground flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Loading investors...
+                        </div>
+                      ) : investors.length === 0 ? (
+                        <div className="p-2 text-sm text-muted-foreground">
+                          No investors available
+                        </div>
+                      ) : (
+                        investors.map((investor) => (
+                          <SelectItem key={investor.id} value={investor.id}>
+                            {investor.user.firstName} {investor.user.lastName} ({investor.user.email})
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
                 {selectedInvestor && (
                   <p className="text-sm text-muted-foreground">
                     Phone: {selectedInvestor.user.phone || "N/A"}
@@ -373,6 +472,61 @@ export function ReservationModal({
 
           <TabsContent value="solicitor" className="space-y-4">
             <div className="space-y-4">
+              {/* Solicitor search from Contacts registry */}
+              <div className="space-y-2" ref={solicitorSearchRef}>
+                <Label>
+                  <Search className="h-4 w-4 inline mr-2" />
+                  Search Contacts
+                </Label>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    value={solicitorSearch}
+                    onChange={(e) => setSolicitorSearch(e.target.value)}
+                    placeholder="Type to search solicitors (e.g. TMI)…"
+                    className="pl-8"
+                    onFocus={() => solicitorResults.length > 0 && setShowSolicitorDropdown(true)}
+                  />
+                  {searchingContacts && (
+                    <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                  {showSolicitorDropdown && solicitorResults.length > 0 && (
+                    <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-md">
+                      {solicitorResults.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          className="flex w-full flex-col gap-0.5 px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:outline-none"
+                          onClick={() => applySolicitorContact(c)}
+                        >
+                          <span className="font-medium">{c.fullName}</span>
+                          {c.company && <span className="text-xs text-muted-foreground">{c.company}</span>}
+                          {c.email && <span className="text-xs text-muted-foreground">{c.email}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {showSolicitorDropdown && solicitorResults.length === 0 && !searchingContacts && solicitorSearch.trim() && (
+                    <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover px-3 py-2 text-sm text-muted-foreground shadow-md">
+                      No solicitor contacts found for "{solicitorSearch}"
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">Select a contact to auto-fill the fields below, or fill them in manually.</p>
+              </div>
+
+              <Separator />
+
+              {/* Manual fields — pre-filled when a contact is selected */}
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Solicitor Details</span>
+                {(solicitorName || solicitorFirm || solicitorEmail || solicitorPhone) && (
+                  <button type="button" onClick={clearSolicitorFields} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive">
+                    <X className="h-3 w-3" />Clear
+                  </button>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="solicitorName">
                   <Building className="h-4 w-4 inline mr-2" />

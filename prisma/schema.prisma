@@ -291,6 +291,67 @@ model CompanyProfile {
   @@map("company_profile")
 }
 
+// ============================================================================
+// CONTACTS (replaces Solicitor registry — extends to estate agents, contractors, etc.)
+// ============================================================================
+
+enum ContactType {
+  SOLICITOR
+  INVESTOR_CONTACT
+  VENDOR_CONTACT
+  ESTATE_AGENT
+  CONTRACTOR
+  OTHER
+}
+
+model Contact {
+  id           String      @id @default(cuid())
+  type         ContactType
+
+  firstName    String      @map("first_name")
+  lastName     String      @map("last_name")
+  fullName     String      @map("full_name")   // firstName + " " + lastName, stored for fast search
+
+  company      String?                          // firm name for solicitors
+  jobTitle     String?     @map("job_title")
+
+  email        String?
+  phone        String?
+  mobilePhone  String?     @map("mobile_phone")
+
+  addressLine1 String?     @map("address_line1")
+  addressLine2 String?     @map("address_line2")
+  city         String?
+  county       String?
+  postcode     String?
+
+  // Solicitor-specific (null for non-solicitors)
+  sraNumber       String?   @unique @map("sra_number")
+  sraVerified     Boolean   @default(false) @map("sra_verified")
+  sraVerifiedAt   DateTime? @map("sra_verified_at")
+  sraStatus       String?   @map("sra_status")
+  sraDisplayName  String?   @map("sra_display_name")
+  practiceAreas   String[]  @map("practice_areas")
+  website         String?
+
+  notes        String?  @db.Text
+  tags         String[]
+  isPreferred  Boolean  @default(false) @map("is_preferred")
+
+  vendorLeads  VendorLead[] @relation("VendorLeadContact")
+  investors    Investor[]   @relation("InvestorDefaultContact")
+
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([type])
+  @@index([sraNumber])
+  @@index([fullName])
+  @@index([postcode])
+  @@index([isPreferred])
+  @@map("contacts")
+}
+
 model Investor {
   id     String @id @default(uuid())
   userId String @unique @map("user_id")
@@ -325,6 +386,10 @@ model Investor {
   emailAlerts Boolean @default(true) @map("email_alerts")
   smsAlerts   Boolean @default(false) @map("sms_alerts")
 
+  // Default solicitor/contact for this investor's deals
+  defaultSolicitorId String?  @map("default_solicitor_id")
+  defaultSolicitor   Contact? @relation("InvestorDefaultContact", fields: [defaultSolicitorId], references: [id])
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -343,6 +408,7 @@ model Investor {
   @@index([pipelineStage])
   @@index([assignedToId])
   @@index([lastActivityAt])
+  @@index([defaultSolicitorId])
   @@map("investors")
 }
 
@@ -470,6 +536,7 @@ model Deal {
   @@index([dealScore])
   @@index([createdAt])
   @@index([assignedToId])
+  @@index([status, createdAt])
   @@map("deals")
 }
 
@@ -805,6 +872,10 @@ model InvestorReservation {
   // Notes
   notes String? @db.Text
 
+  // Email log — one entry per pipeline stage that triggers an email
+  // Shape: { pack_sent: { status, sentAt, to }, fee_pending: {...}, ... }
+  stageEmails Json? @map("stage_emails")
+
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
   completedAt DateTime? @map("completed_at")
@@ -813,6 +884,7 @@ model InvestorReservation {
   @@index([investorId])
   @@index([dealId])
   @@index([status])
+  @@index([dealId, status])
   @@map("investor_reservations")
 }
 
@@ -878,14 +950,15 @@ model VendorLead {
   comparablesConfidence   String?   @map("comparables_confidence") // 'HIGH', 'MEDIUM', 'LOW'
 
   // Offer Management
-  offerAmount     Decimal?  @map("offer_amount") @db.Decimal(12, 2)
-  offerPercentage Decimal?  @map("offer_percentage") @db.Decimal(5, 2)
-  offerSentAt     DateTime? @map("offer_sent_at")
-  offerAcceptedAt DateTime? @map("offer_accepted_at")
-  offerRejectedAt DateTime? @map("offer_rejected_at")
-  rejectionReason String?   @map("rejection_reason") @db.Text
-  retryCount      Int       @default(0) @map("retry_count")
-  nextRetryAt     DateTime? @map("next_retry_at")
+  offerAmount        Decimal?  @map("offer_amount") @db.Decimal(12, 2)
+  offerPercentage    Decimal?  @map("offer_percentage") @db.Decimal(5, 2)
+  offerSentAt        DateTime? @map("offer_sent_at")
+  offerAcceptedAt    DateTime? @map("offer_accepted_at")
+  offerRejectedAt    DateTime? @map("offer_rejected_at")
+  rejectionReason    String?   @map("rejection_reason") @db.Text
+  retryCount         Int       @default(0) @map("retry_count")
+  nextRetryAt        DateTime? @map("next_retry_at")
+  offerTokenVersion  Int       @default(0) @map("offer_token_version")
 
   // Retry Tracking
   videoSent   Boolean   @default(false) @map("video_sent")
@@ -920,9 +993,21 @@ model VendorLead {
   reservedByInvestorId String?   @map("reserved_by_investor_id") // Investor.id
   reservedAt           DateTime? @map("reserved_at")
 
+  // Linked solicitor/contact (from shared Contact registry — overrides investor default per deal)
+  solicitorId String?  @map("solicitor_id")
+  solicitor   Contact? @relation("VendorLeadContact", fields: [solicitorId], references: [id])
+
   // Investor Pack Tracking
   investorPackGenerationCount Int       @default(0) @map("investor_pack_generation_count")
   lastInvestorPackGeneratedAt DateTime? @map("last_investor_pack_generated_at")
+
+  // Test / Simulator mode — null on real leads
+  isTest       Boolean @default(false) @map("is_test")
+  testScenario String? @map("test_scenario") // MockScenarioId | null
+
+  // Portal Check Cache — latest check summary for quick display on Kanban / list views
+  latestCheckRisk  String?   @map("latest_check_risk")   // "clear" | "caution" | "red_flag"
+  latestCheckedAt  DateTime? @map("latest_checked_at")
 
   // Timestamps
   createdAt             DateTime  @default(now()) @map("created_at")
@@ -937,6 +1022,7 @@ model VendorLead {
   offerRetries         OfferRetry[]
   comparableProperties ComparableProperty[]
   comparablesSnapshots ComparablesSnapshot[]
+  portalChecks         VendorPropertyCheck[]
 
   @@index([pipelineStage])
   @@index([createdAt])
@@ -945,7 +1031,47 @@ model VendorLead {
   @@index([dealId])
   @@index([motivationScore])
   @@index([nextRetryAt])
+  @@index([latestCheckRisk])
+  @@index([solicitorId])
   @@map("vendor_leads")
+}
+
+model VendorPropertyCheck {
+  id           String     @id @default(cuid())
+  vendorLeadId String     @map("vendor_lead_id")
+  vendorLead   VendorLead @relation(fields: [vendorLeadId], references: [id], onDelete: Cascade)
+
+  triggeredBy String   @map("triggered_by") // "auto" | "manual"
+  triggeredAt DateTime @default(now()) @map("triggered_at")
+  completedAt DateTime? @map("completed_at")
+  durationMs  Int?      @map("duration_ms")
+
+  // Test mode
+  isMockData     Boolean @default(false) @map("is_mock_data")
+  mockScenarioId String? @map("mock_scenario_id") // MockScenarioId used, for audit
+
+  // Raw API responses (stored as JSON for debugging / re-processing)
+  portalCheckRaw    Json? @map("portal_check_raw")
+  ownershipCheckRaw Json? @map("ownership_check_raw")
+
+  // Computed results
+  overallRisk       String @default("clear") @map("overall_risk") // "clear" | "caution" | "red_flag"
+  riskScore         Int    @default(0) @map("risk_score")         // 0-100
+  summaryFlags      Json   @default("[]") @map("summary_flags")   // PortalFlag[]
+  recommendedAction String? @map("recommended_action")
+
+  // Execution status
+  checkStatus  String  @default("pending") @map("check_status") // "pending" | "running" | "success" | "failed"
+  errorMessage String? @map("error_message")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([vendorLeadId])
+  @@index([overallRisk])
+  @@index([checkStatus])
+  @@index([triggeredAt])
+  @@map("vendor_property_checks")
 }
 
 model SMSMessage {
@@ -1305,6 +1431,10 @@ model InvestorPackDelivery {
 
   // Notes
   notes String? @db.Text
+
+  // Signed tokens for unauthenticated access (investors clicking email links)
+  downloadToken String? @unique @map("download_token")
+  interestToken String? @unique @map("interest_token")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

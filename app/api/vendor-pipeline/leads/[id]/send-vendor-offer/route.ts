@@ -8,6 +8,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { sendVendorOfferEmail } from "@/lib/email"
+import { generateVendorOfferToken } from "@/lib/vendor-token"
 
 export async function POST(
   request: NextRequest,
@@ -52,11 +53,27 @@ export async function POST(
         return NextResponse.json({ error: "Vendor has no email address" }, { status: 400 })
       }
 
+      // Increment offerTokenVersion to invalidate any previous accept/reject links
+      const newVersion = (lead.offerTokenVersion ?? 0) + 1
+      await prisma.vendorLead.update({
+        where: { id: params.id },
+        data: { offerTokenVersion: newVersion },
+      })
+
+      // Generate CTA links
+      const appUrl = process.env.APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000"
+      const acceptToken = generateVendorOfferToken(params.id, newVersion, "accept")
+      const rejectToken = generateVendorOfferToken(params.id, newVersion, "reject")
+      const acceptLink = `${appUrl}/api/vendor-response?token=${acceptToken}`
+      const rejectLink = `${appUrl}/api/vendor-response?token=${rejectToken}`
+
       const emailResult = await sendVendorOfferEmail({
         to: vendorEmail,
         vendorName: lead.vendorName,
         propertyAddress,
         message,
+        acceptLink,
+        rejectLink,
       })
       const emailSuccess = emailResult.success
       const noSmtp = emailResult.noSmtp ?? false

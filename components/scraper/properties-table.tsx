@@ -47,32 +47,33 @@ import type { PropertyListingForClient, BmvIndicatorsData } from "@/types/proper
 
 const LIMIT = 20
 
+// Source badge classes (keep inline — scraper-specific palette)
 const SOURCE_COLORS: Record<string, string> = {
-  RIGHTMOVE: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  ZOOPLA: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  ONTHEMARKET: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
-  PRIMELOCATION: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+  RIGHTMOVE:     "bg-blue-100 text-blue-800",
+  ZOOPLA:        "bg-purple-100 text-purple-800",
+  ONTHEMARKET:   "bg-emerald-100 text-emerald-800",
+  PRIMELOCATION: "bg-orange-100 text-orange-800",
 }
 
 const SOURCE_LABELS: Record<string, string> = {
-  RIGHTMOVE: "Rightmove",
-  ZOOPLA: "Zoopla",
-  ONTHEMARKET: "OnTheMarket",
+  RIGHTMOVE:     "Rightmove",
+  ZOOPLA:        "Zoopla",
+  ONTHEMARKET:   "OnTheMarket",
   PRIMELOCATION: "PrimeLocation",
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  PENDING: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
-  AUTO_APPROVED: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  APPROVED: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  REJECTED: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+  PENDING:      "bg-amber-100 text-amber-800",
+  AUTO_APPROVED:"bg-blue-100 text-blue-800",
+  APPROVED:     "bg-green-100 text-green-800",
+  REJECTED:     "bg-red-100 text-red-800",
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  PENDING: "Pending",
-  AUTO_APPROVED: "Auto",
-  APPROVED: "Approved",
-  REJECTED: "Rejected",
+  PENDING:      "Pending",
+  AUTO_APPROVED:"Auto",
+  APPROVED:     "Approved",
+  REJECTED:     "Rejected",
 }
 
 type ViewMode = "table" | "grid"
@@ -108,12 +109,12 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
   const [filters, setFilters] = useState<Filters>({ search: "", source: "", reviewStatus: "", category: "", favoritesOnly: false })
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [selectedListing, setSelectedListing] = useState<PropertyListingForClient | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submittingIds, setSubmittingIds] = useState<Set<string>>(new Set())
+  const [isBulkActing, setIsBulkActing] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null)
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const searchTimer = useRef<NodeJS.Timeout | null>(null)
 
-  // Debounce search input
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current)
     searchTimer.current = setTimeout(() => setDebouncedSearch(filters.search), 400)
@@ -123,12 +124,7 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
   const fetchListings = useCallback(async (pageNum = 1) => {
     setLoading(true)
     try {
-      const params = new URLSearchParams({
-        page: String(pageNum),
-        limit: String(LIMIT),
-        sortField,
-        sortDirection,
-      })
+      const params = new URLSearchParams({ page: String(pageNum), limit: String(LIMIT), sortField, sortDirection })
       if (debouncedSearch) params.set("search", debouncedSearch)
       if (filters.source) params.set("source", filters.source)
       if (filters.reviewStatus) params.set("reviewStatus", filters.reviewStatus)
@@ -147,17 +143,14 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
     } finally {
       setLoading(false)
     }
-  // refreshKey is intentionally included so a completed scrape triggers a re-fetch
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortField, sortDirection, debouncedSearch, filters.source, filters.reviewStatus, filters.category, filters.favoritesOnly, refreshKey])
 
-  // Reset to page 1 when filters/sort change
   useEffect(() => { fetchListings(1) }, [fetchListings])
 
   const setFilter = (key: keyof Filters, value: string) =>
     setFilters(prev => ({ ...prev, [key]: value }))
 
-  // ── Selection ──
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev)
@@ -167,14 +160,9 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
   }
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === listings.length) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(listings.map(l => l.id)))
-    }
+    setSelectedIds(selectedIds.size === listings.length ? new Set() : new Set(listings.map(l => l.id)))
   }
 
-  // ── Sort ──
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection(d => d === "asc" ? "desc" : "asc")
@@ -186,14 +174,11 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <ArrowUpDown className="h-3 w-3 opacity-40" />
-    return sortDirection === "asc"
-      ? <ArrowUp className="h-3 w-3" />
-      : <ArrowDown className="h-3 w-3" />
+    return sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
   }
 
-  // ── Review ──
   const handleReview = async (id: string, action: "APPROVED" | "REJECTED", notes?: string) => {
-    setIsSubmitting(true)
+    setSubmittingIds(prev => new Set(prev).add(id))
     try {
       const res = await fetch(`/api/review-queue/${id}/review`, {
         method: "POST",
@@ -201,7 +186,6 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
         body: JSON.stringify({ action, notes }),
       })
       if (!res.ok) throw new Error((await res.json()).error || "Failed")
-
       setListings(prev => prev.map(l => l.id === id ? { ...l, reviewStatus: action } : l))
       setSelectedListing(null)
       toast.success(`Property ${action === "APPROVED" ? "approved" : "rejected"}`)
@@ -209,15 +193,15 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
     } catch (e: any) {
       toast.error(e.message)
     } finally {
-      setIsSubmitting(false)
+      setSubmittingIds(prev => { const next = new Set(prev); next.delete(id); return next })
     }
   }
 
-  // ── Bulk Review ──
   const handleBulkReview = async (action: "APPROVED" | "REJECTED") => {
     const ids = Array.from(selectedIds)
-    if (ids.length === 0) return
-    setIsSubmitting(true)
+    if (!ids.length) return
+    setIsBulkActing(true)
+    setSubmittingIds(new Set(ids))
     try {
       const res = await fetch("/api/review-queue/bulk", {
         method: "POST",
@@ -233,11 +217,11 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
     } catch (e: any) {
       toast.error(e.message)
     } finally {
-      setIsSubmitting(false)
+      setIsBulkActing(false)
+      setSubmittingIds(new Set())
     }
   }
 
-  // ── Delete ──
   const confirmDelete = async (id: string) => {
     try {
       const res = await fetch(`/api/properties/listings/${id}`, { method: "DELETE" })
@@ -255,7 +239,7 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedIds)
     setBulkDeleteConfirm(false)
-    setIsSubmitting(true)
+    setIsBulkActing(true)
     try {
       await Promise.all(ids.map(id => fetch(`/api/properties/listings/${id}`, { method: "DELETE" })))
       setListings(prev => prev.filter(l => !selectedIds.has(l.id)))
@@ -266,11 +250,10 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
     } catch (e: any) {
       toast.error(e.message)
     } finally {
-      setIsSubmitting(false)
+      setIsBulkActing(false)
     }
   }
 
-  // ── Favorite toggle ──
   const toggleFavorite = async (id: string, current: boolean) => {
     const next = !current
     setListings(prev => prev.map(l => l.id === id ? { ...l, isFavorited: next } : l))
@@ -290,173 +273,175 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
   return (
     <div className="space-y-4">
       {/* ── Toolbar ── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search address, title, postcode..."
-            value={filters.search}
-            onChange={e => setFilter("search", e.target.value)}
-            className="pl-9"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Source filter */}
-          <Select value={filters.source || "all"} onValueChange={v => setFilter("source", v === "all" ? "" : v)}>
-            <SelectTrigger className="w-36 h-9">
-              <SelectValue placeholder="All sources" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All sources</SelectItem>
-              <SelectItem value="RIGHTMOVE">Rightmove</SelectItem>
-              <SelectItem value="ZOOPLA">Zoopla</SelectItem>
-              <SelectItem value="ONTHEMARKET">OnTheMarket</SelectItem>
-              <SelectItem value="PRIMELOCATION">PrimeLocation</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Status filter */}
-          <Select value={filters.reviewStatus || "all"} onValueChange={v => setFilter("reviewStatus", v === "all" ? "" : v)}>
-            <SelectTrigger className="w-32 h-9">
-              <SelectValue placeholder="All status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All status</SelectItem>
-              <SelectItem value="PENDING">Pending</SelectItem>
-              <SelectItem value="AUTO_APPROVED">Auto-approved</SelectItem>
-              <SelectItem value="APPROVED">Approved</SelectItem>
-              <SelectItem value="REJECTED">Rejected</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Category filter */}
-          <Select value={filters.category || "all"} onValueChange={v => setFilter("category", v === "all" ? "" : v)}>
-            <SelectTrigger className="w-36 h-9">
-              <SelectValue placeholder="All categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All categories</SelectItem>
-              <SelectItem value="RESIDENTIAL">Residential</SelectItem>
-              <SelectItem value="COMMERCIAL">Commercial</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Favourites filter */}
-          <Button
-            variant={filters.favoritesOnly ? "default" : "outline"}
-            size="sm"
-            className={`h-9 ${filters.favoritesOnly ? "bg-amber-500 hover:bg-amber-600 border-amber-500 text-white" : ""}`}
-            onClick={() => setFilters(prev => ({ ...prev, favoritesOnly: !prev.favoritesOnly }))}
-          >
-            <Star className={`mr-1.5 h-3.5 w-3.5 ${filters.favoritesOnly ? "fill-white" : ""}`} />
-            Favourites
-          </Button>
-
-          {activeFilterCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-9 text-muted-foreground"
-              onClick={() => setFilters(prev => ({ ...prev, source: "", reviewStatus: "", category: "", favoritesOnly: false }))}
-            >
-              Clear filters
-              <Badge variant="secondary" className="ml-1.5 h-4 w-4 p-0 flex items-center justify-center text-[10px]">
-                {activeFilterCount}
-              </Badge>
-            </Button>
-          )}
-
-          {/* Sort */}
-          <div className="flex items-center gap-1">
-            <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            <Select value={sortField} onValueChange={(v) => { setSortField(v as SortField); setSortDirection("desc") }}>
-              <SelectTrigger className="w-40 h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="scrapedAt">Date scraped</SelectItem>
-                <SelectItem value="price">Price</SelectItem>
-                <SelectItem value="daysOnMarket">Days on market</SelectItem>
-                <SelectItem value="bedrooms">Bedrooms</SelectItem>
-                <SelectItem value="propertyType">Property type</SelectItem>
-                <SelectItem value="title">Title</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 px-2.5"
-              onClick={() => setSortDirection(d => d === "asc" ? "desc" : "asc")}
-            >
-              {sortDirection === "asc" ? "Asc" : "Desc"}
-            </Button>
+      <div className="ds-card p-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* Search */}
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search address, title, postcode…"
+              value={filters.search}
+              onChange={e => setFilter("search", e.target.value)}
+              className="pl-9 h-9 text-sm"
+            />
           </div>
 
-          {/* View toggle */}
-          <div className="flex rounded-md border overflow-hidden">
-            <button
-              className={`px-2.5 py-1.5 flex items-center gap-1 text-xs transition-colors ${viewMode === "table" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
-              onClick={() => setViewMode("table")}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Source */}
+            <Select value={filters.source || "all"} onValueChange={v => setFilter("source", v === "all" ? "" : v)}>
+              <SelectTrigger className="h-9 w-36 text-sm">
+                <SelectValue placeholder="All sources" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All sources</SelectItem>
+                <SelectItem value="RIGHTMOVE">Rightmove</SelectItem>
+                <SelectItem value="ZOOPLA">Zoopla</SelectItem>
+                <SelectItem value="ONTHEMARKET">OnTheMarket</SelectItem>
+                <SelectItem value="PRIMELOCATION">PrimeLocation</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Status */}
+            <Select value={filters.reviewStatus || "all"} onValueChange={v => setFilter("reviewStatus", v === "all" ? "" : v)}>
+              <SelectTrigger className="h-9 w-32 text-sm">
+                <SelectValue placeholder="All status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All status</SelectItem>
+                <SelectItem value="PENDING">Pending</SelectItem>
+                <SelectItem value="AUTO_APPROVED">Auto-approved</SelectItem>
+                <SelectItem value="APPROVED">Approved</SelectItem>
+                <SelectItem value="REJECTED">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Category */}
+            <Select value={filters.category || "all"} onValueChange={v => setFilter("category", v === "all" ? "" : v)}>
+              <SelectTrigger className="h-9 w-36 text-sm">
+                <SelectValue placeholder="All categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All categories</SelectItem>
+                <SelectItem value="RESIDENTIAL">Residential</SelectItem>
+                <SelectItem value="COMMERCIAL">Commercial</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Favourites */}
+            <Button
+              variant={filters.favoritesOnly ? "default" : "outline"}
+              size="sm"
+              className={`h-9 text-sm ${filters.favoritesOnly ? "bg-[#F5A623] hover:bg-[#E09518] border-[#F5A623] text-white" : ""}`}
+              onClick={() => setFilters(prev => ({ ...prev, favoritesOnly: !prev.favoritesOnly }))}
             >
-              <Table2 className="h-3.5 w-3.5" />
-              Table
-            </button>
-            <button
-              className={`px-2.5 py-1.5 flex items-center gap-1 text-xs transition-colors border-l ${viewMode === "grid" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
-              onClick={() => setViewMode("grid")}
-            >
-              <LayoutGrid className="h-3.5 w-3.5" />
-              Grid
-            </button>
+              <Star className={`mr-1.5 h-3.5 w-3.5 ${filters.favoritesOnly ? "fill-white" : ""}`} />
+              Favourites
+            </Button>
+
+            {activeFilterCount > 0 && (
+              <button
+                type="button"
+                className="btn-ghost h-9 text-sm flex items-center gap-1.5"
+                onClick={() => setFilters(prev => ({ ...prev, source: "", reviewStatus: "", category: "", favoritesOnly: false }))}
+              >
+                <X className="h-3.5 w-3.5" />
+                Clear
+                <span className="rounded-full bg-gray-200 px-1.5 py-0 text-[10px] font-semibold text-gray-600">
+                  {activeFilterCount}
+                </span>
+              </button>
+            )}
+
+            {/* Sort */}
+            <div className="flex items-center gap-1">
+              <ArrowUpDown className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+              <Select value={sortField} onValueChange={(v) => { setSortField(v as SortField); setSortDirection("desc") }}>
+                <SelectTrigger className="h-9 w-40 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="scrapedAt">Date scraped</SelectItem>
+                  <SelectItem value="price">Price</SelectItem>
+                  <SelectItem value="daysOnMarket">Days on market</SelectItem>
+                  <SelectItem value="bedrooms">Bedrooms</SelectItem>
+                  <SelectItem value="propertyType">Property type</SelectItem>
+                  <SelectItem value="title">Title</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 px-2.5 text-sm"
+                onClick={() => setSortDirection(d => d === "asc" ? "desc" : "asc")}
+              >
+                {sortDirection === "asc" ? "Asc" : "Desc"}
+              </Button>
+            </div>
+
+            {/* View toggle */}
+            <div className="flex rounded-lg border border-[var(--ds-border)] overflow-hidden">
+              <button
+                type="button"
+                className={`flex items-center gap-1 px-2.5 py-1.5 text-xs transition-colors ${viewMode === "table" ? "bg-[#1A1A1F] text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
+                onClick={() => setViewMode("table")}
+              >
+                <Table2 className="h-3.5 w-3.5" /> Table
+              </button>
+              <button
+                type="button"
+                className={`flex items-center gap-1 px-2.5 py-1.5 text-xs transition-colors border-l border-[var(--ds-border)] ${viewMode === "grid" ? "bg-[#1A1A1F] text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
+                onClick={() => setViewMode("grid")}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" /> Grid
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* ── Bulk Actions Bar ── */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-2 rounded-lg bg-muted/80 border px-3 py-2 text-sm">
-          <span className="font-medium">{selectedIds.size} selected</span>
+        <div className="ds-card flex items-center gap-3 px-4 py-2.5 text-sm">
+          <span className="font-semibold text-gray-700">{selectedIds.size} selected</span>
           <div className="ml-auto flex gap-2">
-            <Button size="sm" variant="outline" className="h-7 text-green-600 border-green-200 hover:bg-green-50"
-              onClick={() => handleBulkReview("APPROVED")} disabled={isSubmitting}>
-              <CheckCheck className="mr-1 h-3 w-3" />
-              Approve
+            <Button size="sm" variant="outline" className="h-7 text-green-600 border-green-200 hover:bg-green-50 text-xs"
+              onClick={() => handleBulkReview("APPROVED")} disabled={isBulkActing}>
+              <CheckCheck className="mr-1 h-3 w-3" /> Approve
             </Button>
-            <Button size="sm" variant="outline" className="h-7 text-red-600 border-red-200 hover:bg-red-50"
-              onClick={() => handleBulkReview("REJECTED")} disabled={isSubmitting}>
-              <XCircle className="mr-1 h-3 w-3" />
-              Reject
+            <Button size="sm" variant="outline" className="h-7 text-red-600 border-red-200 hover:bg-red-50 text-xs"
+              onClick={() => handleBulkReview("REJECTED")} disabled={isBulkActing}>
+              <XCircle className="mr-1 h-3 w-3" /> Reject
             </Button>
-            <Button size="sm" variant="outline" className="h-7 text-red-600 border-red-200 hover:bg-red-50"
-              onClick={() => setBulkDeleteConfirm(true)} disabled={isSubmitting}>
-              <Trash2 className="mr-1 h-3 w-3" />
-              Delete
+            <Button size="sm" variant="outline" className="h-7 text-red-600 border-red-200 hover:bg-red-50 text-xs"
+              onClick={() => setBulkDeleteConfirm(true)} disabled={isBulkActing}>
+              <Trash2 className="mr-1 h-3 w-3" /> Delete
             </Button>
-            <Button size="sm" variant="ghost" className="h-7"
+            <button type="button" className="btn-ghost h-7 text-xs px-2"
               onClick={() => setSelectedIds(new Set())}>
               Deselect
-            </Button>
+            </button>
           </div>
         </div>
       )}
 
       {/* ── Results count ── */}
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
+      <div className="flex items-center justify-between text-sm text-gray-400">
         <span suppressHydrationWarning>
           {loading ? "Loading…" : `${pagination.total.toLocaleString()} properties`}
         </span>
-        <span>{pagination.page > 1 || pagination.totalPages > 1 ? `Page ${pagination.page} of ${pagination.totalPages}` : ""}</span>
+        {(pagination.page > 1 || pagination.totalPages > 1) && (
+          <span>Page {pagination.page} of {pagination.totalPages}</span>
+        )}
       </div>
 
       {/* ── Table View ── */}
       {viewMode === "table" && (
-        <div className="rounded-lg border overflow-hidden">
+        <div className="ds-card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 border-b">
+            <table className="w-full">
+              <thead>
                 <tr>
-                  <th className="w-10 px-3 py-3 text-left">
+                  <th className="table-header w-10">
                     <input
                       type="checkbox"
                       className="rounded"
@@ -464,207 +449,202 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
                       onChange={toggleSelectAll}
                     />
                   </th>
-                  <th className="w-10 px-2 py-3" />
-                  <th className="px-3 py-3 text-left font-medium">
-                    <button className="flex items-center gap-1 hover:text-foreground" onClick={() => handleSort("title")}>
+                  <th className="table-header w-16" />
+                  <th className="table-header">
+                    <button className="flex items-center gap-1 hover:text-gray-600" onClick={() => handleSort("title")}>
                       Property <SortIcon field="title" />
                     </button>
                   </th>
-                  <th className="px-3 py-3 text-left font-medium whitespace-nowrap">Source</th>
-                  <th className="px-3 py-3 text-left font-medium">
-                    <button className="flex items-center gap-1 hover:text-foreground" onClick={() => handleSort("price")}>
+                  <th className="table-header whitespace-nowrap">Source</th>
+                  <th className="table-header">
+                    <button className="flex items-center gap-1 hover:text-gray-600" onClick={() => handleSort("price")}>
                       Price <SortIcon field="price" />
                     </button>
                   </th>
-                  <th className="px-3 py-3 text-left font-medium whitespace-nowrap">Beds / Size</th>
-                  <th className="px-3 py-3 text-left font-medium whitespace-nowrap">BMV</th>
-                  <th className="px-3 py-3 text-left font-medium">Status</th>
-                  <th className="px-3 py-3 text-left font-medium">
-                    <button className="flex items-center gap-1 hover:text-foreground whitespace-nowrap" onClick={() => handleSort("daysOnMarket")}>
+                  <th className="table-header whitespace-nowrap">Beds / Size</th>
+                  <th className="table-header">BMV</th>
+                  <th className="table-header">Status</th>
+                  <th className="table-header">
+                    <button className="flex items-center gap-1 hover:text-gray-600 whitespace-nowrap" onClick={() => handleSort("daysOnMarket")}>
                       Days <SortIcon field="daysOnMarket" />
                     </button>
                   </th>
-                  <th className="px-3 py-3 text-left font-medium">
-                    <button className="flex items-center gap-1 hover:text-foreground whitespace-nowrap" onClick={() => handleSort("scrapedAt")}>
+                  <th className="table-header">
+                    <button className="flex items-center gap-1 hover:text-gray-600 whitespace-nowrap" onClick={() => handleSort("scrapedAt")}>
                       Scraped <SortIcon field="scrapedAt" />
                     </button>
                   </th>
-                  <th className="px-3 py-3 text-right font-medium">Actions</th>
+                  <th className="table-header text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={11} className="py-16 text-center text-muted-foreground">
+                    <td colSpan={11} className="table-cell py-16 text-center text-gray-400">
                       <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
                       Loading properties…
                     </td>
                   </tr>
                 ) : listings.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="py-16 text-center text-muted-foreground">
+                    <td colSpan={11} className="table-cell py-16 text-center text-gray-400">
                       No properties found
                     </td>
                   </tr>
-                ) : (
-                  listings.map(listing => {
-                    const bmv = listing.bmvIndicators as BmvIndicatorsData
-                    const address = listing.address as any
-                    const images = listing.images as string[]
-                    return (
-                      <tr
-                        key={listing.id}
-                        className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${selectedIds.has(listing.id) ? "bg-muted/50" : ""}`}
-                      >
-                        {/* Checkbox */}
-                        <td className="px-3 py-2.5">
-                          <input
-                            type="checkbox"
-                            className="rounded"
-                            checked={selectedIds.has(listing.id)}
-                            onChange={() => toggleSelect(listing.id)}
-                          />
-                        </td>
+                ) : listings.map(listing => {
+                  const bmv = listing.bmvIndicators as BmvIndicatorsData
+                  const address = listing.address as any
+                  const images = listing.images as string[]
+                  return (
+                    <tr
+                      key={listing.id}
+                      className={`table-row ${selectedIds.has(listing.id) ? "bg-[#EFF6FF]" : ""}`}
+                    >
+                      {/* Checkbox */}
+                      <td className="table-cell">
+                        <input type="checkbox" className="rounded"
+                          checked={selectedIds.has(listing.id)}
+                          onChange={() => toggleSelect(listing.id)} />
+                      </td>
 
-                        {/* Thumbnail */}
-                        <td className="px-2 py-2.5">
-                          {images?.[0] ? (
-                            <img
-                              src={images[0]}
-                              alt=""
-                              className="h-9 w-14 rounded object-cover flex-shrink-0"
-                            />
-                          ) : (
-                            <div className="h-9 w-14 rounded bg-muted flex-shrink-0" />
-                          )}
-                        </td>
+                      {/* Thumbnail */}
+                      <td className="table-cell">
+                        {images?.[0] ? (
+                          <img src={images[0]} alt="" className="h-9 w-14 rounded-md object-cover" />
+                        ) : (
+                          <div className="h-9 w-14 rounded-md bg-gray-100" />
+                        )}
+                      </td>
 
-                        {/* Property */}
-                        <td className="px-3 py-2.5 max-w-[220px]">
-                          <p className="font-medium truncate text-xs">{listing.title}</p>
-                          <p className="text-muted-foreground truncate text-[11px]">
-                            {address?.displayAddress}
-                            {address?.postcode && ` · ${address.postcode}`}
-                          </p>
-                        </td>
+                      {/* Property */}
+                      <td className="table-cell max-w-[220px]">
+                        <p className="font-medium text-xs text-gray-800 truncate">{listing.title}</p>
+                        <p className="text-gray-400 truncate text-[11px] mt-0.5">
+                          {address?.displayAddress}
+                          {address?.postcode && ` · ${address.postcode}`}
+                        </p>
+                      </td>
 
-                        {/* Source */}
-                        <td className="px-3 py-2.5">
-                          <Badge className={`text-[10px] px-1.5 py-0 ${SOURCE_COLORS[listing.source] || ""}`}>
-                            {SOURCE_LABELS[listing.source] || listing.source}
-                          </Badge>
-                        </td>
+                      {/* Source */}
+                      <td className="table-cell">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${SOURCE_COLORS[listing.source] || "bg-gray-100 text-gray-600"}`}>
+                          {SOURCE_LABELS[listing.source] || listing.source}
+                        </span>
+                      </td>
 
-                        {/* Price */}
-                        <td className="px-3 py-2.5 font-semibold whitespace-nowrap" suppressHydrationWarning>
-                          £{listing.price.toLocaleString()}
-                        </td>
+                      {/* Price */}
+                      <td className="table-cell font-semibold text-gray-800 whitespace-nowrap" suppressHydrationWarning>
+                        £{listing.price.toLocaleString()}
+                      </td>
 
-                        {/* Beds / Size */}
-                        <td className="px-3 py-2.5">
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            {listing.bedrooms > 0 && (
-                              <span className="flex items-center gap-0.5">
-                                <Bed className="h-3 w-3" />{listing.bedrooms}
-                              </span>
-                            )}
-                            {listing.bathrooms > 0 && (
-                              <span className="flex items-center gap-0.5">
-                                <Bath className="h-3 w-3" />{listing.bathrooms}
-                              </span>
-                            )}
-                          </div>
-                          {listing.squareFeet && (
-                            <div suppressHydrationWarning className="text-[11px] text-muted-foreground mt-0.5">
-                              {listing.squareFeet.toLocaleString()} sq ft
-                            </div>
-                          )}
-                        </td>
-
-                        {/* BMV Score */}
-                        <td className="px-3 py-2.5">
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-12 h-1.5 rounded-full bg-muted overflow-hidden">
-                              <div
-                                className={`h-full rounded-full ${bmv?.bmvScore >= 60 ? "bg-green-500" : bmv?.bmvScore >= 30 ? "bg-yellow-500" : "bg-gray-300"}`}
-                                style={{ width: `${bmv?.bmvScore ?? 0}%` }}
-                              />
-                            </div>
-                            <span className={`text-xs font-medium ${bmv?.bmvScore >= 60 ? "text-green-600" : bmv?.bmvScore >= 30 ? "text-yellow-600" : "text-muted-foreground"}`}>
-                              {bmv?.bmvScore ?? 0}
+                      {/* Beds / Size */}
+                      <td className="table-cell">
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          {listing.bedrooms > 0 && (
+                            <span className="flex items-center gap-0.5">
+                              <Bed className="h-3 w-3" />{listing.bedrooms}
                             </span>
+                          )}
+                          {listing.bathrooms > 0 && (
+                            <span className="flex items-center gap-0.5">
+                              <Bath className="h-3 w-3" />{listing.bathrooms}
+                            </span>
+                          )}
+                        </div>
+                        {listing.squareFeet && (
+                          <p suppressHydrationWarning className="text-[11px] text-gray-400 mt-0.5">
+                            {listing.squareFeet.toLocaleString()} sq ft
+                          </p>
+                        )}
+                      </td>
+
+                      {/* BMV Score */}
+                      <td className="table-cell">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-12 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${bmv?.bmvScore >= 60 ? "bg-green-500" : bmv?.bmvScore >= 30 ? "bg-yellow-500" : "bg-gray-300"}`}
+                              style={{ width: `${bmv?.bmvScore ?? 0}%` }}
+                            />
                           </div>
-                        </td>
+                          <span className={`text-xs font-semibold ${bmv?.bmvScore >= 60 ? "text-green-600" : bmv?.bmvScore >= 30 ? "text-yellow-600" : "text-gray-400"}`}>
+                            {bmv?.bmvScore ?? 0}
+                          </span>
+                        </div>
+                      </td>
 
-                        {/* Status */}
-                        <td className="px-3 py-2.5">
-                          <Badge className={`text-[10px] px-1.5 py-0 ${STATUS_STYLES[listing.reviewStatus] || ""}`}>
-                            {STATUS_LABELS[listing.reviewStatus] || listing.reviewStatus}
-                          </Badge>
-                        </td>
+                      {/* Status */}
+                      <td className="table-cell">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_STYLES[listing.reviewStatus] || "bg-gray-100 text-gray-600"}`}>
+                          {STATUS_LABELS[listing.reviewStatus] || listing.reviewStatus}
+                        </span>
+                      </td>
 
-                        {/* Days on market */}
-                        <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
-                          {listing.daysOnMarket > 0
-                            ? `${listing.daysOnMarket}d`
-                            : listing.daysOnMarket < 0
-                              ? `${Math.abs(listing.daysOnMarket)}d+`
-                              : "—"}
-                        </td>
+                      {/* Days */}
+                      <td className="table-cell text-xs text-gray-400 whitespace-nowrap">
+                        {listing.daysOnMarket > 0
+                          ? `${listing.daysOnMarket}d`
+                          : listing.daysOnMarket < 0
+                            ? `${Math.abs(listing.daysOnMarket)}d+`
+                            : "—"}
+                      </td>
 
-                        {/* Scraped */}
-                        <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap" suppressHydrationWarning>
-                          {new Date(listing.scrapedAt).toLocaleDateString()}
-                        </td>
+                      {/* Scraped */}
+                      <td className="table-cell text-xs text-gray-400 whitespace-nowrap" suppressHydrationWarning>
+                        {new Date(listing.scrapedAt).toLocaleDateString()}
+                      </td>
 
-                        {/* Actions */}
-                        <td className="px-3 py-2.5">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button size="icon" variant="ghost"
-                              className={`h-7 w-7 ${listing.isFavorited ? "text-amber-500 hover:text-amber-600" : "text-muted-foreground"}`}
-                              title={listing.isFavorited ? "Remove favourite" : "Add to favourites"}
-                              onClick={() => toggleFavorite(listing.id, listing.isFavorited)}>
-                              <Star className={`h-3.5 w-3.5 ${listing.isFavorited ? "fill-amber-400" : ""}`} />
+                      {/* Actions */}
+                      <td className="table-cell">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button size="icon" variant="ghost"
+                            className={`h-7 w-7 ${listing.isFavorited ? "text-[#F5A623] hover:text-[#E09518]" : "text-gray-400"}`}
+                            title={listing.isFavorited ? "Remove favourite" : "Add to favourites"}
+                            onClick={() => toggleFavorite(listing.id, listing.isFavorited)}>
+                            <Star className={`h-3.5 w-3.5 ${listing.isFavorited ? "fill-[#F5A623]" : ""}`} />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-gray-400"
+                            title="View details"
+                            onClick={() => setSelectedListing(listing)}>
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
+                          {listing.reviewStatus !== "APPROVED" && (
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600 hover:bg-green-50"
+                              title="Approve"
+                              onClick={() => handleReview(listing.id, "APPROVED")}
+                              disabled={submittingIds.has(listing.id)}>
+                              {submittingIds.has(listing.id)
+                                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                : <Check className="h-3.5 w-3.5" />}
                             </Button>
-                            <Button size="icon" variant="ghost" className="h-7 w-7"
-                              title="View details"
-                              onClick={() => setSelectedListing(listing)}>
-                              <Eye className="h-3.5 w-3.5" />
+                          )}
+                          {listing.reviewStatus !== "REJECTED" && (
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500 hover:bg-red-50"
+                              title="Reject"
+                              onClick={() => handleReview(listing.id, "REJECTED")}
+                              disabled={submittingIds.has(listing.id)}>
+                              {submittingIds.has(listing.id)
+                                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                : <X className="h-3.5 w-3.5" />}
                             </Button>
-                            {listing.reviewStatus !== "APPROVED" && (
-                              <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                title="Approve"
-                                onClick={() => handleReview(listing.id, "APPROVED")}
-                                disabled={isSubmitting}>
-                                <Check className="h-3.5 w-3.5" />
+                          )}
+                          {listing.listingUrl && (
+                            <a href={listing.listingUrl} target="_blank" rel="noopener noreferrer">
+                              <Button size="icon" variant="ghost" className="h-7 w-7 text-gray-400" title="View original">
+                                <ExternalLink className="h-3.5 w-3.5" />
                               </Button>
-                            )}
-                            {listing.reviewStatus !== "REJECTED" && (
-                              <Button size="icon" variant="ghost" className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                title="Reject"
-                                onClick={() => handleReview(listing.id, "REJECTED")}
-                                disabled={isSubmitting}>
-                                <X className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-                            {listing.listingUrl && (
-                              <a href={listing.listingUrl} target="_blank" rel="noopener noreferrer">
-                                <Button size="icon" variant="ghost" className="h-7 w-7" title="View original">
-                                  <ExternalLink className="h-3.5 w-3.5" />
-                                </Button>
-                              </a>
-                            )}
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-red-600 hover:bg-red-50"
-                              title="Delete"
-                              onClick={() => setDeleteTarget({ id: listing.id, title: listing.title })}>
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })
-                )}
+                            </a>
+                          )}
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                            title="Delete"
+                            onClick={() => setDeleteTarget({ id: listing.id, title: listing.title })}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -674,13 +654,13 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
       {/* ── Grid View ── */}
       {viewMode === "grid" && (
         loading ? (
-          <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <div className="flex items-center justify-center py-16 text-gray-400">
             <Loader2 className="h-5 w-5 animate-spin mr-2" />
             Loading properties…
           </div>
         ) : listings.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
-            <p className="text-lg font-medium">No properties found</p>
+          <div className="flex flex-col items-center justify-center py-16 text-center text-gray-400">
+            <p className="text-base font-medium text-gray-500">No properties found</p>
             <p className="text-sm mt-1">Try adjusting your filters</p>
           </div>
         ) : (
@@ -692,7 +672,7 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
                 onApprove={id => handleReview(id, "APPROVED")}
                 onReject={id => handleReview(id, "REJECTED")}
                 onViewDetails={() => setSelectedListing(listing)}
-                isSubmitting={isSubmitting}
+                isSubmitting={submittingIds.has(listing.id)}
               />
             ))}
           </div>
@@ -702,7 +682,7 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
       {/* ── Pagination ── */}
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground" suppressHydrationWarning>
+          <p className="text-sm text-gray-400" suppressHydrationWarning>
             Showing {((pagination.page - 1) * LIMIT) + 1}–{Math.min(pagination.page * LIMIT, pagination.total)} of {pagination.total.toLocaleString()}
           </p>
           <div className="flex items-center gap-1">
@@ -712,7 +692,6 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
               <ChevronLeft className="h-4 w-4" />
             </Button>
             {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-              // Show pages around current page
               const totalP = pagination.totalPages
               const cur = pagination.page
               let start = Math.max(1, cur - 2)
@@ -720,8 +699,9 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
               start = Math.max(1, end - 4)
               return start + i
             }).filter(p => p <= pagination.totalPages).map(p => (
-              <Button key={p} variant={p === pagination.page ? "default" : "outline"}
-                size="sm" className="h-8 w-8 p-0 text-xs"
+              <Button key={p}
+                variant={p === pagination.page ? "default" : "outline"}
+                size="sm" className={`h-8 w-8 p-0 text-xs ${p === pagination.page ? "bg-[#1A1A1F] text-white hover:bg-[#2A2A32]" : ""}`}
                 onClick={() => fetchListings(p)}>
                 {p}
               </Button>
@@ -735,47 +715,37 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
         </div>
       )}
 
-      {/* ── Detail / Review Modal ── */}
+      {/* ── Modals ── */}
       <PropertyDetailModal
         listing={selectedListing}
         open={!!selectedListing}
         onClose={() => setSelectedListing(null)}
         onReview={handleReview}
-        isSubmitting={isSubmitting}
+        isSubmitting={selectedListing ? submittingIds.has(selectedListing.id) : false}
       />
 
-      {/* ── Single Delete Confirm ── */}
       <Dialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete property?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{deleteTarget?.title}</span> will be permanently removed from the database.
+          <DialogHeader><DialogTitle>Delete property?</DialogTitle></DialogHeader>
+          <p className="text-sm text-gray-500">
+            <span className="font-medium text-gray-800">{deleteTarget?.title}</span> will be permanently removed.
           </p>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => deleteTarget && confirmDelete(deleteTarget.id)}>
-              Delete
-            </Button>
+            <Button variant="destructive" onClick={() => deleteTarget && confirmDelete(deleteTarget.id)}>Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ── Bulk Delete Confirm ── */}
       <Dialog open={bulkDeleteConfirm} onOpenChange={setBulkDeleteConfirm}>
         <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete {selectedIds.size} properties?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            These {selectedIds.size} properties will be permanently removed from the database. This cannot be undone.
+          <DialogHeader><DialogTitle>Delete {selectedIds.size} properties?</DialogTitle></DialogHeader>
+          <p className="text-sm text-gray-500">
+            These {selectedIds.size} properties will be permanently removed. This cannot be undone.
           </p>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setBulkDeleteConfirm(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleBulkDelete}>
-              Delete {selectedIds.size}
-            </Button>
+            <Button variant="destructive" onClick={handleBulkDelete}>Delete {selectedIds.size}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

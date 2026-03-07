@@ -68,6 +68,10 @@ import { toast } from "sonner"
 import { VendorComparablesTab } from "./vendor-comparables-tab"
 import { OfferAnalysisPanel } from "@/components/deals/offer-analysis-panel"
 import { formatCurrency } from "@/lib/format"
+import { PortalCheckBadge } from "./portal-check-badge"
+import { PortalCheckDetailPanel } from "./portal-check-detail-panel"
+import { ShieldCheck } from "lucide-react"
+import { SolicitorSelector, type Solicitor as SolicitorType } from "@/components/solicitors/solicitor-selector"
 
 interface SMSMessage {
   id: string
@@ -76,6 +80,14 @@ interface SMSMessage {
   createdAt: Date
   messageSid?: string | null
   status?: string | null
+}
+
+interface PipelineEvent {
+  id: string
+  eventType: string
+  details: Record<string, any>
+  createdAt: Date
+  createdBy?: string | null
 }
 
 interface VendorLead {
@@ -140,7 +152,13 @@ interface VendorLead {
     id: string
     user: { firstName: string | null; lastName: string | null; email: string; phone: string | null }
   } | null
+  latestCheckRisk: string | null
+  latestCheckedAt: Date | null
+  isTest?: boolean
+  solicitorId?: string | null
+  solicitor?: SolicitorType | null
   smsMessages: SMSMessage[]
+  pipelineEvents?: PipelineEvent[]
 }
 
 interface VendorLeadDetailModalProps {
@@ -353,9 +371,14 @@ export function VendorLeadDetailModal({
 }: VendorLeadDetailModalProps) {
   const [manualMessage, setManualMessage] = useState("")
   const [sendingMessage, setSendingMessage] = useState(false)
+  const [showConversation, setShowConversation] = useState(false)
   const [fullLead, setFullLead] = useState<VendorLead | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [activeTab, setActiveTab] = useState("details")
+  const [portalRisk, setPortalRisk] = useState<string | null>(lead.latestCheckRisk)
+  const [portalCheckedAt, setPortalCheckedAt] = useState<string | null>(
+    lead.latestCheckedAt ? new Date(lead.latestCheckedAt).toISOString() : null
+  )
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isRemovingReservation, setIsRemovingReservation] = useState(false)
@@ -412,6 +435,10 @@ export function VendorLeadDetailModal({
               smsMessages: (data.lead.smsMessages || []).map((msg: any) => ({
                 ...msg,
                 createdAt: new Date(msg.createdAt),
+              })),
+              pipelineEvents: (data.lead.pipelineEvents || []).map((ev: any) => ({
+                ...ev,
+                createdAt: new Date(ev.createdAt),
               })),
             }
             setFullLead(transformed)
@@ -488,6 +515,10 @@ export function VendorLeadDetailModal({
               smsMessages: (leadData.lead.smsMessages || []).map((msg: any) => ({
                 ...msg,
                 createdAt: new Date(msg.createdAt),
+              })),
+              pipelineEvents: (leadData.lead.pipelineEvents || []).map((ev: any) => ({
+                ...ev,
+                createdAt: new Date(ev.createdAt),
               })),
             }
             setFullLead(transformed)
@@ -1054,7 +1085,7 @@ export function VendorLeadDetailModal({
           onValueChange={setActiveTab}
           className="w-full"
         >
-          <TabsList className="grid w-full grid-cols-4 h-auto p-1 gap-0.5 bg-muted/60">
+          <TabsList className="grid w-full grid-cols-6 h-auto p-1 gap-0.5 bg-muted/60">
             <TabsTrigger
               value="details"
               className="relative flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
@@ -1086,6 +1117,23 @@ export function VendorLeadDetailModal({
               <span>Comparables</span>
             </TabsTrigger>
             <TabsTrigger
+              value="portal-check"
+              className="flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
+                data-[state=active]:bg-background data-[state=active]:shadow-sm
+                hover:bg-background/50 data-[state=active]:text-foreground text-muted-foreground"
+            >
+              <div className="relative">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                {portalRisk === "red_flag" && (
+                  <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-red-500" />
+                )}
+                {portalRisk === "caution" && (
+                  <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-amber-500" />
+                )}
+              </div>
+              <span>Portal Check</span>
+            </TabsTrigger>
+            <TabsTrigger
               value="offer"
               className="flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
                 hover:bg-background hover:text-primary hover:shadow-sm
@@ -1093,6 +1141,15 @@ export function VendorLeadDetailModal({
             >
               <Calculator className="h-3.5 w-3.5" />
               <span>Offer Analysis</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="activity"
+              className="flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
+                hover:bg-background hover:text-primary hover:shadow-sm
+                data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
+            >
+              <Clock className="h-3.5 w-3.5" />
+              <span>Activity</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1642,6 +1699,41 @@ export function VendorLeadDetailModal({
               </Card>
             </div>
 
+            {/* ── Solicitor ────────────────────────────────────────────────────────── */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  Solicitor
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Conveyancing solicitor for this deal. Assign from the shared registry or add a new one.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SolicitorSelector
+                  value={currentLead.solicitorId ?? null}
+                  initialSolicitor={currentLead.solicitor ?? null}
+                  onChange={async (id, sol) => {
+                    try {
+                      const res = await fetch(`/api/vendor-pipeline/leads/${currentLead.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ solicitorId: id }),
+                      })
+                      if (!res.ok) throw new Error("Failed to update")
+                      setFullLead((prev) =>
+                        prev ? { ...prev, solicitorId: id, solicitor: sol } : prev
+                      )
+                      toast.success(id ? "Solicitor assigned to deal" : "Solicitor removed from deal")
+                    } catch {
+                      toast.error("Failed to update solicitor")
+                    }
+                  }}
+                />
+              </CardContent>
+            </Card>
+
             {/* ── Investor Reservation ─────────────────────────────────────────────── */}
             {(() => {
               const statusLabel: Record<string, string> = {
@@ -1763,53 +1855,64 @@ export function VendorLeadDetailModal({
                     <MessageSquare className="h-4 w-4 text-primary" />
                     Conversation
                   </CardTitle>
-                  <Badge variant="secondary" className="text-xs">
-                    {currentLead.smsMessages.length} message{currentLead.smsMessages.length !== 1 ? "s" : ""}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-xs">
+                      {currentLead.smsMessages.length} message{currentLead.smsMessages.length !== 1 ? "s" : ""}
+                    </Badge>
+                    <button
+                      type="button"
+                      onClick={() => setShowConversation((v) => !v)}
+                      className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+                    >
+                      {showConversation ? "Hide" : "Show"}
+                    </button>
+                  </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3 max-h-80 overflow-y-auto p-3 bg-muted/30 rounded-lg mb-4">
-                  {currentLead.smsMessages.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-6 text-sm">No messages yet</p>
-                  ) : (
-                    currentLead.smsMessages.map((message: any) => {
-                      const isOutbound = message.direction === "outbound"
-                      return (
-                        <div key={message.id} className={cn("flex", isOutbound ? "justify-end" : "justify-start")}>
-                          <div className={cn(
-                            "max-w-[75%] rounded-lg px-3 py-2",
-                            isOutbound ? "bg-blue-500 text-white" : "bg-white border"
-                          )}>
-                            <p className="text-sm whitespace-pre-wrap">{message.messageBody}</p>
-                            <p
-                              suppressHydrationWarning
-                              className={cn("text-xs mt-1", isOutbound ? "text-blue-100" : "text-muted-foreground")}
-                            >
-                              {formatTimeAgo(message.createdAt)}
-                            </p>
+              {showConversation && (
+                <CardContent>
+                  <div className="space-y-3 max-h-80 overflow-y-auto p-3 bg-muted/30 rounded-lg mb-4">
+                    {currentLead.smsMessages.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-6 text-sm">No messages yet</p>
+                    ) : (
+                      currentLead.smsMessages.map((message: any) => {
+                        const isOutbound = message.direction === "outbound"
+                        return (
+                          <div key={message.id} className={cn("flex", isOutbound ? "justify-end" : "justify-start")}>
+                            <div className={cn(
+                              "max-w-[75%] rounded-lg px-3 py-2",
+                              isOutbound ? "bg-blue-500 text-white" : "bg-white border"
+                            )}>
+                              <p className="text-sm whitespace-pre-wrap">{message.messageBody}</p>
+                              <p
+                                suppressHydrationWarning
+                                className={cn("text-xs mt-1", isOutbound ? "text-blue-100" : "text-muted-foreground")}
+                              >
+                                {formatTimeAgo(message.createdAt)}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      )
-                    })
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Textarea
-                    placeholder="Send a manual message to the vendor..."
-                    value={manualMessage}
-                    onChange={(e) => setManualMessage(e.target.value)}
-                    rows={3}
-                  />
-                  <Button
-                    onClick={handleSendManualMessage}
-                    disabled={!manualMessage.trim() || sendingMessage}
-                    className="w-full"
-                  >
-                    {sendingMessage ? "Sending..." : "Send Message"}
-                  </Button>
-                </div>
-              </CardContent>
+                        )
+                      })
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Textarea
+                      placeholder="Send a manual message to the vendor..."
+                      value={manualMessage}
+                      onChange={(e) => setManualMessage(e.target.value)}
+                      rows={3}
+                    />
+                    <Button
+                      onClick={handleSendManualMessage}
+                      disabled={!manualMessage.trim() || sendingMessage}
+                      className="w-full"
+                    >
+                      {sendingMessage ? "Sending..." : "Send Message"}
+                    </Button>
+                  </div>
+                </CardContent>
+              )}
             </Card>
           </TabsContent>
 
@@ -1935,7 +2038,7 @@ export function VendorLeadDetailModal({
               <div className="flex flex-col items-center justify-center py-12 gap-3 rounded-xl border-2 border-dashed border-muted text-center">
                 <PoundSterling className="h-10 w-10 text-muted-foreground/30" />
                 <p className="font-medium text-muted-foreground">Missing Asking Price</p>
-                <p className="text-sm text-muted-foreground max-w-xs">Add an asking price in the Details tab before calculating BMV.</p>
+                <p className="text-sm text-muted-foreground max-w-xs">Add an asking price in the Contact Info tab before calculating BMV.</p>
               </div>
             )}
 
@@ -2426,7 +2529,7 @@ export function VendorLeadDetailModal({
                 (!currentLead.estimatedMarketValue || !currentLead.estimatedRefurbCost)
                   ? "Go to the Validation tab → click Edit to set Market Value and Refurb Cost."
                   : (!currentLead.estimatedMonthlyRent && !parsedNotes?.rentalYield?.monthlyRent)
-                  ? "Go to the Details tab → click Edit to set Monthly Rent."
+                  ? "Go to the Contact Info tab → click Edit to set Monthly Rent."
                   : undefined
               }
             />
@@ -2699,6 +2802,121 @@ export function VendorLeadDetailModal({
                 )}
               </>
             )}
+          </TabsContent>
+
+          <TabsContent value="portal-check" className="space-y-4">
+            <PortalCheckDetailPanel
+              leadId={lead.id}
+              latestCheckRisk={portalRisk}
+              latestCheckedAt={portalCheckedAt}
+              onRiskUpdated={(risk, date) => {
+                setPortalRisk(risk)
+                setPortalCheckedAt(date)
+              }}
+            />
+          </TabsContent>
+
+          {/* ── Activity Tab ──────────────────────────────────────────────────── */}
+          <TabsContent value="activity" className="space-y-4">
+            {(() => {
+              const STAGE_LABELS: Record<string, string> = {
+                NEW_LEAD: "New Lead",
+                AI_CONVERSATION: "AI Conversation",
+                DEAL_VALIDATION: "Deal Validation",
+                OFFER_MADE: "Email Offer Sent",
+                VIDEO_SENT: "Video Sent",
+                RETRY_1: "Follow-up 1",
+                RETRY_2: "Follow-up 2",
+                RETRY_3: "Follow-up 3",
+                OFFER_ACCEPTED: "Offer Accepted",
+                OFFER_REJECTED: "Offer Rejected",
+                PAPERWORK_SENT: "Paperwork Sent",
+                READY_FOR_INVESTORS: "Ready for Investors",
+                DEAD_LEAD: "Dead Lead",
+                INITIAL_CONTACT: "Initial Contact",
+                VALUATION_PENDING: "Valuation Pending",
+              }
+
+              const eventLabel = (ev: PipelineEvent): { title: string; detail?: string; color: string } => {
+                const d = ev.details || {}
+                switch (ev.eventType) {
+                  case "stage_transition": {
+                    const from = STAGE_LABELS[d.fromStage] ?? d.fromStage ?? "—"
+                    const to = STAGE_LABELS[d.toStage] ?? d.toStage ?? "—"
+                    const isPositive = ["OFFER_ACCEPTED", "PAPERWORK_SENT", "READY_FOR_INVESTORS"].includes(d.toStage)
+                    const isNegative = ["OFFER_REJECTED", "DEAD_LEAD"].includes(d.toStage)
+                    return {
+                      title: `Stage changed to ${to}`,
+                      detail: `From: ${from}`,
+                      color: isPositive ? "bg-green-500" : isNegative ? "bg-red-500" : "bg-blue-500",
+                    }
+                  }
+                  case "vendor_offer_sent": {
+                    const channel = (d.channel as string ?? "").toUpperCase()
+                    const price = d.offerPrice ? ` — £${Number(d.offerPrice).toLocaleString()}` : ""
+                    const success = d.emailSuccess || d.smsSuccess
+                    return {
+                      title: `Offer sent via ${channel}${price}`,
+                      detail: success === false ? "Delivery failed" : d.noSmtp ? "SMTP not configured" : "Delivered",
+                      color: success === false ? "bg-red-400" : "bg-yellow-500",
+                    }
+                  }
+                  case "offer_accepted":
+                    return { title: "Offer Accepted", detail: "Vendor accepted the offer", color: "bg-green-600" }
+                  case "offer_rejected":
+                    return { title: "Offer Rejected", detail: d.rejectionReason || undefined, color: "bg-red-500" }
+                  case "deal_validated":
+                    return { title: "Deal Validated", detail: d.description as string | undefined, color: "bg-green-500" }
+                  case "deal_rejected":
+                    return { title: "Deal Failed Validation", detail: d.description as string | undefined, color: "bg-orange-500" }
+                  default:
+                    return {
+                      title: ev.eventType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+                      color: "bg-slate-400",
+                    }
+                }
+              }
+
+              const events = currentLead.pipelineEvents ?? []
+
+              return (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-primary" />
+                      Pipeline Activity
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      {events.length} event{events.length !== 1 ? "s" : ""} recorded
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {events.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-8">No activity recorded yet</p>
+                    ) : (
+                      <ol className="relative border-l border-border ml-3 space-y-5">
+                        {events.map((ev: PipelineEvent) => {
+                          const { title, detail, color } = eventLabel(ev)
+                          return (
+                            <li key={ev.id} className="ml-5">
+                              <span className={cn(
+                                "absolute -left-1.5 flex h-3 w-3 items-center justify-center rounded-full ring-2 ring-background",
+                                color
+                              )} />
+                              <p className="text-sm font-medium leading-tight">{title}</p>
+                              {detail && <p className="text-xs text-muted-foreground mt-0.5">{detail}</p>}
+                              <time suppressHydrationWarning className="text-xs text-muted-foreground/70 mt-0.5 block">
+                                {formatDate(ev.createdAt)}
+                              </time>
+                            </li>
+                          )
+                        })}
+                      </ol>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })()}
           </TabsContent>
 
           <TabsContent value="comparables" className="space-y-4 w-full min-w-0 overflow-hidden">

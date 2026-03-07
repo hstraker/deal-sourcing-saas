@@ -10,39 +10,38 @@ import {
   LogOut,
   Building2,
   Search,
+  BookUser,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { signOut } from "next-auth/react"
 import { useState, useEffect } from "react"
 import Image from "next/image"
 
-const navigation = [
+const navSections = [
   {
-    name: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
+    label: "PIPELINE",
+    items: [
+      { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { name: "Vendors", href: "/dashboard/vendors", icon: Building2 },
+      { name: "Investors", href: "/dashboard/investors", icon: Users },
+    ],
   },
   {
-    name: "Vendor",
-    href: "/dashboard/vendors",
-    icon: Building2,
+    label: "TOOLS",
+    items: [
+      { name: "Contacts", href: "/dashboard/contacts", icon: BookUser },
+      { name: "Scraper", href: "/dashboard/scraper", icon: Search },
+    ],
   },
   {
-    name: "Investors",
-    href: "/dashboard/investors",
-    icon: Users,
-  },
-  {
-    name: "Scraper",
-    href: "/dashboard/scraper",
-    icon: Search,
-  },
-  {
-    name: "Settings",
-    href: "/dashboard/settings",
-    icon: Settings,
+    label: "SETTINGS",
+    items: [
+      { name: "Settings", href: "/dashboard/settings", icon: Settings },
+    ],
   },
 ]
+
+// Flat list used for active-state resolution
+const allNavItems = navSections.flatMap((s) => s.items)
 
 interface CompanyProfile {
   companyName: string
@@ -56,15 +55,12 @@ export function Sidebar() {
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null)
 
   useEffect(() => {
-    // Fetch company profile for logo and branding
     const fetchProfile = async () => {
       try {
         const response = await fetch("/api/company-profile")
         if (response.ok) {
           const data = await response.json()
-          if (data.profile) {
-            setCompanyProfile(data.profile)
-          }
+          if (data.profile) setCompanyProfile(data.profile)
         }
       } catch (error) {
         console.error("Error fetching company profile:", error)
@@ -73,85 +69,100 @@ export function Sidebar() {
 
     fetchProfile()
 
-    // Listen for profile updates
-    const handleProfileUpdate = () => {
-      fetchProfile()
-    }
+    const handleProfileUpdate = () => fetchProfile()
     window.addEventListener("company-profile-updated", handleProfileUpdate)
-    return () => {
-      window.removeEventListener("company-profile-updated", handleProfileUpdate)
-    }
+    return () => window.removeEventListener("company-profile-updated", handleProfileUpdate)
   }, [])
 
+  // Resolve the most-specific active nav item
+  const getIsActive = (href: string) => {
+    const matches = allNavItems
+      .map((item) => ({
+        ...item,
+        isExact: pathname === item.href,
+        isPrefix: pathname?.startsWith(`${item.href}/`) ?? false,
+      }))
+      .filter((item) => item.isExact || item.isPrefix)
+      .sort((a, b) => {
+        if (a.isExact && !b.isExact) return -1
+        if (!a.isExact && b.isExact) return 1
+        return b.href.length - a.href.length
+      })
+
+    return matches.length > 0 && matches[0].href === href
+  }
+
+  const initials = (companyProfile?.companyName || "D").charAt(0).toUpperCase()
+
   return (
-    <div className="flex h-full w-64 flex-col border-r border-border bg-card text-card-foreground dark:bg-slate-950">
-      <div className="flex h-16 items-center border-b border-border px-6 gap-3">
+    <aside className="group fixed left-0 top-0 z-40 flex h-screen w-14 hover:w-60 flex-col bg-[#1A1A1F] transition-all duration-200 overflow-hidden">
+      {/* Brand */}
+      <div className="flex h-14 flex-shrink-0 items-center gap-3 px-3 border-b border-[#2D2D38]">
         {companyProfile?.logoUrl ? (
-          <div className="relative w-10 h-10 flex-shrink-0">
+          <div className="relative h-8 w-8 flex-shrink-0 rounded">
             <Image
               src={companyProfile.logoUrl}
               alt={companyProfile.companyName}
               fill
-              className="object-contain"
+              className="object-contain rounded"
             />
           </div>
-        ) : null}
-        <h1 className="text-xl font-bold truncate">
+        ) : (
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-[#F5A623] text-[#1A1A1F] text-sm font-bold">
+            {initials}
+          </div>
+        )}
+        <span className="truncate whitespace-nowrap text-sm font-semibold text-white opacity-0 transition-opacity duration-150 delay-75 group-hover:opacity-100">
           {companyProfile?.companyName || "DealStack"}
-        </h1>
+        </span>
       </div>
-      
-      <nav className="flex-1 space-y-1 px-3 py-4">
-        {navigation.map((item) => {
-          // Find the most specific matching nav item first
-          const matchingNavItems = navigation
-            .map((navItem) => ({
-              ...navItem,
-              isExact: pathname === navItem.href,
-              isPrefix: pathname?.startsWith(`${navItem.href}/`),
-            }))
-            .filter((navItem) => navItem.isExact || navItem.isPrefix)
-            .sort((a, b) => {
-              // Exact matches take priority
-              if (a.isExact && !b.isExact) return -1
-              if (!a.isExact && b.isExact) return 1
-              // Then sort by path length (longer = more specific)
-              return b.href.length - a.href.length
-            })
 
-          // Only activate if this is the most specific match
-          const isActive = matchingNavItems.length > 0 && matchingNavItems[0].href === item.href
-
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <item.icon className="h-5 w-5" />
-              {item.name}
-            </Link>
-          )
-        })}
+      {/* Nav */}
+      <nav className="flex-1 overflow-hidden px-2 py-4 space-y-4">
+        {navSections.map((section) => (
+          <div key={section.label}>
+            <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-widest text-gray-600 opacity-0 transition-opacity duration-150 delay-75 group-hover:opacity-100 whitespace-nowrap">
+              {section.label}
+            </p>
+            <div className="space-y-0.5">
+              {section.items.map((item) => {
+                const isActive = getIsActive(item.href)
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors",
+                      isActive
+                        ? "bg-[#F5A623] text-[#1A1A1F] font-semibold"
+                        : "text-gray-400 hover:bg-[#2A2A32] hover:text-white"
+                    )}
+                  >
+                    <item.icon className="h-5 w-5 flex-shrink-0" />
+                    <span className="truncate whitespace-nowrap opacity-0 transition-opacity duration-150 delay-75 group-hover:opacity-100">
+                      {item.name}
+                    </span>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
-      <div className="border-t border-border p-4">
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-muted-foreground hover:bg-muted hover:text-foreground"
+      {/* Sign out */}
+      <div className="flex-shrink-0 border-t border-[#2D2D38] p-2">
+        <button
+          type="button"
           onClick={() => signOut({ callbackUrl: "/login" })}
+          className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm text-gray-400 transition-colors hover:bg-[#2A2A32] hover:text-white"
         >
-          <LogOut className="mr-3 h-5 w-5" />
-          Sign Out
-        </Button>
+          <LogOut className="h-5 w-5 flex-shrink-0" />
+          <span className="truncate whitespace-nowrap opacity-0 transition-opacity duration-150 delay-75 group-hover:opacity-100">
+            Sign Out
+          </span>
+        </button>
       </div>
-    </div>
+    </aside>
   )
 }
-
-

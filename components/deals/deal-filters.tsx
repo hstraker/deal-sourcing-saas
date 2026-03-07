@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Select,
@@ -54,6 +54,7 @@ const PROPERTY_TYPE_OPTIONS = [
   { value: "semi_detached", label: "Semi-Detached" },
   { value: "detached", label: "Detached" },
   { value: "flat", label: "Flat" },
+  { value: "maisonette", label: "Maisonette" },
   { value: "bungalow", label: "Bungalow" },
   { value: "other", label: "Other" },
 ]
@@ -78,22 +79,41 @@ export function DealFiltersComponent({
 
   const [isOpen, setIsOpen] = useState(false)
 
-  // Extract unique postcodes from deals
-  const uniquePostcodes = Array.from(
-    new Set(
-      deals
-        .map((deal) => deal.postcode)
-        .filter((postcode): postcode is string => !!postcode)
-    )
-  ).sort()
+  // Memoised — only recomputes when the deals array reference changes
+  const uniquePostcodes = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          deals
+            .map((deal) => deal.postcode)
+            .filter((postcode): postcode is string => !!postcode)
+        )
+      ).sort(),
+    [deals]
+  )
+
+  // Debounce helper for number inputs — avoids re-filtering on every keystroke
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const debouncedNotify = useCallback(
+    (newFilters: DealFilters) => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current)
+      debounceTimer.current = setTimeout(() => onFiltersChange(newFilters), 300)
+    },
+    [onFiltersChange]
+  )
 
   const handleFilterChange = <K extends keyof DealFilters>(
     key: K,
-    value: DealFilters[K]
+    value: DealFilters[K],
+    debounce = false
   ) => {
     const newFilters = { ...filters, [key]: value }
     setFilters(newFilters)
-    onFiltersChange(newFilters)
+    if (debounce) {
+      debouncedNotify(newFilters)
+    } else {
+      onFiltersChange(newFilters)
+    }
   }
 
   const handleClearFilters = () => {
@@ -255,7 +275,8 @@ export function DealFiltersComponent({
                   onChange={(e) =>
                     handleFilterChange(
                       "minScore",
-                      e.target.value ? Number(e.target.value) : null
+                      e.target.value ? Number(e.target.value) : null,
+                      true
                     )
                   }
                 />
@@ -273,7 +294,8 @@ export function DealFiltersComponent({
                   onChange={(e) =>
                     handleFilterChange(
                       "maxScore",
-                      e.target.value ? Number(e.target.value) : null
+                      e.target.value ? Number(e.target.value) : null,
+                      true
                     )
                   }
                 />
@@ -293,7 +315,8 @@ export function DealFiltersComponent({
                   onChange={(e) =>
                     handleFilterChange(
                       "minBmv",
-                      e.target.value ? Number(e.target.value) : null
+                      e.target.value ? Number(e.target.value) : null,
+                      true
                     )
                   }
                 />
@@ -312,7 +335,8 @@ export function DealFiltersComponent({
                   onChange={(e) =>
                     handleFilterChange(
                       "maxBmv",
-                      e.target.value ? Number(e.target.value) : null
+                      e.target.value ? Number(e.target.value) : null,
+                      true
                     )
                   }
                 />
@@ -332,7 +356,8 @@ export function DealFiltersComponent({
                   onChange={(e) =>
                     handleFilterChange(
                       "minYield",
-                      e.target.value ? Number(e.target.value) : null
+                      e.target.value ? Number(e.target.value) : null,
+                      true
                     )
                   }
                 />
@@ -351,7 +376,8 @@ export function DealFiltersComponent({
                   onChange={(e) =>
                     handleFilterChange(
                       "maxYield",
-                      e.target.value ? Number(e.target.value) : null
+                      e.target.value ? Number(e.target.value) : null,
+                      true
                     )
                   }
                 />

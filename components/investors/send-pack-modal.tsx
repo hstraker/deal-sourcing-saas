@@ -71,6 +71,7 @@ interface DeliveryRecord {
   emailError: string | null
   sentAt: string
   deliveryMethod: string
+  downloadToken?: string | null
 }
 
 const PART_OPTIONS = [
@@ -123,8 +124,12 @@ export function SendPackModal({
 
   useEffect(() => {
     if (open) {
+      setSelectedInvestorId(initialInvestorId || "")
+      setSelectedDealId("")
       fetchDeals()
-      fetchInvestors()
+      if (!initialInvestorId) {
+        fetchInvestors()
+      }
     } else {
       // Reset on close
       setLastDelivery(null)
@@ -141,17 +146,35 @@ export function SendPackModal({
   const fetchDeals = async () => {
     setLoadingDeals(true)
     try {
-      const response = await fetch("/api/deals")
-      if (response.ok) {
-        const data = await response.json()
-        const availableDeals = (data.deals || []).filter(
-          (deal: any) =>
-            deal.status !== "archived" &&
-            deal.status !== "sold"
-        )
-        setDeals(availableDeals)
+      if (initialInvestorId) {
+        // Only show deals this investor has an active reservation on
+        const response = await fetch(`/api/investors/reservations?investorId=${initialInvestorId}`)
+        if (response.ok) {
+          const data = await response.json()
+          const reservedDeals = (data.reservations || [])
+            .filter((r: any) => r.status !== "cancelled")
+            .map((r: any) => ({
+              id: r.dealId,
+              address: r.deal.address,
+              askingPrice: r.deal.askingPrice,
+              status: r.deal.status,
+              investorPackSent: false,
+            }))
+          setDeals(reservedDeals)
+        } else {
+          toast.error("Failed to load reserved deals.")
+        }
       } else {
-        toast.error("Failed to load deals. Please check your permissions.")
+        const response = await fetch("/api/deals")
+        if (response.ok) {
+          const data = await response.json()
+          const availableDeals = (data.deals || []).filter(
+            (deal: any) => deal.status !== "archived" && deal.status !== "sold"
+          )
+          setDeals(availableDeals)
+        } else {
+          toast.error("Failed to load deals. Please check your permissions.")
+        }
       }
     } catch (error) {
       console.error("Error fetching deals:", error)
@@ -293,7 +316,7 @@ export function SendPackModal({
     }
   }
 
-  const handleViewPdf = (dealId: string, deliveryId: string) => {
+  const handleViewPdf = (dealId: string, deliveryId: string, downloadToken?: string | null) => {
     // Track the view
     fetch(`/api/investors/pack-delivery/${deliveryId}/track`, {
       method: "PATCH",
@@ -301,8 +324,11 @@ export function SendPackModal({
       body: JSON.stringify({ action: "view" }),
     }).catch(() => {})
 
-    // Open PDF in new tab
-    window.open(`/api/deals/${dealId}/investor-pack`, "_blank")
+    // Use token URL if available (allows download without login session)
+    const url = downloadToken
+      ? `/api/deals/${dealId}/investor-pack?token=${downloadToken}`
+      : `/api/deals/${dealId}/investor-pack`
+    window.open(url, "_blank")
   }
 
   const selectedDeal = deals.find((d) => d.id === selectedDealId)
@@ -323,44 +349,53 @@ export function SendPackModal({
         <div className="space-y-4">
           {/* Investor Selection */}
           <div className="space-y-2">
-            <Label htmlFor="investor">
+            <Label>
               <User className="h-4 w-4 inline mr-2" />
-              Select Investor *
+              Investor *
             </Label>
-            <Select value={selectedInvestorId} onValueChange={setSelectedInvestorId} disabled={loadingInvestors}>
-              <SelectTrigger>
-                <SelectValue placeholder={loadingInvestors ? "Loading investors..." : "Choose an investor"} />
-              </SelectTrigger>
-              <SelectContent>
-                {loadingInvestors ? (
-                  <div className="p-2 text-sm text-muted-foreground flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading investors...
-                  </div>
-                ) : investors.length === 0 ? (
-                  <div className="p-2 text-sm text-muted-foreground">
-                    No investors available
-                  </div>
-                ) : (
-                  investors.map((investor) => (
-                    <SelectItem key={investor.id} value={investor.id}>
-                      {investor.user.firstName} {investor.user.lastName} ({investor.user.email})
-                    </SelectItem>
-                  ))
+            {initialInvestorId ? (
+              <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2.5">
+                <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="text-sm font-medium">{initialInvestorName || "Selected Investor"}</span>
+              </div>
+            ) : (
+              <>
+                <Select value={selectedInvestorId} onValueChange={setSelectedInvestorId} disabled={loadingInvestors}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={loadingInvestors ? "Loading investors..." : "Choose an investor"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {loadingInvestors ? (
+                      <div className="p-2 text-sm text-muted-foreground flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading investors...
+                      </div>
+                    ) : investors.length === 0 ? (
+                      <div className="p-2 text-sm text-muted-foreground">
+                        No investors available
+                      </div>
+                    ) : (
+                      investors.map((investor) => (
+                        <SelectItem key={investor.id} value={investor.id}>
+                          {investor.user.firstName} {investor.user.lastName} ({investor.user.email})
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                {selectedInvestor && (
+                  <p className="text-sm text-muted-foreground">
+                    Email: {selectedInvestor.user.email}
+                  </p>
                 )}
-              </SelectContent>
-            </Select>
-            {selectedInvestor && (
-              <p className="text-sm text-muted-foreground">
-                Email: {selectedInvestor.user.email}
-              </p>
+              </>
             )}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="deal">
               <FileText className="h-4 w-4 inline mr-2" />
-              Select Deal *
+              {initialInvestorId ? "Reserved Deal *" : "Select Deal *"}
             </Label>
             <Select value={selectedDealId} onValueChange={setSelectedDealId} disabled={loadingDeals}>
               <SelectTrigger>
@@ -374,7 +409,7 @@ export function SendPackModal({
                   </div>
                 ) : deals.length === 0 ? (
                   <div className="p-2 text-sm text-muted-foreground">
-                    No deals available.
+                    {initialInvestorId ? "No reserved deals found." : "No deals available."}
                   </div>
                 ) : (
                   deals.map((deal) => (
@@ -404,16 +439,13 @@ export function SendPackModal({
               Select Part *
             </Label>
             <Select value={selectedPart.toString()} onValueChange={(v) => setSelectedPart(Number(v))}>
-              <SelectTrigger>
+              <SelectTrigger className="h-9 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {PART_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value.toString()}>
-                    <div>
-                      <div className="font-medium">{option.label}</div>
-                      <div className="text-xs text-muted-foreground">{option.description}</div>
-                    </div>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -473,7 +505,7 @@ export function SendPackModal({
                   variant="outline"
                   size="sm"
                   className="flex-1 text-xs"
-                  onClick={() => handleViewPdf(selectedDealId, lastDelivery.id)}
+                  onClick={() => handleViewPdf(selectedDealId, lastDelivery.id, (lastDelivery as any).downloadToken)}
                 >
                   <Download className="h-3 w-3 mr-1" />
                   View / Download PDF
@@ -528,7 +560,7 @@ export function SendPackModal({
                             variant="ghost"
                             size="sm"
                             className="h-7 text-xs px-2"
-                            onClick={() => handleViewPdf(record.dealId, record.id)}
+                            onClick={() => handleViewPdf(record.dealId, record.id, (record as any).downloadToken)}
                           >
                             <Download className="h-3 w-3 mr-1" />
                             View PDF

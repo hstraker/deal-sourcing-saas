@@ -46,13 +46,51 @@ export async function GET(request: NextRequest) {
             deal: { select: { address: true } },
           },
         },
+        defaultSolicitor: {
+          select: {
+            id: true,
+            fullName: true,
+            company: true,
+            sraNumber: true,
+            email: true,
+            phone: true,
+            practiceAreas: true,
+            sraVerified: true,
+            sraVerifiedAt: true,
+            sraStatus: true,
+            sraDisplayName: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
       },
     })
 
-    return NextResponse.json({ investors })
+    // Map Contact fields → legacy Solicitor shape for backwards compatibility with investor-list UI
+    const mapped = investors.map((inv) => ({
+      ...inv,
+      defaultSolicitor: inv.defaultSolicitor
+        ? {
+            id: inv.defaultSolicitor.id,
+            name: inv.defaultSolicitor.fullName,
+            firmName: inv.defaultSolicitor.company ?? "",
+            sraNumber: inv.defaultSolicitor.sraNumber,
+            email: inv.defaultSolicitor.email,
+            phone: inv.defaultSolicitor.phone,
+            specialisation: inv.defaultSolicitor.practiceAreas.join(", ") || null,
+            website: null,
+            address: null,
+            notes: null,
+            sraVerified: inv.defaultSolicitor.sraVerified,
+            sraVerifiedAt: inv.defaultSolicitor.sraVerifiedAt,
+            sraStatus: inv.defaultSolicitor.sraStatus,
+            sraDisplayName: inv.defaultSolicitor.sraDisplayName,
+          }
+        : null,
+    }))
+
+    return NextResponse.json({ investors: mapped })
   } catch (error) {
     console.error("Error fetching investors:", error)
     return NextResponse.json(

@@ -10,6 +10,8 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { PipelineStage } from "@prisma/client"
 import { estimateRentalIncome, estimateSquareFeet, calculateRentPerSqFt } from "@/lib/rental-estimator"
+import { sendVendorOfferMadeEmail, sendVendorOfferAcceptedEmail } from "@/lib/email"
+import { ensureDealForVendorLead } from "@/lib/vendor-pipeline/auto-deal"
 
 // GET /api/vendor-pipeline/leads/[id]
 export async function GET(
@@ -83,7 +85,46 @@ export async function GET(
       })
     }
 
-    return NextResponse.json({ lead: { ...lead, reservation, reservedByInvestor } })
+    // Include linked solicitor/contact (from shared Contact registry)
+    let solicitor = null
+    if (lead.solicitorId) {
+      const contact = await prisma.contact.findUnique({
+        where: { id: lead.solicitorId },
+        select: {
+          id: true,
+          fullName: true,
+          company: true,
+          sraNumber: true,
+          email: true,
+          phone: true,
+          practiceAreas: true,
+          notes: true,
+          sraVerified: true,
+          sraVerifiedAt: true,
+          sraStatus: true,
+          sraDisplayName: true,
+        },
+      })
+      // Map to legacy Solicitor shape for backwards compatibility
+      if (contact) {
+        solicitor = {
+          id: contact.id,
+          name: contact.fullName,
+          firmName: contact.company ?? "",
+          sraNumber: contact.sraNumber,
+          email: contact.email,
+          phone: contact.phone,
+          specialisation: contact.practiceAreas.join(", ") || null,
+          notes: contact.notes,
+          sraVerified: contact.sraVerified,
+          sraVerifiedAt: contact.sraVerifiedAt,
+          sraStatus: contact.sraStatus,
+          sraDisplayName: contact.sraDisplayName,
+        }
+      }
+    }
+
+    return NextResponse.json({ lead: { ...lead, reservation, reservedByInvestor, solicitor } })
   } catch (error: any) {
     console.error("Error fetching vendor lead:", error)
     return NextResponse.json(
@@ -155,7 +196,7 @@ export async function PATCH(
       body.rentPerSqFt = calculateRentPerSqFt(Number(body.estimatedMonthlyRent), Number(body.squareFeet))
     }
 
-    // If pipeline stage is changing, log event
+    // If pipeline stage is changing, log event and send automated emails
     if (body.pipelineStage && body.pipelineStage !== currentLead.pipelineStage) {
       await prisma.pipelineEvent.create({
         data: {
@@ -168,6 +209,26 @@ export async function PATCH(
           },
         },
       })
+
+      if (currentLead.vendorEmail) {
+        if (body.pipelineStage === "OFFER_MADE") {
+          sendVendorOfferMadeEmail({
+            to: currentLead.vendorEmail,
+            vendorName: currentLead.vendorName,
+            propertyAddress: currentLead.propertyAddress || "your property",
+            offerAmount: currentLead.offerAmount ? Number(currentLead.offerAmount) : null,
+            offerPercentage: currentLead.offerPercentage ? Number(currentLead.offerPercentage) : null,
+          }).catch((e) => console.error("[leads/patch] offer-made email failed:", e))
+        } else if (body.pipelineStage === "OFFER_ACCEPTED") {
+          sendVendorOfferAcceptedEmail({
+            to: currentLead.vendorEmail,
+            vendorName: currentLead.vendorName,
+            propertyAddress: currentLead.propertyAddress || "your property",
+            offerAmount: currentLead.offerAmount ? Number(currentLead.offerAmount) : null,
+          }).catch((e) => console.error("[leads/patch] offer-accepted email failed:", e))
+          ensureDealForVendorLead(params.id).catch((e) => console.error("[leads/patch] auto-deal failed:", e))
+        }
+      }
     }
 
     const lead = await prisma.vendorLead.update({

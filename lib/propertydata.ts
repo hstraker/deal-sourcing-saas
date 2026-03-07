@@ -1116,6 +1116,184 @@ export function getPropertyAnalysis(
   return { insights, recommendations, riskFactors }
 }
 
+// ============================================================================
+// Portal Listing Check — active listings and listing history
+// ============================================================================
+
+export interface PortalAgent {
+  name: string
+  phone: string | null
+  branch: string | null
+}
+
+export interface ActiveListing {
+  address: string
+  price: number
+  originalPrice: number | null
+  daysListed: number
+  dateListed: string | null
+  bedrooms: number | null
+  propertyType: string | null
+  listingId: string | null
+  source: string   // "rightmove" | "zoopla" | "onthemarket" | "primelocation"
+  url: string | null
+  agent: PortalAgent | null
+  priceReductions: number
+}
+
+export interface ListingHistoryEntry {
+  address: string
+  listedPrice: number
+  finalPrice: number | null
+  daysListed: number | null
+  dateListed: string | null
+  dateRemoved: string | null
+  source: string
+  url: string | null
+  agent: PortalAgent | null
+  priceReductions: number
+}
+
+export interface ForSaleResult {
+  listings: ActiveListing[]
+  count: number
+  creditsUsed: number
+}
+
+export interface ListingHistoryResult {
+  history: ListingHistoryEntry[]
+  count: number
+  creditsUsed: number
+}
+
+/**
+ * Fetch active for-sale listings by postcode from PropertyData API.
+ * Wraps the /for-sale endpoint.
+ */
+export async function fetchForSaleListings(
+  postcode: string,
+  radius: number = 0.1
+): Promise<ForSaleResult | null> {
+  if (!PROPERTYDATA_API_KEY) {
+    console.warn("[PropertyData] API key not configured — skipping for-sale check")
+    return null
+  }
+
+  try {
+    const params = new URLSearchParams({
+      key: PROPERTYDATA_API_KEY,
+      postcode,
+      radius: radius.toString(),
+    })
+
+    const url = `${PROPERTYDATA_API_URL}/for-sale?${params}`
+    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) })
+
+    if (!res.ok) {
+      console.warn(`[PropertyData] /for-sale ${res.status} for ${postcode}`)
+      return { listings: [], count: 0, creditsUsed: 1 }
+    }
+
+    const data = await res.json()
+
+    if (data.status !== "success") {
+      console.warn(`[PropertyData] /for-sale non-success:`, data.message ?? data.status)
+      return { listings: [], count: 0, creditsUsed: 1 }
+    }
+
+    const raw: unknown[] = Array.isArray(data.listings) ? data.listings
+      : Array.isArray(data.data?.listings) ? data.data.listings
+      : []
+
+    const listings: ActiveListing[] = raw.map((item: any) => ({
+      address: item.address ?? item.Address ?? "",
+      price: Number(item.price ?? item.Price ?? 0),
+      originalPrice: item.original_price ? Number(item.original_price) : null,
+      daysListed: Number(item.days_listed ?? item.daysListed ?? 0),
+      dateListed: item.date_listed ?? item.dateListed ?? null,
+      bedrooms: item.bedrooms != null ? Number(item.bedrooms) : null,
+      propertyType: item.property_type ?? item.type ?? null,
+      listingId: item.listing_id ?? item.id ?? null,
+      source: (item.source ?? item.portal ?? "unknown").toLowerCase(),
+      url: item.url ?? item.link ?? null,
+      agent: item.agent ? {
+        name: item.agent.name ?? item.agent_name ?? "Unknown Agent",
+        phone: item.agent.phone ?? item.agent_phone ?? null,
+        branch: item.agent.branch ?? item.agent.address ?? null,
+      } : null,
+      priceReductions: Number(item.reductions ?? item.price_reductions ?? 0),
+    }))
+
+    return { listings, count: listings.length, creditsUsed: data.api_calls_cost ?? 1 }
+  } catch (err) {
+    console.error("[PropertyData] /for-sale error:", err)
+    return { listings: [], count: 0, creditsUsed: 0 }
+  }
+}
+
+/**
+ * Fetch listing history (previously listed, now removed) for a postcode.
+ * Wraps the /listing-history endpoint.
+ */
+export async function fetchListingHistory(
+  postcode: string,
+  radius: number = 0.1
+): Promise<ListingHistoryResult | null> {
+  if (!PROPERTYDATA_API_KEY) {
+    console.warn("[PropertyData] API key not configured — skipping listing history check")
+    return null
+  }
+
+  try {
+    const params = new URLSearchParams({
+      key: PROPERTYDATA_API_KEY,
+      postcode,
+      radius: radius.toString(),
+    })
+
+    const url = `${PROPERTYDATA_API_URL}/listing-history?${params}`
+    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) })
+
+    if (!res.ok) {
+      console.warn(`[PropertyData] /listing-history ${res.status} for ${postcode}`)
+      return { history: [], count: 0, creditsUsed: 1 }
+    }
+
+    const data = await res.json()
+
+    if (data.status !== "success") {
+      console.warn(`[PropertyData] /listing-history non-success:`, data.message ?? data.status)
+      return { history: [], count: 0, creditsUsed: 1 }
+    }
+
+    const raw: unknown[] = Array.isArray(data.history) ? data.history
+      : Array.isArray(data.data?.history) ? data.data.history
+      : []
+
+    const history: ListingHistoryEntry[] = raw.map((item: any) => ({
+      address: item.address ?? item.Address ?? "",
+      listedPrice: Number(item.listed_price ?? item.price ?? 0),
+      finalPrice: item.final_price ? Number(item.final_price) : null,
+      daysListed: item.days_listed != null ? Number(item.days_listed) : null,
+      dateListed: item.date_listed ?? null,
+      dateRemoved: item.date_removed ?? item.removed_date ?? null,
+      source: (item.source ?? item.portal ?? "unknown").toLowerCase(),
+      url: item.url ?? item.link ?? null,
+      agent: item.agent ? {
+        name: item.agent.name ?? "Unknown Agent",
+        phone: item.agent.phone ?? null,
+        branch: item.agent.branch ?? item.agent.address ?? null,
+      } : null,
+      priceReductions: Number(item.reductions ?? item.price_reductions ?? 0),
+    }))
+
+    return { history, count: history.length, creditsUsed: data.api_calls_cost ?? 1 }
+  } catch (err) {
+    console.error("[PropertyData] /listing-history error:", err)
+    return { history: [], count: 0, creditsUsed: 0 }
+  }
+}
+
 /**
  * Detailed Comparable Property interface with rental data
  */
