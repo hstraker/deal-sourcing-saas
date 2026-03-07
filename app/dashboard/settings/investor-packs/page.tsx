@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { InvestorPackTemplatesManager } from "@/components/settings/investor-pack-templates-manager"
+import { PageHeader } from "@/components/ui/page-header"
 
 export const metadata = {
   title: "Investor Pack Templates | Settings",
@@ -21,13 +22,11 @@ export default async function InvestorPackSettingsPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">Investor Pack Templates</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage your investor pack templates and view generation statistics
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Investor Pack Templates"
+        subtitle="Manage your investor pack templates and view generation statistics"
+      />
 
       <Suspense fallback={<div>Loading...</div>}>
         <InvestorPackTemplatesManager />

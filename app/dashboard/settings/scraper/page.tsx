@@ -1,17 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -42,6 +35,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { toast } from "sonner"
+import { PageHeader } from "@/components/ui/page-header"
 
 // Pre-configured UK locations (mirrored from lib/scrapers/constants.ts)
 // isPriority = gets a boosted location score in the deal scoring algorithm (SA, CF, NP, LL)
@@ -281,27 +275,28 @@ export default function ScraperSettingsPage() {
   if (isLoading || !settings) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
       </div>
     )
   }
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Scraper Settings</h1>
-          <p className="text-muted-foreground">Configure property scraping behaviour</p>
-        </div>
-        <Button onClick={saveSettings} disabled={isSaving}>
-          {isSaving ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="mr-2 h-4 w-4" />
-          )}
-          Save Settings
-        </Button>
-      </div>
+      <PageHeader
+        title="Scraper Settings"
+        subtitle="Configure property scraping behaviour"
+        className="mb-6"
+        actions={
+          <Button className="btn-primary" onClick={saveSettings} disabled={isSaving}>
+            {isSaving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            Save Settings
+          </Button>
+        }
+      />
 
       <div className="max-w-4xl space-y-5">
 
@@ -309,14 +304,14 @@ export default function ScraperSettingsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
           {/* Control & Schedule */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+          <div className="ds-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                 <Settings className="h-4 w-4" />
                 Control & Schedule
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              </h3>
+            </div>
+            <div className="p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <Label htmlFor="enabled">Scraper enabled</Label>
                 <Switch
@@ -325,10 +320,10 @@ export default function ScraperSettingsPage() {
                   onCheckedChange={(v) => updateSetting("enabled", v)}
                 />
               </div>
-              <Separator />
+              <div className="border-t border-[var(--ds-border)]" />
               <div className="space-y-1.5">
                 <Label className="flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Clock className="h-3.5 w-3.5 text-gray-400" />
                   Schedule
                 </Label>
                 <Select
@@ -345,18 +340,18 @@ export default function ScraperSettingsPage() {
                   </SelectContent>
                 </Select>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Sources */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+          <div className="ds-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                 <Globe className="h-4 w-4" />
                 Sources
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              </h3>
+            </div>
+            <div className="p-5">
               <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="rightmove" className="cursor-pointer">Rightmove</Label>
@@ -391,19 +386,19 @@ export default function ScraperSettingsPage() {
                   />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
         {/* Row 2: Search Criteria (full width) */}
-        <Card className="border-green-200 dark:border-green-800">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+        <div className="ds-card overflow-hidden border-green-200">
+          <div className="px-5 py-4 border-b border-green-200">
+            <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
               <MapPin className="h-4 w-4 text-green-600" />
               Search Criteria
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
+            </h3>
+          </div>
+          <div className="p-5 space-y-5">
 
             {/* Locations */}
             <div className="space-y-2">
@@ -412,7 +407,7 @@ export default function ScraperSettingsPage() {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      <HelpCircle className="h-3.5 w-3.5 text-gray-400 cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent side="right" className="max-w-xs text-xs">
                       <p className="font-semibold mb-1">Priority Scoring Areas</p>
@@ -422,7 +417,7 @@ export default function ScraperSettingsPage() {
                         for other areas).
                       </p>
                       <p className="font-medium">Current priority areas: SA, CF, NP, LL</p>
-                      <p className="text-muted-foreground mt-1">
+                      <p className="text-gray-400 mt-1">
                         Hover over any selected location badge to see the postcode districts it covers.
                       </p>
                     </TooltipContent>
@@ -441,14 +436,14 @@ export default function ScraperSettingsPage() {
                             <Badge
                               variant="secondary"
                               className={`pl-2 pr-1 py-1 gap-1 cursor-default ${
-                                meta?.isPriority ? "border border-yellow-400/50 bg-yellow-50 dark:bg-yellow-950/30 text-yellow-800 dark:text-yellow-300" : ""
+                                meta?.isPriority ? "border border-yellow-400/50 bg-yellow-50 text-yellow-800" : ""
                               }`}
                             >
                               {meta?.isPriority && <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />}
                               {loc.displayName}
                               <button
                                 onClick={() => removeLocation(loc.outcode)}
-                                className="ml-1 rounded-full hover:bg-muted p-0.5"
+                                className="ml-1 rounded-full hover:bg-gray-100 p-0.5"
                               >
                                 <X className="h-3 w-3" />
                               </button>
@@ -457,13 +452,13 @@ export default function ScraperSettingsPage() {
                           {meta && (
                             <TooltipContent side="bottom" className="text-xs max-w-[260px]">
                               <p className="font-semibold">{meta.displayName}</p>
-                              <p className="text-muted-foreground">{meta.region}</p>
+                              <p className="text-gray-400">{meta.region}</p>
                               <p className="mt-1">
                                 <span className="font-medium">Postcodes: </span>
                                 {meta.postcodes}
                               </p>
                               {meta.isPriority && (
-                                <p className="mt-1 text-yellow-600 dark:text-yellow-400 font-medium">
+                                <p className="mt-1 text-yellow-600 font-medium">
                                   ★ Priority scoring area — boosted location score
                                 </p>
                               )}
@@ -477,7 +472,7 @@ export default function ScraperSettingsPage() {
               )}
 
               {criteria.locations.length === 0 && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded px-2 py-1.5">
+                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
                   No locations selected. Add at least one location to enable scraping.
                 </p>
               )}
@@ -490,18 +485,18 @@ export default function ScraperSettingsPage() {
                   className="text-sm"
                 />
                 {locationSearch && filteredLocations.length > 0 && (
-                  <div className="absolute z-10 top-full mt-1 w-full bg-popover border rounded-md shadow-md max-h-56 overflow-y-auto">
+                  <div className="absolute z-10 top-full mt-1 w-full bg-white border border-[var(--ds-border)] rounded-md shadow-md max-h-56 overflow-y-auto">
                     {filteredLocations.map((loc) => (
                       <button
                         key={loc.outcode}
                         onClick={() => addLocation(loc)}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors"
                       >
                         <div className="flex items-center gap-1.5">
                           {loc.isPriority && <Star className="h-3 w-3 fill-yellow-500 text-yellow-500 flex-shrink-0" />}
                           <span className="font-medium">{loc.displayName}</span>
                         </div>
-                        <div className="text-xs text-muted-foreground flex gap-2 mt-0.5 ml-0">
+                        <div className="text-xs text-gray-400 flex gap-2 mt-0.5 ml-0">
                           <span>{loc.region}</span>
                           <span>·</span>
                           <span>{loc.postcodes.split(" ")[0]}</span>
@@ -513,9 +508,9 @@ export default function ScraperSettingsPage() {
               </div>
             </div>
 
-            <Separator />
+            <div className="border-t border-[var(--ds-border)]" />
 
-            {/* Category + Added Since + Include SSTC in one row */}
+            {/* Category + Added Since + Max Pages in one row */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label>Category</Label>
@@ -566,12 +561,12 @@ export default function ScraperSettingsPage() {
                     }
                     className="w-20"
                   />
-                  <span className="text-xs text-muted-foreground">~24 per page</span>
+                  <span className="text-xs text-gray-400">~24 per page</span>
                 </div>
               </div>
             </div>
 
-            <Separator />
+            <div className="border-t border-[var(--ds-border)]" />
 
             {/* Price + Bedrooms in one row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -579,7 +574,7 @@ export default function ScraperSettingsPage() {
                 <Label>Price Range</Label>
                 <div className="flex items-center gap-2">
                   <div className="relative">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">£</span>
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">£</span>
                     <Input
                       type="number"
                       min={0}
@@ -592,9 +587,9 @@ export default function ScraperSettingsPage() {
                       className="w-32 pl-6"
                     />
                   </div>
-                  <span className="text-muted-foreground text-sm">—</span>
+                  <span className="text-gray-400 text-sm">—</span>
                   <div className="relative">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">£</span>
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">£</span>
                     <Input
                       type="number"
                       min={0}
@@ -623,7 +618,7 @@ export default function ScraperSettingsPage() {
                     }
                     className="w-20"
                   />
-                  <span className="text-muted-foreground text-sm">—</span>
+                  <span className="text-gray-400 text-sm">—</span>
                   <Input
                     type="number"
                     min={0}
@@ -639,12 +634,12 @@ export default function ScraperSettingsPage() {
               </div>
             </div>
 
-            <Separator />
+            <div className="border-t border-[var(--ds-border)]" />
 
             {/* Property Types + Include SSTC */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Property Types <span className="text-xs font-normal text-muted-foreground">(leave blank for all)</span></Label>
+                <Label>Property Types <span className="text-xs font-normal text-gray-400">(leave blank for all)</span></Label>
                 <div className="grid grid-cols-3 gap-2">
                   {PROPERTY_TYPES.map((pt) => (
                     <div key={pt.value} className="flex items-center gap-2">
@@ -665,7 +660,7 @@ export default function ScraperSettingsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <Label htmlFor="includeSSTC" className="text-sm font-normal cursor-pointer">Include SSTC</Label>
-                    <p className="text-xs text-muted-foreground">Include Sold Subject To Contract</p>
+                    <p className="text-xs text-gray-400">Include Sold Subject To Contract</p>
                   </div>
                   <Switch
                     id="includeSSTC"
@@ -675,25 +670,25 @@ export default function ScraperSettingsPage() {
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Row 3: Analysis | Advanced | Data Quality */}
+        {/* Row 3: Analysis | Advanced */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
           {/* Auto-Approve */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+          <div className="ds-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                 <Zap className="h-4 w-4" />
                 Auto-Approve
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              </h3>
+            </div>
+            <div className="p-5 space-y-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <Label htmlFor="autoAnalysis">Auto-approve high-scoring properties</Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="text-xs text-gray-400 mt-0.5">
                     Properties scoring at or above the threshold skip the review queue (unless flagged as ambiguous)
                   </p>
                 </div>
@@ -705,7 +700,7 @@ export default function ScraperSettingsPage() {
               </div>
               {settings.autoAnalysisEnabled && (
                 <div className="flex items-center gap-3">
-                  <Label htmlFor="threshold" className="whitespace-nowrap text-sm text-muted-foreground">
+                  <Label htmlFor="threshold" className="whitespace-nowrap text-sm text-gray-400">
                     Auto-approve if BMV score ≥
                   </Label>
                   <Input
@@ -720,14 +715,14 @@ export default function ScraperSettingsPage() {
                     }
                     className="w-24"
                   />
-                  <span className="text-xs text-muted-foreground">/ 100</span>
+                  <span className="text-xs text-gray-400">/ 100</span>
                 </div>
               )}
-              <Separator />
+              <div className="border-t border-[var(--ds-border)]" />
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <Label htmlFor="manualReview">Require manual review</Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="text-xs text-gray-400 mt-0.5">
                     All properties go to the review queue — unless the score threshold above is met
                   </p>
                 </div>
@@ -737,18 +732,18 @@ export default function ScraperSettingsPage() {
                   onCheckedChange={(v) => updateSetting("requireManualReview", v)}
                 />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Advanced: Rate Limiting + Proxy */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+          <div className="ds-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                 <Shield className="h-4 w-4" />
                 Advanced
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              </h3>
+            </div>
+            <div className="p-5 space-y-4">
               <div className="flex items-center gap-3">
                 <Label htmlFor="requestDelay" className="whitespace-nowrap text-sm w-36">
                   Request delay (ms)
@@ -782,7 +777,7 @@ export default function ScraperSettingsPage() {
                   className="w-20"
                 />
               </div>
-              <Separator />
+              <div className="border-t border-[var(--ds-border)]" />
               <div className="flex items-center justify-between">
                 <Label htmlFor="useProxy">Enable proxy</Label>
                 <Switch
@@ -800,37 +795,37 @@ export default function ScraperSettingsPage() {
                   onChange={(e) => updateSetting("proxyUrl", e.target.value || null)}
                 />
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
         {/* Data Quality: Postcode Repair */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+        <div className="ds-card overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+            <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
               <SearchCheck className="h-4 w-4" />
               Postcode Repair
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
+            </h3>
+          </div>
+          <div className="p-5 space-y-4">
+            <p className="text-sm text-gray-400">
               Cross-checks all scraped property listings and vendor leads against Land Registry data to
               validate and fill in missing or incorrect postcodes. Uses a 3-step process: stored postcode
               validation → Land Registry street lookup → postcodes.io fallback.
             </p>
 
             {postcodeFixResult && (
-              <div className="rounded-md border bg-muted/40 p-3 text-sm space-y-2">
+              <div className="rounded-md border border-[var(--ds-border)] bg-gray-50 p-3 text-sm space-y-2">
                 <p className="font-medium">
                   {postcodeFixResult.dryRun ? "Dry run complete — no changes saved" : "Postcode repair complete"}
                 </p>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-muted-foreground">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-gray-400">
                   <span>Scraped properties scanned:</span>
-                  <span className="font-medium text-foreground">{postcodeFixResult.propertyListings.processed}</span>
+                  <span className="font-medium text-gray-900">{postcodeFixResult.propertyListings.processed}</span>
                   <span>Scraped properties corrected:</span>
                   <span className="font-medium text-green-600">{postcodeFixResult.propertyListings.corrected}</span>
                   <span>Vendor leads scanned:</span>
-                  <span className="font-medium text-foreground">{postcodeFixResult.vendorLeads.processed}</span>
+                  <span className="font-medium text-gray-900">{postcodeFixResult.vendorLeads.processed}</span>
                   <span>Vendor leads corrected:</span>
                   <span className="font-medium text-green-600">{postcodeFixResult.vendorLeads.corrected}</span>
                 </div>
@@ -852,6 +847,7 @@ export default function ScraperSettingsPage() {
                 Dry Run
               </Button>
               <Button
+                className="btn-primary"
                 size="sm"
                 onClick={() => runPostcodeFix(false)}
                 disabled={isDryRunning || isFixingPostcodes}
@@ -864,8 +860,8 @@ export default function ScraperSettingsPage() {
                 Fix Postcodes
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   )

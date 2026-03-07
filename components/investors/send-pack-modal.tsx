@@ -21,7 +21,6 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { Loader2, FileText, Info, User, CheckCircle, XCircle, AlertTriangle, Download, RefreshCw, Mail } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
@@ -354,8 +353,8 @@ export function SendPackModal({
               Investor *
             </Label>
             {initialInvestorId ? (
-              <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2.5">
-                <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <div className="flex items-center gap-2 rounded-md border border-border bg-gray-100 px-3 py-2.5">
+                <User className="h-4 w-4 shrink-0 text-gray-400" />
                 <span className="text-sm font-medium">{initialInvestorName || "Selected Investor"}</span>
               </div>
             ) : (
@@ -366,12 +365,12 @@ export function SendPackModal({
                   </SelectTrigger>
                   <SelectContent>
                     {loadingInvestors ? (
-                      <div className="p-2 text-sm text-muted-foreground flex items-center gap-2">
+                      <div className="p-2 text-sm text-gray-400 flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Loading investors...
                       </div>
                     ) : investors.length === 0 ? (
-                      <div className="p-2 text-sm text-muted-foreground">
+                      <div className="p-2 text-sm text-gray-400">
                         No investors available
                       </div>
                     ) : (
@@ -384,7 +383,7 @@ export function SendPackModal({
                   </SelectContent>
                 </Select>
                 {selectedInvestor && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-gray-400">
                     Email: {selectedInvestor.user.email}
                   </p>
                 )}
@@ -403,19 +402,19 @@ export function SendPackModal({
               </SelectTrigger>
               <SelectContent>
                 {loadingDeals ? (
-                  <div className="p-2 text-sm text-muted-foreground flex items-center gap-2">
+                  <div className="p-2 text-sm text-gray-400 flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Loading deals...
                   </div>
                 ) : deals.length === 0 ? (
-                  <div className="p-2 text-sm text-muted-foreground">
+                  <div className="p-2 text-sm text-gray-400">
                     {initialInvestorId ? "No reserved deals found." : "No deals available."}
                   </div>
                 ) : (
                   deals.map((deal) => (
                     <SelectItem suppressHydrationWarning key={deal.id} value={deal.id}>
                       <span>{deal.address}</span>
-                      <span className="ml-1 text-muted-foreground">
+                      <span className="ml-1 text-gray-400">
                         · £{deal.askingPrice?.toLocaleString() ?? "—"}
                         {deal.status && deal.status !== "ready" && deal.status !== "listed"
                           ? ` · ${STATUS_LABELS[deal.status] ?? deal.status}`
@@ -427,7 +426,7 @@ export function SendPackModal({
               </SelectContent>
             </Select>
             {selectedDeal && (
-              <p suppressHydrationWarning className="text-sm text-muted-foreground">
+              <p suppressHydrationWarning className="text-sm text-gray-400">
                 Price: £{selectedDeal.askingPrice.toLocaleString()}
               </p>
             )}
@@ -453,9 +452,9 @@ export function SendPackModal({
           </div>
 
           {selectedPart === 4 && (
-            <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950">
+            <Alert className="border-amber-500 bg-amber-50 ">
               <Info className="h-4 w-4 text-amber-600" />
-              <AlertDescription className="text-amber-900 dark:text-amber-200">
+              <AlertDescription className="text-amber-900 ">
                 <strong>FCA Compliance:</strong> Part 4 is a financial promotion. Ensure the investor is certified as HNWI or Sophisticated before sending.
               </AlertDescription>
             </Alert>
@@ -492,13 +491,13 @@ export function SendPackModal({
 
           {/* Last delivery result */}
           {lastDelivery && (
-            <div className="rounded-lg border p-3 bg-muted/30 space-y-2">
+            <div className="rounded-lg border p-3 bg-gray-50 space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium">Last delivery</p>
                 <EmailStatusBadge status={lastDelivery.emailStatus} />
               </div>
               {(lastDelivery.emailStatus === "failed" || lastDelivery.emailStatus === "no_smtp") && lastDelivery.emailError && (
-                <p className="text-xs text-muted-foreground">{lastDelivery.emailError}</p>
+                <p className="text-xs text-gray-400">{lastDelivery.emailError}</p>
               )}
               <div className="flex gap-2">
                 <Button
@@ -533,20 +532,20 @@ export function SendPackModal({
           {/* Delivery history */}
           {selectedDealId && selectedInvestorId && deliveryHistory.length > 0 && (
             <>
-              <Separator />
+              <div className="border-t border-[var(--ds-border)]" />
               <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Delivery History</p>
+                <p className="text-sm font-medium text-gray-400">Delivery History</p>
                 {loadingHistory ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 text-sm text-gray-400">
                     <Loader2 className="h-3 w-3 animate-spin" />
                     Loading history...
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {deliveryHistory.slice(0, 5).map((record) => (
-                      <div key={record.id} className="rounded-md border p-2 bg-background space-y-1">
+                      <div key={record.id} className="rounded-md border p-2 bg-white space-y-1">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-gray-400">
                             {record.partNumber ? `Part ${record.partNumber}` : "Complete Pack"} •{" "}
                             {format(new Date(record.sentAt), "dd MMM yyyy HH:mm")}
                           </span>

@@ -10,9 +10,5 @@ export default async function OfferCalculatorSettingsPage() {
   if (!session) redirect("/auth/signin")
   if (session.user.role !== "admin") redirect("/dashboard")
 
-  return (
-    <div className="container max-w-3xl py-8">
-      <OfferCalculatorSettings />
-    </div>
-  )
+  return <OfferCalculatorSettings />
 }

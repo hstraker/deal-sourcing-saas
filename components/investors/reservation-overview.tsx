@@ -1,15 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -186,8 +177,8 @@ function StageEmailBadges({ stageEmails }: { stageEmails?: Record<string, StageE
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs max-w-[220px]">
               <p className="font-medium capitalize">{entry.status === "sent" ? "Email sent" : entry.status === "failed" ? "Email failed" : entry.status === "no_smtp" ? "SMTP not configured" : entry.status}</p>
-              <p className="text-muted-foreground font-normal">To: {entry.to}</p>
-              {sentDate && <p className="text-muted-foreground font-normal">{sentDate}</p>}
+              <p className="text-gray-400 font-normal">To: {entry.to}</p>
+              {sentDate && <p className="text-gray-400 font-normal">{sentDate}</p>}
               {entry.error && <p className="text-red-500 font-normal mt-0.5">{entry.error}</p>}
             </TooltipContent>
           </Tooltip>
@@ -204,7 +195,7 @@ function PacksCell({ deliveries, onResend }: { deliveries: PackDelivery[]; onRes
   const [resendingId, setResendingId] = useState<string | null>(null)
 
   if (!deliveries?.length) {
-    return <span className="text-xs text-muted-foreground">No pack sent</span>
+    return <span className="text-xs text-gray-400">No pack sent</span>
   }
 
   const latest = deliveries[0]
@@ -236,7 +227,7 @@ function PacksCell({ deliveries, onResend }: { deliveries: PackDelivery[]; onRes
         </TooltipTrigger>
         <TooltipContent side="top" className="text-xs">
           <p className="font-medium">View / Download PDF</p>
-          <p className="text-muted-foreground font-normal">
+          <p className="text-gray-400 font-normal">
             {latest.partNumber ? `Part ${latest.partNumber}` : "Complete pack"} · {format(new Date(latest.sentAt), "dd MMM yyyy")}
           </p>
         </TooltipContent>
@@ -260,12 +251,12 @@ function PacksCell({ deliveries, onResend }: { deliveries: PackDelivery[]; onRes
           </TooltipTrigger>
           <TooltipContent side="top" className="text-xs">
             <p className="font-medium">Resend Email</p>
-            <p className="text-muted-foreground font-normal">Retry sending the pack to {latest.recipientEmail || "investor"}</p>
+            <p className="text-gray-400 font-normal">Retry sending the pack to {latest.recipientEmail || "investor"}</p>
           </TooltipContent>
         </Tooltip>
       )}
       {deliveries.length > 1 && (
-        <span className="text-xs text-muted-foreground">+{deliveries.length - 1}</span>
+        <span className="text-xs text-gray-400">+{deliveries.length - 1}</span>
       )}
     </div>
   )
@@ -411,19 +402,17 @@ export function ReservationOverview({ initialReservations = [] }: ReservationOve
   return (
     <div className="space-y-6">
 
-      {/* ── Reservation Pipeline ───────────────────────────────────────── */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium">Reservation Pipeline</CardTitle>
-          <CardDescription>Live count of reservations at each workflow stage</CardDescription>
-        </CardHeader>
-        <CardContent>
+      {/* ── Reservation Pipeline ── */}
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h2 className="text-sm font-semibold text-gray-900">Reservation Pipeline</h2>
+          <p className="text-xs text-gray-400">Live count of reservations at each workflow stage</p>
+        </div>
+        <div className="p-5">
           <div className="flex items-center gap-1 overflow-x-auto pb-1">
             {pipelineStages.map((w, i) => (
               <div key={w.status} className="flex items-center gap-1 shrink-0">
-                <div
-                  className={`flex flex-col items-center justify-center gap-1 rounded-lg border px-3 py-2 min-w-[82px] ${w.color}`}
-                >
+                <div className={`flex flex-col items-center justify-center gap-1 rounded-lg border px-3 py-2 min-w-[82px] ${w.color}`}>
                   <div className="text-xl font-bold leading-none">{stageCounts[w.status] ?? 0}</div>
                   <div className="flex items-center gap-1 text-[10px] font-medium whitespace-nowrap">
                     {w.icon}
@@ -431,86 +420,79 @@ export function ReservationOverview({ initialReservations = [] }: ReservationOve
                   </div>
                 </div>
                 {i < pipelineStages.length - 1 && (
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <ChevronRight className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                 )}
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Reservations</CardTitle>
-          <CardDescription>Manage reservations through the workflow — click "Next Step" to advance each reservation</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : reservations.length === 0 ? (
-            <div className="py-8 text-center text-muted-foreground">No reservations found</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Investor</TableHead>
-                    <TableHead>Deal</TableHead>
-                    <TableHead>Fee</TableHead>
-                    <TableHead>Workflow</TableHead>
-                    <TableHead>Investor Pack</TableHead>
-                    <TableHead>Created</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {/* Sort so same investor's reservations appear together */}
-                  {[...reservations]
-                    .sort((a, b) => a.investor.id.localeCompare(b.investor.id))
-                    .map((r, idx, arr) => {
+      {/* ── All Reservations table ── */}
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h2 className="text-sm font-semibold text-gray-900">All Reservations</h2>
+          <p className="text-xs text-gray-400">Manage reservations through the workflow — click the action icon to advance each reservation</p>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+          </div>
+        ) : reservations.length === 0 ? (
+          <div className="py-10 text-center text-sm text-gray-400">No reservations found</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  <th className="table-header text-left">Investor</th>
+                  <th className="table-header text-left">Deal</th>
+                  <th className="table-header text-left">Fee</th>
+                  <th className="table-header text-left">Workflow</th>
+                  <th className="table-header text-left">Investor Pack</th>
+                  <th className="table-header text-left">Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...reservations]
+                  .sort((a, b) => a.investor.id.localeCompare(b.investor.id))
+                  .map((r, idx, arr) => {
                     const wf = getWorkflowItem(r.status)
                     const nextAction = r.status !== "completed" && r.status !== "cancelled" ? NEXT_ACTIONS[r.status] : null
                     const isAdvancing = advancingId === r.id
                     const isDeleting = deletingId === r.id
                     const isBusy = isAdvancing || isDeleting
                     const totalForInvestor = reservationCountByInvestor[r.investor.id] ?? 1
-                    // Index of this row within the investor's group (1-based)
                     const investorGroupIndex = arr.slice(0, idx).filter((x) => x.investor.id === r.investor.id).length + 1
-                    // First row of a new investor group → add a subtle top border separator
                     const isFirstInGroup = idx === 0 || arr[idx - 1].investor.id !== r.investor.id
 
                     return (
-                      <TableRow
-                        key={r.id}
-                        className={isFirstInGroup && idx > 0 ? "border-t-2 border-t-muted" : ""}
-                      >
+                      <tr key={r.id} className={`table-row${isFirstInGroup && idx > 0 ? " border-t-2 border-t-gray-100" : ""}`}>
                         {/* Investor */}
-                        <TableCell>
-                          <div className="font-medium">{getInvestorName(r.investor)}</div>
-                          <div className="text-xs text-muted-foreground">{r.investor.user.email}</div>
+                        <td className="table-cell">
+                          <div className="font-medium text-gray-900">{getInvestorName(r.investor)}</div>
+                          <div className="text-xs text-gray-400">{r.investor.user.email}</div>
                           {totalForInvestor > 1 && (
-                            <Badge variant="outline" className="mt-1 text-[10px] px-1.5 py-0 h-4 text-muted-foreground border-muted-foreground/30">
+                            <Badge variant="outline" className="mt-1 text-[10px] px-1.5 py-0 h-4 text-gray-400 border-gray-300">
                               Deal {investorGroupIndex} of {totalForInvestor}
                             </Badge>
                           )}
-                        </TableCell>
+                        </td>
 
                         {/* Deal */}
-                        <TableCell>
-                          <Link href={`/dashboard/deals/${r.deal.id}`}
-                            className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
+                        <td className="table-cell">
+                          <Link href={`/dashboard/deals/${r.deal.id}`} className="text-sm font-medium text-[#2563EB] hover:underline flex items-center gap-1">
                             <LinkIcon className="h-3 w-3" />{r.deal.address}
                           </Link>
-                          <div suppressHydrationWarning className="text-xs text-muted-foreground">
+                          <div suppressHydrationWarning className="text-xs text-gray-400">
                             £{Number(r.deal.askingPrice).toLocaleString()}
                           </div>
-                        </TableCell>
+                        </td>
 
                         {/* Fee */}
-                        <TableCell>
-                          <div suppressHydrationWarning className="font-medium text-sm">
+                        <td className="table-cell">
+                          <div suppressHydrationWarning className="font-medium text-sm text-gray-900">
                             £{Number(r.reservationFee).toLocaleString()}
                           </div>
                           {r.feePaid ? (
@@ -519,112 +501,86 @@ export function ReservationOverview({ initialReservations = [] }: ReservationOve
                               Paid{r.feePaidAt ? ` ${format(new Date(r.feePaidAt), "dd MMM")}` : ""}
                             </div>
                           ) : (
-                            <div className="text-xs text-muted-foreground">Not paid</div>
+                            <div className="text-xs text-gray-400">Not paid</div>
                           )}
-                        </TableCell>
+                        </td>
 
                         {/* Workflow */}
-                        <TableCell>
+                        <td className="table-cell">
                           <TooltipProvider delayDuration={200}>
                             <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-1.5">
-                              <Badge variant="outline" className={`gap-1 text-xs shrink-0 ${wf.color}`}>
-                                {wf.icon}{wf.label}
-                              </Badge>
+                              <div className="flex items-center gap-1.5">
+                                <Badge variant="outline" className={`gap-1 text-xs shrink-0 ${wf.color}`}>
+                                  {wf.icon}{wf.label}
+                                </Badge>
 
-                              {/* Quick next-step button */}
-                              {nextAction && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className={`h-6 w-6 ${nextAction.color}`}
-                                      disabled={isBusy}
-                                      onClick={() => advanceStatus(r.id, nextAction.nextStatus, nextAction.label)}
-                                    >
-                                      {isAdvancing
-                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                        : nextAction.icon
-                                      }
+                                {nextAction && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button size="icon" variant="ghost" className={`h-6 w-6 ${nextAction.color}`} disabled={isBusy} onClick={() => advanceStatus(r.id, nextAction.nextStatus, nextAction.label)}>
+                                        {isAdvancing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : nextAction.icon}
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="text-xs">
+                                      <p className="font-medium">{nextAction.label}</p>
+                                      <p className="text-gray-400 font-normal">{nextAction.description}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
+
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button size="icon" variant="ghost" className="h-6 w-6 text-gray-400 hover:text-gray-700" disabled={isBusy}>
+                                      {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ChevronDown className="h-3.5 w-3.5" />}
                                     </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top" className="text-xs">
-                                    <p className="font-medium">{nextAction.label}</p>
-                                    <p className="text-muted-foreground font-normal">{nextAction.description}</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              )}
-
-                              {/* Manual status + delete dropdown */}
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                    disabled={isBusy}
-                                  >
-                                    {isDeleting
-                                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                      : <ChevronDown className="h-3.5 w-3.5" />
-                                    }
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start" className="w-52">
-                                  <DropdownMenuLabel className="text-xs text-muted-foreground font-normal py-1">Set status</DropdownMenuLabel>
-                                  <DropdownMenuSeparator />
-                                  {WORKFLOW.map((w) => (
-                                    <DropdownMenuItem
-                                      key={w.status}
-                                      disabled={w.status === r.status}
-                                      className={`text-xs gap-2 ${w.status === r.status ? "font-semibold opacity-60 cursor-default" : ""}`}
-                                      onClick={() => w.status !== r.status && advanceStatus(r.id, w.status, w.label)}
-                                    >
-                                      {w.icon}
-                                      {w.label}
-                                      {w.status === r.status && <CheckCircle2 className="h-3 w-3 ml-auto text-primary" />}
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="start" className="w-52">
+                                    <DropdownMenuLabel className="text-xs text-gray-400 font-normal py-1">Set status</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    {WORKFLOW.map((w) => (
+                                      <DropdownMenuItem
+                                        key={w.status}
+                                        disabled={w.status === r.status}
+                                        className={`text-xs gap-2 ${w.status === r.status ? "font-semibold opacity-60 cursor-default" : ""}`}
+                                        onClick={() => w.status !== r.status && advanceStatus(r.id, w.status, w.label)}
+                                      >
+                                        {w.icon}
+                                        {w.label}
+                                        {w.status === r.status && <CheckCircle2 className="h-3 w-3 ml-auto text-[#2563EB]" />}
+                                      </DropdownMenuItem>
+                                    ))}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem className="text-xs gap-2 text-red-600 focus:text-red-600 focus:bg-red-50" onClick={() => deleteReservation(r.id)}>
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                      Delete reservation
                                     </DropdownMenuItem>
-                                  ))}
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    className="text-xs gap-2 text-red-600 focus:text-red-600 focus:bg-red-50"
-                                    onClick={() => deleteReservation(r.id)}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                    Delete reservation
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                            <StageEmailBadges stageEmails={r.stageEmails} />
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                              <StageEmailBadges stageEmails={r.stageEmails} />
                             </div>
                           </TooltipProvider>
-                        </TableCell>
+                        </td>
 
                         {/* Investor Pack */}
-                        <TableCell>
+                        <td className="table-cell">
                           <TooltipProvider delayDuration={200}>
-                            <PacksCell
-                              deliveries={r.packDeliveries || []}
-                              onResend={handleResend}
-                            />
+                            <PacksCell deliveries={r.packDeliveries || []} onResend={handleResend} />
                           </TooltipProvider>
-                        </TableCell>
+                        </td>
 
                         {/* Created */}
-                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        <td className="table-cell text-xs text-gray-400 whitespace-nowrap">
                           {format(new Date(r.createdAt), "dd MMM yyyy")}
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                      </tr>
                     )
                   })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

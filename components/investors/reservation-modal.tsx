@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   CheckCircle,
@@ -348,12 +347,12 @@ export function ReservationModal({
                   </SelectTrigger>
                   <SelectContent>
                     {loadingDeals ? (
-                      <div className="p-2 text-sm text-muted-foreground flex items-center gap-2">
+                      <div className="p-2 text-sm text-gray-400 flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Loading deals...
                       </div>
                     ) : deals.length === 0 ? (
-                      <div className="p-2 text-sm text-muted-foreground">
+                      <div className="p-2 text-sm text-gray-400">
                         No deals available
                       </div>
                     ) : (
@@ -366,7 +365,7 @@ export function ReservationModal({
                         >
                           {deal.address} - £{deal.askingPrice.toLocaleString()}
                           {deal.isReserved && (
-                            <span className="ml-2 text-xs text-muted-foreground">(Reserved)</span>
+                            <span className="ml-2 text-xs text-gray-400">(Reserved)</span>
                           )}
                         </SelectItem>
                       ))
@@ -374,7 +373,7 @@ export function ReservationModal({
                   </SelectContent>
                 </Select>
                 {selectedDeal && (
-                  <p suppressHydrationWarning className="text-sm text-muted-foreground">
+                  <p suppressHydrationWarning className="text-sm text-gray-400">
                     Price: £{selectedDeal.askingPrice.toLocaleString()}
                   </p>
                 )}
@@ -387,10 +386,10 @@ export function ReservationModal({
                   Investor *
                 </Label>
                 {initialInvestorId ? (
-                  <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2.5">
-                    <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="flex items-center gap-2 rounded-md border border-[var(--ds-border)] bg-gray-100 px-3 py-2.5">
+                    <User className="h-4 w-4 shrink-0 text-gray-400" />
                     {loadingInvestors ? (
-                      <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1.5 text-sm text-gray-400">
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         Loading…
                       </span>
@@ -399,12 +398,12 @@ export function ReservationModal({
                         <span className="font-medium">
                           {selectedInvestor.user.firstName} {selectedInvestor.user.lastName}
                         </span>
-                        <span className="ml-2 text-muted-foreground text-xs">
+                        <span className="ml-2 text-gray-400 text-xs">
                           {selectedInvestor.user.email}
                         </span>
                       </span>
                     ) : (
-                      <span className="text-sm text-muted-foreground">Investor not found</span>
+                      <span className="text-sm text-gray-400">Investor not found</span>
                     )}
                   </div>
                 ) : (
@@ -418,12 +417,12 @@ export function ReservationModal({
                     </SelectTrigger>
                     <SelectContent>
                       {loadingInvestors ? (
-                        <div className="p-2 text-sm text-muted-foreground flex items-center gap-2">
+                        <div className="p-2 text-sm text-gray-400 flex items-center gap-2">
                           <Loader2 className="h-4 w-4 animate-spin" />
                           Loading investors...
                         </div>
                       ) : investors.length === 0 ? (
-                        <div className="p-2 text-sm text-muted-foreground">
+                        <div className="p-2 text-sm text-gray-400">
                           No investors available
                         </div>
                       ) : (
@@ -437,7 +436,7 @@ export function ReservationModal({
                   </Select>
                 )}
                 {selectedInvestor && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-gray-400">
                     Phone: {selectedInvestor.user.phone || "N/A"}
                   </p>
                 )}
@@ -479,7 +478,7 @@ export function ReservationModal({
                   Search Contacts
                 </Label>
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
                   <Input
                     value={solicitorSearch}
                     onChange={(e) => setSolicitorSearch(e.target.value)}
@@ -488,40 +487,40 @@ export function ReservationModal({
                     onFocus={() => solicitorResults.length > 0 && setShowSolicitorDropdown(true)}
                   />
                   {searchingContacts && (
-                    <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                    <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-gray-400" />
                   )}
                   {showSolicitorDropdown && solicitorResults.length > 0 && (
-                    <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-md">
+                    <div className="absolute z-50 mt-1 w-full rounded-md border border-[var(--ds-border)] bg-white shadow-md">
                       {solicitorResults.map((c) => (
                         <button
                           key={c.id}
                           type="button"
-                          className="flex w-full flex-col gap-0.5 px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:outline-none"
+                          className="flex w-full flex-col gap-0.5 px-3 py-2 text-left text-sm hover:bg-gray-50 focus:bg-accent focus:outline-none"
                           onClick={() => applySolicitorContact(c)}
                         >
                           <span className="font-medium">{c.fullName}</span>
-                          {c.company && <span className="text-xs text-muted-foreground">{c.company}</span>}
-                          {c.email && <span className="text-xs text-muted-foreground">{c.email}</span>}
+                          {c.company && <span className="text-xs text-gray-400">{c.company}</span>}
+                          {c.email && <span className="text-xs text-gray-400">{c.email}</span>}
                         </button>
                       ))}
                     </div>
                   )}
                   {showSolicitorDropdown && solicitorResults.length === 0 && !searchingContacts && solicitorSearch.trim() && (
-                    <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover px-3 py-2 text-sm text-muted-foreground shadow-md">
+                    <div className="absolute z-50 mt-1 w-full rounded-md border border-[var(--ds-border)] bg-white px-3 py-2 text-sm text-gray-400 shadow-md">
                       No solicitor contacts found for "{solicitorSearch}"
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">Select a contact to auto-fill the fields below, or fill them in manually.</p>
+                <p className="text-xs text-gray-400">Select a contact to auto-fill the fields below, or fill them in manually.</p>
               </div>
 
-              <Separator />
+              <div className="border-t border-[var(--ds-border)]" />
 
               {/* Manual fields — pre-filled when a contact is selected */}
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Solicitor Details</span>
+                <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Solicitor Details</span>
                 {(solicitorName || solicitorFirm || solicitorEmail || solicitorPhone) && (
-                  <button type="button" onClick={clearSolicitorFields} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive">
+                  <button type="button" onClick={clearSolicitorFields} className="flex items-center gap-1 text-xs text-gray-400 hover:text-destructive">
                     <X className="h-3 w-3" />Clear
                   </button>
                 )}
@@ -598,7 +597,7 @@ export function ReservationModal({
                   </Select>
                 </div>
 
-                <Separator />
+                <div className="border-t border-[var(--ds-border)]" />
 
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
@@ -629,7 +628,7 @@ export function ReservationModal({
                     </Label>
                   </div>
 
-                  <Separator />
+                  <div className="border-t border-[var(--ds-border)]" />
 
                   <div className="flex items-center space-x-2">
                     <Checkbox
