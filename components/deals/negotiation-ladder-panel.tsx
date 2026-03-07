@@ -134,7 +134,7 @@ function LadderRung({
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
               Round {rung.round}
             </span>
             <span
@@ -165,9 +165,9 @@ function LadderRung({
         </div>
 
         <div className="text-right shrink-0">
-          <p className="text-xs text-muted-foreground">Below asking</p>
+          <p className="text-xs text-gray-400">Below asking</p>
           <p className="text-sm font-semibold">{pct(rung.discountPercent)}</p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-gray-400 mt-1">
             {pct(rung.ceilingPercent * 1)} of ceiling
           </p>
         </div>
@@ -191,13 +191,13 @@ function LadderRung({
         </div>
 
         {rung.headroomRemaining > 0 && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-gray-400">
             {fmt(rung.headroomRemaining)} headroom left
           </span>
         )}
 
         {rung.round > 0 && rung.stepUpFromPrevious > 0 && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-gray-400">
             Step: +{fmt(rung.stepUpFromPrevious)}
           </span>
         )}
@@ -205,7 +205,7 @@ function LadderRung({
 
       {/* Tactical note */}
       <div className="rounded bg-gray-100 px-3 py-2 mb-3">
-        <p className="text-xs text-muted-foreground italic leading-relaxed">
+        <p className="text-xs text-gray-400 italic leading-relaxed">
           &ldquo;{rung.negotiatingNote}&rdquo;
         </p>
       </div>
@@ -267,8 +267,8 @@ function LadderRung({
 function StepConnector({ step, label }: { step: number; label: string }) {
   return (
     <div className="flex items-center gap-2 py-1 pl-4">
-      <ArrowDown className="h-4 w-4 text-muted-foreground shrink-0" />
-      <span className="text-xs text-muted-foreground">
+      <ArrowDown className="h-4 w-4 text-gray-400 shrink-0" />
+      <span className="text-xs text-gray-400">
         +{fmt(step)} ({label})
       </span>
     </div>
@@ -488,11 +488,11 @@ function LadderView({
       {/* Asking price bar */}
       <div className="flex items-center justify-between px-1 pb-2 border-b">
         <div>
-          <span className="text-xs text-muted-foreground uppercase tracking-wide">Asking Price</span>
+          <span className="text-xs text-gray-400 uppercase tracking-wide">Asking Price</span>
           <p className="text-lg font-bold">{fmt(ladder.askingPrice)}</p>
         </div>
         <div className="text-right">
-          <span className="text-xs text-muted-foreground">Ceiling is</span>
+          <span className="text-xs text-gray-400">Ceiling is</span>
           <p className="text-sm font-semibold text-amber-700">
             {askingDiscountPct.toFixed(1)}% below asking
           </p>
@@ -589,22 +589,22 @@ function LadderView({
 
       {/* Concession summary */}
       <div className="border-t pt-3 mt-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
           Concession Summary
         </p>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
           {ladder.taperedSteps.map((step, i) => {
             const labels = ["Opening → Counter 1", "Counter 1 → Counter 2", "Counter 2 → Best & Final"]
             return (
               <span key={i}>
-                <span className="font-medium text-foreground">{labels[i]}:</span>{" "}
+                <span className="font-medium text-gray-900">{labels[i]}:</span>{" "}
                 +{fmt(step)}
               </span>
             )
           })}
         </div>
         <div className="flex items-center gap-2 mt-1.5">
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-gray-400">
             Total room: {fmt(ladder.totalConcession)}
           </span>
           {ladder.isTaperingCorrectly ? (
@@ -645,11 +645,11 @@ function LadderView({
             {sendChannel === "email" && (
               <div className="space-y-3">
                 <div>
-                  <Label className="text-xs text-muted-foreground">To</Label>
-                  <p className="text-sm font-medium mt-0.5">{vendorEmail || <span className="text-destructive">No email on record</span>}</p>
+                  <Label className="text-xs text-gray-400">To</Label>
+                  <p className="text-sm font-medium mt-0.5">{vendorEmail || <span className="text-red-500">No email on record</span>}</p>
                 </div>
                 <div>
-                  <Label htmlFor="vendor-offer-msg" className="text-xs text-muted-foreground">Message</Label>
+                  <Label htmlFor="vendor-offer-msg" className="text-xs text-gray-400">Message</Label>
                   <Textarea
                     id="vendor-offer-msg"
                     value={offerMessage}
@@ -664,11 +664,11 @@ function LadderView({
             {sendChannel === "sms" && (
               <div className="space-y-3">
                 <div>
-                  <Label className="text-xs text-muted-foreground">To</Label>
-                  <p className="text-sm font-medium mt-0.5">{vendorPhone || <span className="text-destructive">No phone on record</span>}</p>
+                  <Label className="text-xs text-gray-400">To</Label>
+                  <p className="text-sm font-medium mt-0.5">{vendorPhone || <span className="text-red-500">No phone on record</span>}</p>
                 </div>
                 <div>
-                  <Label htmlFor="vendor-sms-msg" className="text-xs text-muted-foreground">
+                  <Label htmlFor="vendor-sms-msg" className="text-xs text-gray-400">
                     Message <span className="font-normal">({offerMessage.length}/160)</span>
                   </Label>
                   <Textarea
@@ -685,11 +685,11 @@ function LadderView({
             {sendChannel === "phone" && (
               <div className="space-y-3">
                 <div>
-                  <Label className="text-xs text-muted-foreground">Vendor Phone</Label>
-                  <p className="text-xl font-bold mt-0.5">{vendorPhone || <span className="text-destructive text-base font-normal">No phone on record</span>}</p>
+                  <Label className="text-xs text-gray-400">Vendor Phone</Label>
+                  <p className="text-xl font-bold mt-0.5">{vendorPhone || <span className="text-red-500 text-base font-normal">No phone on record</span>}</p>
                 </div>
                 <div>
-                  <Label htmlFor="call-notes" className="text-xs text-muted-foreground">Call Notes</Label>
+                  <Label htmlFor="call-notes" className="text-xs text-gray-400">Call Notes</Label>
                   <Textarea
                     id="call-notes"
                     value={offerMessage}
@@ -756,7 +756,7 @@ export function NegotiationLadderPanel({
 
   if (!flipLadder && !holdLadder) {
     return (
-      <div className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
+      <div className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-gray-400">
         No viable strategies found — negotiation ladder unavailable.
       </div>
     )
@@ -802,7 +802,7 @@ export function NegotiationLadderPanel({
 
       {/* Rationale */}
       {activeLadder && (
-        <p className="text-xs text-muted-foreground italic leading-relaxed">
+        <p className="text-xs text-gray-400 italic leading-relaxed">
           {activeLadder.ladderRationale}
         </p>
       )}
@@ -821,7 +821,7 @@ export function NegotiationLadderPanel({
           vendorPhone={vendorPhone}
         />
       ) : (
-        <div className="rounded-lg border border-dashed px-4 py-4 text-center text-sm text-muted-foreground">
+        <div className="rounded-lg border border-dashed px-4 py-4 text-center text-sm text-gray-400">
           {activeStrategy === "flip"
             ? "Flip strategy not viable — switch to Hold"
             : "Hold strategy not viable — switch to Flip"}

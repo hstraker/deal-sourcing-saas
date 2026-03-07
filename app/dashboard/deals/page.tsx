@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { KanbanSquare, Plus } from "lucide-react"
+import { PageHeader } from "@/components/ui/page-header"
 import { DealList } from "@/components/deals/deal-list"
 
 export const dynamic = "force-dynamic"
@@ -97,29 +98,27 @@ export default async function DealsPage() {
   }))
 
   return (
-    <div>
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Deals</h1>
-          <p className="text-muted-foreground">
-            Manage property deals ({deals.length} total)
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/dashboard/deals/pipeline">
-            <Button variant="outline">
-              <KanbanSquare className="mr-2 h-4 w-4" />
-              Pipeline
-            </Button>
-          </Link>
-          <Link href="/dashboard/deals/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Deal
-            </Button>
-          </Link>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Deals"
+        subtitle={`Manage property deals (${deals.length} total)`}
+        actions={
+          <div className="flex gap-2">
+            <Link href="/dashboard/deals/pipeline">
+              <Button variant="outline">
+                <KanbanSquare className="mr-2 h-4 w-4" />
+                Pipeline
+              </Button>
+            </Link>
+            <Link href="/dashboard/deals/new">
+              <Button className="btn-primary">
+                <Plus className="mr-2 h-4 w-4" />
+                New Deal
+              </Button>
+            </Link>
+          </div>
+        }
+      />
 
       <DealList deals={dealsForClient as any} teamMembers={teamMembers} />
     </div>

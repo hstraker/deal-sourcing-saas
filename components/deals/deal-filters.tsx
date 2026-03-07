@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Filter, X } from "lucide-react"
 import type { DealWithRelations } from "@/types/deal"
 
@@ -149,7 +148,7 @@ export function DealFiltersComponent({
           <Filter className="h-4 w-4" />
           Filters
           {activeFiltersCount > 0 && (
-            <span className="ml-1 rounded-full bg-primary-foreground px-1.5 py-0.5 text-xs text-primary">
+            <span className="ml-1 rounded-full bg-white px-1.5 py-0.5 text-xs text-[#2563EB]">
               {activeFiltersCount}
             </span>
           )}
@@ -163,11 +162,11 @@ export function DealFiltersComponent({
       </div>
 
       {isOpen && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Filter Deals</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <div className="ds-card overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+            <h3 className="text-sm font-semibold text-gray-900">Filter Deals</h3>
+          </div>
+          <div className="p-5 space-y-4">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {/* Status Filter */}
               <div className="space-y-2">
@@ -383,8 +382,8 @@ export function DealFiltersComponent({
                 />
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   )

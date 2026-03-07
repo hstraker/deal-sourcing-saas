@@ -15,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { dealSchema, type DealFormData } from "@/lib/validations/deal"
 import { DealMetricsPreview } from "./deal-metrics-preview"
 import { PropertyDataFetcher } from "./property-data-fetcher"
@@ -155,7 +154,7 @@ export function DealForm({ initialData, dealId, onSubmit }: DealFormProps) {
   return (
     <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6">
       {error && (
-        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+        <div className="rounded-md bg-red-50 p-3 text-sm text-red-500">
           {error}
         </div>
       )}
@@ -224,12 +223,12 @@ export function DealForm({ initialData, dealId, onSubmit }: DealFormProps) {
       />
 
       {/* Property Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Property Details</CardTitle>
-          <CardDescription>Basic information about the property</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900">Property Details</h3>
+          <p className="text-xs text-gray-400 mt-0.5">Basic information about the property</p>
+        </div>
+        <div className="p-5 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="address">Address *</Label>
             <Input
@@ -238,7 +237,7 @@ export function DealForm({ initialData, dealId, onSubmit }: DealFormProps) {
               placeholder="123 High Street, Neath SA11"
             />
             {errors.address && (
-              <p className="text-sm text-destructive">{errors.address.message}</p>
+              <p className="text-sm text-red-500">{errors.address.message}</p>
             )}
           </div>
 
@@ -304,16 +303,16 @@ export function DealForm({ initialData, dealId, onSubmit }: DealFormProps) {
               />
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Pricing */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Pricing</CardTitle>
-          <CardDescription>Financial details</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900">Pricing</h3>
+          <p className="text-xs text-gray-400 mt-0.5">Financial details</p>
+        </div>
+        <div className="p-5 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="askingPrice">Asking Price (£) *</Label>
             <Input
@@ -325,7 +324,7 @@ export function DealForm({ initialData, dealId, onSubmit }: DealFormProps) {
               placeholder="70000"
             />
             {errors.askingPrice && (
-              <p className="text-sm text-destructive">{errors.askingPrice.message}</p>
+              <p className="text-sm text-red-500">{errors.askingPrice.message}</p>
             )}
           </div>
 
@@ -375,13 +374,13 @@ export function DealForm({ initialData, dealId, onSubmit }: DealFormProps) {
                 {...register("estimatedMonthlyRent", { valueAsNumber: true })}
                 placeholder="650"
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-gray-400">
                 Used to calculate yield and ROI
               </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Calculated Metrics Preview */}
       <DealMetricsPreview
@@ -396,12 +395,12 @@ export function DealForm({ initialData, dealId, onSubmit }: DealFormProps) {
       />
 
       {/* Deal Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Deal Information</CardTitle>
-          <CardDescription>Status, source, and team assignment</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900">Deal Information</h3>
+          <p className="text-xs text-gray-400 mt-0.5">Status, source, and team assignment</p>
+        </div>
+        <div className="p-5 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
@@ -446,9 +445,9 @@ export function DealForm({ initialData, dealId, onSubmit }: DealFormProps) {
           <div className="space-y-2">
             <Label htmlFor="assignedToId">Assigned To</Label>
             {teamMembers.length === 0 ? (
-              <div className="rounded-md border border-border bg-muted p-3 text-sm text-muted-foreground">
+              <div className="rounded-md border border-[var(--ds-border)] bg-gray-100 p-3 text-sm text-gray-400">
                 No team members available. Create users in{" "}
-                <a href="/dashboard/settings" className="text-primary underline">
+                <a href="/dashboard/settings" className="text-[#2563EB] underline">
                   Settings
                 </a>{" "}
                 to assign deals.
@@ -477,19 +476,19 @@ export function DealForm({ initialData, dealId, onSubmit }: DealFormProps) {
               </Select>
             )}
             {errors.assignedToId && (
-              <p className="text-sm text-destructive">{errors.assignedToId.message}</p>
+              <p className="text-sm text-red-500">{errors.assignedToId.message}</p>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Agent Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Agent Information</CardTitle>
-          <CardDescription>Contact details for the listing agent</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900">Agent Information</h3>
+          <p className="text-xs text-gray-400 mt-0.5">Contact details for the listing agent</p>
+        </div>
+        <div className="p-5 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="agentName">Agent Name</Label>
@@ -520,8 +519,8 @@ export function DealForm({ initialData, dealId, onSubmit }: DealFormProps) {
               placeholder="https://..."
             />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Actions */}
       <div className="flex justify-end gap-4">
@@ -533,7 +532,7 @@ export function DealForm({ initialData, dealId, onSubmit }: DealFormProps) {
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" className="btn-primary" disabled={isSubmitting}>
           {isSubmitting
             ? initialData
               ? "Updating..."
