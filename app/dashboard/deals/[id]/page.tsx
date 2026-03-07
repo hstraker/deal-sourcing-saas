@@ -2,8 +2,9 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { notFound, redirect } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { KpiCard } from "@/components/ui/kpi-card"
+import { PageHeader } from "@/components/ui/page-header"
 import Link from "next/link"
 import { ArrowLeft, Edit } from "lucide-react"
 import { calculateAllMetrics } from "@/lib/calculations/deal-metrics"
@@ -116,37 +117,36 @@ export default async function DealDetailPage({ params }: DealDetailPageProps) {
     redirect("/dashboard/deals")
   }
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      new: "bg-gray-100 text-gray-800",
-      review: "bg-yarning/20 text-warning",
-      in_progress: "bg-blue-100 text-blue-800",
-      ready: "bg-purple-100 text-purple-800",
-      listed: "bg-green-100 text-green-800",
-      reserved: "bg-orange-100 text-orange-800",
-      sold: "bg-success/20 text-success",
-      archived: "bg-gray-200 text-gray-600",
-    }
-    return colors[status] || "bg-gray-100 text-gray-800"
+  const STATUS_COLORS: Record<string, string> = {
+    new: "bg-gray-100 text-gray-700",
+    review: "bg-amber-50 text-amber-700",
+    in_progress: "bg-blue-50 text-blue-700",
+    ready: "bg-purple-50 text-purple-700",
+    listed: "bg-green-50 text-green-700",
+    reserved: "bg-orange-50 text-orange-700",
+    sold: "bg-green-100 text-green-800",
+    archived: "bg-gray-200 text-gray-600",
   }
 
-  const formatStatus = (status: string) => {
-    return status
+  const formatStatus = (status: string) =>
+    status
       .split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join(" ")
-  }
 
   const formatCurrency = (amount: number | null | undefined | Decimal) => {
     if (!amount) return "—"
-    const numAmount = typeof amount === "object" && "toNumber" in amount ? amount.toNumber() : Number(amount)
+    const n = typeof amount === "object" && "toNumber" in amount ? amount.toNumber() : Number(amount)
     return new Intl.NumberFormat("en-GB", {
       style: "currency",
       currency: "GBP",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(numAmount)
+    }).format(n)
   }
+
+  const fmtNum = (n: number) =>
+    n.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
   const scoreBreakdown = (deal.dealScoreBreakdown as DealScoreBreakdown | null) ?? null
   const scoreFactorLabels: Record<keyof DealScoreBreakdown, string> = {
@@ -162,670 +162,562 @@ export default async function DealDetailPage({ params }: DealDetailPageProps) {
   const photosWithUrls = await Promise.all(
     deal.photos.map(async (photo) => {
       const signedUrl = await getSignedDownloadUrl(photo.s3Key, 3600)
-      return {
-        ...photo,
-        s3Url: signedUrl,
-      }
+      return { ...photo, s3Url: signedUrl }
     })
   )
 
+  const calculatedMetrics = calculateAllMetrics({
+    askingPrice: Number(deal.askingPrice),
+    marketValue: deal.marketValue ? Number(deal.marketValue) : null,
+    estimatedRefurbCost: deal.estimatedRefurbCost ? Number(deal.estimatedRefurbCost) : null,
+    afterRefurbValue: deal.afterRefurbValue ? Number(deal.afterRefurbValue) : null,
+    estimatedMonthlyRent: deal.estimatedMonthlyRent ? Number(deal.estimatedMonthlyRent) : null,
+    bedrooms: deal.bedrooms,
+    propertyType: deal.propertyType,
+    postcode: deal.postcode || undefined,
+  })
+
+  const hasFinancialInsights =
+    calculatedMetrics.monthlyCashFlow !== null ||
+    calculatedMetrics.cashOnCashReturn !== null ||
+    calculatedMetrics.totalAcquisitionCost !== null
+
+  const hasMortgage = !!calculatedMetrics.monthlyMortgagePayment
+
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/deals">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold">{deal.address}</h1>
-            {deal.postcode && (
-              <p className="text-muted-foreground">{deal.postcode}</p>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <GenerateInvestorPackButton dealId={deal.id} dealAddress={deal.address} />
-          <Link href={`/dashboard/deals/${deal.id}/edit`}>
-            <Button>
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
-          </Link>
-          {session.user.role === "admin" && (
-            <DeleteDealButton dealId={deal.id} dealAddress={deal.address} />
-          )}
-        </div>
+      {/* Header */}
+      <div className="mb-6 flex items-start gap-3">
+        <Link href="/dashboard/deals">
+          <Button variant="ghost" size="icon" className="mt-0.5 shrink-0">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <PageHeader
+          title={deal.address}
+          subtitle={deal.postcode || undefined}
+          className="mb-0 flex-1"
+          actions={
+            <>
+              <GenerateInvestorPackButton dealId={deal.id} dealAddress={deal.address} />
+              <Link href={`/dashboard/deals/${deal.id}/edit`}>
+                <Button className="btn-primary h-9">
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
+              </Link>
+              {session.user.role === "admin" && (
+                <DeleteDealButton dealId={deal.id} dealAddress={deal.address} />
+              )}
+            </>
+          }
+        />
       </div>
 
       <ToggleProvider>
         <div className="grid gap-6 md:grid-cols-3">
-          {/* Main Details */}
+          {/* ── Main Column ── */}
           <div className="md:col-span-2 space-y-6">
-            {/* Cover Photo with Navigation */}
-            {photosWithUrls && photosWithUrls.length > 0 && (
+            {/* Cover Photo */}
+            {photosWithUrls.length > 0 && (
               <CoverPhotoViewerWithGallery
-                photos={photosWithUrls.map((photo) => ({
-                  id: photo.id,
-                  s3Url: photo.s3Url,
-                  caption: photo.caption,
-                  isCover: photo.isCover,
+                photos={photosWithUrls.map((p) => ({
+                  id: p.id,
+                  s3Url: p.s3Url,
+                  caption: p.caption,
+                  isCover: p.isCover,
                 }))}
               />
             )}
+
             <ToggleButtons hasMap={!!(deal.latitude && deal.longitude) || !!deal.address} />
-          {/* Property Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Property Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Property Type</p>
-                  <p className="font-medium capitalize">{deal.propertyType || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Bedrooms</p>
-                  <p className="font-medium">{deal.bedrooms || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Bathrooms</p>
-                  <p className="font-medium">{deal.bathrooms || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Square Feet</p>
-                  <p suppressHydrationWarning className="font-medium">{deal.squareFeet?.toLocaleString() || "—"}</p>
+
+            {/* Property Details */}
+            <div className="ds-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                <h2 className="text-sm font-semibold text-gray-900">Property Details</h2>
+              </div>
+              <div className="p-5">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Property Type</p>
+                    <p className="text-sm font-medium capitalize">{deal.propertyType || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Bedrooms</p>
+                    <p className="text-sm font-medium">{deal.bedrooms || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Bathrooms</p>
+                    <p className="text-sm font-medium">{deal.bathrooms || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Square Feet</p>
+                    <p suppressHydrationWarning className="text-sm font-medium">
+                      {deal.squareFeet?.toLocaleString() || "—"}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Pricing */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Pricing</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Asking Price</p>
-                  <p className="text-lg font-bold">{formatCurrency(deal.askingPrice)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Market Value</p>
-                  <p className="text-lg font-medium">{formatCurrency(deal.marketValue)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Refurb Cost</p>
-                  <p className="font-medium">{formatCurrency(deal.estimatedRefurbCost)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">After Refurb Value</p>
-                  <p className="font-medium">{formatCurrency(deal.afterRefurbValue)}</p>
+            {/* Pricing */}
+            <div className="ds-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                <h2 className="text-sm font-semibold text-gray-900">Pricing</h2>
+              </div>
+              <div className="p-5">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Asking Price</p>
+                    <p className="text-lg font-bold text-gray-900">{formatCurrency(deal.askingPrice)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Market Value</p>
+                    <p className="text-lg font-semibold text-gray-900">{formatCurrency(deal.marketValue)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Refurb Cost</p>
+                    <p className="text-sm font-medium">{formatCurrency(deal.estimatedRefurbCost)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">After Refurb Value</p>
+                    <p className="text-sm font-medium">{formatCurrency(deal.afterRefurbValue)}</p>
+                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Metrics */}
-          <ToggleableMetrics>
-          {(() => {
-            const calculatedMetrics = calculateAllMetrics({
-              askingPrice: Number(deal.askingPrice),
-              marketValue: deal.marketValue ? Number(deal.marketValue) : null,
-              estimatedRefurbCost: deal.estimatedRefurbCost ? Number(deal.estimatedRefurbCost) : null,
-              afterRefurbValue: deal.afterRefurbValue ? Number(deal.afterRefurbValue) : null,
-              estimatedMonthlyRent: deal.estimatedMonthlyRent ? Number(deal.estimatedMonthlyRent) : null,
-              bedrooms: deal.bedrooms,
-              propertyType: deal.propertyType,
-              postcode: deal.postcode || undefined,
-            })
+            {/* Investment Metrics */}
+            <ToggleableMetrics>
+              <div className="ds-card overflow-hidden">
+                <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                  <h2 className="text-sm font-semibold text-gray-900">Investment Metrics</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Key performance indicators for this deal</p>
+                </div>
+                <div className="p-5">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+                    <KpiCard
+                      label="Deal Score"
+                      value={deal.dealScore !== null ? `${deal.dealScore}/100` : "—"}
+                      valueType={
+                        deal.dealScore !== null
+                          ? deal.dealScore >= 80
+                            ? "positive"
+                            : deal.dealScore >= 70
+                            ? "highlight"
+                            : "neutral"
+                          : "neutral"
+                      }
+                      subLabel={deal.packTier ? `${deal.packTier} tier` : undefined}
+                    />
+                    <KpiCard
+                      label="BMV %"
+                      value={deal.bmvPercentage !== null ? `${deal.bmvPercentage.toFixed(1)}%` : "—"}
+                      valueType={deal.bmvPercentage !== null ? "positive" : "neutral"}
+                      subLabel="Below Market Value"
+                    />
+                    <KpiCard
+                      label="Gross Yield"
+                      value={calculatedMetrics.grossYield !== null ? `${calculatedMetrics.grossYield.toFixed(1)}%` : "—"}
+                      valueType="neutral"
+                      subLabel="Annual rent / Price"
+                    />
+                    <KpiCard
+                      label="Net Yield"
+                      value={calculatedMetrics.netYield !== null ? `${calculatedMetrics.netYield.toFixed(1)}%` : "—"}
+                      valueType="neutral"
+                      subLabel="After costs (15%)"
+                    />
+                    <KpiCard
+                      label="ROI"
+                      value={calculatedMetrics.roi !== null ? `${calculatedMetrics.roi.toFixed(1)}%` : "—"}
+                      valueType={calculatedMetrics.roi !== null ? "highlight" : "neutral"}
+                      subLabel="Return on Investment"
+                    />
+                    <KpiCard
+                      label="ROCE"
+                      value={calculatedMetrics.roce !== null ? `${calculatedMetrics.roce.toFixed(1)}%` : "—"}
+                      valueType={calculatedMetrics.roce !== null ? "highlight" : "neutral"}
+                      subLabel="Return on Capital Employed"
+                    />
+                    <KpiCard
+                      label="Cap Rate"
+                      value={calculatedMetrics.capRate !== null ? `${calculatedMetrics.capRate.toFixed(2)}%` : "—"}
+                      valueType="neutral"
+                      subLabel="NOI / Market Value"
+                    />
+                    <KpiCard
+                      label="GRM"
+                      value={calculatedMetrics.grm !== null ? calculatedMetrics.grm.toFixed(2) : "—"}
+                      valueType="neutral"
+                      subLabel="Price / Annual Rent"
+                    />
+                  </div>
+                </div>
+              </div>
+            </ToggleableMetrics>
 
-            return (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Investment Metrics</CardTitle>
-                  <CardDescription>
-                    Key performance indicators for this deal
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {/* Deal Score */}
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Deal Score</p>
-                  {deal.dealScore !== null ? (
-                    <>
-                      <p className={`text-3xl font-bold ${
-                        deal.dealScore >= 80 ? "text-success" :
-                        deal.dealScore >= 70 ? "text-primary" :
-                        "text-muted-foreground"
-                      }`}>
-                        {deal.dealScore}/100
-                      </p>
-                      {deal.packTier && (
-                        <p className="text-xs text-muted-foreground mt-1 capitalize">
-                          {deal.packTier} tier
+            {/* Deal Score Breakdown */}
+            {scoreBreakdown && (
+              <div className="ds-card overflow-hidden">
+                <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                  <h2 className="text-sm font-semibold text-gray-900">Deal Score Breakdown</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Weighted factors contributing to the overall score</p>
+                </div>
+                <div className="p-5 space-y-4">
+                  {Object.entries(scoreBreakdown).map(([key, factor]) => (
+                    <div key={key} className="flex items-center justify-between gap-4 text-sm">
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {scoreFactorLabels[key as keyof DealScoreBreakdown] ?? key}
                         </p>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-lg font-medium text-muted-foreground">—</p>
-                  )}
+                        <p className="text-xs text-gray-400">{factor.reason}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-semibold text-gray-900">
+                          {factor.rawScore !== undefined ? factor.rawScore.toFixed(1) : "—"}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          Weight {(factor.weight * 100).toFixed(0)}%
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
+              </div>
+            )}
 
-                {/* BMV % */}
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">BMV %</p>
-                  {deal.bmvPercentage !== null ? (
-                    <>
-                      <p className="text-3xl font-bold text-success">
-                        {deal.bmvPercentage.toFixed(1)}%
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">Below Market Value</p>
-                    </>
-                  ) : (
-                    <p className="text-lg font-medium text-muted-foreground">—</p>
-                  )}
+            {/* Financial Insights */}
+            {hasFinancialInsights && (
+              <div className="ds-card overflow-hidden">
+                <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                  <h2 className="text-sm font-semibold text-gray-900">Financial Insights</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Cash flow, acquisition costs, and equity analysis</p>
                 </div>
-
-                {/* Gross Yield */}
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Gross Yield</p>
-                  {calculatedMetrics.grossYield !== null ? (
-                    <>
-                      <p className="text-3xl font-bold">
-                        {calculatedMetrics.grossYield.toFixed(1)}%
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">Annual rent / Price</p>
-                    </>
-                  ) : (
-                    <p className="text-lg font-medium text-muted-foreground">—</p>
-                  )}
-                </div>
-
-                {/* Net Yield */}
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Net Yield</p>
-                  {calculatedMetrics.netYield !== null ? (
-                    <>
-                      <p className="text-3xl font-bold">
-                        {calculatedMetrics.netYield.toFixed(1)}%
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">After costs (15%)</p>
-                    </>
-                  ) : (
-                    <p className="text-lg font-medium text-muted-foreground">—</p>
-                  )}
-                </div>
-
-                {/* ROI */}
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">ROI</p>
-                  {calculatedMetrics.roi !== null ? (
-                    <>
-                      <p className="text-3xl font-bold text-primary">
-                        {calculatedMetrics.roi.toFixed(1)}%
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">Return on Investment</p>
-                    </>
-                  ) : (
-                    <p className="text-lg font-medium text-muted-foreground">—</p>
-                  )}
-                </div>
-
-                {/* ROCE */}
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">ROCE</p>
-                  {calculatedMetrics.roce !== null ? (
-                    <>
-                      <p className="text-3xl font-bold text-primary">
-                        {calculatedMetrics.roce.toFixed(1)}%
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">Return on Capital Employed</p>
-                    </>
-                  ) : (
-                    <p className="text-lg font-medium text-muted-foreground">—</p>
-                  )}
-                </div>
-
-                    {/* Cap Rate */}
+                <div className="p-5">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 mb-6">
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Cap Rate</p>
-                      {calculatedMetrics.capRate !== null ? (
+                      <p className="text-xs text-gray-400 mb-1">Cash-on-Cash</p>
+                      {calculatedMetrics.cashOnCashReturn !== null ? (
                         <>
-                          <p className="text-3xl font-bold">
-                            {calculatedMetrics.capRate.toFixed(2)}%
+                          <p className="text-2xl font-bold text-[#2563EB]">
+                            {calculatedMetrics.cashOnCashReturn.toFixed(1)}%
                           </p>
-                          <p className="text-xs text-muted-foreground mt-1">NOI / Market Value</p>
+                          <p className="text-xs text-gray-400 mt-1">Annual return</p>
                         </>
                       ) : (
-                        <p className="text-lg font-medium text-muted-foreground">—</p>
+                        <p className="text-lg font-medium text-gray-400">—</p>
                       )}
                     </div>
 
-                    {/* GRM */}
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">GRM</p>
-                      {calculatedMetrics.grm !== null ? (
+                      <p className="text-xs text-gray-400 mb-1">Monthly Cash Flow</p>
+                      {calculatedMetrics.monthlyCashFlow !== null ? (
                         <>
-                          <p className="text-3xl font-bold">
-                            {calculatedMetrics.grm.toFixed(2)}
+                          <p className={`text-2xl font-bold ${calculatedMetrics.monthlyCashFlow >= 0 ? "text-green-600" : "text-red-500"}`}>
+                            £{fmtNum(calculatedMetrics.monthlyCashFlow)}
                           </p>
-                          <p className="text-xs text-muted-foreground mt-1">Price / Annual Rent</p>
+                          <p className="text-xs text-gray-400 mt-1">After expenses</p>
                         </>
                       ) : (
-                        <p className="text-lg font-medium text-muted-foreground">—</p>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })()}
-          </ToggleableMetrics>
-
-          {scoreBreakdown && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Deal Score Breakdown</CardTitle>
-                <CardDescription>Weighted factors contributing to the overall score</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {Object.entries(scoreBreakdown).map(([key, factor]) => (
-                  <div key={key} className="flex items-center justify-between gap-4 text-sm">
-                    <div>
-                      <p className="font-medium">
-                        {scoreFactorLabels[key as keyof DealScoreBreakdown] ?? key}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{factor.reason}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold">
-                        {factor.rawScore !== undefined ? factor.rawScore.toFixed(1) : "—"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Weight {(factor.weight * 100).toFixed(0)}%
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Financial Insights */}
-          {(() => {
-            const metrics = calculateAllMetrics({
-              askingPrice: Number(deal.askingPrice),
-              marketValue: deal.marketValue ? Number(deal.marketValue) : null,
-              estimatedRefurbCost: deal.estimatedRefurbCost ? Number(deal.estimatedRefurbCost) : null,
-              afterRefurbValue: deal.afterRefurbValue ? Number(deal.afterRefurbValue) : null,
-              estimatedMonthlyRent: deal.estimatedMonthlyRent ? Number(deal.estimatedMonthlyRent) : null,
-              bedrooms: deal.bedrooms,
-              propertyType: deal.propertyType,
-              postcode: deal.postcode || undefined,
-            })
-
-            if (metrics.monthlyCashFlow === null && metrics.cashOnCashReturn === null && metrics.totalAcquisitionCost === null) {
-              return null
-            }
-
-            return (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Financial Insights</CardTitle>
-                  <CardDescription>
-                    Cash flow, acquisition costs, and equity analysis
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-6">
-                    {/* Cash-on-Cash Return */}
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Cash-on-Cash</p>
-                      {metrics.cashOnCashReturn !== null ? (
-                        <>
-                          <p className="text-2xl font-bold text-primary">
-                            {metrics.cashOnCashReturn.toFixed(1)}%
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">Annual return</p>
-                        </>
-                      ) : (
-                        <p className="text-lg font-medium text-muted-foreground">—</p>
+                        <p className="text-lg font-medium text-gray-400">—</p>
                       )}
                     </div>
 
-                    {/* Monthly Cash Flow */}
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Monthly Cash Flow</p>
-                      {metrics.monthlyCashFlow !== null ? (
+                      <p className="text-xs text-gray-400 mb-1">Annual Cash Flow</p>
+                      {calculatedMetrics.annualCashFlow !== null ? (
                         <>
-                          <p className={`text-2xl font-bold ${metrics.monthlyCashFlow >= 0 ? "text-success" : "text-destructive"}`}>
-                            £{metrics.monthlyCashFlow.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          <p className={`text-2xl font-bold ${calculatedMetrics.annualCashFlow >= 0 ? "text-green-600" : "text-red-500"}`}>
+                            £{fmtNum(calculatedMetrics.annualCashFlow)}
                           </p>
-                          <p className="text-xs text-muted-foreground mt-1">After expenses</p>
+                          <p className="text-xs text-gray-400 mt-1">Per year</p>
                         </>
                       ) : (
-                        <p className="text-lg font-medium text-muted-foreground">—</p>
+                        <p className="text-lg font-medium text-gray-400">—</p>
                       )}
                     </div>
 
-                    {/* Annual Cash Flow */}
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Annual Cash Flow</p>
-                      {metrics.annualCashFlow !== null ? (
+                      <p className="text-xs text-gray-400 mb-1">Equity Gain</p>
+                      {calculatedMetrics.equityGain !== null ? (
                         <>
-                          <p className={`text-2xl font-bold ${metrics.annualCashFlow >= 0 ? "text-success" : "text-destructive"}`}>
-                            £{metrics.annualCashFlow.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          <p className={`text-2xl font-bold ${calculatedMetrics.equityGain >= 0 ? "text-green-600" : "text-gray-400"}`}>
+                            £{fmtNum(calculatedMetrics.equityGain)}
                           </p>
-                          <p className="text-xs text-muted-foreground mt-1">Per year</p>
+                          <p className="text-xs text-gray-400 mt-1">After refurb</p>
                         </>
                       ) : (
-                        <p className="text-lg font-medium text-muted-foreground">—</p>
+                        <p className="text-lg font-medium text-gray-400">—</p>
                       )}
                     </div>
 
-                    {/* Equity Gain */}
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Equity Gain</p>
-                      {metrics.equityGain !== null ? (
+                      <p className="text-xs text-gray-400 mb-1">Payback Period</p>
+                      {calculatedMetrics.paybackPeriod !== null ? (
                         <>
-                          <p className={`text-2xl font-bold ${metrics.equityGain >= 0 ? "text-success" : "text-muted-foreground"}`}>
-                            £{metrics.equityGain.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          <p className="text-2xl font-bold text-gray-900">
+                            {calculatedMetrics.paybackPeriod.toFixed(1)}yrs
                           </p>
-                          <p className="text-xs text-muted-foreground mt-1">After refurb</p>
+                          <p className="text-xs text-gray-400 mt-1">To recoup</p>
                         </>
                       ) : (
-                        <p className="text-lg font-medium text-muted-foreground">—</p>
-                      )}
-                    </div>
-
-                    {/* Payback Period */}
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Payback Period</p>
-                      {metrics.paybackPeriod !== null ? (
-                        <>
-                          <p className="text-2xl font-bold">
-                            {metrics.paybackPeriod.toFixed(1)}yrs
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">To recoup</p>
-                        </>
-                      ) : (
-                        <p className="text-lg font-medium text-muted-foreground">—</p>
+                        <p className="text-lg font-medium text-gray-400">—</p>
                       )}
                     </div>
                   </div>
 
                   {/* Acquisition Cost Breakdown */}
-                  {metrics.totalAcquisitionCost !== null && (
-                    <div className="pt-6 border-t">
-                      <p className="text-sm font-semibold mb-4">Acquisition Cost Breakdown</p>
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm mb-4">
+                  {calculatedMetrics.totalAcquisitionCost !== null && (
+                    <div className="pt-5 border-t border-[var(--ds-border)]">
+                      <p className="text-sm font-semibold text-gray-900 mb-4">Acquisition Cost Breakdown</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 text-sm mb-4">
                         <div>
-                          <p className="text-muted-foreground mb-1">Purchase Price</p>
+                          <p className="text-xs text-gray-400 mb-1">Purchase Price</p>
                           <p className="font-semibold">{formatCurrency(deal.askingPrice)}</p>
                         </div>
-                        {metrics.stampDuty !== null && (
+                        {calculatedMetrics.stampDuty !== null && (
                           <div>
-                            <p className="text-muted-foreground mb-1">Stamp Duty</p>
-                            <p className="font-semibold">{formatCurrency(metrics.stampDuty)}</p>
+                            <p className="text-xs text-gray-400 mb-1">Stamp Duty</p>
+                            <p className="font-semibold">{formatCurrency(calculatedMetrics.stampDuty)}</p>
                           </div>
                         )}
-                        {metrics.legalFees !== null && (
+                        {calculatedMetrics.legalFees !== null && (
                           <div>
-                            <p className="text-muted-foreground mb-1">Legal Fees</p>
-                            <p className="font-semibold">{formatCurrency(metrics.legalFees)}</p>
+                            <p className="text-xs text-gray-400 mb-1">Legal Fees</p>
+                            <p className="font-semibold">{formatCurrency(calculatedMetrics.legalFees)}</p>
                           </div>
                         )}
-                        {metrics.surveyCost !== null && (
+                        {calculatedMetrics.surveyCost !== null && (
                           <div>
-                            <p className="text-muted-foreground mb-1">Survey</p>
-                            <p className="font-semibold">{formatCurrency(metrics.surveyCost)}</p>
+                            <p className="text-xs text-gray-400 mb-1">Survey</p>
+                            <p className="font-semibold">{formatCurrency(calculatedMetrics.surveyCost)}</p>
                           </div>
                         )}
                         {deal.estimatedRefurbCost && (
                           <div>
-                            <p className="text-muted-foreground mb-1">Refurb Cost</p>
+                            <p className="text-xs text-gray-400 mb-1">Refurb Cost</p>
                             <p className="font-semibold">{formatCurrency(deal.estimatedRefurbCost)}</p>
                           </div>
                         )}
                       </div>
-                      <div className="pt-4 border-t">
-                        <div className="flex justify-between items-center">
-                          <p className="text-sm font-semibold">Total Investment Required</p>
-                          <p className="text-2xl font-bold">
-                            {formatCurrency(metrics.totalAcquisitionCost)}
-                          </p>
-                        </div>
+                      <div className="pt-4 border-t border-[var(--ds-border)] flex justify-between items-center">
+                        <p className="text-sm font-semibold text-gray-900">Total Investment Required</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {formatCurrency(calculatedMetrics.totalAcquisitionCost)}
+                        </p>
                       </div>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            )
-          })()}
+                </div>
+              </div>
+            )}
 
-          {/* Mortgage Scenario */}
-          {(() => {
-            const mortgageMetrics = calculateAllMetrics({
-              askingPrice: Number(deal.askingPrice),
-              marketValue: deal.marketValue ? Number(deal.marketValue) : null,
-              estimatedRefurbCost: deal.estimatedRefurbCost ? Number(deal.estimatedRefurbCost) : null,
-              afterRefurbValue: deal.afterRefurbValue ? Number(deal.afterRefurbValue) : null,
-              estimatedMonthlyRent: deal.estimatedMonthlyRent ? Number(deal.estimatedMonthlyRent) : null,
-              bedrooms: deal.bedrooms,
-              propertyType: deal.propertyType,
-              postcode: deal.postcode || undefined,
-            })
-
-            if (!mortgageMetrics.monthlyMortgagePayment) return null
-
-            return (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Mortgage Scenario</CardTitle>
-                  <CardDescription>
-                    Financial analysis assuming 25% deposit, 4.5% BTL interest rate, 25-year term
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {/* Upfront Costs */}
-                    <div>
-                      <p className="text-sm font-semibold mb-4">Upfront Investment</p>
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm mb-4">
-                        <div>
-                          <p className="text-muted-foreground mb-1">Deposit (25%)</p>
-                          <p className="font-semibold">{formatCurrency(mortgageMetrics.mortgageDeposit)}</p>
-                        </div>
-                        {mortgageMetrics.stampDuty !== null && (
-                          <div>
-                            <p className="text-muted-foreground mb-1">Stamp Duty</p>
-                            <p className="font-semibold">{formatCurrency(mortgageMetrics.stampDuty)}</p>
-                          </div>
-                        )}
-                        {mortgageMetrics.legalFees !== null && (
-                          <div>
-                            <p className="text-muted-foreground mb-1">Legal Fees</p>
-                            <p className="font-semibold">{formatCurrency(mortgageMetrics.legalFees)}</p>
-                          </div>
-                        )}
-                        {mortgageMetrics.surveyCost !== null && (
-                          <div>
-                            <p className="text-muted-foreground mb-1">Survey</p>
-                            <p className="font-semibold">{formatCurrency(mortgageMetrics.surveyCost)}</p>
-                          </div>
-                        )}
-                        {deal.estimatedRefurbCost && (
-                          <div>
-                            <p className="text-muted-foreground mb-1">Refurb Cost</p>
-                            <p className="font-semibold">{formatCurrency(deal.estimatedRefurbCost)}</p>
-                          </div>
-                        )}
-                      </div>
-                      <div className="pt-4 border-t">
-                        <div className="flex justify-between items-center">
-                          <p className="text-sm font-semibold">Total Cash Required</p>
-                          <p className="text-2xl font-bold">
-                            {formatCurrency(mortgageMetrics.totalCashRequired)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Mortgage & Cash Flow */}
-                    <div className="pt-4 border-t">
-                      <p className="text-sm font-semibold mb-4">Monthly Cash Flow (Mortgaged)</p>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                        {/* Monthly Mortgage Payment */}
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Monthly Mortgage</p>
-                          <p className="text-2xl font-bold">
-                            {formatCurrency(mortgageMetrics.monthlyMortgagePayment)}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">25yr @ 4.5%</p>
-                        </div>
-
-                        {/* Monthly Cash Flow */}
-                        {mortgageMetrics.netMonthlyCashFlowMortgaged !== null && (
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Monthly Cash Flow</p>
-                            <p className={`text-2xl font-bold ${mortgageMetrics.netMonthlyCashFlowMortgaged >= 0 ? 'text-success' : 'text-destructive'}`}>
-                              {formatCurrency(mortgageMetrics.netMonthlyCashFlowMortgaged)}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">After mortgage & costs</p>
-                          </div>
-                        )}
-
-                        {/* Annual Cash Flow */}
-                        {mortgageMetrics.netAnnualCashFlowMortgaged !== null && (
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Annual Cash Flow</p>
-                            <p className={`text-2xl font-bold ${mortgageMetrics.netAnnualCashFlowMortgaged >= 0 ? 'text-success' : 'text-destructive'}`}>
-                              {formatCurrency(mortgageMetrics.netAnnualCashFlowMortgaged)}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">Per year</p>
-                          </div>
-                        )}
-
-                        {/* Cash-on-Cash Return */}
-                        {mortgageMetrics.cashOnCashReturnMortgaged !== null && (
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Cash-on-Cash Return</p>
-                            <p className="text-2xl font-bold text-primary">
-                              {mortgageMetrics.cashOnCashReturnMortgaged.toFixed(1)}%
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">On cash invested</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* DCR */}
-                    {mortgageMetrics.debtCoverageRatio !== null && (
-                      <div className="pt-4 border-t">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-semibold mb-1">Debt Coverage Ratio (DCR)</p>
-                            <p className="text-xs text-muted-foreground">Net Operating Income / Annual Mortgage Payment</p>
-                          </div>
-                          <div className="text-right">
-                            <p className={`text-3xl font-bold ${mortgageMetrics.debtCoverageRatio >= 1.25 ? 'text-success' : mortgageMetrics.debtCoverageRatio >= 1.0 ? 'text-primary' : 'text-destructive'}`}>
-                              {mortgageMetrics.debtCoverageRatio.toFixed(2)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {mortgageMetrics.debtCoverageRatio >= 1.25 ? 'Excellent (>1.25)' : 
-                               mortgageMetrics.debtCoverageRatio >= 1.0 ? 'Good (>1.0)' : 
-                               'Low (<1.0)'}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })()}
-
-          {/* Offer Analysis */}
-          <OfferAnalysisPanel
-            dealId={deal.id}
-            askingPrice={Number(deal.askingPrice)}
-            gdv={deal.afterRefurbValue ? Number(deal.afterRefurbValue) : null}
-            estimatedRent={deal.estimatedMonthlyRent ? Number(deal.estimatedMonthlyRent) : null}
-            totalRefurbishment={deal.estimatedRefurbCost ? Number(deal.estimatedRefurbCost) : null}
-          />
-
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Deal Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Deal Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-6 md:grid-cols-2">
-                {/* Left Column */}
-                <div className="space-y-4">
+            {/* Mortgage Scenario */}
+            {hasMortgage && (
+              <div className="ds-card overflow-hidden">
+                <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                  <h2 className="text-sm font-semibold text-gray-900">Mortgage Scenario</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    25% deposit · 4.5% BTL interest rate · 25-year term
+                  </p>
+                </div>
+                <div className="p-5 space-y-6">
+                  {/* Upfront Costs */}
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1.5">Status</p>
-                    <span
-                      className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${getStatusColor(deal.status)}`}
-                    >
+                    <p className="text-sm font-semibold text-gray-900 mb-4">Upfront Investment</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 text-sm mb-4">
+                      <div>
+                        <p className="text-xs text-gray-400 mb-1">Deposit (25%)</p>
+                        <p className="font-semibold">{formatCurrency(calculatedMetrics.mortgageDeposit)}</p>
+                      </div>
+                      {calculatedMetrics.stampDuty !== null && (
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">Stamp Duty</p>
+                          <p className="font-semibold">{formatCurrency(calculatedMetrics.stampDuty)}</p>
+                        </div>
+                      )}
+                      {calculatedMetrics.legalFees !== null && (
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">Legal Fees</p>
+                          <p className="font-semibold">{formatCurrency(calculatedMetrics.legalFees)}</p>
+                        </div>
+                      )}
+                      {calculatedMetrics.surveyCost !== null && (
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">Survey</p>
+                          <p className="font-semibold">{formatCurrency(calculatedMetrics.surveyCost)}</p>
+                        </div>
+                      )}
+                      {deal.estimatedRefurbCost && (
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">Refurb Cost</p>
+                          <p className="font-semibold">{formatCurrency(deal.estimatedRefurbCost)}</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="pt-4 border-t border-[var(--ds-border)] flex justify-between items-center">
+                      <p className="text-sm font-semibold text-gray-900">Total Cash Required</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {formatCurrency(calculatedMetrics.totalCashRequired)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Monthly Cash Flow */}
+                  <div className="pt-2 border-t border-[var(--ds-border)]">
+                    <p className="text-sm font-semibold text-gray-900 mb-4">Monthly Cash Flow (Mortgaged)</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                      <div>
+                        <p className="text-xs text-gray-400 mb-1">Monthly Mortgage</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {formatCurrency(calculatedMetrics.monthlyMortgagePayment)}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">25yr @ 4.5%</p>
+                      </div>
+
+                      {calculatedMetrics.netMonthlyCashFlowMortgaged !== null && (
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">Monthly Cash Flow</p>
+                          <p className={`text-2xl font-bold ${calculatedMetrics.netMonthlyCashFlowMortgaged >= 0 ? "text-green-600" : "text-red-500"}`}>
+                            {formatCurrency(calculatedMetrics.netMonthlyCashFlowMortgaged)}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">After mortgage & costs</p>
+                        </div>
+                      )}
+
+                      {calculatedMetrics.netAnnualCashFlowMortgaged !== null && (
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">Annual Cash Flow</p>
+                          <p className={`text-2xl font-bold ${calculatedMetrics.netAnnualCashFlowMortgaged >= 0 ? "text-green-600" : "text-red-500"}`}>
+                            {formatCurrency(calculatedMetrics.netAnnualCashFlowMortgaged)}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">Per year</p>
+                        </div>
+                      )}
+
+                      {calculatedMetrics.cashOnCashReturnMortgaged !== null && (
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">Cash-on-Cash Return</p>
+                          <p className="text-2xl font-bold text-[#2563EB]">
+                            {calculatedMetrics.cashOnCashReturnMortgaged.toFixed(1)}%
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">On cash invested</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* DCR */}
+                  {calculatedMetrics.debtCoverageRatio !== null && (
+                    <div className="pt-2 border-t border-[var(--ds-border)] flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900 mb-1">Debt Coverage Ratio (DCR)</p>
+                        <p className="text-xs text-gray-400">Net Operating Income / Annual Mortgage Payment</p>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-3xl font-bold ${
+                          calculatedMetrics.debtCoverageRatio >= 1.25
+                            ? "text-green-600"
+                            : calculatedMetrics.debtCoverageRatio >= 1.0
+                            ? "text-[#2563EB]"
+                            : "text-red-500"
+                        }`}>
+                          {calculatedMetrics.debtCoverageRatio.toFixed(2)}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {calculatedMetrics.debtCoverageRatio >= 1.25
+                            ? "Excellent (>1.25)"
+                            : calculatedMetrics.debtCoverageRatio >= 1.0
+                            ? "Good (>1.0)"
+                            : "Low (<1.0)"}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Offer Analysis */}
+            <OfferAnalysisPanel
+              dealId={deal.id}
+              askingPrice={Number(deal.askingPrice)}
+              gdv={deal.afterRefurbValue ? Number(deal.afterRefurbValue) : null}
+              estimatedRent={deal.estimatedMonthlyRent ? Number(deal.estimatedMonthlyRent) : null}
+              totalRefurbishment={deal.estimatedRefurbCost ? Number(deal.estimatedRefurbCost) : null}
+            />
+          </div>
+
+          {/* ── Sidebar ── */}
+          <div className="space-y-6">
+            {/* Deal Information */}
+            <div className="ds-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                <h2 className="text-sm font-semibold text-gray-900">Deal Information</h2>
+              </div>
+              <div className="p-5">
+                <div className="space-y-5">
+                  {/* Status */}
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1.5">Status</p>
+                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${STATUS_COLORS[deal.status] ?? "bg-gray-100 text-gray-700"}`}>
                       {formatStatus(deal.status)}
                     </span>
                   </div>
+
+                  {/* Data Source */}
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1.5">Data Source</p>
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1.5">Data Source</p>
                     <p className="text-sm font-medium capitalize">{deal.dataSource || "—"}</p>
                   </div>
+
+                  {/* Pack Tier */}
                   {deal.packTier && (
                     <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1.5">Pack Tier</p>
-                      <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+                      <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1.5">Pack Tier</p>
+                      <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-[#2563EB]">
                         {deal.packTier}
                       </span>
                     </div>
                   )}
+
+                  {/* Pack Price */}
                   {deal.packPrice && (
                     <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1.5">Pack Price</p>
-                      <p className="text-base font-semibold text-primary">
+                      <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1.5">Pack Price</p>
+                      <p className="text-base font-semibold text-[#2563EB]">
                         {formatCurrency(deal.packPrice)}
                       </p>
                     </div>
                   )}
+
                   {/* Agent Information */}
                   {(deal.agentName || deal.agentPhone || deal.listingUrl) && (
-                    <div className="pt-2 border-t">
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3">Agent Information</p>
+                    <div className="pt-4 border-t border-[var(--ds-border)]">
+                      <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-3">Agent Information</p>
                       <div className="space-y-2.5">
                         {deal.agentName && (
                           <div>
-                            <p className="text-xs text-muted-foreground">Name</p>
+                            <p className="text-xs text-gray-400">Name</p>
                             <p className="text-sm font-medium">{deal.agentName}</p>
                           </div>
                         )}
                         {deal.agentPhone && (
                           <div>
-                            <p className="text-xs text-muted-foreground">Phone</p>
+                            <p className="text-xs text-gray-400">Phone</p>
                             <p className="text-sm font-medium">{deal.agentPhone}</p>
                           </div>
                         )}
                         {deal.listingUrl && (
                           <div>
-                            <p className="text-xs text-muted-foreground">Listing</p>
+                            <p className="text-xs text-gray-400">Listing</p>
                             <a
                               href={deal.listingUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-sm font-medium text-primary hover:underline break-all"
+                              className="text-sm font-medium text-[#2563EB] hover:underline break-all"
                             >
                               View Listing
                             </a>
@@ -834,29 +726,26 @@ export default async function DealDetailPage({ params }: DealDetailPageProps) {
                       </div>
                     </div>
                   )}
-                </div>
 
-                {/* Right Column */}
-                <div className="space-y-4">
                   {/* Engagement Metrics */}
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3">Engagement</p>
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <div className="rounded-lg border bg-muted/30 p-2.5">
-                        <p className="text-xs text-muted-foreground mb-1">Photos</p>
-                        <p className="text-base font-bold text-primary">{deal._count.photos}</p>
+                  <div className="pt-4 border-t border-[var(--ds-border)]">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-3">Engagement</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-lg bg-gray-50 border border-[var(--ds-border)] p-2.5">
+                        <p className="text-xs text-gray-400 mb-1">Photos</p>
+                        <p className="text-base font-bold text-[#2563EB]">{deal._count.photos}</p>
                       </div>
-                      <div className="rounded-lg border bg-muted/30 p-2.5">
-                        <p className="text-xs text-muted-foreground mb-1">Favorites</p>
-                        <p className="text-base font-bold text-warning">{deal._count.favorites}</p>
+                      <div className="rounded-lg bg-gray-50 border border-[var(--ds-border)] p-2.5">
+                        <p className="text-xs text-gray-400 mb-1">Favorites</p>
+                        <p className="text-base font-bold text-amber-500">{deal._count.favorites}</p>
                       </div>
-                      <div className="rounded-lg border bg-muted/30 p-2.5">
-                        <p className="text-xs text-muted-foreground mb-1">Views</p>
-                        <p className="text-base font-bold">{deal._count.dealViews}</p>
+                      <div className="rounded-lg bg-gray-50 border border-[var(--ds-border)] p-2.5">
+                        <p className="text-xs text-gray-400 mb-1">Views</p>
+                        <p className="text-base font-bold text-gray-900">{deal._count.dealViews}</p>
                       </div>
-                      <div className="rounded-lg border bg-muted/30 p-2.5">
-                        <p className="text-xs text-muted-foreground mb-1">Created</p>
-                        <p className="text-sm font-medium">
+                      <div className="rounded-lg bg-gray-50 border border-[var(--ds-border)] p-2.5">
+                        <p className="text-xs text-gray-400 mb-1">Created</p>
+                        <p className="text-xs font-medium text-gray-700">
                           {new Date(deal.createdAt).toLocaleDateString("en-GB", {
                             day: "numeric",
                             month: "short",
@@ -867,29 +756,28 @@ export default async function DealDetailPage({ params }: DealDetailPageProps) {
                     </div>
                   </div>
 
-                  {/* Team Information */}
-                  <div className="rounded-lg border bg-muted/20 p-3">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3">Team</p>
+                  {/* Team */}
+                  <div className="pt-4 border-t border-[var(--ds-border)]">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-3">Team</p>
                     <div className="space-y-3 text-sm">
                       {deal.createdBy && (
                         <div>
-                          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
-                            Created By
+                          <p className="text-xs text-gray-400 mb-0.5">Created By</p>
+                          <p className="font-semibold text-gray-900">
+                            {deal.createdBy.firstName} {deal.createdBy.lastName}
                           </p>
-                          <p className="font-semibold">{deal.createdBy.firstName} {deal.createdBy.lastName}</p>
-                          <p className="text-xs text-muted-foreground">{deal.createdBy.email}</p>
+                          <p className="text-xs text-gray-400">{deal.createdBy.email}</p>
                         </div>
                       )}
                       <div>
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
-                          Assigned To
-                        </p>
+                        <p className="text-xs text-gray-400 mb-2">Assigned To</p>
                         <QuickAssignUser
                           dealId={deal.id}
                           currentAssignedToId={deal.assignedToId}
                           currentAssignedToName={
                             deal.assignedTo
-                              ? `${deal.assignedTo.firstName || ""} ${deal.assignedTo.lastName || ""}`.trim() || deal.assignedTo.email
+                              ? `${deal.assignedTo.firstName || ""} ${deal.assignedTo.lastName || ""}`.trim() ||
+                                deal.assignedTo.email
                               : null
                           }
                         />
@@ -898,72 +786,68 @@ export default async function DealDetailPage({ params }: DealDetailPageProps) {
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Property Location Map */}
-          {(deal.latitude && deal.longitude) || deal.address ? (
-            <ToggleableMap>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Property Location</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {(() => {
-                    // Build map URL from coordinates or address
-                    let mapUrl = ""
-                    if (deal.latitude && deal.longitude) {
-                      mapUrl = `https://www.google.com/maps?q=${Number(deal.latitude)},${Number(deal.longitude)}&output=embed`
-                    } else {
-                      const addressQuery = encodeURIComponent(
-                        `${deal.address}${deal.postcode ? `, ${deal.postcode}` : ""}, UK`
+            {/* Property Location Map */}
+            {((deal.latitude && deal.longitude) || deal.address) ? (
+              <ToggleableMap>
+                <div className="ds-card overflow-hidden">
+                  <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                    <h2 className="text-sm font-semibold text-gray-900">Property Location</h2>
+                  </div>
+                  <div className="p-0">
+                    {(() => {
+                      let mapUrl = ""
+                      if (deal.latitude && deal.longitude) {
+                        mapUrl = `https://www.google.com/maps?q=${Number(deal.latitude)},${Number(deal.longitude)}&output=embed`
+                      } else {
+                        const q = encodeURIComponent(
+                          `${deal.address}${deal.postcode ? `, ${deal.postcode}` : ""}, UK`
+                        )
+                        mapUrl = `https://www.google.com/maps?q=${q}&output=embed`
+                      }
+                      return (
+                        <div className="w-full h-[280px]">
+                          <iframe
+                            src={mapUrl}
+                            width="100%"
+                            height="100%"
+                            style={{ border: 0 }}
+                            allowFullScreen
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                            className="w-full h-full"
+                          />
+                        </div>
                       )
-                      mapUrl = `https://www.google.com/maps?q=${addressQuery}&output=embed`
-                    }
+                    })()}
+                  </div>
+                </div>
+              </ToggleableMap>
+            ) : null}
 
-                    return (
-                      <div className="w-full h-[300px] rounded-lg overflow-hidden border">
-                        <iframe
-                          src={mapUrl}
-                          width="100%"
-                          height="100%"
-                          style={{ border: 0 }}
-                          allowFullScreen
-                          loading="lazy"
-                          referrerPolicy="no-referrer-when-downgrade"
-                          className="w-full h-full"
-                        />
-                      </div>
-                    )
-                  })()}
-                </CardContent>
-              </Card>
-            </ToggleableMap>
-          ) : null}
+            {/* Property Analysis Panel */}
+            <PropertyAnalysisPanel
+              dealId={deal.id}
+              address={deal.address}
+              postcode={deal.postcode}
+              askingPrice={Number(deal.askingPrice)}
+            />
 
-          {/* Property Analysis Panel */}
-          <PropertyAnalysisPanel
-            dealId={deal.id}
-            address={deal.address}
-            postcode={deal.postcode}
-            askingPrice={Number(deal.askingPrice)}
-          />
+            {/* Vendor Information */}
+            <VendorSection dealId={deal.id} vendorId={deal.vendor?.id} />
 
-          {/* Vendor Information */}
-          <VendorSection dealId={deal.id} vendorId={deal.vendor?.id} />
-
-          {/* Investor Reservations */}
-          <ReservationList
-            dealId={deal.id}
-            initialReservations={deal.investorReservations.map((r) => ({
-              ...r,
-              reservationFee: Number(r.reservationFee),
-            })) as any}
-          />
-        </div>
+            {/* Investor Reservations */}
+            <ReservationList
+              dealId={deal.id}
+              initialReservations={deal.investorReservations.map((r) => ({
+                ...r,
+                reservationFee: Number(r.reservationFee),
+              })) as any}
+            />
+          </div>
         </div>
       </ToggleProvider>
     </div>
   )
 }
-

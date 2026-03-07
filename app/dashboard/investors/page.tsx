@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db"
 import { InvestorList } from "@/components/investors/investor-list"
 import { ReservationOverview } from "@/components/investors/reservation-overview"
 import { InvestorManagementDashboard } from "@/components/settings/investor-management-dashboard"
+import { PageHeader } from "@/components/ui/page-header"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export const dynamic = "force-dynamic"
@@ -117,13 +118,11 @@ export default async function InvestorsPage() {
   }))
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">Investor Management</h1>
-        <p className="text-muted-foreground">
-          Track investor activities, pipeline stages, and performance metrics
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Investor Management"
+        subtitle="Track investor activities, pipeline stages, and performance metrics"
+      />
 
       <Tabs defaultValue="investors" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
