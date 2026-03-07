@@ -117,7 +117,7 @@ export function SolicitorSelector({
                 {selected.name} — {selected.firmName}
               </span>
             ) : (
-              <span className="text-muted-foreground">Search solicitors…</span>
+              <span className="text-gray-400">Search solicitors…</span>
             )}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
@@ -127,7 +127,7 @@ export function SolicitorSelector({
             <CommandInput placeholder="Search by name, firm, or SRA number…" />
             <CommandList>
               {isLoading ? (
-                <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
+                <div className="flex items-center justify-center py-6 text-sm text-gray-400">
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   Loading…
                 </div>
@@ -150,7 +150,7 @@ export function SolicitorSelector({
                     />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{s.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{s.firmName}</p>
+                      <p className="text-xs text-gray-400 truncate">{s.firmName}</p>
                       <div className="mt-0.5">
                         <SRABadge
                           solicitor={s}
@@ -169,7 +169,7 @@ export function SolicitorSelector({
                     setOpen(false)
                     setIsFormOpen(true)
                   }}
-                  className="text-primary"
+                  className="text-[#2563EB]"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add new solicitor…
@@ -346,14 +346,14 @@ export function SolicitorCard({
   return (
     <div className="rounded-xl border bg-card text-sm shadow-sm overflow-hidden">
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="px-4 py-3 flex items-center gap-3 bg-muted/30">
+      <div className="px-4 py-3 flex items-center gap-3 bg-gray-50">
         {/* Avatar */}
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-sm select-none">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[#2563EB] font-semibold text-sm select-none">
           {solicitor.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-semibold truncate leading-tight">{solicitor.name}</p>
-          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5 truncate">
+          <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5 truncate">
             <Building2 className="h-3 w-3 shrink-0" />
             {solicitor.firmName}
           </p>
@@ -368,7 +368,7 @@ export function SolicitorCard({
             href={contactPageUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
+            className="inline-flex h-6 w-6 items-center justify-center rounded text-gray-400 hover:text-[#2563EB] hover:bg-accent transition-colors"
             title="Open contact page"
           >
             <ExternalLink className="h-3.5 w-3.5" />
@@ -377,7 +377,7 @@ export function SolicitorCard({
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 text-muted-foreground hover:text-destructive"
+              className="h-6 w-6 text-gray-400 hover:text-red-500"
               onClick={onRemove}
               title="Remove solicitor"
             >
@@ -393,7 +393,7 @@ export function SolicitorCard({
           <button
             type="button"
             onClick={() => setShowContactDetails((v) => !v)}
-            className="w-full flex items-center justify-between px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-accent/50 transition-colors"
+            className="w-full flex items-center justify-between px-4 py-2 text-xs font-medium text-gray-400 hover:bg-accent/50 transition-colors"
           >
             <span className="flex items-center gap-1.5">
               <Mail className="h-3.5 w-3.5" />
@@ -404,14 +404,14 @@ export function SolicitorCard({
           {showContactDetails && (
             <div className="px-4 pb-3 space-y-2 pt-1">
               {solicitor.email && (
-                <a href={`mailto:${solicitor.email}`} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                  <Mail className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+                <a href={`mailto:${solicitor.email}`} className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-900 transition-colors">
+                  <Mail className="h-3.5 w-3.5 shrink-0 text-gray-400/60" />
                   {solicitor.email}
                 </a>
               )}
               {solicitor.phone && (
-                <a href={`tel:${solicitor.phone}`} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                  <Phone className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+                <a href={`tel:${solicitor.phone}`} className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-900 transition-colors">
+                  <Phone className="h-3.5 w-3.5 shrink-0 text-gray-400/60" />
                   {solicitor.phone}
                 </a>
               )}
@@ -420,15 +420,15 @@ export function SolicitorCard({
                   href={solicitor.website.startsWith("http") ? solicitor.website : `https://${solicitor.website}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-900 transition-colors"
                 >
-                  <Globe className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+                  <Globe className="h-3.5 w-3.5 shrink-0 text-gray-400/60" />
                   {solicitor.website.replace(/^https?:\/\//, "")}
                 </a>
               )}
               {solicitor.address && (
-                <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                  <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60 mt-0.5" />
+                <div className="flex items-start gap-2 text-xs text-gray-400">
+                  <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400/60 mt-0.5" />
                   <span className="whitespace-pre-line">{solicitor.address}</span>
                 </div>
               )}
@@ -443,7 +443,7 @@ export function SolicitorCard({
           <button
             type="button"
             onClick={() => setShowPracticeAreas((v) => !v)}
-            className="w-full flex items-center justify-between px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-accent/50 transition-colors"
+            className="w-full flex items-center justify-between px-4 py-2 text-xs font-medium text-gray-400 hover:bg-accent/50 transition-colors"
           >
             <span className="flex items-center gap-1.5">
               <Tag className="h-3.5 w-3.5" />
@@ -454,7 +454,7 @@ export function SolicitorCard({
           {showPracticeAreas && (
             <div className="px-4 pb-3 pt-1 flex flex-wrap gap-1.5">
               {solicitor.specialisation?.split(/,\s*/).map((area) => (
-                <span key={area} className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                <span key={area} className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-[#2563EB]">
                   {area.trim()}
                 </span>
               ))}
@@ -468,7 +468,7 @@ export function SolicitorCard({
         <button
           type="button"
           onClick={() => setShowSraDetails((v) => !v)}
-          className="w-full flex items-center justify-between px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-accent/50 transition-colors"
+          className="w-full flex items-center justify-between px-4 py-2 text-xs font-medium text-gray-400 hover:bg-accent/50 transition-colors"
         >
           <span className="flex items-center gap-1.5">
             <ShieldCheck className="h-3.5 w-3.5" />
@@ -495,18 +495,18 @@ export function SolicitorCard({
             {hasSraData && (
               <div className="space-y-1 text-xs">
                 {solicitor.sraNumber && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="flex items-center gap-2 text-gray-400">
                     <Hash className="h-3 w-3 shrink-0" />
                     <span className="font-mono">{solicitor.sraNumber}</span>
                     {sraProfileUrl && (
-                      <a href={sraProfileUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline ml-auto">
+                      <a href={sraProfileUrl} target="_blank" rel="noopener noreferrer" className="text-[#2563EB] hover:underline ml-auto">
                         View on SRA ↗
                       </a>
                     )}
                   </div>
                 )}
                 {solicitor.sraStatus && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="flex items-center gap-2 text-gray-400">
                     {solicitor.sraVerified
                       ? <ShieldCheck className="h-3 w-3 shrink-0 text-green-600" />
                       : <ShieldAlert className="h-3 w-3 shrink-0 text-amber-500" />
@@ -515,7 +515,7 @@ export function SolicitorCard({
                   </div>
                 )}
                 {verifiedDateStr && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="flex items-center gap-2 text-gray-400">
                     <Calendar className="h-3 w-3 shrink-0" />
                     <span>Verified {verifiedDateStr}</span>
                   </div>
@@ -553,7 +553,7 @@ export function SolicitorCard({
             {/* SRA match picker */}
             {sraMatches && sraMatches.length > 1 && (
               <div className="rounded-md border p-2 space-y-1.5">
-                <p className="text-xs font-medium text-muted-foreground">
+                <p className="text-xs font-medium text-gray-400">
                   {sraMatches.length} matches — select the correct firm:
                 </p>
                 <div className="space-y-1 max-h-40 overflow-y-auto">
@@ -568,7 +568,7 @@ export function SolicitorCard({
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0">
                           <p className="font-medium truncate">{match.displayName}</p>
-                          <p className="text-muted-foreground">SRA: {match.sraNumber}</p>
+                          <p className="text-gray-400">SRA: {match.sraNumber}</p>
                         </div>
                         {match.status && (
                           <span className={cn(
@@ -583,7 +583,7 @@ export function SolicitorCard({
                     </button>
                   ))}
                 </div>
-                <button type="button" onClick={() => setSraMatches(null)} className="text-xs text-muted-foreground hover:text-foreground">
+                <button type="button" onClick={() => setSraMatches(null)} className="text-xs text-gray-400 hover:text-gray-900">
                   Cancel
                 </button>
               </div>
@@ -595,7 +595,7 @@ export function SolicitorCard({
       {/* ── Inherited label ──────────────────────────────────────────────── */}
       {inherited && inheritedLabel && (
         <div className="border-t px-4 py-2">
-          <p className="text-xs text-muted-foreground">{inheritedLabel}</p>
+          <p className="text-xs text-gray-400">{inheritedLabel}</p>
         </div>
       )}
     </div>

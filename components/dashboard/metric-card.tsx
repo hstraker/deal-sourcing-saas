@@ -45,7 +45,7 @@ export function MetricCard({
             {tooltip && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                  <Info className="h-3 w-3 text-gray-400 cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
                   <p className="text-sm">{tooltip}</p>
@@ -60,7 +60,7 @@ export function MetricCard({
             <div>
               <div className="text-2xl font-bold">{value}</div>
               {description && (
-                <p className="text-xs text-muted-foreground mt-1">{description}</p>
+                <p className="text-xs text-gray-400 mt-1">{description}</p>
               )}
             </div>
             {badge && (

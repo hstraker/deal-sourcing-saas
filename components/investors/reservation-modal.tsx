@@ -520,7 +520,7 @@ export function ReservationModal({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Solicitor Details</span>
                 {(solicitorName || solicitorFirm || solicitorEmail || solicitorPhone) && (
-                  <button type="button" onClick={clearSolicitorFields} className="flex items-center gap-1 text-xs text-gray-400 hover:text-destructive">
+                  <button type="button" onClick={clearSolicitorFields} className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500">
                     <X className="h-3 w-3" />Clear
                   </button>
                 )}

@@ -196,7 +196,7 @@ export function VendorSection({ dealId, vendorId }: VendorSectionProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-4">
               <div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                <div className="flex items-center gap-2 text-sm text-gray-400 mb-1">
                   <Phone className="h-4 w-4" />
                   Phone
                 </div>
@@ -204,7 +204,7 @@ export function VendorSection({ dealId, vendorId }: VendorSectionProps) {
               </div>
               {vendor.email && (
                 <div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                  <div className="flex items-center gap-2 text-sm text-gray-400 mb-1">
                     <Mail className="h-4 w-4" />
                     Email
                   </div>
@@ -213,7 +213,7 @@ export function VendorSection({ dealId, vendorId }: VendorSectionProps) {
               )}
               {vendor.address && (
                 <div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                  <div className="flex items-center gap-2 text-sm text-gray-400 mb-1">
                     <MapPin className="h-4 w-4" />
                     Address
                   </div>
@@ -223,21 +223,21 @@ export function VendorSection({ dealId, vendorId }: VendorSectionProps) {
             </div>
             <div className="space-y-4">
               <div>
-                <div className="text-sm text-muted-foreground mb-1">Source</div>
+                <div className="text-sm text-gray-400 mb-1">Source</div>
                 <p className="font-medium capitalize">{vendor.source.replace("_", " ")}</p>
                 {vendor.facebookAdId && (
-                  <p className="text-xs text-muted-foreground">Ad ID: {vendor.facebookAdId}</p>
+                  <p className="text-xs text-gray-400">Ad ID: {vendor.facebookAdId}</p>
                 )}
               </div>
               {vendor.askingPrice && (
                 <div>
-                  <div className="text-sm text-muted-foreground mb-1">Asking Price</div>
+                  <div className="text-sm text-gray-400 mb-1">Asking Price</div>
                   <p className="font-medium">{formatCurrency(vendor.askingPrice)}</p>
                 </div>
               )}
               {vendor.propertyAddress && (
                 <div>
-                  <div className="text-sm text-muted-foreground mb-1">Property Address</div>
+                  <div className="text-sm text-gray-400 mb-1">Property Address</div>
                   <p className="font-medium">{vendor.propertyAddress}</p>
                 </div>
               )}
@@ -252,18 +252,18 @@ export function VendorSection({ dealId, vendorId }: VendorSectionProps) {
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Name: </span>
+                  <span className="text-gray-400">Name: </span>
                   <span className="font-medium">{vendor.solicitorName}</span>
                 </div>
                 {vendor.solicitorEmail && (
                   <div>
-                    <span className="text-muted-foreground">Email: </span>
+                    <span className="text-gray-400">Email: </span>
                     <span className="font-medium">{vendor.solicitorEmail}</span>
                   </div>
                 )}
                 {vendor.solicitorPhone && (
                   <div>
-                    <span className="text-muted-foreground">Phone: </span>
+                    <span className="text-gray-400">Phone: </span>
                     <span className="font-medium">{vendor.solicitorPhone}</span>
                   </div>
                 )}
@@ -273,7 +273,7 @@ export function VendorSection({ dealId, vendorId }: VendorSectionProps) {
 
           {vendor.notes && (
             <div className="mt-4 pt-4 border-t">
-              <div className="text-sm text-muted-foreground mb-1">Notes</div>
+              <div className="text-sm text-gray-400 mb-1">Notes</div>
               <p className="text-sm whitespace-pre-wrap">{vendor.notes}</p>
             </div>
           )}

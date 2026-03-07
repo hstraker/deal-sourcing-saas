@@ -183,7 +183,7 @@ export function ComparablesSettings({ trigger, onConfigChange }: ComparablesSett
 
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
             </div>
           ) : (
             <div className="space-y-6 py-4">
@@ -193,7 +193,7 @@ export function ComparablesSettings({ trigger, onConfigChange }: ComparablesSett
                   <Label htmlFor="searchRadius">Search Radius (miles)</Label>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
                       <p className="max-w-xs">
@@ -223,9 +223,9 @@ export function ComparablesSettings({ trigger, onConfigChange }: ComparablesSett
                   </SelectContent>
                 </Select>
                 {errors.searchRadius && (
-                  <p className="text-sm text-destructive">{errors.searchRadius}</p>
+                  <p className="text-sm text-red-500">{errors.searchRadius}</p>
                 )}
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-400">
                   Wider searches provide more data but may be less comparable to your specific location
                 </p>
               </div>
@@ -236,7 +236,7 @@ export function ComparablesSettings({ trigger, onConfigChange }: ComparablesSett
                   <Label htmlFor="maxResults">Maximum Results</Label>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
                       <p className="max-w-xs">
@@ -256,9 +256,9 @@ export function ComparablesSettings({ trigger, onConfigChange }: ComparablesSett
                   }
                 />
                 {errors.maxResults && (
-                  <p className="text-sm text-destructive">{errors.maxResults}</p>
+                  <p className="text-sm text-red-500">{errors.maxResults}</p>
                 )}
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-400">
                   More results = better accuracy but higher API costs
                 </p>
               </div>
@@ -269,7 +269,7 @@ export function ComparablesSettings({ trigger, onConfigChange }: ComparablesSett
                   <Label htmlFor="maxAgeMonths">Maximum Age (months)</Label>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
                       <p className="max-w-xs">
@@ -295,7 +295,7 @@ export function ComparablesSettings({ trigger, onConfigChange }: ComparablesSett
                   </SelectContent>
                 </Select>
                 {errors.maxAgeMonths && (
-                  <p className="text-sm text-destructive">{errors.maxAgeMonths}</p>
+                  <p className="text-sm text-red-500">{errors.maxAgeMonths}</p>
                 )}
               </div>
 
@@ -305,7 +305,7 @@ export function ComparablesSettings({ trigger, onConfigChange }: ComparablesSett
                   <Label htmlFor="bedroomTolerance">Bedroom Tolerance</Label>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
                       <p className="max-w-xs">
@@ -330,7 +330,7 @@ export function ComparablesSettings({ trigger, onConfigChange }: ComparablesSett
                   </SelectContent>
                 </Select>
                 {errors.bedroomTolerance && (
-                  <p className="text-sm text-destructive">{errors.bedroomTolerance}</p>
+                  <p className="text-sm text-red-500">{errors.bedroomTolerance}</p>
                 )}
               </div>
 
@@ -340,7 +340,7 @@ export function ComparablesSettings({ trigger, onConfigChange }: ComparablesSett
                   <Label htmlFor="minConfidenceScore">Minimum Confidence Score</Label>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
                       <p className="max-w-xs">
@@ -367,16 +367,16 @@ export function ComparablesSettings({ trigger, onConfigChange }: ComparablesSett
                   </SelectContent>
                 </Select>
                 {errors.minConfidenceScore && (
-                  <p className="text-sm text-destructive">{errors.minConfidenceScore}</p>
+                  <p className="text-sm text-red-500">{errors.minConfidenceScore}</p>
                 )}
               </div>
 
               {/* Info Box */}
-              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                 <div className="flex items-start gap-2">
-                  <Info className="h-4 w-4 text-muted-foreground mt-0.5" />
-                  <div className="text-sm text-muted-foreground space-y-1">
-                    <p className="font-medium text-foreground">API Credit Usage</p>
+                  <Info className="h-4 w-4 text-gray-400 mt-0.5" />
+                  <div className="text-sm text-gray-400 space-y-1">
+                    <p className="font-medium text-gray-900">API Credit Usage</p>
                     <p>Each comparable search uses 2 credits (sold prices + rental data).</p>
                     <p>Searches are cached for 24 hours to minimize costs.</p>
                     <p className="pt-1">

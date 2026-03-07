@@ -68,7 +68,7 @@ export default function ForgotPasswordPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                <div className="rounded-md bg-red-50 p-3 text-sm text-red-500">
                   {error}
                 </div>
               )}
@@ -87,7 +87,7 @@ export default function ForgotPasswordPage() {
                 {loading ? "Sending..." : "Send Reset Link"}
               </Button>
               <div className="text-center text-sm">
-                <Link href="/login" className="text-primary hover:underline">
+                <Link href="/login" className="text-[#2563EB] hover:underline">
                   Back to Login
                 </Link>
               </div>

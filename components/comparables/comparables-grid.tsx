@@ -144,10 +144,10 @@ export function ComparablesGrid({
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="h-10 bg-muted animate-pulse rounded" />
+        <div className="h-10 bg-gray-100 animate-pulse rounded" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-64 bg-muted animate-pulse rounded-lg" />
+            <div key={i} className="h-64 bg-gray-100 animate-pulse rounded-lg" />
           ))}
         </div>
       </div>
@@ -161,7 +161,7 @@ export function ComparablesGrid({
         <div className="flex gap-2">
           {/* Search */}
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               placeholder="Search by address, postcode, or property type..."
               value={searchQuery}
@@ -205,7 +205,7 @@ export function ComparablesGrid({
 
         {/* Filters Panel */}
         {showFilters && (
-          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+          <div className="bg-gray-50 rounded-lg p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-medium text-sm">Filters</h3>
               {activeFiltersCount > 0 && (
@@ -282,7 +282,7 @@ export function ComparablesGrid({
       </div>
 
       {/* Results Count */}
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
+      <div className="flex items-center justify-between text-sm text-gray-400">
         <div>
           Showing {filteredAndSortedComparables.length} of {comparables.length} properties
         </div>
@@ -296,7 +296,7 @@ export function ComparablesGrid({
       {/* Grid */}
       {filteredAndSortedComparables.length === 0 ? (
         <div className="text-center py-12">
-          <div className="text-muted-foreground mb-2">{emptyMessage}</div>
+          <div className="text-gray-400 mb-2">{emptyMessage}</div>
           {activeFiltersCount > 0 && (
             <Button variant="outline" size="sm" onClick={clearFilters}>
               Clear filters

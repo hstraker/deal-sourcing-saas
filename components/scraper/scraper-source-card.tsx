@@ -120,13 +120,13 @@ export function ScraperSourceCard({
           <span className="font-semibold text-sm">{label}</span>
           <div className="flex items-center gap-1.5">
             <span className={`inline-block h-2 w-2 rounded-full ${statusDot}`} />
-            <span className="text-[10px] text-muted-foreground">{statusLabel}</span>
+            <span className="text-[10px] text-gray-400">{statusLabel}</span>
           </div>
         </div>
 
         {/* Running progress */}
         {isRunning && progress && (
-          <div className="text-xs text-muted-foreground space-y-1">
+          <div className="text-xs text-gray-400 space-y-1">
             <div className="flex justify-between">
               <span>{progress.totalFound} found</span>
               <span className="text-green-600">{progress.successful} saved</span>
@@ -155,7 +155,7 @@ export function ScraperSourceCard({
 
         {/* Last job info (when not running and no active progress) */}
         {!progress && (
-          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+          <div className="flex items-center justify-between text-[11px] text-gray-400">
             <span className="flex items-center gap-1">
               <Clock className="h-3 w-3" />
               <span>{timeDisplay}</span>

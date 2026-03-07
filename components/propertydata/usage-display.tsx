@@ -42,7 +42,7 @@ export function PropertyDataUsageDisplay() {
           <CardTitle className="text-sm">PropertyData API Usage</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-sm text-muted-foreground">Loading...</div>
+          <div className="text-sm text-gray-400">Loading...</div>
         </CardContent>
       </Card>
     )
@@ -67,24 +67,24 @@ export function PropertyDataUsageDisplay() {
       <CardContent className="space-y-3">
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Credits Used</span>
+            <span className="text-gray-400">Credits Used</span>
             <span suppressHydrationWarning className="font-semibold">
               {usage.creditsUsed.toLocaleString()} / {usage.limit.toLocaleString()}
             </span>
           </div>
           <Progress value={usagePercentage} className="h-2" />
           <div className="flex items-center justify-between text-xs">
-            <span suppressHydrationWarning className="text-muted-foreground">
+            <span suppressHydrationWarning className="text-gray-400">
               {usage.creditsRemaining.toLocaleString()} remaining
             </span>
-            <span className="text-muted-foreground">
+            <span className="text-gray-400">
               {usage.requestsThisMonth} requests this month
             </span>
           </div>
         </div>
 
         {isAtLimit && (
-          <div className="rounded-md bg-destructive/10 p-2 text-xs text-destructive flex items-center gap-2">
+          <div className="rounded-md bg-red-50 p-2 text-xs text-red-500 flex items-center gap-2">
             <AlertCircle className="h-4 w-4" />
             <span>Credit limit reached. New requests will fail until next month.</span>
           </div>

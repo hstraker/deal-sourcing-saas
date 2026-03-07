@@ -63,7 +63,7 @@ export function WorkflowAnalytics() {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
         </CardContent>
       </Card>
     )
@@ -72,7 +72,7 @@ export function WorkflowAnalytics() {
   if (!analytics) {
     return (
       <Card>
-        <CardContent className="py-8 text-center text-muted-foreground">
+        <CardContent className="py-8 text-center text-gray-400">
           <p>No analytics data available</p>
         </CardContent>
       </Card>
@@ -156,11 +156,11 @@ export function WorkflowAnalytics() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 border rounded-lg">
-                  <div className="text-sm text-muted-foreground mb-1">Total Vendors</div>
+                  <div className="text-sm text-gray-400 mb-1">Total Vendors</div>
                   <div className="text-2xl font-bold">{analytics.vendorPipeline.totalVendors}</div>
                 </div>
                 <div className="p-4 border rounded-lg">
-                  <div className="text-sm text-muted-foreground mb-1">Total Offers</div>
+                  <div className="text-sm text-gray-400 mb-1">Total Offers</div>
                   <div className="text-2xl font-bold">{analytics.vendorPipeline.totalOffers}</div>
                 </div>
               </div>
@@ -180,14 +180,14 @@ export function WorkflowAnalytics() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                   <div>
                     <div className="font-medium flex items-center gap-2">
                       <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">Contacted</Badge>
                       <span>→</span>
                       <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Validated</Badge>
                     </div>
-                    <div className="text-sm text-muted-foreground mt-1">
+                    <div className="text-sm text-gray-400 mt-1">
                       Vendors who passed initial validation
                     </div>
                   </div>
@@ -196,14 +196,14 @@ export function WorkflowAnalytics() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                   <div>
                     <div className="font-medium flex items-center gap-2">
                       <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Validated</Badge>
                       <span>→</span>
                       <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">Offer Made</Badge>
                     </div>
-                    <div className="text-sm text-muted-foreground mt-1">
+                    <div className="text-sm text-gray-400 mt-1">
                       Validated vendors who received offers
                     </div>
                   </div>
@@ -212,14 +212,14 @@ export function WorkflowAnalytics() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                   <div>
                     <div className="font-medium flex items-center gap-2">
                       <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">Offer</Badge>
                       <span>→</span>
                       <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200">Accepted</Badge>
                     </div>
-                    <div className="text-sm text-muted-foreground mt-1">
+                    <div className="text-sm text-gray-400 mt-1">
                       Offers that were accepted by vendors
                     </div>
                   </div>
@@ -228,14 +228,14 @@ export function WorkflowAnalytics() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                   <div>
                     <div className="font-medium flex items-center gap-2">
                       <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200">Accepted</Badge>
                       <span>→</span>
                       <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-200">Locked Out</Badge>
                     </div>
-                    <div className="text-sm text-muted-foreground mt-1">
+                    <div className="text-sm text-gray-400 mt-1">
                       Accepted offers that reached lock-out
                     </div>
                   </div>
@@ -251,7 +251,7 @@ export function WorkflowAnalytics() {
                       <span>→</span>
                       <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-200">Locked Out</Badge>
                     </div>
-                    <div className="text-sm text-muted-foreground mt-1">
+                    <div className="text-sm text-gray-400 mt-1">
                       End-to-end conversion rate
                     </div>
                   </div>
@@ -279,7 +279,7 @@ export function WorkflowAnalytics() {
                 {Object.entries(analytics.vendorPipeline.avgStageTimes).map(([stage, days]) => {
                   const stageColor = getStageColor(stage)
                   return (
-                    <div key={stage} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <div key={stage} className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                       <Badge className={`${stageColor.bg} mb-2`} variant="outline">
                         {stageLabels[stage] || stage}
                       </Badge>
@@ -291,13 +291,13 @@ export function WorkflowAnalytics() {
 
               <div className="mt-4 grid grid-cols-2 gap-4">
                 <div className="p-4 border rounded-lg">
-                  <div className="text-sm text-muted-foreground mb-1">Avg Offers per Deal</div>
+                  <div className="text-sm text-gray-400 mb-1">Avg Offers per Deal</div>
                   <div className="text-2xl font-bold">
                     {analytics.vendorPipeline.avgOffersPerDeal.toFixed(1)}
                   </div>
                 </div>
                 <div className="p-4 border rounded-lg">
-                  <div className="text-sm text-muted-foreground mb-1">Avg Negotiation Time</div>
+                  <div className="text-sm text-gray-400 mb-1">Avg Negotiation Time</div>
                   <div className="text-2xl font-bold">
                     {formatDays(analytics.vendorPipeline.avgNegotiationTime)}
                   </div>
@@ -321,25 +321,25 @@ export function WorkflowAnalytics() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="p-4 border rounded-lg text-center hover:bg-muted/50 transition-colors">
+                <div className="p-4 border rounded-lg text-center hover:bg-gray-50 transition-colors">
                   <div className="text-2xl font-bold mb-2">{analytics.investorPipeline.totalReservations}</div>
                   <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
                     Total Reservations
                   </Badge>
                 </div>
-                <div className="p-4 border rounded-lg text-center hover:bg-muted/50 transition-colors">
+                <div className="p-4 border rounded-lg text-center hover:bg-gray-50 transition-colors">
                   <div className="text-2xl font-bold mb-2">{analytics.investorPipeline.reservationsWithProof}</div>
                   <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
                     Proof Verified
                   </Badge>
                 </div>
-                <div className="p-4 border rounded-lg text-center hover:bg-muted/50 transition-colors">
+                <div className="p-4 border rounded-lg text-center hover:bg-gray-50 transition-colors">
                   <div className="text-2xl font-bold mb-2">{analytics.investorPipeline.reservationsLockedOut}</div>
                   <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200">
                     Locked Out
                   </Badge>
                 </div>
-                <div className="p-4 border rounded-lg text-center hover:bg-muted/50 transition-colors">
+                <div className="p-4 border rounded-lg text-center hover:bg-gray-50 transition-colors">
                   <div className="text-2xl font-bold mb-2">{analytics.investorPipeline.reservationsCompleted}</div>
                   <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-200">
                     Completed
@@ -362,14 +362,14 @@ export function WorkflowAnalytics() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                   <div>
                     <div className="font-medium flex items-center gap-2">
                       <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">Reservation</Badge>
                       <span>→</span>
                       <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Proof of Funds</Badge>
                     </div>
-                    <div className="text-sm text-muted-foreground mt-1">
+                    <div className="text-sm text-gray-400 mt-1">
                       Reservations with verified proof of funds
                     </div>
                   </div>
@@ -378,14 +378,14 @@ export function WorkflowAnalytics() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                   <div>
                     <div className="font-medium flex items-center gap-2">
                       <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Proof</Badge>
                       <span>→</span>
                       <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200">Locked Out</Badge>
                     </div>
-                    <div className="text-sm text-muted-foreground mt-1">
+                    <div className="text-sm text-gray-400 mt-1">
                       Verified reservations that reached lock-out
                     </div>
                   </div>
@@ -394,14 +394,14 @@ export function WorkflowAnalytics() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                   <div>
                     <div className="font-medium flex items-center gap-2">
                       <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200">Locked Out</Badge>
                       <span>→</span>
                       <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-200">Completed</Badge>
                     </div>
-                    <div className="text-sm text-muted-foreground mt-1">
+                    <div className="text-sm text-gray-400 mt-1">
                       Locked out reservations that completed
                     </div>
                   </div>
@@ -417,7 +417,7 @@ export function WorkflowAnalytics() {
                       <span>→</span>
                       <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-200">Completed</Badge>
                     </div>
-                    <div className="text-sm text-muted-foreground mt-1">
+                    <div className="text-sm text-gray-400 mt-1">
                       End-to-end conversion rate
                     </div>
                   </div>

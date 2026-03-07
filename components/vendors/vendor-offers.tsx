@@ -243,7 +243,7 @@ export function VendorOffers({ vendorId, dealId }: VendorOffersProps) {
             </DialogHeader>
 
             {error && (
-              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              <div className="rounded-md bg-red-50 p-3 text-sm text-red-500">
                 {error}
               </div>
             )}
@@ -373,7 +373,7 @@ export function VendorOffers({ vendorId, dealId }: VendorOffersProps) {
       </CardHeader>
       <CardContent>
         {offers.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="text-center py-8 text-gray-400">
             No offers made yet. Click &quot;New Offer&quot; to create one.
           </div>
         ) : (
@@ -405,11 +405,11 @@ export function VendorOffers({ vendorId, dealId }: VendorOffersProps) {
                     {offer.vendorDecision ? (
                       <span className="capitalize">{offer.vendorDecision.replace("_", " ")}</span>
                     ) : (
-                      <span className="text-muted-foreground">-</span>
+                      <span className="text-gray-400">-</span>
                     )}
                   </TableCell>
                   <TableCell className="max-w-xs truncate">
-                    {offer.vendorNotes || <span className="text-muted-foreground">-</span>}
+                    {offer.vendorNotes || <span className="text-gray-400">-</span>}
                   </TableCell>
                   <TableCell>
                     <Button

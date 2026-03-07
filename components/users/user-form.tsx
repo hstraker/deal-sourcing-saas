@@ -110,7 +110,7 @@ export function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {error && (
-        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+        <div className="rounded-md bg-red-50 p-3 text-sm text-red-500">
           {error}
         </div>
       )}
@@ -131,7 +131,7 @@ export function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
             />
           )}
           {!user && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-gray-400">
               Profile picture can be uploaded after creating the user.
             </p>
           )}
@@ -156,7 +156,7 @@ export function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
                 placeholder="John"
               />
               {errors.firstName && (
-                <p className="text-sm text-destructive">{errors.firstName.message}</p>
+                <p className="text-sm text-red-500">{errors.firstName.message}</p>
               )}
             </div>
 
@@ -168,7 +168,7 @@ export function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
                 placeholder="Doe"
               />
               {errors.lastName && (
-                <p className="text-sm text-destructive">{errors.lastName.message}</p>
+                <p className="text-sm text-red-500">{errors.lastName.message}</p>
               )}
             </div>
           </div>
@@ -182,7 +182,7 @@ export function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
               placeholder="user@example.com"
             />
             {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
+              <p className="text-sm text-red-500">{errors.email.message}</p>
             )}
           </div>
 
@@ -195,7 +195,7 @@ export function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
               placeholder="+44 7700 900000"
             />
             {errors.phone && (
-              <p className="text-sm text-destructive">{errors.phone.message}</p>
+              <p className="text-sm text-red-500">{errors.phone.message}</p>
             )}
           </div>
 
@@ -216,7 +216,7 @@ export function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
                 </SelectContent>
               </Select>
               {errors.role && (
-                <p className="text-sm text-destructive">{errors.role.message}</p>
+                <p className="text-sm text-red-500">{errors.role.message}</p>
               )}
             </div>
 
@@ -248,7 +248,7 @@ export function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
               placeholder={isEditMode ? "Enter new password" : "Minimum 8 characters"}
             />
             {errors.password && (
-              <p className="text-sm text-destructive">{errors.password.message}</p>
+              <p className="text-sm text-red-500">{errors.password.message}</p>
             )}
           </div>
         </CardContent>

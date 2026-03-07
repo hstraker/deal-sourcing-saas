@@ -82,7 +82,7 @@ export default function ContactDetailPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
       </div>
     )
   }
@@ -90,7 +90,7 @@ export default function ContactDetailPage() {
   if (!contact) {
     return (
       <div className="p-6 text-center">
-        <p className="text-muted-foreground">Contact not found</p>
+        <p className="text-gray-400">Contact not found</p>
         <Button asChild className="mt-4" variant="outline">
           <Link href="/dashboard/contacts">Back to Contacts</Link>
         </Button>
@@ -106,7 +106,7 @@ export default function ContactDetailPage() {
     <div className="flex-1 space-y-6 p-6 max-w-4xl">
       {/* Back + actions */}
       <div className="flex items-center justify-between gap-4">
-        <Button asChild variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+        <Button asChild variant="ghost" size="sm" className="gap-1.5 text-gray-400">
           <Link href="/dashboard/contacts">
             <ArrowLeft className="h-4 w-4" />
             Contacts
@@ -124,7 +124,7 @@ export default function ContactDetailPage() {
           <Button
             variant="outline"
             size="sm"
-            className="text-destructive hover:text-destructive"
+            className="text-red-500 hover:text-red-500"
             onClick={handleDelete}
             disabled={isDeleting}
           >
@@ -143,13 +143,13 @@ export default function ContactDetailPage() {
           </span>
         </div>
         {contact.company && (
-          <p className="text-muted-foreground mt-1 flex items-center gap-1.5">
+          <p className="text-gray-400 mt-1 flex items-center gap-1.5">
             <Building2 className="h-4 w-4" />
             {contact.company}
           </p>
         )}
         {contact.jobTitle && (
-          <p className="text-sm text-muted-foreground mt-0.5">{contact.jobTitle}</p>
+          <p className="text-sm text-gray-400 mt-0.5">{contact.jobTitle}</p>
         )}
       </div>
 
@@ -157,23 +157,23 @@ export default function ContactDetailPage() {
       <div className="grid gap-6 md:grid-cols-2">
         {/* Contact details */}
         <div className="rounded-lg border p-4 space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Contact Details</h2>
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Contact Details</h2>
 
           {contact.email && (
-            <a href={`mailto:${contact.email}`} className="flex items-center gap-2 text-sm hover:text-primary">
-              <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+            <a href={`mailto:${contact.email}`} className="flex items-center gap-2 text-sm hover:text-[#2563EB]">
+              <Mail className="h-4 w-4 text-gray-400 shrink-0" />
               {contact.email}
             </a>
           )}
           {contact.phone && (
-            <a href={`tel:${contact.phone}`} className="flex items-center gap-2 text-sm hover:text-primary">
-              <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+            <a href={`tel:${contact.phone}`} className="flex items-center gap-2 text-sm hover:text-[#2563EB]">
+              <Phone className="h-4 w-4 text-gray-400 shrink-0" />
               {contact.phone}
             </a>
           )}
           {contact.mobilePhone && (
-            <a href={`tel:${contact.mobilePhone}`} className="flex items-center gap-2 text-sm hover:text-primary">
-              <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+            <a href={`tel:${contact.mobilePhone}`} className="flex items-center gap-2 text-sm hover:text-[#2563EB]">
+              <Phone className="h-4 w-4 text-gray-400 shrink-0" />
               {contact.mobilePhone} (mobile)
             </a>
           )}
@@ -182,14 +182,14 @@ export default function ContactDetailPage() {
               href={contact.website.startsWith("http") ? contact.website : `https://${contact.website}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-sm hover:text-primary"
+              className="flex items-center gap-2 text-sm hover:text-[#2563EB]"
             >
-              <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
+              <Globe className="h-4 w-4 text-gray-400 shrink-0" />
               {contact.website.replace(/^https?:\/\//, "")}
             </a>
           )}
           {(contact.addressLine1 || contact.city || contact.postcode) && (
-            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+            <div className="flex items-start gap-2 text-sm text-gray-400">
               <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
               <div>
                 {contact.addressLine1 && <div>{contact.addressLine1}</div>}
@@ -202,22 +202,22 @@ export default function ContactDetailPage() {
           )}
 
           {(!contact.email && !contact.phone && !contact.website && !contact.addressLine1) && (
-            <p className="text-xs text-muted-foreground/60">No contact details recorded</p>
+            <p className="text-xs text-gray-400/60">No contact details recorded</p>
           )}
         </div>
 
         {/* SRA details (solicitors only) */}
         {contact.type === "SOLICITOR" && (
           <div className="rounded-lg border p-4 space-y-3">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">SRA Registration</h2>
+            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">SRA Registration</h2>
 
             {contact.sraNumber ? (
               <>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 text-sm text-gray-400">
                   <Hash className="h-4 w-4 shrink-0" />
                   <span className="font-mono">{contact.sraNumber}</span>
                   {sraProfileUrl && (
-                    <a href={sraProfileUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline ml-auto">
+                    <a href={sraProfileUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[#2563EB] hover:underline ml-auto">
                       View on SRA ↗
                     </a>
                   )}
@@ -226,28 +226,28 @@ export default function ContactDetailPage() {
                 <ContactSRABadge contact={contact} onVerified={handleVerified} showVerifyButton />
 
                 {contact.sraDisplayName && (
-                  <p className="text-sm text-muted-foreground">
-                    Registered as: <span className="font-medium text-foreground">{contact.sraDisplayName}</span>
+                  <p className="text-sm text-gray-400">
+                    Registered as: <span className="font-medium text-gray-900">{contact.sraDisplayName}</span>
                   </p>
                 )}
                 {contact.sraStatus && (
-                  <p className="text-sm text-muted-foreground">
-                    Status: <span className="font-medium text-foreground">{contact.sraStatus}</span>
+                  <p className="text-sm text-gray-400">
+                    Status: <span className="font-medium text-gray-900">{contact.sraStatus}</span>
                   </p>
                 )}
                 {contact.sraVerifiedAt && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-gray-400">
                     Last verified: {new Date(contact.sraVerifiedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                   </p>
                 )}
               </>
             ) : (
-              <p className="text-xs text-muted-foreground/60">No SRA number recorded</p>
+              <p className="text-xs text-gray-400/60">No SRA number recorded</p>
             )}
 
             {contact.practiceAreas.length > 0 && (
               <div>
-                <p className="text-xs text-muted-foreground mb-1.5">Practice areas:</p>
+                <p className="text-xs text-gray-400 mb-1.5">Practice areas:</p>
                 <div className="flex flex-wrap gap-1.5">
                   {contact.practiceAreas.map((area) => (
                     <Badge key={area} variant="secondary" className="text-xs">{area}</Badge>
@@ -260,17 +260,17 @@ export default function ContactDetailPage() {
 
         {/* Linked records */}
         <div className="rounded-lg border p-4 space-y-3 md:col-span-2">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Linked Records</h2>
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Linked Records</h2>
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2 text-sm">
-              <FileText className="h-4 w-4 text-muted-foreground" />
+              <FileText className="h-4 w-4 text-gray-400" />
               <span className="font-medium">{contact._count.vendorLeads}</span>
-              <span className="text-muted-foreground">vendor lead{contact._count.vendorLeads !== 1 ? "s" : ""}</span>
+              <span className="text-gray-400">vendor lead{contact._count.vendorLeads !== 1 ? "s" : ""}</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <Users className="h-4 w-4 text-gray-400" />
               <span className="font-medium">{contact._count.investors}</span>
-              <span className="text-muted-foreground">investor{contact._count.investors !== 1 ? "s" : ""}</span>
+              <span className="text-gray-400">investor{contact._count.investors !== 1 ? "s" : ""}</span>
             </div>
           </div>
         </div>
@@ -278,7 +278,7 @@ export default function ContactDetailPage() {
         {/* Notes */}
         {contact.notes && (
           <div className="rounded-lg border p-4 md:col-span-2">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">Notes</h2>
+            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">Notes</h2>
             <p className="text-sm whitespace-pre-wrap">{contact.notes}</p>
           </div>
         )}

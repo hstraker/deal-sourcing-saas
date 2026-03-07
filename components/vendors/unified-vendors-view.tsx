@@ -41,7 +41,7 @@ export function UnifiedVendorsView() {
       <div>
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Vendors</h1>
-          <p className="text-muted-foreground">
+          <p className="text-gray-400">
             Manage vendor leads and track them through the acquisition pipeline
           </p>
         </div>
@@ -55,13 +55,13 @@ export function UnifiedVendorsView() {
       <div className="mb-8 flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold">Vendors</h1>
-          <p className="text-muted-foreground">
+          <p className="text-gray-400">
             Manage vendor leads and track them through the acquisition pipeline
           </p>
         </div>
 
         {/* View Toggle Buttons */}
-        <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+        <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg">
           <Button
             variant={viewMode === "table" ? "default" : "ghost"}
             size="sm"

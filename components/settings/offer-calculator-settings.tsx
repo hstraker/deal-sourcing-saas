@@ -110,7 +110,7 @@ function InfoTip({ text }: { text: string }) {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help inline ml-1" />
+          <HelpCircle className="h-3.5 w-3.5 text-gray-400 cursor-help inline ml-1" />
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-[260px] text-xs">
           {text}
@@ -144,7 +144,7 @@ function PctInput({
         onChange={(e) => onChange(toNumber(e.target.value))}
         className="pr-7 text-sm h-8"
       />
-      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">
         %
       </span>
     </div>
@@ -464,7 +464,7 @@ export function OfferCalculatorSettings() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-24 text-muted-foreground">
+      <div className="flex items-center justify-center py-24 text-gray-400">
         <Loader2 className="h-6 w-6 animate-spin mr-2" />
         Loading calculator settings…
       </div>
@@ -492,7 +492,7 @@ export function OfferCalculatorSettings() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">BMV Offer Analysis</h2>
-          <p className="text-muted-foreground text-sm mt-1">
+          <p className="text-gray-400 text-sm mt-1">
             Global settings that control how offer prices are calculated across vendor leads. All formula variables are configurable here.
           </p>
         </div>
@@ -520,7 +520,7 @@ export function OfferCalculatorSettings() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-primary" />
+            <ShieldCheck className="h-5 w-5 text-[#2563EB]" />
             Investor Offer Constraints
           </CardTitle>
           <CardDescription>
@@ -538,7 +538,7 @@ export function OfferCalculatorSettings() {
                   Minimum discount from asking price
                   <InfoTip text="An investor always offers below asking — even when the deal is already BMV. This floor is applied after all other formula steps to guarantee the offer never reaches or exceeds the asking price." />
                 </Label>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-400">
                   The offer will always be at least this % below asking price.
                   At 5%, a £120,000 asking price becomes a max offer of £114,000.
                   Increase to 10–15% for more aggressive negotiation.
@@ -554,15 +554,15 @@ export function OfferCalculatorSettings() {
             </div>
             {/* Live example */}
             <div className="rounded-md bg-background border px-3 py-2 text-xs space-y-1">
-              <p className="text-muted-foreground font-medium">Live example</p>
+              <p className="text-gray-400 font-medium">Live example</p>
               <div className="flex gap-6">
                 <span>Asking: <strong>£119,950</strong></span>
-                <span>Max offer: <strong className="text-primary">
+                <span>Max offer: <strong className="text-[#2563EB]">
                   £{Math.floor(119950 * (1 - config.minDiscountFromAsking / 100) / 1000) * 1000 < 119950
                     ? (Math.floor(119950 * (1 - config.minDiscountFromAsking / 100) / 1000) * 1000).toLocaleString("en-GB")
                     : Math.floor(119950 * (1 - config.minDiscountFromAsking / 100)).toLocaleString("en-GB")}
                 </strong></span>
-                <span className="text-muted-foreground">({config.minDiscountFromAsking}% below asking)</span>
+                <span className="text-gray-400">({config.minDiscountFromAsking}% below asking)</span>
               </div>
             </div>
           </div>
@@ -584,7 +584,7 @@ export function OfferCalculatorSettings() {
                   min={5}
                   max={40}
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-400">
                   Asking price must be ≥ {config.minBmvPercentage}% below market value
                 </p>
               </div>
@@ -595,7 +595,7 @@ export function OfferCalculatorSettings() {
                   <InfoTip text="Market value minus offer price minus refurb cost must exceed this figure. Protects against deals where margins are too thin." />
                 </Label>
                 <div className="relative w-36">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">
                     £
                   </span>
                   <Input
@@ -607,7 +607,7 @@ export function OfferCalculatorSettings() {
                     className="pl-6 text-sm h-8"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-400">
                   Net profit ≥ £{config.minProfitPotential.toLocaleString("en-GB")} after refurb
                 </p>
               </div>
@@ -620,7 +620,7 @@ export function OfferCalculatorSettings() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Settings2 className="h-5 w-5 text-primary" />
+            <Settings2 className="h-5 w-5 text-[#2563EB]" />
             Calculator Mode
           </CardTitle>
           <CardDescription>
@@ -633,7 +633,7 @@ export function OfferCalculatorSettings() {
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
               <Label className="text-sm font-medium">Enable Strategy-Aware Calculator</Label>
-              <p className="text-xs text-muted-foreground max-w-md">
+              <p className="text-xs text-gray-400 max-w-md">
                 When enabled, offer prices are derived from strategy-specific formulae (Flip, BRR,
                 BuyHold, BTL) with configurable discount ranges and risk adjustments. When off, the
                 original motivation-based calculator runs.
@@ -653,7 +653,7 @@ export function OfferCalculatorSettings() {
               <div className="space-y-3">
                 <div>
                   <Label className="text-sm font-medium">Active Strategies</Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="text-xs text-gray-400 mt-0.5">
                     These strategies appear in the vendor lead strategy selector.
                   </p>
                 </div>
@@ -666,8 +666,8 @@ export function OfferCalculatorSettings() {
                         onClick={() => toggleStrategy(s)}
                         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
                           active
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-background text-muted-foreground border-input hover:border-primary/50"
+                            ? "bg-primary text-[#2563EB]-foreground border-primary"
+                            : "bg-background text-gray-400 border-input hover:border-primary/50"
                         }`}
                       >
                         {STRATEGY_ICONS[s]}
@@ -685,7 +685,7 @@ export function OfferCalculatorSettings() {
               <div className="flex items-center gap-4">
                 <div className="flex-1">
                   <Label className="text-sm font-medium">Default Strategy</Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="text-xs text-gray-400 mt-0.5">
                     Applied when a vendor lead has no strategy set.
                   </p>
                 </div>
@@ -725,7 +725,7 @@ export function OfferCalculatorSettings() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <TrendingDown className="h-5 w-5 text-primary" />
+            <TrendingDown className="h-5 w-5 text-[#2563EB]" />
             Base Discount Range
           </CardTitle>
           <CardDescription>
@@ -743,7 +743,7 @@ export function OfferCalculatorSettings() {
                 min={5}
                 max={config.baseDiscountMax - 5}
               />
-              <p className="text-[11px] text-muted-foreground">Floor — even in best conditions</p>
+              <p className="text-[11px] text-gray-400">Floor — even in best conditions</p>
             </div>
             <div className="space-y-2">
               <Label className="text-sm">Maximum discount</Label>
@@ -753,19 +753,19 @@ export function OfferCalculatorSettings() {
                 min={config.baseDiscountMin + 5}
                 max={60}
               />
-              <p className="text-[11px] text-muted-foreground">Ceiling — worst-case risk</p>
+              <p className="text-[11px] text-gray-400">Ceiling — worst-case risk</p>
             </div>
           </div>
 
           {/* Visual range */}
-          <div className="rounded-lg border bg-muted/30 p-4 max-w-sm">
-            <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
+          <div className="rounded-lg border bg-gray-50 p-4 max-w-sm">
+            <div className="flex justify-between text-[11px] text-gray-400 mb-1">
               <span>Starting midpoint</span>
-              <span className="font-semibold text-foreground">
+              <span className="font-semibold text-gray-900">
                 {((config.baseDiscountMin + config.baseDiscountMax) / 2).toFixed(1)}% off market value
               </span>
             </div>
-            <div className="h-2 rounded-full bg-muted relative">
+            <div className="h-2 rounded-full bg-gray-100 relative">
               <div
                 className="absolute h-full rounded-full bg-primary/40"
                 style={{
@@ -778,7 +778,7 @@ export function OfferCalculatorSettings() {
                 style={{ left: `${(((config.baseDiscountMin + config.baseDiscountMax) / 2) / 60) * 100}%` }}
               />
             </div>
-            <div className="flex justify-between text-[11px] text-muted-foreground mt-1">
+            <div className="flex justify-between text-[11px] text-gray-400 mt-1">
               <span>{config.baseDiscountMin}%</span>
               <span>{config.baseDiscountMax}%</span>
             </div>
@@ -790,7 +790,7 @@ export function OfferCalculatorSettings() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5 text-primary" />
+            <Target className="h-5 w-5 text-[#2563EB]" />
             Risk Adjustments
           </CardTitle>
           <CardDescription>
@@ -843,10 +843,10 @@ export function OfferCalculatorSettings() {
                     {label}
                     <InfoTip text={tip} />
                   </p>
-                  <p className="text-xs text-muted-foreground">{description}</p>
+                  <p className="text-xs text-gray-400">{description}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="text-xs text-muted-foreground w-3">{sign}</span>
+                  <span className="text-xs text-gray-400 w-3">{sign}</span>
                   <PctInput
                     value={config[key] as number}
                     onChange={(v) => update(key, v)}
@@ -861,7 +861,7 @@ export function OfferCalculatorSettings() {
 
             {/* Demand reduction */}
             <div className="pt-3 space-y-3">
-              <p className="text-sm font-semibold text-muted-foreground">
+              <p className="text-sm font-semibold text-gray-400">
                 Demand Reduction
                 <InfoTip text="When postcode demand is high, investors compete harder for properties. Reducing the discount makes offers more competitive in hot markets." />
               </p>
@@ -878,18 +878,18 @@ export function OfferCalculatorSettings() {
                       onChange={(e) => update("highDemandThreshold", parseInt(e.target.value) || 8)}
                       className="pr-10 text-sm h-8"
                     />
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">
                       /10
                     </span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[11px] text-gray-400">
                     Score {config.highDemandThreshold}–10 = strong demand
                   </p>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs">Discount reduction applied</Label>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">−</span>
+                    <span className="text-xs text-gray-400">−</span>
                     <PctInput
                       value={config.highDemandReduction}
                       onChange={(v) => update("highDemandReduction", v)}
@@ -897,7 +897,7 @@ export function OfferCalculatorSettings() {
                       max={15}
                     />
                   </div>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[11px] text-gray-400">
                     Partial (score {config.highDemandThreshold - 2}–{config.highDemandThreshold - 1}):{" "}
                     −{Math.floor(config.highDemandReduction * 0.4)}%
                   </p>
@@ -913,7 +913,7 @@ export function OfferCalculatorSettings() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Calculator className="h-5 w-5 text-primary" />
+              <Calculator className="h-5 w-5 text-[#2563EB]" />
               Strategy Targets
             </CardTitle>
             <CardDescription>
@@ -940,20 +940,20 @@ export function OfferCalculatorSettings() {
                       <InfoTip text="At 70%, you're buying at 70% of market value minus refurb — leaving the remaining 30% to cover all costs and profit." />
                     </Label>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">MV ×</span>
+                      <span className="text-sm text-gray-400">MV ×</span>
                       <PctInput
                         value={config.flipMarketValuePct}
                         onChange={(v) => update("flipMarketValuePct", v)}
                         min={50}
                         max={85}
                       />
-                      <span className="text-sm text-muted-foreground">− refurb cost</span>
+                      <span className="text-sm text-gray-400">− refurb cost</span>
                     </div>
                   </div>
                 </div>
-                <div className="rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                <div className="rounded-md bg-gray-100 px-3 py-2 text-xs text-gray-400">
                   Example: MV £{flipExampleMV.toLocaleString()} × {config.flipMarketValuePct}% − refurb £{flipExampleRefurb.toLocaleString()} ={" "}
-                  <span className="font-semibold text-foreground">max offer £{flipExampleMax.toLocaleString()}</span>
+                  <span className="font-semibold text-gray-900">max offer £{flipExampleMax.toLocaleString()}</span>
                 </div>
               </div>
             )}
@@ -981,13 +981,13 @@ export function OfferCalculatorSettings() {
                         min={60}
                         max={85}
                       />
-                      <span className="text-sm text-muted-foreground">LTV on refinance</span>
+                      <span className="text-sm text-gray-400">LTV on refinance</span>
                     </div>
                   </div>
                 </div>
-                <div className="rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                <div className="rounded-md bg-gray-100 px-3 py-2 text-xs text-gray-400">
                   Example: MV £{brrExampleMV.toLocaleString()} × {config.brrLtvPercent}% − refurb £{brrExampleRefurb.toLocaleString()} ={" "}
-                  <span className="font-semibold text-foreground">max offer £{brrExampleMax.toLocaleString()}</span>
+                  <span className="font-semibold text-gray-900">max offer £{brrExampleMax.toLocaleString()}</span>
                   <span className="ml-2">(refinance fully recovers all capital)</span>
                 </div>
               </div>
@@ -1003,7 +1003,7 @@ export function OfferCalculatorSettings() {
                     Income-Based Ceiling
                   </Badge>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-400">
                   Maximum offer is derived from rental income: offer ≤ annual rent ÷ min yield.
                   This ensures the property hits the target gross yield from day one.
                 </p>
@@ -1039,18 +1039,18 @@ export function OfferCalculatorSettings() {
                     </div>
                   )}
                 </div>
-                <div className="rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground space-y-1">
+                <div className="rounded-md bg-gray-100 px-3 py-2 text-xs text-gray-400 space-y-1">
                   <p>Example rent: £{yieldExampleRent}/month (£{(yieldExampleRent * 12).toLocaleString()}/yr)</p>
                   {config.activeStrategies.includes("BuyHold") && (
                     <p>
                       BuyHold {config.buyHoldMinYield}% yield ceiling:{" "}
-                      <span className="font-semibold text-foreground">max offer £{bhMax.toLocaleString()}</span>
+                      <span className="font-semibold text-gray-900">max offer £{bhMax.toLocaleString()}</span>
                     </p>
                   )}
                   {config.activeStrategies.includes("BTL") && (
                     <p>
                       BTL {config.btlMinYield}% yield ceiling:{" "}
-                      <span className="font-semibold text-foreground">max offer £{btlMax.toLocaleString()}</span>
+                      <span className="font-semibold text-gray-900">max offer £{btlMax.toLocaleString()}</span>
                     </p>
                   )}
                 </div>
@@ -1073,7 +1073,7 @@ export function OfferCalculatorSettings() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Play className="h-5 w-5 text-primary" />
+                <Play className="h-5 w-5 text-[#2563EB]" />
                 Test workflow
               </CardTitle>
               <CardDescription>
@@ -1197,7 +1197,7 @@ export function OfferCalculatorSettings() {
                           Recommended: {allocationResult.recommendedStrategy} · Recommended offer: £{(allocationAskingPrice != null ? Math.min(allocationResult.finalMaxOffer, allocationAskingPrice) : allocationResult.finalMaxOffer).toLocaleString("en-GB")} · Institutional score: {allocationResult.institutionalScore.toFixed(1)}
                         </span>
                         {allocationAskingPrice != null && allocationResult.finalMaxOffer > allocationAskingPrice && (
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-gray-400">
                             Model ceiling £{allocationResult.finalMaxOffer.toLocaleString("en-GB")} — listing is below ceiling (deal has headroom).
                           </p>
                         )}
@@ -1206,16 +1206,16 @@ export function OfferCalculatorSettings() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Label className="text-xs uppercase text-muted-foreground">Strategies (max offer = highest price model allows and still meets targets)</Label>
+                      <Label className="text-xs uppercase text-gray-400">Strategies (max offer = highest price model allows and still meets targets)</Label>
                       <div className="rounded-md border divide-y">
                         {allocationResult.strategies.map((s) => (
                           <div key={s.strategy} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
                             <div className="font-medium">{s.strategy}</div>
                             <div className="flex items-center gap-2">
                               <Badge variant={s.pass ? "default" : "secondary"}>{s.pass ? "Pass" : "Fail"}</Badge>
-                              <span className="text-muted-foreground">Score: {s.score} · Max offer (model): £{s.maxAllowableOffer.toLocaleString("en-GB")}</span>
+                              <span className="text-gray-400">Score: {s.score} · Max offer (model): £{s.maxAllowableOffer.toLocaleString("en-GB")}</span>
                             </div>
-                            <div className="w-full text-xs text-muted-foreground">
+                            <div className="w-full text-xs text-gray-400">
                               {Object.entries(s.metrics).map(([k, v]) => `${k}: ${typeof v === "number" ? v.toFixed(2) : v}`).join(" · ")}
                             </div>
                           </div>

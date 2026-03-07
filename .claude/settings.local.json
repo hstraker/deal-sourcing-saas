@@ -15,7 +15,21 @@
       "Bash(curl:*)",
       "Bash(node:*)",
       "Bash(find:*)",
-      "Bash(npx prisma migrate:*)"
+      "Bash(npx prisma migrate:*)",
+      "Bash(echo:*)",
+      "Bash(git diff:*)",
+      "WebFetch(domain:www.sra.org.uk)",
+      "WebSearch",
+      "WebFetch(domain:sra-prod-apim.developer.azure-api.net)",
+      "WebFetch(domain:sra-prod-apim.azure-api.net)",
+      "WebFetch(domain:api.sra.org.uk)",
+      "Bash(psql:*)",
+      "Bash(npx prisma validate:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(npx prisma db execute:*)",
+      "Bash(PGPASSWORD=dev_password_123 psql:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

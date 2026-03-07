@@ -97,7 +97,7 @@ function ResetPasswordForm() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                <div className="rounded-md bg-red-50 p-3 text-sm text-red-500">
                   {error}
                 </div>
               )}
@@ -111,7 +111,7 @@ function ResetPasswordForm() {
                   required
                   minLength={8}
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-400">
                   Must be at least 8 characters
                 </p>
               </div>
@@ -130,7 +130,7 @@ function ResetPasswordForm() {
                 {loading ? "Resetting..." : "Reset Password"}
               </Button>
               <div className="text-center text-sm">
-                <Link href="/login" className="text-primary hover:underline">
+                <Link href="/login" className="text-[#2563EB] hover:underline">
                   Back to Login
                 </Link>
               </div>

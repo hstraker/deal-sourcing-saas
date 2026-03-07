@@ -33,18 +33,18 @@ export function MetricTooltipIcon({ tooltipKey, override, className }: MetricToo
     <Tooltip>
       <TooltipTrigger asChild>
         <span
-          className={`ml-1 cursor-help text-muted-foreground hover:text-foreground inline-flex items-center ${className ?? ""}`}
+          className={`ml-1 cursor-help text-gray-400 hover:text-gray-900 inline-flex items-center ${className ?? ""}`}
         >
           <Info className="h-3.5 w-3.5" />
         </span>
       </TooltipTrigger>
       <TooltipContent className="max-w-xs p-3 space-y-1.5 z-50" side="top">
         <p className="font-semibold text-sm">{tooltip.term}</p>
-        <p className="text-xs text-muted-foreground">{tooltip.definition}</p>
+        <p className="text-xs text-gray-400">{tooltip.definition}</p>
         {tooltip.calculation && (
           <div className="border-t pt-1.5">
             <p className="text-xs font-medium">How it&apos;s calculated:</p>
-            <p className="text-xs text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed">
+            <p className="text-xs text-gray-400 font-mono whitespace-pre-wrap leading-relaxed">
               {tooltip.calculation}
             </p>
           </div>
@@ -52,7 +52,7 @@ export function MetricTooltipIcon({ tooltipKey, override, className }: MetricToo
         {tooltip.whyItMatters && (
           <div className="border-t pt-1.5">
             <p className="text-xs font-medium">Why it matters:</p>
-            <p className="text-xs text-muted-foreground">{tooltip.whyItMatters}</p>
+            <p className="text-xs text-gray-400">{tooltip.whyItMatters}</p>
           </div>
         )}
         {tooltip.goodRange && (

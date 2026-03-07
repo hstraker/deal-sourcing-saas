@@ -38,7 +38,7 @@ export function ThemeToggle() {
             <Sun className="mr-2 h-4 w-4" />
             <span>Light</span>
             {theme === "light" && (
-              <span className="ml-auto text-xs text-muted-foreground">✓</span>
+              <span className="ml-auto text-xs text-gray-400">✓</span>
             )}
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -48,7 +48,7 @@ export function ThemeToggle() {
             <Moon className="mr-2 h-4 w-4" />
             <span>Dark</span>
             {theme === "dark" && (
-              <span className="ml-auto text-xs text-muted-foreground">✓</span>
+              <span className="ml-auto text-xs text-gray-400">✓</span>
             )}
           </DropdownMenuItem>
         </DropdownMenuContent>

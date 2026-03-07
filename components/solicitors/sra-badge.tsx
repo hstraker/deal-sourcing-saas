@@ -63,7 +63,7 @@ export function SRABadge({
   // No SRA number on record — show neutral state
   if (!current.sraNumber) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+      <span className="inline-flex items-center gap-1 text-xs text-gray-400">
         <ShieldAlert className="h-3.5 w-3.5" />
         No SRA number
       </span>
@@ -99,7 +99,7 @@ export function SRABadge({
             href={sraProfileUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-muted-foreground hover:text-foreground"
+            className="text-gray-400 hover:text-gray-900"
             title="View on SRA register"
           >
             <ExternalLink className="h-3 w-3" />
@@ -120,7 +120,7 @@ export function SRABadge({
           href={sraProfileUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-muted-foreground hover:text-foreground"
+          className="text-gray-400 hover:text-gray-900"
           title="View on SRA register"
         >
           <ExternalLink className="h-3 w-3" />

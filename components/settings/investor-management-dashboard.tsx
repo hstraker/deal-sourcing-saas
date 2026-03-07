@@ -104,12 +104,12 @@ function StatCard({
   return (
     <Card>
       <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <span className="text-muted-foreground">{icon}</span>
+        <CardTitle className="text-sm font-medium text-gray-400">{title}</CardTitle>
+        <span className="text-gray-400">{icon}</span>
       </CardHeader>
       <CardContent>
         <div className={`text-2xl font-bold ${valueClass}`}>{value}</div>
-        <p className="text-xs text-muted-foreground mt-1">{sub}</p>
+        <p className="text-xs text-gray-400 mt-1">{sub}</p>
       </CardContent>
     </Card>
   )
@@ -131,8 +131,8 @@ export function InvestorManagementDashboard() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <div className="flex items-center justify-center p-12 text-muted-foreground">Loading statistics…</div>
-  if (!stats)  return <div className="text-center p-12 text-muted-foreground">No data available</div>
+  if (loading) return <div className="flex items-center justify-center p-12 text-gray-400">Loading statistics…</div>
+  if (!stats)  return <div className="text-center p-12 text-gray-400">No data available</div>
 
   const { overview, reservationStats: rs, byStage, byReservationStatus, packStats, conversionRates } = stats
 
@@ -141,7 +141,7 @@ export function InvestorManagementDashboard() {
 
       {/* ── Section 1: Investor overview ───────────────────────────────────── */}
       <section className="space-y-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Investors</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Investors</h3>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Total Investors"
@@ -173,7 +173,7 @@ export function InvestorManagementDashboard() {
 
       {/* ── Section 2: Investor pipeline ──────────────────────────────────── */}
       <section className="space-y-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Investor Pipeline</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Investor Pipeline</h3>
         <Card>
           <CardContent className="pt-5">
             <div className="flex flex-wrap gap-3">
@@ -195,7 +195,7 @@ export function InvestorManagementDashboard() {
 
       {/* ── Section 3: Reservation overview ───────────────────────────────── */}
       <section className="space-y-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reservations</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Reservations</h3>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Total Reservations"
@@ -215,7 +215,7 @@ export function InvestorManagementDashboard() {
             icon={<AlertCircle className="h-4 w-4" />}
             value={<span suppressHydrationWarning>£{rs.feesOutstanding.toLocaleString()}</span>}
             sub={rs.feesPendingCount > 0 ? `${rs.feesPendingCount} active reservation${rs.feesPendingCount !== 1 ? "s" : ""} unpaid` : "All active fees collected"}
-            valueClass={rs.feesOutstanding > 0 ? "text-amber-600" : "text-muted-foreground"}
+            valueClass={rs.feesOutstanding > 0 ? "text-amber-600" : "text-gray-400"}
           />
           <StatCard
             title="Milestones"
@@ -228,7 +228,7 @@ export function InvestorManagementDashboard() {
 
       {/* ── Section 4: Reservation pipeline ───────────────────────────────── */}
       <section className="space-y-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reservation Pipeline</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Reservation Pipeline</h3>
         <Card>
           <CardContent className="pt-5">
             <div className="flex items-center gap-1 overflow-x-auto pb-1">
@@ -241,7 +241,7 @@ export function InvestorManagementDashboard() {
                     </div>
                   </div>
                   {i < RESERVATION_PIPELINE.length - 1 && (
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <ChevronRight className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                   )}
                 </div>
               ))}
@@ -255,7 +255,7 @@ export function InvestorManagementDashboard() {
 
         {/* Conversion funnel */}
         <section className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Conversion Rates</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Conversion Rates</h3>
           <div className="grid gap-3">
             {[
               { label: "Lead → Qualified",      value: conversionRates.leadToQualified },
@@ -264,7 +264,7 @@ export function InvestorManagementDashboard() {
             ].map(({ label, value }) => (
               <Card key={label}>
                 <CardContent className="pt-4 pb-4 flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">{label}</span>
+                  <span className="text-sm text-gray-400">{label}</span>
                   <span className="text-xl font-bold">{pct(value)}</span>
                 </CardContent>
               </Card>
@@ -274,7 +274,7 @@ export function InvestorManagementDashboard() {
 
         {/* Pack performance */}
         <section className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Investor Pack Performance</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Investor Pack Performance</h3>
           <div className="grid gap-3">
             {[
               { icon: <FileText className="h-5 w-5 text-purple-600" />, label: "Total Sent",  value: packStats.totalPacksSent,    sub: "investor packs" },
@@ -285,9 +285,9 @@ export function InvestorManagementDashboard() {
                 <CardContent className="pt-4 pb-4 flex items-center gap-4">
                   {icon}
                   <div className="flex-1">
-                    <p className="text-xs text-muted-foreground">{label}</p>
+                    <p className="text-xs text-gray-400">{label}</p>
                     <p className="text-xl font-bold leading-tight">{value}</p>
-                    <p className="text-xs text-muted-foreground">{sub}</p>
+                    <p className="text-xs text-gray-400">{sub}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -298,7 +298,7 @@ export function InvestorManagementDashboard() {
 
       {/* ── Section 6: Top investors ───────────────────────────────────────── */}
       <section className="space-y-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Top Investors by Spend</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Top Investors by Spend</h3>
         <Card>
           <CardContent className="pt-4">
             <Table>
@@ -313,14 +313,14 @@ export function InvestorManagementDashboard() {
               <TableBody>
                 {stats.topInvestors.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground py-6">No investors with purchases yet</TableCell>
+                    <TableCell colSpan={4} className="text-center text-gray-400 py-6">No investors with purchases yet</TableCell>
                   </TableRow>
                 ) : stats.topInvestors.map((inv) => (
                   <TableRow key={inv.id}>
                     <TableCell className="font-medium">
                       {inv.user.firstName} {inv.user.lastName || ""}
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">{inv.user.email}</TableCell>
+                    <TableCell className="text-gray-400 text-sm">{inv.user.email}</TableCell>
                     <TableCell className="text-right">{inv.dealsPurchased}</TableCell>
                     <TableCell className="text-right font-semibold">{formatCurrency(Number(inv.totalSpent))}</TableCell>
                   </TableRow>
@@ -333,11 +333,11 @@ export function InvestorManagementDashboard() {
 
       {/* ── Section 7: Recent activity ─────────────────────────────────────── */}
       <section className="space-y-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recent Activity</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Recent Activity</h3>
         <Card>
           <CardContent className="pt-4">
             {stats.recentActivities.length === 0 ? (
-              <p className="text-center text-muted-foreground py-6">No recent activities</p>
+              <p className="text-center text-gray-400 py-6">No recent activities</p>
             ) : (
               <div className="divide-y">
                 {stats.recentActivities.map((a) => (
@@ -346,10 +346,10 @@ export function InvestorManagementDashboard() {
                       <p className="text-sm font-medium">
                         {a.investor.user.firstName} {a.investor.user.lastName || ""}
                       </p>
-                      <p className="text-sm text-muted-foreground truncate">
+                      <p className="text-sm text-gray-400 truncate">
                         {a.description || a.activityType}
                       </p>
-                      <p suppressHydrationWarning className="text-xs text-muted-foreground mt-0.5">
+                      <p suppressHydrationWarning className="text-xs text-gray-400 mt-0.5">
                         {new Date(a.createdAt).toLocaleString()}
                       </p>
                     </div>

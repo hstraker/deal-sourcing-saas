@@ -71,7 +71,7 @@ export function DeleteDealButton({ dealId, dealAddress }: DeleteDealButtonProps)
           <AlertDialogAction
             onClick={handleDelete}
             disabled={isDeleting}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            className="bg-red-500 text-red-500-foreground hover:bg-red-500/90"
           >
             {isDeleting ? (
               <>

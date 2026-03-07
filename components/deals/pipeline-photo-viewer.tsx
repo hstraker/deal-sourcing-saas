@@ -86,8 +86,8 @@ export function PipelinePhotoViewer({
       <div className={cn("group relative overflow-hidden rounded", className)}>
         <div className="relative w-full aspect-[3/2]">
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded border border-dashed border-muted-foreground/30 bg-gradient-to-br from-muted/60 to-muted/30">
-            <Camera className="h-8 w-8 text-muted-foreground/50" />
-            <p className="text-xs font-medium text-muted-foreground">No photos</p>
+            <Camera className="h-8 w-8 text-gray-400/50" />
+            <p className="text-xs font-medium text-gray-400">No photos</p>
           </div>
         </div>
       </div>

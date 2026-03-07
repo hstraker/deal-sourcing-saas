@@ -145,7 +145,7 @@ export function PropertyReviewCard({
   return (
     <Card className="overflow-hidden hover:shadow-md transition-shadow">
       {/* Image */}
-      <div className="relative h-40 bg-muted">
+      <div className="relative h-40 bg-gray-100">
         {firstImage ? (
           <img
             src={firstImage}
@@ -153,7 +153,7 @@ export function PropertyReviewCard({
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+          <div className="flex h-full items-center justify-center text-gray-400 text-sm">
             No image
           </div>
         )}
@@ -185,7 +185,7 @@ export function PropertyReviewCard({
         {/* Title & Address */}
         <div className="space-y-1">
           <h3 className="font-semibold text-sm line-clamp-1">{listing.title}</h3>
-          <p className="text-xs text-muted-foreground line-clamp-1">
+          <p className="text-xs text-gray-400 line-clamp-1">
             {address?.displayAddress}
           </p>
           {/* Postcode badge */}
@@ -197,7 +197,7 @@ export function PropertyReviewCard({
           <span suppressHydrationWarning className="text-lg font-bold">
             £{listing.price.toLocaleString()}
           </span>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-3 text-xs text-gray-400">
             {listing.bedrooms > 0 && (
               <span className="flex items-center gap-1">
                 <Bed className="h-3 w-3" />
@@ -270,14 +270,14 @@ export function PropertyReviewCard({
                     <TooltipContent side="top" className="max-w-[200px] text-xs">
                       <p className="font-semibold mb-1">BMV Signal Score</p>
                       <p>{grade.description}</p>
-                      <p className="mt-1.5 text-muted-foreground">
+                      <p className="mt-1.5 text-gray-400">
                         Exceptional 80+ · Strong 60–79 · Moderate 30–59 · Weak 0–29
                       </p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
 
-                <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                <div className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
                   <div
                     className={`h-full rounded-full ${
                       computedPts >= 80
@@ -298,7 +298,7 @@ export function PropertyReviewCard({
 
                 <button
                   onClick={() => setBreakdownOpen((v) => !v)}
-                  className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
+                  className="text-[10px] text-[#2563EB] hover:underline flex items-center gap-0.5"
                 >
                   why?
                   {breakdownOpen ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
@@ -307,13 +307,13 @@ export function PropertyReviewCard({
 
               {/* Expandable breakdown */}
               {breakdownOpen && (
-                <div className="rounded-md border bg-muted/30 p-2 space-y-1 text-[10px]">
+                <div className="rounded-md border bg-gray-50 p-2 space-y-1 text-[10px]">
                   {activeItems.map((item) => (
                     <div key={item.label} className="flex items-start justify-between gap-2">
-                      <span className="text-foreground font-medium">
+                      <span className="text-gray-900 font-medium">
                         {item.label}
                         {item.detail && (
-                          <span className="font-normal text-muted-foreground ml-1">— {item.detail}</span>
+                          <span className="font-normal text-gray-400 ml-1">— {item.detail}</span>
                         )}
                       </span>
                       <span className="text-green-600 font-semibold tabular-nums flex-shrink-0">
@@ -326,7 +326,7 @@ export function PropertyReviewCard({
                     <span className={grade.textColor}>{computedPts} / 100</span>
                   </div>
                   {computedPts !== bmv.bmvScore && (
-                    <p className="text-[9px] text-muted-foreground/60 leading-tight">
+                    <p className="text-[9px] text-gray-400/60 leading-tight">
                       Originally scored {bmv.bmvScore} — re-scraping will refresh signals
                     </p>
                   )}
@@ -366,7 +366,7 @@ export function PropertyReviewCard({
 
         {/* Description */}
         {cleanDesc && (
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs text-gray-400">
             <p>
               {descExpanded || !isLong
                 ? cleanDesc
@@ -375,7 +375,7 @@ export function PropertyReviewCard({
             {isLong && (
               <button
                 onClick={() => setDescExpanded((v) => !v)}
-                className="mt-0.5 flex items-center gap-0.5 text-[10px] text-primary hover:underline"
+                className="mt-0.5 flex items-center gap-0.5 text-[10px] text-[#2563EB] hover:underline"
               >
                 {descExpanded ? (
                   <>Less <ChevronUp className="h-3 w-3" /></>
@@ -388,7 +388,7 @@ export function PropertyReviewCard({
         )}
 
         {/* Meta */}
-        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+        <div className="flex items-center justify-between text-[10px] text-gray-400">
           <span>
             {listing.daysOnMarket > 0
               ? `${listing.daysOnMarket} days on market`

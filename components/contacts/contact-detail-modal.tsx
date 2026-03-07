@@ -65,9 +65,9 @@ function DetailRow({
 }) {
   return (
     <div className="flex items-start gap-3 py-2.5 border-b last:border-b-0">
-      <div className="mt-0.5 text-muted-foreground shrink-0">{icon}</div>
+      <div className="mt-0.5 text-gray-400 shrink-0">{icon}</div>
       <div className="min-w-0 flex-1">
-        <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
+        <p className="text-xs text-gray-400 mb-0.5">{label}</p>
         <div className="text-sm">{children}</div>
       </div>
     </div>
@@ -84,7 +84,7 @@ function CopyButton({ value }: { value: string }) {
     setTimeout(() => setCopied(false), 1500)
   }
   return (
-    <button onClick={copy} className="ml-1.5 text-muted-foreground hover:text-foreground transition-colors" title="Copy">
+    <button onClick={copy} className="ml-1.5 text-gray-400 hover:text-gray-900 transition-colors" title="Copy">
       {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
     </button>
   )
@@ -220,13 +220,13 @@ export function ContactDetailModal({
                   </span>
                 </div>
                 {contact.company && (
-                  <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                  <p className="text-sm text-gray-400 mt-0.5 flex items-center gap-1.5">
                     <Building2 className="h-3.5 w-3.5 shrink-0" />
                     {contact.company}
                   </p>
                 )}
                 {contact.jobTitle && !contact.company && (
-                  <p className="text-sm text-muted-foreground mt-0.5">{contact.jobTitle}</p>
+                  <p className="text-sm text-gray-400 mt-0.5">{contact.jobTitle}</p>
                 )}
               </div>
 
@@ -237,7 +237,7 @@ export function ContactDetailModal({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={handleTogglePreferred}>
-                        <Star className={`h-4 w-4 ${contact.isPreferred ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`} />
+                        <Star className={`h-4 w-4 ${contact.isPreferred ? "fill-amber-400 text-amber-400" : "text-gray-400"}`} />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent className="text-xs">{contact.isPreferred ? "Remove from preferred" : "Mark as preferred"}</TooltipContent>
@@ -272,7 +272,7 @@ export function ContactDetailModal({
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/10"
+                        className="h-8 w-8 p-0 text-red-500 hover:text-red-500 border-destructive/30 hover:bg-red-50"
                         onClick={handleDelete}
                         disabled={isDeleting}
                       >
@@ -305,7 +305,7 @@ export function ContactDetailModal({
               <TabsTrigger value="links">
                 Links
                 {(contact._count.vendorLeads + contact._count.investors) > 0 && (
-                  <span className="ml-1.5 bg-primary/10 text-primary rounded-full px-1.5 py-0.5 text-[10px] font-semibold">
+                  <span className="ml-1.5 bg-primary/10 text-[#2563EB] rounded-full px-1.5 py-0.5 text-[10px] font-semibold">
                     {contact._count.vendorLeads + contact._count.investors}
                   </span>
                 )}
@@ -318,7 +318,7 @@ export function ContactDetailModal({
                 {contact.email && (
                   <DetailRow icon={<Mail className="h-4 w-4" />} label="Email">
                     <div className="flex items-center gap-1">
-                      <a href={`mailto:${contact.email}`} className="hover:text-primary hover:underline">{contact.email}</a>
+                      <a href={`mailto:${contact.email}`} className="hover:text-[#2563EB] hover:underline">{contact.email}</a>
                       <CopyButton value={contact.email} />
                     </div>
                   </DetailRow>
@@ -327,7 +327,7 @@ export function ContactDetailModal({
                 {contact.phone && (
                   <DetailRow icon={<Phone className="h-4 w-4" />} label="Phone">
                     <div className="flex items-center gap-1">
-                      <a href={`tel:${contact.phone}`} className="hover:text-primary hover:underline">{contact.phone}</a>
+                      <a href={`tel:${contact.phone}`} className="hover:text-[#2563EB] hover:underline">{contact.phone}</a>
                       <CopyButton value={contact.phone} />
                     </div>
                   </DetailRow>
@@ -336,7 +336,7 @@ export function ContactDetailModal({
                 {contact.mobilePhone && (
                   <DetailRow icon={<Phone className="h-4 w-4" />} label="Mobile">
                     <div className="flex items-center gap-1">
-                      <a href={`tel:${contact.mobilePhone}`} className="hover:text-primary hover:underline">{contact.mobilePhone}</a>
+                      <a href={`tel:${contact.mobilePhone}`} className="hover:text-[#2563EB] hover:underline">{contact.mobilePhone}</a>
                       <CopyButton value={contact.mobilePhone} />
                     </div>
                   </DetailRow>
@@ -348,7 +348,7 @@ export function ContactDetailModal({
                       href={contact.website.startsWith("http") ? contact.website : `https://${contact.website}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 hover:text-primary hover:underline"
+                      className="flex items-center gap-1 hover:text-[#2563EB] hover:underline"
                     >
                       {contact.website.replace(/^https?:\/\//, "")}
                       <ExternalLink className="h-3 w-3 shrink-0" />
@@ -371,19 +371,19 @@ export function ContactDetailModal({
                 {contact.company && (
                   <DetailRow icon={<Building2 className="h-4 w-4" />} label="Organisation">
                     <p>{contact.company}</p>
-                    {contact.jobTitle && <p className="text-xs text-muted-foreground">{contact.jobTitle}</p>}
+                    {contact.jobTitle && <p className="text-xs text-gray-400">{contact.jobTitle}</p>}
                   </DetailRow>
                 )}
 
                 {(!contact.email && !contact.phone && !contact.website && addressParts.length === 0) && (
-                  <div className="p-6 text-center text-sm text-muted-foreground/60">No contact details recorded</div>
+                  <div className="p-6 text-center text-sm text-gray-400/60">No contact details recorded</div>
                 )}
               </div>
 
               {/* Tags */}
               {contact.tags.length > 0 && (
                 <div className="mt-4">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Tags</p>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Tags</p>
                   <div className="flex flex-wrap gap-1.5">
                     {contact.tags.map((tag) => (
                       <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
@@ -393,7 +393,7 @@ export function ContactDetailModal({
               )}
 
               {/* Dates footer */}
-              <p className="text-xs text-muted-foreground mt-4">
+              <p className="text-xs text-gray-400 mt-4">
                 Added {format(new Date(contact.createdAt), "d MMM yyyy")}
                 {contact.updatedAt && contact.updatedAt !== contact.createdAt && (
                   <> · Updated {format(new Date(contact.updatedAt), "d MMM yyyy")}</>
@@ -412,7 +412,7 @@ export function ContactDetailModal({
                           <span className="font-mono font-medium">{contact.sraNumber}</span>
                           <CopyButton value={contact.sraNumber} />
                           {sraProfileUrl && (
-                            <a href={sraProfileUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-0.5">
+                            <a href={sraProfileUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[#2563EB] hover:underline flex items-center gap-0.5">
                               SRA Register <ExternalLink className="h-3 w-3" />
                             </a>
                           )}
@@ -432,7 +432,7 @@ export function ContactDetailModal({
                           {contact.sraVerifiedAt && (() => {
                             const days = Math.floor((Date.now() - new Date(contact.sraVerifiedAt).getTime()) / 86400000)
                             return (
-                              <span className={`inline-flex items-center gap-1 text-xs ${days > 30 ? "text-amber-600" : "text-muted-foreground"}`}>
+                              <span className={`inline-flex items-center gap-1 text-xs ${days > 30 ? "text-amber-600" : "text-gray-400"}`}>
                                 <Clock className="h-3 w-3" />
                                 {days === 0 ? "Today" : `${days}d ago`}
                                 {days > 30 && " — re-verify recommended"}
@@ -455,9 +455,9 @@ export function ContactDetailModal({
                       )}
                     </>
                   ) : (
-                    <div className="p-6 text-center text-sm text-muted-foreground/60">
+                    <div className="p-6 text-center text-sm text-gray-400/60">
                       No SRA number recorded.
-                      <button onClick={() => setIsFormOpen(true)} className="ml-1 text-primary hover:underline">Add one?</button>
+                      <button onClick={() => setIsFormOpen(true)} className="ml-1 text-[#2563EB] hover:underline">Add one?</button>
                     </div>
                   )}
 
@@ -479,9 +479,9 @@ export function ContactDetailModal({
               {contact.notes ? (
                 <div className="rounded-lg border p-4 text-sm whitespace-pre-wrap">{contact.notes}</div>
               ) : (
-                <div className="rounded-lg border p-8 text-center text-sm text-muted-foreground/60">
+                <div className="rounded-lg border p-8 text-center text-sm text-gray-400/60">
                   No notes recorded.
-                  <button onClick={() => setIsFormOpen(true)} className="ml-1 text-primary hover:underline">Add notes?</button>
+                  <button onClick={() => setIsFormOpen(true)} className="ml-1 text-[#2563EB] hover:underline">Add notes?</button>
                 </div>
               )}
             </TabsContent>
@@ -490,17 +490,17 @@ export function ContactDetailModal({
             <TabsContent value="links" className="mt-0">
               <div className="rounded-lg border divide-y">
                 <div className="p-4 flex items-center gap-3">
-                  <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
+                  <FileText className="h-5 w-5 text-gray-400 shrink-0" />
                   <div>
                     <p className="font-medium">{contact._count.vendorLeads} Vendor Lead{contact._count.vendorLeads !== 1 ? "s" : ""}</p>
-                    <p className="text-xs text-muted-foreground">This contact is assigned as solicitor on these leads</p>
+                    <p className="text-xs text-gray-400">This contact is assigned as solicitor on these leads</p>
                   </div>
                 </div>
                 <div className="p-4 flex items-center gap-3">
-                  <Users className="h-5 w-5 text-muted-foreground shrink-0" />
+                  <Users className="h-5 w-5 text-gray-400 shrink-0" />
                   <div>
                     <p className="font-medium">{contact._count.investors} Investor{contact._count.investors !== 1 ? "s" : ""}</p>
-                    <p className="text-xs text-muted-foreground">This contact is the default solicitor for these investors</p>
+                    <p className="text-xs text-gray-400">This contact is the default solicitor for these investors</p>
                   </div>
                 </div>
               </div>

@@ -185,7 +185,7 @@ export function PhotoGallery({
                 className="object-cover transition-transform group-hover:scale-105"
               />
               {showCoverBadge && photo.isCover && (
-                <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground">
+                <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-primary px-2 py-1 text-xs font-semibold text-[#2563EB]-foreground">
                   <Crown className="h-3 w-3" />
                   Cover
                 </span>
@@ -193,7 +193,7 @@ export function PhotoGallery({
               <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10" />
             </div>
             {photo.caption && (
-              <div className="px-2 py-1 text-xs text-muted-foreground line-clamp-1">
+              <div className="px-2 py-1 text-xs text-gray-400 line-clamp-1">
                 {photo.caption}
               </div>
             )}

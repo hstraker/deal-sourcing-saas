@@ -74,7 +74,7 @@ function getInvestmentGrade(avgYield?: number): {
   description: string
 } {
   if (!avgYield) {
-    return { label: "N/A", color: "text-muted-foreground", description: "No rental data available" }
+    return { label: "N/A", color: "text-gray-400", description: "No rental data available" }
   }
   if (avgYield >= 7) {
     return { label: "Excellent", color: "text-green-600", description: "Outstanding rental yield" }
@@ -169,12 +169,12 @@ export function ComparablesAnalysis({
             {/* Average Price */}
             <div className="flex items-start justify-between">
               <div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                <div className="flex items-center gap-2 text-sm text-gray-400 mb-1">
                   <PoundSterling className="h-4 w-4" />
                   <span>Average Sale Price</span>
                 </div>
                 <div className="text-2xl font-bold">{formatCurrency(avgPrice)}</div>
-                <div className="text-xs text-muted-foreground mt-1">
+                <div className="text-xs text-gray-400 mt-1">
                   Range: {formatCurrency(minPrice)} - {formatCurrency(maxPrice)}
                 </div>
               </div>
@@ -182,7 +182,7 @@ export function ComparablesAnalysis({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="text-right">
-                      <div className="text-xs text-muted-foreground mb-1">BMV</div>
+                      <div className="text-xs text-gray-400 mb-1">BMV</div>
                       <div className={`text-xl font-bold ${bmvPercentage > 0 ? "text-green-600" : "text-red-600"}`}>
                         {bmvPercentage > 0 ? "+" : ""}{bmvPercentage}%
                       </div>
@@ -203,7 +203,7 @@ export function ComparablesAnalysis({
               <div className="border-t pt-4 bg-gradient-to-br from-primary/5 to-primary/10 -mx-6 px-6 py-4 mt-4">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="flex items-center gap-2 text-sm font-semibold text-primary mb-3 cursor-help">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-[#2563EB] mb-3 cursor-help">
                       <TrendingUp className="h-5 w-5" />
                       <span>Rental Yield Analysis</span>
                       <Info className="h-4 w-4" />
@@ -223,7 +223,7 @@ export function ComparablesAnalysis({
                 {avgYield !== undefined ? (
                   <div className="flex items-start justify-between">
                     <div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                      <div className="flex items-center gap-2 text-xs text-gray-400 mb-1">
                         <PoundSterling className="h-3 w-3" />
                         <span>Average Rental Yield</span>
                       </div>
@@ -231,25 +231,25 @@ export function ComparablesAnalysis({
                         {avgYield.toFixed(2)}%
                       </div>
                       {minYield !== undefined && maxYield !== undefined && (
-                        <div className="text-xs text-muted-foreground mt-1">
+                        <div className="text-xs text-gray-400 mt-1">
                           Range: {minYield.toFixed(2)}% - {maxYield.toFixed(2)}%
                         </div>
                       )}
-                      <div className="text-xs font-medium text-primary/70 mt-2">
+                      <div className="text-xs font-medium text-[#2563EB]/70 mt-2">
                         {comparables.length > 0 && comparables[0].monthlyRent && (
                           <>Based on {yields.length} of {comparables.length} properties with rental data</>
                         )}
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                      <div className="flex items-center gap-1 text-xs text-gray-400 mb-1">
                         <Award className="h-3 w-3" />
                         <span>Investment Grade</span>
                       </div>
                       <div className={`text-lg font-bold ${investmentGrade.color} mb-1`}>
                         {investmentGrade.label}
                       </div>
-                      <div className="text-xs text-muted-foreground max-w-[120px]">
+                      <div className="text-xs text-gray-400 max-w-[120px]">
                         {investmentGrade.description}
                       </div>
                       <Badge className={`mt-2 ${investmentGrade.color === 'text-green-600' ? 'bg-green-100 text-green-800' : investmentGrade.color === 'text-yellow-600' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
@@ -259,7 +259,7 @@ export function ComparablesAnalysis({
                   </div>
                 ) : (
                   <div className="text-center py-4">
-                    <div className="text-muted-foreground mb-2">
+                    <div className="text-gray-400 mb-2">
                       <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       <p className="font-medium">Rental Data Not Available</p>
                       <p className="text-xs mt-1">
@@ -276,7 +276,7 @@ export function ComparablesAnalysis({
 
             {/* Property Distribution */}
             <div className="border-t pt-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+              <div className="flex items-center gap-2 text-sm text-gray-400 mb-3">
                 <Home className="h-4 w-4" />
                 <span>Property Distribution</span>
               </div>
@@ -362,10 +362,10 @@ export function ComparablesAnalysis({
               <CardDescription>Investment potential analysis</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-start gap-3 text-sm text-muted-foreground">
+              <div className="flex items-start gap-3 text-sm text-gray-400">
                 <Info className="h-5 w-5 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-medium text-foreground mb-1">No rental data available</p>
+                  <p className="font-medium text-gray-900 mb-1">No rental data available</p>
                   <p>Rental yield information is not available for these comparables. This data helps assess investment potential for buy-to-let properties.</p>
                 </div>
               </div>

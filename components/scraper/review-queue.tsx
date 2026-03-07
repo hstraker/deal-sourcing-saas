@@ -359,7 +359,7 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
       {/* Search + Sort */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
             placeholder="Search by address, title, or postcode..."
             value={searchQuery}
@@ -369,7 +369,7 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+          <ArrowUpDown className="h-4 w-4 text-gray-400" />
           <Select
             value={sortField}
             onValueChange={(v) => setSortField(v as SortField)}
@@ -403,10 +403,10 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
 
       {/* Results count + bulk actions */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-gray-400">
           {sortedListings.length} properties
           {dupGroupCount > 0 && (
-            <span className="ml-1 text-muted-foreground/60">
+            <span className="ml-1 text-gray-400/60">
               · {dupGroupCount} postcode {dupGroupCount === 1 ? "group" : "groups"}
             </span>
           )}
@@ -467,10 +467,10 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-lg font-medium text-muted-foreground">
+          <p className="text-lg font-medium text-gray-400">
             No properties to review
           </p>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-gray-400 mt-1">
             {listings.length === 0
               ? "Run a scraper job to populate the review queue"
               : "Try adjusting your filters or search query"}

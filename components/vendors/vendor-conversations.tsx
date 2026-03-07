@@ -167,7 +167,7 @@ export function VendorConversations({ vendorId }: VendorConversationsProps) {
             </DialogHeader>
 
             {error && (
-              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              <div className="rounded-md bg-red-50 p-3 text-sm text-red-500">
                 {error}
               </div>
             )}
@@ -307,7 +307,7 @@ export function VendorConversations({ vendorId }: VendorConversationsProps) {
       </CardHeader>
       <CardContent>
         {conversations.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="text-center py-8 text-gray-400">
             No conversations recorded yet. Click &quot;Add Conversation&quot; to log one.
           </div>
         ) : (
@@ -335,12 +335,12 @@ export function VendorConversations({ vendorId }: VendorConversationsProps) {
                       </span>
                     )}
                     {conv.confidence && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-gray-400">
                         {conv.confidence.toFixed(0)}% confidence
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-gray-400">
                     {formatDate(conv.createdAt)}
                   </span>
                 </div>
@@ -355,7 +355,7 @@ export function VendorConversations({ vendorId }: VendorConversationsProps) {
                 )}
 
                 {(conv.videoSent || conv.videoUrl) && (
-                  <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
                     <span>📹</span>
                     {conv.videoUrl ? (
                       <a href={conv.videoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">

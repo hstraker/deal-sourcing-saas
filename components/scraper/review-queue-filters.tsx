@@ -90,7 +90,7 @@ export function ReviewQueueFilters({
       {showFilters && (
         <div className="mt-3 flex flex-wrap gap-3 rounded-lg border p-4">
           <div className="w-40">
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+            <label className="mb-1 block text-xs font-medium text-gray-400">
               Source
             </label>
             <Select
@@ -116,7 +116,7 @@ export function ReviewQueueFilters({
           </div>
 
           <div className="w-40">
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+            <label className="mb-1 block text-xs font-medium text-gray-400">
               Category
             </label>
             <Select
@@ -140,7 +140,7 @@ export function ReviewQueueFilters({
           </div>
 
           <div className="w-40">
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+            <label className="mb-1 block text-xs font-medium text-gray-400">
               Ambiguous
             </label>
             <Select
@@ -171,7 +171,7 @@ export function ReviewQueueFilters({
           </div>
 
           <div className="w-32">
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+            <label className="mb-1 block text-xs font-medium text-gray-400">
               Min BMV Score
             </label>
             <Input

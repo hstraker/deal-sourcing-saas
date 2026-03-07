@@ -144,7 +144,7 @@ export function UserList() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="text-muted-foreground">Loading users...</div>
+        <div className="text-gray-400">Loading users...</div>
       </div>
     )
   }
@@ -174,7 +174,7 @@ export function UserList() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">User Management</h2>
-          <p className="text-muted-foreground">
+          <p className="text-gray-400">
             Manage team members, roles, and permissions
           </p>
         </div>
@@ -207,7 +207,7 @@ export function UserList() {
             <TableBody>
               {users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-gray-400">
                     No users found
                   </TableCell>
                 </TableRow>
@@ -216,7 +216,7 @@ export function UserList() {
                   <TableRow key={user.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="relative h-10 w-10 overflow-hidden rounded-full border border-border bg-muted">
+                        <div className="relative h-10 w-10 overflow-hidden rounded-full border border-border bg-gray-100">
                           {profileImageUrls[user.id] ? (
                             <Image
                               src={profileImageUrls[user.id]}
@@ -227,7 +227,7 @@ export function UserList() {
                             />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center">
-                              <UserIcon className="h-5 w-5 text-muted-foreground" />
+                              <UserIcon className="h-5 w-5 text-gray-400" />
                             </div>
                           )}
                         </div>
@@ -237,18 +237,18 @@ export function UserList() {
                               ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
                               : "No name"}
                           </div>
-                          <div className="text-sm text-muted-foreground">{user.email}</div>
+                          <div className="text-sm text-gray-400">{user.email}</div>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       {user.phone ? (
                         <div className="flex items-center gap-2 text-sm">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          <Phone className="h-4 w-4 text-gray-400" />
                           {user.phone}
                         </div>
                       ) : (
-                        <span className="text-muted-foreground">—</span>
+                        <span className="text-gray-400">—</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -272,7 +272,7 @@ export function UserList() {
                     <TableCell>
                       <div className="text-sm">
                         <div>Created: {user._count.dealsCreated}</div>
-                        <div className="text-muted-foreground">
+                        <div className="text-gray-400">
                           Assigned: {user._count.dealsAssigned}
                         </div>
                       </div>
@@ -283,7 +283,7 @@ export function UserList() {
                           {new Date(user.lastLogin).toLocaleDateString()}
                         </div>
                       ) : (
-                        <span className="text-muted-foreground">Never</span>
+                        <span className="text-gray-400">Never</span>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
@@ -302,7 +302,7 @@ export function UserList() {
                               size="sm"
                               onClick={() => setDeletingUserId(user.id)}
                             >
-                              <Trash2 className="h-4 w-4 text-destructive" />
+                              <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
@@ -324,7 +324,7 @@ export function UserList() {
                               </AlertDialogCancel>
                               <AlertDialogAction
                                 onClick={() => handleDelete(user.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                className="bg-red-500 text-red-500-foreground hover:bg-red-500/90"
                               >
                                 Delete
                               </AlertDialogAction>

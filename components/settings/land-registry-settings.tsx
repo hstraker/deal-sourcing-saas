@@ -333,7 +333,7 @@ export function LandRegistrySettings() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
       </div>
     )
   }
@@ -358,7 +358,7 @@ export function LandRegistrySettings() {
                 ? stats.ccodCount.toLocaleString()
                 : "—"}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-gray-400 mt-1">
               {stats?.lastCcodImport
                 ? `Last imported ${new Date(stats.lastCcodImport).toLocaleDateString()}`
                 : "Never imported"}
@@ -382,7 +382,7 @@ export function LandRegistrySettings() {
                 ? stats.ocodCount.toLocaleString()
                 : "—"}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-gray-400 mt-1">
               {stats?.lastOcodImport
                 ? `Last imported ${new Date(stats.lastOcodImport).toLocaleDateString()}`
                 : "Never imported"}
@@ -478,7 +478,7 @@ export function LandRegistrySettings() {
         </CardHeader>
         <CardContent>
           {recentImports.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">
+            <p className="text-sm text-gray-400 text-center py-6">
               No imports have been run yet.
             </p>
           ) : (
@@ -503,7 +503,7 @@ export function LandRegistrySettings() {
             corrects postcodes that are wrong (e.g. Zoopla captures SE1 2LH — its own London office —
             instead of the property&apos;s actual postcode) or outcode-only (e.g. SA6 with no incode).
             Uses Land Registry street lookup first, then postcodes.io as fallback.
-            <span className="block mt-1 text-muted-foreground">
+            <span className="block mt-1 text-gray-400">
               Note: this scans your scraped properties, not the 4.4M Land Registry records.
             </span>
           </CardDescription>
@@ -555,7 +555,7 @@ export function LandRegistrySettings() {
               {fixing ? "Fixing…" : "Fix All Postcodes"}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-gray-400">
             Run a dry run first to preview. The fix also runs automatically for every new scrape.
           </p>
         </CardContent>
@@ -579,20 +579,20 @@ export function LandRegistrySettings() {
           {/* Stats */}
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-md border p-3">
-              <p className="text-muted-foreground text-xs mb-1">Street→Postcode pairs</p>
+              <p className="text-gray-400 text-xs mb-1">Street→Postcode pairs</p>
               <p className="text-xl font-bold">
                 {ppdStats?.addressCount != null ? ppdStats.addressCount.toLocaleString() : "—"}
               </p>
             </div>
             <div className="rounded-md border p-3">
-              <p className="text-muted-foreground text-xs mb-1">Last import</p>
+              <p className="text-gray-400 text-xs mb-1">Last import</p>
               <p className="text-sm font-medium">
                 {ppdStats?.lastImport
                   ? `${ppdStats.lastImport.year === 0 ? "Full dataset" : `Year ${ppdStats.lastImport.year}`} — ${ppdStats.lastImport.recordsInserted.toLocaleString()} pairs`
                   : "Never imported"}
               </p>
               {ppdStats?.lastImport?.completedAt && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-400">
                   {new Date(ppdStats.lastImport.completedAt).toLocaleDateString()}
                 </p>
               )}
@@ -634,7 +634,7 @@ export function LandRegistrySettings() {
             </Button>
           </div>
 
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-gray-400">
             Start with a recent year (e.g. {new Date().getFullYear() - 1}) for fast coverage of recently sold streets.
             The full dataset gives the best postcode coverage but takes significantly longer to download and process.
             No API key required — data is publicly available.
@@ -643,7 +643,7 @@ export function LandRegistrySettings() {
           {/* Recent PPD imports */}
           {ppdImports.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recent imports</p>
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Recent imports</p>
               {ppdImports.slice(0, 5).map((imp) => (
                 <PpdImportRow key={imp.id} record={imp} onCancel={cancelPpdImport} />
               ))}
@@ -666,21 +666,21 @@ export function LandRegistrySettings() {
               <Building2 className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
               <div>
                 <p className="font-medium">Corporate Owner</p>
-                <p className="text-muted-foreground">+10 points — easier negotiation, professional sellers</p>
+                <p className="text-gray-400">+10 points — easier negotiation, professional sellers</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <Globe className="h-4 w-4 mt-0.5 text-purple-500 shrink-0" />
               <div>
                 <p className="font-medium">Overseas Owner</p>
-                <p className="text-muted-foreground">+7 points — potentially motivated, remote management</p>
+                <p className="text-gray-400">+7 points — potentially motivated, remote management</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <Database className="h-4 w-4 mt-0.5 text-orange-500 shrink-0" />
               <div>
                 <p className="font-medium">Portfolio Owner</p>
-                <p className="text-muted-foreground">+5 points — owns 5+ properties, bulk sale potential</p>
+                <p className="text-gray-400">+5 points — owns 5+ properties, bulk sale potential</p>
               </div>
             </div>
           </div>
@@ -719,14 +719,14 @@ function PpdImportRow({
               <X className="h-3 w-3" />
             </Button>
           )}
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-gray-400">
             {new Date(record.createdAt).toLocaleString()}
           </span>
         </div>
       </div>
 
       {isRunning && (
-        <p className="text-xs text-muted-foreground animate-pulse">
+        <p className="text-xs text-gray-400 animate-pulse">
           {record.recordsRead.toLocaleString()} rows read, {record.recordsInserted.toLocaleString()} unique pairs inserted…
         </p>
       )}
@@ -745,7 +745,7 @@ function PpdImportRow({
       )}
 
       {record.status === "CANCELLED" && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-gray-400">
           Cancelled after {record.recordsRead.toLocaleString()} rows
         </p>
       )}
@@ -896,7 +896,7 @@ function ImportRow({ record }: { record: ImportRecord }) {
               </Button>
             </>
           )}
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-gray-400">
             {new Date(record.createdAt).toLocaleString()}
           </span>
         </div>
@@ -906,14 +906,14 @@ function ImportRow({ record }: { record: ImportRecord }) {
       {isRunning && downloadProgress !== null && (
         <div className="space-y-1">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Download</span>
-            <span className="text-muted-foreground">
+            <span className="text-gray-400">Download</span>
+            <span className="text-gray-400">
               {formatBytes(record.bytesDownloaded)} / {formatBytes(record.bytesTotal)} ({downloadProgress}%)
             </span>
           </div>
           <Progress value={downloadProgress} className="h-1.5" />
           {downloadProgress > 0 && (
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center justify-between text-xs text-gray-400">
               <div className="flex items-center gap-2">
                 <Gauge className="h-3 w-3" />
                 <span>{formatSpeed(record.downloadSpeed)}</span>
@@ -928,7 +928,7 @@ function ImportRow({ record }: { record: ImportRecord }) {
       
       {/* Show "Preparing download..." when bytesTotal is set but no bytes downloaded yet */}
       {isRunning && record.bytesTotal && (!record.bytesDownloaded || Number(record.bytesDownloaded) === 0) && (
-        <div className="text-xs text-muted-foreground">
+        <div className="text-xs text-gray-400">
           Preparing download... ({formatBytes(record.bytesTotal)} total)
         </div>
       )}
@@ -937,15 +937,15 @@ function ImportRow({ record }: { record: ImportRecord }) {
       {isRunning && record.recordsTotal > 0 && (
         <div className="space-y-1">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Import</span>
-            <span className="text-muted-foreground">
+            <span className="text-gray-400">Import</span>
+            <span className="text-gray-400">
               {record.recordsImported.toLocaleString()} /{" "}
               {record.recordsTotal.toLocaleString()} records ({progress}%)
             </span>
           </div>
           <Progress value={progress} className="h-2" />
           {record.estimatedTimeRemaining && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-gray-400">
               Estimated time remaining: {formatTime(record.estimatedTimeRemaining)}
             </p>
           )}
@@ -966,7 +966,7 @@ function ImportRow({ record }: { record: ImportRecord }) {
             ✓ {record.recordsImported.toLocaleString()} records imported successfully
           </p>
           {duration != null && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-gray-400">
               Completed in {duration < 60 ? `${duration}s` : `${Math.round(duration / 60)}m ${duration % 60}s`}
             </p>
           )}
@@ -981,7 +981,7 @@ function ImportRow({ record }: { record: ImportRecord }) {
       )}
 
       {record.status === "CANCELLED" && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-gray-400">
           Cancelled at {record.recordsImported.toLocaleString()} records
         </p>
       )}
@@ -1004,7 +1004,7 @@ function StatusIcon({ status }: { status: string }) {
     case "CANCELLED":
       return <XCircle className="h-4 w-4 text-gray-500" />
     default:
-      return <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+      return <AlertTriangle className="h-4 w-4 text-gray-400" />
   }
 }
 

@@ -420,40 +420,40 @@ export function ScraperOverview({
 
               {/* Counts grid */}
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="rounded-md bg-muted/50 px-3 py-2">
+                <div className="rounded-md bg-gray-50 px-3 py-2">
                   <div className="text-lg font-bold text-blue-700 dark:text-blue-400">
                     {stats.totalListings}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">Total</div>
+                  <div className="text-[11px] text-gray-400">Total</div>
                 </div>
-                <div className="rounded-md bg-muted/50 px-3 py-2">
+                <div className="rounded-md bg-gray-50 px-3 py-2">
                   <div className="text-lg font-bold text-amber-700 dark:text-amber-400">
                     {stats.pendingReview}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">Pending</div>
+                  <div className="text-[11px] text-gray-400">Pending</div>
                 </div>
-                <div className="rounded-md bg-muted/50 px-3 py-2">
+                <div className="rounded-md bg-gray-50 px-3 py-2">
                   <div className="text-lg font-bold text-green-700 dark:text-green-400">
                     {stats.byReviewStatus.find((s) => s.status === "APPROVED")?.count || 0}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">Approved</div>
+                  <div className="text-[11px] text-gray-400">Approved</div>
                 </div>
-                <div className="rounded-md bg-muted/50 px-3 py-2">
+                <div className="rounded-md bg-gray-50 px-3 py-2">
                   <div className="text-lg font-bold text-red-700 dark:text-red-400">
                     {stats.ambiguousCount}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">Ambiguous</div>
+                  <div className="text-[11px] text-gray-400">Ambiguous</div>
                 </div>
               </div>
 
               {/* Source breakdown */}
               <div className="flex flex-wrap gap-1.5 text-[11px]">
                 <span className="text-blue-600 font-medium">{getSourceCount("RIGHTMOVE")} RM</span>
-                <span className="text-muted-foreground">·</span>
+                <span className="text-gray-400">·</span>
                 <span className="text-purple-600 font-medium">{getSourceCount("ZOOPLA")} Z</span>
-                <span className="text-muted-foreground">·</span>
+                <span className="text-gray-400">·</span>
                 <span className="text-emerald-600 font-medium">{getSourceCount("ONTHEMARKET")} OTM</span>
-                <span className="text-muted-foreground">·</span>
+                <span className="text-gray-400">·</span>
                 <span className="text-orange-600 font-medium">{getSourceCount("PRIMELOCATION")} PL</span>
               </div>
             </CardContent>
@@ -474,10 +474,10 @@ export function ScraperOverview({
           </p>
         </div>
       ) : (
-        <div className="text-sm text-muted-foreground bg-muted/40 rounded-md px-3 py-2 flex items-center gap-2">
-          <span className="font-medium text-foreground">Criteria:</span>
+        <div className="text-sm text-gray-400 bg-gray-100 rounded-md px-3 py-2 flex items-center gap-2">
+          <span className="font-medium text-gray-900">Criteria:</span>
           <span>{formatCriteriaSummary(settings?.searchCriteria ?? null)}</span>
-          <Link href="/dashboard/settings/scraper" className="ml-auto text-xs text-primary hover:underline flex-shrink-0">
+          <Link href="/dashboard/settings/scraper" className="ml-auto text-xs text-[#2563EB] hover:underline flex-shrink-0">
             Edit
           </Link>
         </div>
@@ -532,8 +532,8 @@ export function ScraperOverview({
             onClick={() => setActiveTab("all")}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === "all"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "border-primary text-[#2563EB]"
+                : "border-transparent text-gray-400 hover:text-gray-900"
             }`}
           >
             <Database className="inline mr-2 h-4 w-4" />
@@ -546,8 +546,8 @@ export function ScraperOverview({
             onClick={() => setActiveTab("review")}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === "review"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "border-primary text-[#2563EB]"
+                : "border-transparent text-gray-400 hover:text-gray-900"
             }`}
           >
             <ClipboardCheck className="inline mr-2 h-4 w-4" />
@@ -562,8 +562,8 @@ export function ScraperOverview({
             onClick={() => setActiveTab("jobs")}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === "jobs"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "border-primary text-[#2563EB]"
+                : "border-transparent text-gray-400 hover:text-gray-900"
             }`}
           >
             <TrendingUp className="inline mr-2 h-4 w-4" />
@@ -576,8 +576,8 @@ export function ScraperOverview({
           <ReviewQueue listings={reviewListings} />
         ) : activeTab === "review" ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-lg font-medium text-muted-foreground">No properties to review</p>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-lg font-medium text-gray-400">No properties to review</p>
+            <p className="text-sm text-gray-400 mt-1">
               Run a scraper job to populate the review queue
             </p>
           </div>
@@ -594,7 +594,7 @@ export function ScraperOverview({
             </div>
             <CardContent>
               {recentJobs.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">
+                <p className="text-sm text-gray-400 py-4 text-center">
                   No scraper jobs have been run yet
                 </p>
               ) : (
@@ -602,12 +602,12 @@ export function ScraperOverview({
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left">
-                        <th className="pb-2 font-medium text-muted-foreground">Source</th>
-                        <th className="pb-2 font-medium text-muted-foreground">Status</th>
-                        <th className="pb-2 font-medium text-muted-foreground">Found</th>
-                        <th className="pb-2 font-medium text-muted-foreground">Saved</th>
-                        <th className="pb-2 font-medium text-muted-foreground">Failed</th>
-                        <th className="pb-2 font-medium text-muted-foreground">Date</th>
+                        <th className="pb-2 font-medium text-gray-400">Source</th>
+                        <th className="pb-2 font-medium text-gray-400">Status</th>
+                        <th className="pb-2 font-medium text-gray-400">Found</th>
+                        <th className="pb-2 font-medium text-gray-400">Saved</th>
+                        <th className="pb-2 font-medium text-gray-400">Failed</th>
+                        <th className="pb-2 font-medium text-gray-400">Date</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -622,7 +622,7 @@ export function ScraperOverview({
                           <td className="py-2">{job.totalFound}</td>
                           <td className="py-2 text-green-600">{job.successful}</td>
                           <td className="py-2 text-red-600">{job.failed}</td>
-                          <td className="py-2 text-muted-foreground" suppressHydrationWarning>
+                          <td className="py-2 text-gray-400" suppressHydrationWarning>
                             {new Date(job.createdAt).toLocaleDateString()}{" "}
                             {formatTime12h(new Date(job.createdAt))}
                           </td>

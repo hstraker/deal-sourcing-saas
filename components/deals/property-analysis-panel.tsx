@@ -158,7 +158,7 @@ export function PropertyAnalysisPanel({
       <CardContent className="space-y-6">
         {isLoading && !propertyData && (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
           </div>
         )}
 
@@ -179,20 +179,20 @@ export function PropertyAnalysisPanel({
                   <PoundSterling className="h-4 w-4" />
                   Valuation Analysis
                 </h4>
-                <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+                <div className="grid grid-cols-2 gap-4 p-4 bg-gray-100 rounded-lg">
                   <div>
-                    <div className="text-xs text-muted-foreground">Estimated Market Value</div>
+                    <div className="text-xs text-gray-400">Estimated Market Value</div>
                     <div className="text-lg font-bold">
                       {formatCurrency(propertyData.data.estimatedValue)}
                     </div>
                     {propertyData.data.valueRange && (
-                      <div className="text-xs text-muted-foreground mt-1">
+                      <div className="text-xs text-gray-400 mt-1">
                         Range: {formatCurrency(propertyData.data.valueRange.min)} - {formatCurrency(propertyData.data.valueRange.max)}
                       </div>
                     )}
                   </div>
                   <div>
-                    <div className="text-xs text-muted-foreground">Asking Price</div>
+                    <div className="text-xs text-gray-400">Asking Price</div>
                     <div className="text-lg font-bold">{formatCurrency(askingPrice)}</div>
                     {bmv !== null && (
                       <div className={`text-xs font-semibold mt-1 ${bmv > 0 ? "text-green-600" : "text-red-600"}`}>
@@ -268,41 +268,41 @@ export function PropertyAnalysisPanel({
                   Area Market Statistics
                 </h4>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-muted rounded-lg">
-                    <div className="text-xs text-muted-foreground">Average Price</div>
+                  <div className="p-3 bg-gray-100 rounded-lg">
+                    <div className="text-xs text-gray-400">Average Price</div>
                     <div className="text-lg font-bold">
                       {formatCurrency(propertyData.data.areaStats.averagePrice)}
                     </div>
                   </div>
-                  <div className="p-3 bg-muted rounded-lg">
-                    <div className="text-xs text-muted-foreground">Price per sq ft</div>
+                  <div className="p-3 bg-gray-100 rounded-lg">
+                    <div className="text-xs text-gray-400">Price per sq ft</div>
                     <div className="text-lg font-bold">
                       {formatCurrency(propertyData.data.areaStats.pricePerSquareFoot)}
                     </div>
                   </div>
-                  <div className="p-3 bg-muted rounded-lg">
-                    <div className="text-xs text-muted-foreground">1 Year Growth</div>
+                  <div className="p-3 bg-gray-100 rounded-lg">
+                    <div className="text-xs text-gray-400">1 Year Growth</div>
                     <div className={`text-lg font-bold ${propertyData.data.areaStats.growthLastYear > 0 ? "text-green-600" : "text-red-600"}`}>
                       {propertyData.data.areaStats.growthLastYear > 0 ? "+" : ""}
                       {propertyData.data.areaStats.growthLastYear.toFixed(1)}%
                     </div>
                   </div>
-                  <div className="p-3 bg-muted rounded-lg">
-                    <div className="text-xs text-muted-foreground">5 Year Growth</div>
+                  <div className="p-3 bg-gray-100 rounded-lg">
+                    <div className="text-xs text-gray-400">5 Year Growth</div>
                     <div className={`text-lg font-bold ${propertyData.data.areaStats.growthLast5Years > 0 ? "text-green-600" : "text-red-600"}`}>
                       {propertyData.data.areaStats.growthLast5Years > 0 ? "+" : ""}
                       {propertyData.data.areaStats.growthLast5Years.toFixed(1)}%
                     </div>
                   </div>
-                  <div className="p-3 bg-muted rounded-lg">
-                    <div className="text-xs text-muted-foreground">Area Rental Yield</div>
+                  <div className="p-3 bg-gray-100 rounded-lg">
+                    <div className="text-xs text-gray-400">Area Rental Yield</div>
                     <div className="text-lg font-bold">
                       {propertyData.data.areaStats.rentalYield.toFixed(1)}%
                     </div>
                   </div>
                   {propertyData.data.estimatedRentalYield && (
-                    <div className="p-3 bg-muted rounded-lg">
-                      <div className="text-xs text-muted-foreground">Property Yield</div>
+                    <div className="p-3 bg-gray-100 rounded-lg">
+                      <div className="text-xs text-gray-400">Property Yield</div>
                       <div className="text-lg font-bold">
                         {propertyData.data.estimatedRentalYield.toFixed(1)}%
                       </div>
@@ -321,12 +321,12 @@ export function PropertyAnalysisPanel({
                 </h4>
                 <div className="space-y-2">
                   {propertyData.data.recentSales.map((sale, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-2 bg-muted rounded text-sm">
+                    <div key={idx} className="flex items-center justify-between p-2 bg-gray-100 rounded text-sm">
                       <div>
                         <div className="font-medium">{formatCurrency(sale.salePrice)}</div>
-                        <div className="text-xs text-muted-foreground">{sale.saleType}</div>
+                        <div className="text-xs text-gray-400">{sale.saleType}</div>
                       </div>
-                      <div className="text-muted-foreground">{formatDate(sale.saleDate)}</div>
+                      <div className="text-gray-400">{formatDate(sale.saleDate)}</div>
                     </div>
                   ))}
                 </div>
@@ -334,7 +334,7 @@ export function PropertyAnalysisPanel({
             )}
 
             {propertyData.cached && propertyData.fetchedAt && (
-              <div suppressHydrationWarning className="text-xs text-muted-foreground text-center pt-2 border-t">
+              <div suppressHydrationWarning className="text-xs text-gray-400 text-center pt-2 border-t">
                 Cached data • Last fetched: {new Date(propertyData.fetchedAt).toLocaleString()}
               </div>
             )}
@@ -342,7 +342,7 @@ export function PropertyAnalysisPanel({
         )}
 
         {!isLoading && !propertyData && !error && (
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="text-center py-8 text-gray-400">
             <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p>Click refresh to fetch property analysis data</p>
           </div>

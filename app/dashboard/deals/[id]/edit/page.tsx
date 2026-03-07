@@ -64,7 +64,7 @@ export default async function EditDealPage({ params }: EditDealPageProps) {
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Edit Deal</h1>
-        <p className="text-muted-foreground">{deal.address}</p>
+        <p className="text-gray-400">{deal.address}</p>
       </div>
 
       <DealForm

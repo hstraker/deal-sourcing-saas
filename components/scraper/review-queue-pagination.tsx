@@ -55,7 +55,7 @@ export function ReviewQueuePagination({
 
   return (
     <div className="flex items-center justify-between">
-      <div className="text-sm text-muted-foreground">
+      <div className="text-sm text-gray-400">
         Showing {startItem} to {endItem} of {totalItems} properties
       </div>
       <div className="flex items-center gap-1">
@@ -81,7 +81,7 @@ export function ReviewQueuePagination({
             return (
               <span
                 key={`ellipsis-${index}`}
-                className="px-2 text-muted-foreground"
+                className="px-2 text-gray-400"
               >
                 ...
               </span>

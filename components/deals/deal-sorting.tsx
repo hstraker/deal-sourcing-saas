@@ -59,7 +59,7 @@ export function DealSorting({ sortConfig, onSortChange }: DealSortingProps) {
 
   return (
     <div className="flex items-center gap-2">
-      <Label htmlFor="sort-field" className="text-sm text-muted-foreground">
+      <Label htmlFor="sort-field" className="text-sm text-gray-400">
         Sort by:
       </Label>
       <Select value={sortConfig.field} onValueChange={handleFieldChange}>

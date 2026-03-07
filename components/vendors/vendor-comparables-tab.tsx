@@ -121,7 +121,7 @@ export function VendorComparablesTab({
   if (isLoading) {
     return (
       <div className="min-h-[400px] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
       </div>
     )
   }
@@ -135,7 +135,7 @@ export function VendorComparablesTab({
         <div>
           <h3 className="text-lg font-semibold">Comparable Properties</h3>
           {data && data.lastFetchedAt && (
-            <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+            <p className="text-sm text-gray-400 mt-1 flex items-center gap-2">
               Last updated: {new Date(data.lastFetchedAt).toLocaleString("en-GB")}
               {dataIsStale && (
                 <span className="inline-flex items-center gap-1 text-xs text-amber-600 font-medium">
@@ -183,10 +183,10 @@ export function VendorComparablesTab({
       {!propertyPostcode && (
         <Card>
           <CardContent className="flex items-center gap-3 py-6">
-            <Home className="h-5 w-5 text-muted-foreground" />
+            <Home className="h-5 w-5 text-gray-400" />
             <div>
               <p className="font-medium">Property postcode required</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-gray-400">
                 Add a property postcode to fetch comparable properties in the area.
               </p>
             </div>
@@ -204,7 +204,7 @@ export function VendorComparablesTab({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 text-sm text-muted-foreground">
+            <div className="space-y-2 text-sm text-gray-400">
               <p>Comparables help you:</p>
               <ul className="list-disc list-inside space-y-1 ml-2">
                 <li>Estimate accurate market value</li>

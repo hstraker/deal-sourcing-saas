@@ -27,7 +27,7 @@ interface RecentComparable {
  * Get yield color
  */
 function getYieldColor(yield_?: number): string {
-  if (!yield_) return "text-muted-foreground"
+  if (!yield_) return "text-gray-400"
   if (yield_ >= 6) return "text-green-600"
   if (yield_ >= 4) return "text-yellow-600"
   return "text-red-600"
@@ -72,7 +72,7 @@ export function RecentComparablesCard({ limit = 10 }: { limit?: number }) {
           <CardDescription>Latest comparable properties fetched</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
         </CardContent>
       </Card>
     )
@@ -103,7 +103,7 @@ export function RecentComparablesCard({ limit = 10 }: { limit?: number }) {
       </CardHeader>
       <CardContent>
         {comparables.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="text-center py-8 text-gray-400">
             <p>No comparable properties have been fetched yet.</p>
             <p className="text-sm mt-1">Start by fetching comparables for vendor leads.</p>
           </div>
@@ -115,23 +115,23 @@ export function RecentComparablesCard({ limit = 10 }: { limit?: number }) {
                 href={`/dashboard/vendors/${comp.vendorLeadId}`}
                 className="block"
               >
-                <div className="flex items-start justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+                <div className="flex items-start justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
                         <h4 className="font-medium text-sm truncate">{comp.address}</h4>
-                        <p className="text-xs text-muted-foreground mt-0.5">{comp.postcode}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{comp.postcode}</p>
                       </div>
                       {comp.rentalYield && (
                         <div className="shrink-0">
                           <div className={`text-sm font-semibold ${getYieldColor(comp.rentalYield)}`}>
                             {comp.rentalYield.toFixed(1)}%
                           </div>
-                          <div className="text-xs text-muted-foreground text-right">yield</div>
+                          <div className="text-xs text-gray-400 text-right">yield</div>
                         </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
                       {comp.propertyType && (
                         <span className="flex items-center gap-1">
                           <Home className="h-3 w-3" />
@@ -155,7 +155,7 @@ export function RecentComparablesCard({ limit = 10 }: { limit?: number }) {
                   </div>
                   <div className="text-right ml-3 shrink-0">
                     <div className="font-semibold text-sm">{formatCurrency(comp.salePrice)}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
+                    <div className="text-xs text-gray-400 mt-0.5">
                       {format(new Date(comp.fetchedAt), "MMM d")}
                     </div>
                   </div>

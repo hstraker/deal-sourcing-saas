@@ -112,7 +112,7 @@ function TemplateCard({
           <div className="min-w-0">
             <h3 className="font-semibold text-sm leading-tight truncate">{template.name}</h3>
             {template.description && (
-              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{template.description}</p>
+              <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{template.description}</p>
             )}
           </div>
           {/* Mini A4 preview (80×113) */}
@@ -147,7 +147,7 @@ function TemplateCard({
             </Badge>
           )}
           {!template.isActive && (
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 text-muted-foreground">
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 text-gray-400">
               Inactive
             </Badge>
           )}
@@ -157,7 +157,7 @@ function TemplateCard({
         </div>
 
         {/* Stats */}
-        <div className="text-xs text-muted-foreground flex items-center gap-3">
+        <div className="text-xs text-gray-400 flex items-center gap-3">
           <span>{template.usageCount} generated</span>
           <span>·</span>
           <span>Last: {lastUsed}</span>
@@ -196,7 +196,7 @@ function TemplateCard({
             <Button
               variant="outline"
               size="sm"
-              className="h-7 text-xs px-2 text-destructive hover:bg-destructive/10"
+              className="h-7 text-xs px-2 text-red-500 hover:bg-red-50"
               title="Delete"
               onClick={onDelete}
             >
@@ -296,11 +296,11 @@ export function InvestorPackTemplatesManager() {
             },
           ].map(({ label, value, sub, icon: Icon }) => (
             <div key={label} className="rounded-lg border bg-card px-4 py-3 flex items-center gap-3">
-              <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+              <Icon className="h-4 w-4 text-gray-400 shrink-0" />
               <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">{label}</p>
+                <p className="text-xs text-gray-400">{label}</p>
                 <p className="text-xl font-bold leading-tight">{value}</p>
-                {sub && <p className="text-[10px] text-muted-foreground truncate">{sub}</p>}
+                {sub && <p className="text-[10px] text-gray-400 truncate">{sub}</p>}
               </div>
             </div>
           ))}
@@ -311,7 +311,7 @@ export function InvestorPackTemplatesManager() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold">Templates</h2>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-gray-400">
             {templates.length} template{templates.length !== 1 ? "s" : ""}
           </p>
         </div>
@@ -322,12 +322,12 @@ export function InvestorPackTemplatesManager() {
 
       {/* Grid */}
       {loading ? (
-        <div className="flex items-center justify-center h-40 text-muted-foreground gap-2">
+        <div className="flex items-center justify-center h-40 text-gray-400 gap-2">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading…
         </div>
       ) : templates.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-40 gap-3 text-muted-foreground border rounded-lg">
+        <div className="flex flex-col items-center justify-center h-40 gap-3 text-gray-400 border rounded-lg">
           <FileText className="h-8 w-8 opacity-30" />
           <p className="text-sm">No templates yet</p>
           <Button variant="outline" size="sm" onClick={() => router.push("/dashboard/settings/investor-packs/new")}>

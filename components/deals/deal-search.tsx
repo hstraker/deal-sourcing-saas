@@ -119,7 +119,7 @@ export function DealSearch({
   return (
     <div className="relative w-full" ref={containerRef}>
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <Input
           ref={inputRef}
           type="text"
@@ -152,7 +152,7 @@ export function DealSearch({
                 onClick={() => handleSuggestionClick(suggestion)}
               >
                 <div className="flex items-center gap-2">
-                  <Search className="h-3 w-3 text-muted-foreground" />
+                  <Search className="h-3 w-3 text-gray-400" />
                   <span>{suggestion}</span>
                 </div>
               </button>
@@ -163,7 +163,7 @@ export function DealSearch({
 
       {/* Results count */}
       {searchQuery && (
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-sm text-gray-400">
           {filteredDeals.length} {filteredDeals.length === 1 ? "deal" : "deals"} found
         </p>
       )}

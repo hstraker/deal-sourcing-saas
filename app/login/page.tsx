@@ -53,7 +53,7 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              <div className="rounded-md bg-red-50 p-3 text-sm text-red-500">
                 {error}
               </div>
             )}
@@ -82,7 +82,7 @@ export default function LoginPage() {
               {loading ? "Signing in..." : "Sign In"}
             </Button>
             <div className="text-center text-sm">
-              <Link href="/forgot-password" className="text-primary hover:underline">
+              <Link href="/forgot-password" className="text-[#2563EB] hover:underline">
                 Forgot your password?
               </Link>
             </div>

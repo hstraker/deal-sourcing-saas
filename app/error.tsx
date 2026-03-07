@@ -27,7 +27,7 @@ export default function Error({
         </CardHeader>
         <CardContent className="space-y-4">
           {error.message && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+            <div className="rounded-md bg-red-50 p-3 text-sm text-red-500">
               {error.message}
             </div>
           )}

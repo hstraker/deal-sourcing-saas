@@ -70,7 +70,7 @@ interface ComparablePropertyCardProps {
  * Green: 6%+, Yellow: 4-6%, Red: <4%
  */
 function getYieldColor(yield_: number | undefined): string {
-  if (!yield_) return "text-muted-foreground"
+  if (!yield_) return "text-gray-400"
   if (yield_ >= 6) return "text-green-600"
   if (yield_ >= 4) return "text-yellow-600"
   return "text-red-600"
@@ -126,7 +126,7 @@ export function ComparablePropertyCard({
                 {property.address}
               </CardTitle>
               {property.postcode && (
-                <p className="text-sm text-muted-foreground mt-1">{property.postcode}</p>
+                <p className="text-sm text-gray-400 mt-1">{property.postcode}</p>
               )}
             </div>
             <div className="flex flex-col gap-1 items-end">
@@ -185,7 +185,7 @@ export function ComparablePropertyCard({
                   </p>
                 </TooltipContent>
               </Tooltip>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+              <div className="flex items-center gap-1 text-xs text-gray-400 mt-1">
                 <Calendar className="h-3 w-3" />
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -200,7 +200,7 @@ export function ComparablePropertyCard({
             {property.distance !== undefined && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground cursor-help">
+                  <div className="flex items-center gap-1 text-sm text-gray-400 cursor-help">
                     <MapPin className="h-4 w-4" />
                     {property.distance.toFixed(2)} mi
                   </div>
@@ -217,25 +217,25 @@ export function ComparablePropertyCard({
           <div className="flex flex-wrap gap-3 text-sm">
             {property.propertyType && (
               <div className="flex items-center gap-1.5">
-                <Home className="h-4 w-4 text-muted-foreground" />
+                <Home className="h-4 w-4 text-gray-400" />
                 <span>{property.propertyType}</span>
               </div>
             )}
             {property.bedrooms !== undefined && property.bedrooms > 0 && (
               <div className="flex items-center gap-1.5">
-                <Bed className="h-4 w-4 text-muted-foreground" />
+                <Bed className="h-4 w-4 text-gray-400" />
                 <span>{property.bedrooms} bed</span>
               </div>
             )}
             {property.bathrooms !== undefined && property.bathrooms > 0 && (
               <div className="flex items-center gap-1.5">
-                <Bath className="h-4 w-4 text-muted-foreground" />
+                <Bath className="h-4 w-4 text-gray-400" />
                 <span>{property.bathrooms} bath</span>
               </div>
             )}
             {property.squareFeet && (
               <div className="flex items-center gap-1.5">
-                <Ruler className="h-4 w-4 text-muted-foreground" />
+                <Ruler className="h-4 w-4 text-gray-400" />
                 <span suppressHydrationWarning>{property.squareFeet.toLocaleString()} sqft</span>
               </div>
             )}
@@ -243,7 +243,7 @@ export function ComparablePropertyCard({
 
           {/* Price Per SqFt */}
           {property.pricePerSqft && (
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-gray-400">
               £{property.pricePerSqft}/sqft
             </div>
           )}
@@ -255,7 +255,7 @@ export function ComparablePropertyCard({
                 <div className="flex-1">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="flex items-center gap-1.5 text-sm font-semibold cursor-help text-primary">
+                      <div className="flex items-center gap-1.5 text-sm font-semibold cursor-help text-[#2563EB]">
                         <PoundSterling className="h-4 w-4" />
                         Estimated Monthly Rent
                       </div>
@@ -265,27 +265,27 @@ export function ComparablePropertyCard({
                       <p className="text-xs mb-2">
                         Based on area rental data from PropertyData API. This represents the typical monthly rent for similar properties in this postcode area.
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-gray-400">
                         This data helps calculate potential rental yield for buy-to-let investment analysis.
                       </p>
                     </TooltipContent>
                   </Tooltip>
                   {property.monthlyRent ? (
                     <>
-                      <div className="text-2xl font-bold mt-1 text-primary">
-                        {formatCurrency(property.monthlyRent)}<span className="text-sm font-normal text-muted-foreground">/mo</span>
+                      <div className="text-2xl font-bold mt-1 text-[#2563EB]">
+                        {formatCurrency(property.monthlyRent)}<span className="text-sm font-normal text-gray-400">/mo</span>
                       </div>
                       {property.weeklyRent && (
-                        <div className="text-xs text-muted-foreground mt-0.5">
+                        <div className="text-xs text-gray-400 mt-0.5">
                           £{property.weeklyRent.toFixed(0)}/week
                         </div>
                       )}
-                      <div className="text-xs font-medium text-primary/80 mt-1">
+                      <div className="text-xs font-medium text-[#2563EB]/80 mt-1">
                         Annual: {formatCurrency(property.monthlyRent * 12)}
                       </div>
                     </>
                   ) : (
-                    <div className="text-sm text-muted-foreground mt-1 italic">
+                    <div className="text-sm text-gray-400 mt-1 italic">
                       Rental data not available for this property
                     </div>
                   )}
@@ -294,7 +294,7 @@ export function ComparablePropertyCard({
                 <div className="text-right flex-shrink-0 ml-3">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="flex items-center gap-1.5 text-sm font-semibold cursor-help text-primary">
+                      <div className="flex items-center gap-1.5 text-sm font-semibold cursor-help text-[#2563EB]">
                         <TrendingUp className="h-4 w-4" />
                         Rental Yield
                       </div>
@@ -315,14 +315,14 @@ export function ComparablePropertyCard({
                               📉 Confidence range: {property.rentalYieldMin.toFixed(2)}% - {property.rentalYieldMax.toFixed(2)}%
                             </p>
                           )}
-                          <p className="text-xs mt-2 text-muted-foreground">
+                          <p className="text-xs mt-2 text-gray-400">
                             {property.rentalYield >= 6 && "✅ Excellent yield for buy-to-let"}
                             {property.rentalYield >= 4 && property.rentalYield < 6 && "✅ Good yield potential"}
                             {property.rentalYield < 4 && "⚠️ Low yield - may need lower purchase price"}
                           </p>
                         </>
                       ) : (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-gray-400">
                           Yield calculation requires rental data. This helps assess investment potential for buy-to-let properties.
                         </p>
                       )}
@@ -338,7 +338,7 @@ export function ComparablePropertyCard({
                       </Badge>
                     </>
                   ) : (
-                    <div className="text-sm text-muted-foreground mt-1 italic">
+                    <div className="text-sm text-gray-400 mt-1 italic">
                       N/A
                     </div>
                   )}
@@ -347,7 +347,7 @@ export function ComparablePropertyCard({
 
               {/* Area Average Comparison */}
               {property.areaAverageRent && property.monthlyRent && property.monthlyRent !== property.areaAverageRent && (
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-gray-400">
                   Area average: {formatCurrency(property.areaAverageRent)}/mo
                   {property.monthlyRent > property.areaAverageRent ? (
                     <span className="text-green-600 ml-1">
@@ -365,7 +365,7 @@ export function ComparablePropertyCard({
 
           {/* Market Indicators */}
           {!compact && (property.daysOnMarket !== undefined || (property.priceReductions !== undefined && property.priceReductions > 0)) && (
-            <div className="flex gap-3 text-xs text-muted-foreground">
+            <div className="flex gap-3 text-xs text-gray-400">
               {property.daysOnMarket !== undefined && (
                 <Tooltip>
                   <TooltipTrigger asChild>

@@ -79,7 +79,7 @@ export function ScraperLiveProgress({ job }: ScraperLiveProgressProps) {
             </span>
             <div className="min-w-0 flex items-baseline gap-1.5 flex-wrap">
               <span className={`font-semibold text-sm ${style.text}`}>{sourceLabel}</span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-gray-400">
                 {isQueued ? "queued — preparing to scan…" : "scanning properties…"}
               </span>
             </div>

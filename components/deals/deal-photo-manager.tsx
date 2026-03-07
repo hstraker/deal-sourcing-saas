@@ -274,7 +274,7 @@ export function DealPhotoManager({ dealId, initialPhotos }: DealPhotoManagerProp
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-semibold">Deal Photos</h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-400">
             Upload up to 15 photos. First photo will be used as the cover image.
           </p>
         </div>
@@ -313,18 +313,18 @@ export function DealPhotoManager({ dealId, initialPhotos }: DealPhotoManagerProp
       {uploadProgress !== null && (
         <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-4">
           <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2 text-primary">
+            <div className="flex items-center gap-2 text-[#2563EB]">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span>
                 Uploading {uploadProgress.currentFile} of {uploadProgress.totalFiles}
                 {uploadProgress.currentFileName && (
-                  <span className="ml-2 text-muted-foreground">
+                  <span className="ml-2 text-gray-400">
                     ({uploadProgress.currentFileName})
                   </span>
                 )}
               </span>
             </div>
-            <span className="font-medium text-primary">{uploadProgress.overallProgress}%</span>
+            <span className="font-medium text-[#2563EB]">{uploadProgress.overallProgress}%</span>
           </div>
           <div className="space-y-1">
             <div className="h-2 rounded-full bg-primary/20">
@@ -334,7 +334,7 @@ export function DealPhotoManager({ dealId, initialPhotos }: DealPhotoManagerProp
               />
             </div>
             {uploadProgress.totalFiles > 1 && (
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center justify-between text-xs text-gray-400">
                 <span>File: {uploadProgress.fileProgress}%</span>
                 <span>Overall: {uploadProgress.overallProgress}%</span>
               </div>
@@ -344,16 +344,16 @@ export function DealPhotoManager({ dealId, initialPhotos }: DealPhotoManagerProp
       )}
 
       {error && (
-        <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+        <div className="rounded-md border border-destructive/50 bg-red-50 px-4 py-2 text-sm text-red-500">
           {error}
         </div>
       )}
 
       {photos.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center gap-3 border-dashed py-10 text-center text-muted-foreground">
+        <Card className="flex flex-col items-center justify-center gap-3 border-dashed py-10 text-center text-gray-400">
           <Camera className="h-10 w-10" />
           <div>
-            <p className="font-medium text-foreground">No photos yet</p>
+            <p className="font-medium text-gray-900">No photos yet</p>
             <p className="text-sm">Upload property photos to help investors visualise the deal.</p>
           </div>
           <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2">
@@ -379,7 +379,7 @@ export function DealPhotoManager({ dealId, initialPhotos }: DealPhotoManagerProp
                   className="object-cover"
                 />
                 {photo.isCover && (
-                  <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground">
+                  <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-primary px-2 py-1 text-xs font-semibold text-[#2563EB]-foreground">
                     <Crown className="h-3 w-3" />
                     Cover
                   </span>
@@ -389,7 +389,7 @@ export function DealPhotoManager({ dealId, initialPhotos }: DealPhotoManagerProp
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="gap-1 text-muted-foreground"
+                  className="gap-1 text-gray-400"
                   onClick={() => handleSetCover(photo.id)}
                   disabled={photo.isCover}
                 >
@@ -399,7 +399,7 @@ export function DealPhotoManager({ dealId, initialPhotos }: DealPhotoManagerProp
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-destructive hover:text-destructive"
+                  className="text-red-500 hover:text-red-500"
                   onClick={() => handleDelete(photo.id)}
                 >
                   <Trash2 className="h-4 w-4" />

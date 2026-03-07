@@ -191,7 +191,7 @@ export function ReservationForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {error && (
-        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+        <div className="rounded-md bg-red-50 p-3 text-sm text-red-500">
           {error}
         </div>
       )}
@@ -224,7 +224,7 @@ export function ReservationForm({
                 </SelectContent>
               </Select>
               {!selectedInvestorId && (
-                <p className="text-sm text-destructive">Please select an investor</p>
+                <p className="text-sm text-red-500">Please select an investor</p>
               )}
             </div>
           </CardContent>
@@ -248,7 +248,7 @@ export function ReservationForm({
                 required
               />
               {errors.reservationFee && (
-                <p className="text-sm text-destructive">{errors.reservationFee.message}</p>
+                <p className="text-sm text-red-500">{errors.reservationFee.message}</p>
               )}
             </div>
             {isEditMode && (

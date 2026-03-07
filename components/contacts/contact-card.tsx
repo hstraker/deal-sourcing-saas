@@ -64,13 +64,13 @@ export function ContactCard({ contact, onEdit, onUpdated, href }: ContactCardPro
             )}
           </div>
           {contact.company && (
-            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+            <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
               <Building2 className="h-3 w-3 shrink-0" />
               {contact.company}
             </p>
           )}
           {contact.jobTitle && !contact.company && (
-            <p className="text-xs text-muted-foreground mt-0.5">{contact.jobTitle}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{contact.jobTitle}</p>
           )}
         </div>
 
@@ -84,13 +84,13 @@ export function ContactCard({ contact, onEdit, onUpdated, href }: ContactCardPro
       {/* Contact details */}
       <div className="px-3 py-2 space-y-1">
         {contact.email && (
-          <a href={`mailto:${contact.email}`} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
+          <a href={`mailto:${contact.email}`} className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-900">
             <Mail className="h-3.5 w-3.5 shrink-0" />
             {contact.email}
           </a>
         )}
         {contact.phone && (
-          <a href={`tel:${contact.phone}`} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
+          <a href={`tel:${contact.phone}`} className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-900">
             <Phone className="h-3.5 w-3.5 shrink-0" />
             {contact.phone}
           </a>
@@ -102,7 +102,7 @@ export function ContactCard({ contact, onEdit, onUpdated, href }: ContactCardPro
 
       {/* Footer: linked counts + actions */}
       <div className="px-3 py-2 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="flex items-center gap-3 text-xs text-gray-400">
           {contact._count.vendorLeads > 0 && (
             <span className="flex items-center gap-1">
               <FileText className="h-3 w-3" />
@@ -115,18 +115,18 @@ export function ContactCard({ contact, onEdit, onUpdated, href }: ContactCardPro
               {contact._count.investors} investor{contact._count.investors !== 1 ? "s" : ""}
             </span>
           )}
-          {linkedCount === 0 && <span className="text-muted-foreground/60">No links</span>}
+          {linkedCount === 0 && <span className="text-gray-400/60">No links</span>}
         </div>
 
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={copyDetails} title="Copy contact details">
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400" onClick={copyDetails} title="Copy contact details">
             {copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => onEdit(contact)} title="Edit contact">
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400" onClick={() => onEdit(contact)} title="Edit contact">
             <Pencil className="h-3.5 w-3.5" />
           </Button>
           <a href={`/dashboard/contacts/${contact.id}`} title="View contact details">
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400">
               <Link2 className="h-3.5 w-3.5" />
             </Button>
           </a>

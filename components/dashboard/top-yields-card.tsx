@@ -82,7 +82,7 @@ export function TopYieldsCard({ limit = 10 }: { limit?: number }) {
           <CardDescription>Properties with highest investment potential</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
         </CardContent>
       </Card>
     )
@@ -113,7 +113,7 @@ export function TopYieldsCard({ limit = 10 }: { limit?: number }) {
       </CardHeader>
       <CardContent>
         {comparables.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="text-center py-8 text-gray-400">
             <p>No rental yield data available yet.</p>
             <p className="text-sm mt-1">Fetch comparables with rental data to see investment opportunities.</p>
           </div>
@@ -127,11 +127,11 @@ export function TopYieldsCard({ limit = 10 }: { limit?: number }) {
                   href={`/dashboard/vendors/${comp.vendorLeadId}`}
                   className="block"
                 >
-                  <div className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+                  <div className="flex items-start gap-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
                     {/* Rank Badge */}
                     <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 shrink-0">
                       {index === 0 && <Award className="h-4 w-4 text-yellow-600" />}
-                      {index !== 0 && <span className="text-sm font-bold text-muted-foreground">#{index + 1}</span>}
+                      {index !== 0 && <span className="text-sm font-bold text-gray-400">#{index + 1}</span>}
                     </div>
 
                     {/* Property Details */}
@@ -139,7 +139,7 @@ export function TopYieldsCard({ limit = 10 }: { limit?: number }) {
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <h4 className="font-medium text-sm truncate">{comp.address}</h4>
-                          <p className="text-xs text-muted-foreground mt-0.5">{comp.postcode}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{comp.postcode}</p>
                         </div>
                         <div className="text-right shrink-0">
                           <div className={`text-lg font-bold ${yieldBadge.color}`}>
@@ -151,7 +151,7 @@ export function TopYieldsCard({ limit = 10 }: { limit?: number }) {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
                         {comp.propertyType && (
                           <span className="flex items-center gap-1">
                             <Home className="h-3 w-3" />
@@ -169,12 +169,12 @@ export function TopYieldsCard({ limit = 10 }: { limit?: number }) {
 
                       <div className="flex items-center justify-between mt-2">
                         <div className="text-xs">
-                          <span className="text-muted-foreground">Sale: </span>
+                          <span className="text-gray-400">Sale: </span>
                           <span className="font-medium">{formatCurrency(comp.salePrice)}</span>
                         </div>
                         {comp.monthlyRent && (
                           <div className="text-xs">
-                            <span className="text-muted-foreground">Rent: </span>
+                            <span className="text-gray-400">Rent: </span>
                             <span className="font-medium">{formatCurrency(comp.monthlyRent)}/mo</span>
                           </div>
                         )}

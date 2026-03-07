@@ -152,7 +152,7 @@ export function VendorForm({ vendor, dealId, onSuccess, onCancel }: VendorFormPr
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {error && (
-        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+        <div className="rounded-md bg-red-50 p-3 text-sm text-red-500">
           {error}
         </div>
       )}
@@ -184,7 +184,7 @@ export function VendorForm({ vendor, dealId, onSuccess, onCancel }: VendorFormPr
               required
             />
             {errors.phone && (
-              <p className="text-sm text-destructive">{errors.phone.message}</p>
+              <p className="text-sm text-red-500">{errors.phone.message}</p>
             )}
           </div>
 
@@ -197,7 +197,7 @@ export function VendorForm({ vendor, dealId, onSuccess, onCancel }: VendorFormPr
               placeholder="vendor@example.com"
             />
             {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
+              <p className="text-sm text-red-500">{errors.email.message}</p>
             )}
           </div>
 

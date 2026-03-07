@@ -63,7 +63,7 @@ export function DealPagination({
 
   return (
     <div className="flex items-center justify-between">
-      <div className="text-sm text-muted-foreground">
+      <div className="text-sm text-gray-400">
         Showing {startItem} to {endItem} of {totalItems} deals
       </div>
       <div className="flex items-center gap-1">
@@ -87,7 +87,7 @@ export function DealPagination({
         {getPageNumbers().map((page, index) => {
           if (page === "...") {
             return (
-              <span key={`ellipsis-${index}`} className="px-2 text-muted-foreground">
+              <span key={`ellipsis-${index}`} className="px-2 text-gray-400">
                 ...
               </span>
             )

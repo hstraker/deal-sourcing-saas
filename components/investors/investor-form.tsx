@@ -185,7 +185,7 @@ export function InvestorForm({ investor, onSuccess, onCancel }: InvestorFormProp
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {error && (
-        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+        <div className="rounded-md bg-red-50 p-3 text-sm text-red-500">
           {error}
         </div>
       )}
@@ -201,14 +201,14 @@ export function InvestorForm({ investor, onSuccess, onCancel }: InvestorFormProp
               <Label htmlFor="firstName">First Name *</Label>
               <Input id="firstName" {...register("firstName")} required />
               {errors.firstName && (
-                <p className="text-sm text-destructive">{errors.firstName.message}</p>
+                <p className="text-sm text-red-500">{errors.firstName.message}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="lastName">Last Name *</Label>
               <Input id="lastName" {...register("lastName")} required />
               {errors.lastName && (
-                <p className="text-sm text-destructive">{errors.lastName.message}</p>
+                <p className="text-sm text-red-500">{errors.lastName.message}</p>
               )}
             </div>
           </div>
@@ -222,15 +222,15 @@ export function InvestorForm({ investor, onSuccess, onCancel }: InvestorFormProp
                 {...register("email")}
                 required={!isEditMode}
                 disabled={isEditMode}
-                className={isEditMode ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
+                className={isEditMode ? "bg-gray-100 text-gray-400 cursor-not-allowed" : ""}
               />
               {isEditMode && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-400">
                   Email is linked to the investor's login account and cannot be changed here.
                 </p>
               )}
               {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
+                <p className="text-sm text-red-500">{errors.email.message}</p>
               )}
             </div>
             <div className="space-y-2">
@@ -275,7 +275,7 @@ export function InvestorForm({ investor, onSuccess, onCancel }: InvestorFormProp
               {...register("preferredAreas")}
               placeholder="e.g., London, Manchester, Birmingham"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-gray-400">
               Enter areas separated by commas
             </p>
           </div>
@@ -290,8 +290,8 @@ export function InvestorForm({ investor, onSuccess, onCancel }: InvestorFormProp
                   onClick={() => toggleStrategy(strategy)}
                   className={`px-3 py-1 rounded-md text-sm border transition-colors ${
                     selectedStrategies.includes(strategy)
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background border-border hover:bg-muted"
+                      ? "bg-primary text-[#2563EB]-foreground border-primary"
+                      : "bg-background border-border hover:bg-gray-50"
                   }`}
                 >
                   {strategy}

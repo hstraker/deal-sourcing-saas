@@ -191,10 +191,10 @@ export function ReservationList({ dealId, initialReservations = [] }: Reservatio
       <CardContent>
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
           </div>
         ) : reservations.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">
+          <div className="py-8 text-center text-gray-400">
             <p>No reservations yet</p>
             <Button onClick={handleCreate} variant="outline" className="mt-4">
               <Plus className="mr-2 h-4 w-4" />
@@ -222,7 +222,7 @@ export function ReservationList({ dealId, initialReservations = [] }: Reservatio
                     <TableCell>
                       <div>
                         <div className="font-medium">{getInvestorName(reservation.investor)}</div>
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-sm text-gray-400">
                           {reservation.investor.user.email}
                         </div>
                       </div>
@@ -248,7 +248,7 @@ export function ReservationList({ dealId, initialReservations = [] }: Reservatio
                           </span>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1 text-muted-foreground">
+                        <div className="flex items-center gap-1 text-gray-400">
                           <XCircle className="h-4 w-4" />
                           <span className="text-xs">No</span>
                         </div>
@@ -266,7 +266,7 @@ export function ReservationList({ dealId, initialReservations = [] }: Reservatio
                           <span className="text-xs">Pending</span>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1 text-muted-foreground">
+                        <div className="flex items-center gap-1 text-gray-400">
                           <Clock className="h-4 w-4" />
                           <span className="text-xs">Not provided</span>
                         </div>
@@ -284,13 +284,13 @@ export function ReservationList({ dealId, initialReservations = [] }: Reservatio
                           <span className="text-xs">Sent</span>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1 text-muted-foreground">
+                        <div className="flex items-center gap-1 text-gray-400">
                           <Clock className="h-4 w-4" />
                           <span className="text-xs">Not sent</span>
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell className="text-sm text-gray-400">
                       {format(new Date(reservation.createdAt), "MMM d, yyyy")}
                     </TableCell>
                     <TableCell className="text-right">
@@ -307,7 +307,7 @@ export function ReservationList({ dealId, initialReservations = [] }: Reservatio
                           size="sm"
                           onClick={() => handleDelete(reservation.id)}
                         >
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>
                       </div>
                     </TableCell>

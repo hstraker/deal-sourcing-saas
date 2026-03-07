@@ -73,155 +73,155 @@ export function DealMetricsPreview({
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {/* BMV % */}
           <div>
-            <p className="text-xs text-muted-foreground mb-1">BMV %</p>
+            <p className="text-xs text-gray-400 mb-1">BMV %</p>
             {metrics.bmvPercentage !== null ? (
               <>
                 <p className="text-2xl font-bold text-success">
                   {metrics.bmvPercentage.toFixed(1)}%
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">Below Market Value</p>
+                <p className="text-xs text-gray-400 mt-1">Below Market Value</p>
               </>
             ) : (
               <>
-                <p className="text-lg font-medium text-muted-foreground">—</p>
-                <p className="text-xs text-muted-foreground mt-1">Need market value</p>
+                <p className="text-lg font-medium text-gray-400">—</p>
+                <p className="text-xs text-gray-400 mt-1">Need market value</p>
               </>
             )}
           </div>
 
           {/* Gross Yield */}
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Gross Yield</p>
+            <p className="text-xs text-gray-400 mb-1">Gross Yield</p>
             {metrics.grossYield !== null ? (
               <>
                 <p className="text-2xl font-bold">
                   {metrics.grossYield.toFixed(1)}%
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">Annual rent / Price</p>
+                <p className="text-xs text-gray-400 mt-1">Annual rent / Price</p>
               </>
             ) : (
               <>
-                <p className="text-lg font-medium text-muted-foreground">—</p>
-                <p className="text-xs text-muted-foreground mt-1">Need monthly rent</p>
+                <p className="text-lg font-medium text-gray-400">—</p>
+                <p className="text-xs text-gray-400 mt-1">Need monthly rent</p>
               </>
             )}
           </div>
 
           {/* Net Yield */}
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Net Yield</p>
+            <p className="text-xs text-gray-400 mb-1">Net Yield</p>
             {metrics.netYield !== null ? (
               <>
                 <p className="text-2xl font-bold">
                   {metrics.netYield.toFixed(1)}%
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">After costs (15%)</p>
+                <p className="text-xs text-gray-400 mt-1">After costs (15%)</p>
               </>
             ) : (
               <>
-                <p className="text-lg font-medium text-muted-foreground">—</p>
-                <p className="text-xs text-muted-foreground mt-1">Need monthly rent</p>
+                <p className="text-lg font-medium text-gray-400">—</p>
+                <p className="text-xs text-gray-400 mt-1">Need monthly rent</p>
               </>
             )}
           </div>
 
           {/* Cap Rate */}
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Cap Rate</p>
+            <p className="text-xs text-gray-400 mb-1">Cap Rate</p>
             {metrics.capRate !== null ? (
               <>
                 <p className="text-2xl font-bold">
                   {metrics.capRate.toFixed(2)}%
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">NOI / Market Value</p>
+                <p className="text-xs text-gray-400 mt-1">NOI / Market Value</p>
               </>
             ) : (
               <>
-                <p className="text-lg font-medium text-muted-foreground">—</p>
-                <p className="text-xs text-muted-foreground mt-1">Need market value & rent</p>
+                <p className="text-lg font-medium text-gray-400">—</p>
+                <p className="text-xs text-gray-400 mt-1">Need market value & rent</p>
               </>
             )}
           </div>
 
           {/* GRM */}
           <div>
-            <p className="text-xs text-muted-foreground mb-1">GRM</p>
+            <p className="text-xs text-gray-400 mb-1">GRM</p>
             {metrics.grm !== null ? (
               <>
                 <p className="text-2xl font-bold">
                   {metrics.grm.toFixed(2)}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">Price / Annual Rent</p>
+                <p className="text-xs text-gray-400 mt-1">Price / Annual Rent</p>
               </>
             ) : (
               <>
-                <p className="text-lg font-medium text-muted-foreground">—</p>
-                <p className="text-xs text-muted-foreground mt-1">Need monthly rent</p>
+                <p className="text-lg font-medium text-gray-400">—</p>
+                <p className="text-xs text-gray-400 mt-1">Need monthly rent</p>
               </>
             )}
           </div>
 
           {/* ROI */}
           <div>
-            <p className="text-xs text-muted-foreground mb-1">ROI</p>
+            <p className="text-xs text-gray-400 mb-1">ROI</p>
             {metrics.roi !== null ? (
               <>
-                <p className="text-2xl font-bold text-primary">
+                <p className="text-2xl font-bold text-[#2563EB]">
                   {metrics.roi.toFixed(1)}%
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">Return on Investment</p>
+                <p className="text-xs text-gray-400 mt-1">Return on Investment</p>
               </>
             ) : (
               <>
-                <p className="text-lg font-medium text-muted-foreground">—</p>
-                <p className="text-xs text-muted-foreground mt-1">Need rent & refurb cost</p>
+                <p className="text-lg font-medium text-gray-400">—</p>
+                <p className="text-xs text-gray-400 mt-1">Need rent & refurb cost</p>
               </>
             )}
           </div>
 
           {/* ROCE */}
           <div>
-            <p className="text-xs text-muted-foreground mb-1">ROCE</p>
+            <p className="text-xs text-gray-400 mb-1">ROCE</p>
             {metrics.roce !== null ? (
               <>
-                <p className="text-2xl font-bold text-primary">
+                <p className="text-2xl font-bold text-[#2563EB]">
                   {metrics.roce.toFixed(1)}%
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">Return on Capital Employed</p>
+                <p className="text-xs text-gray-400 mt-1">Return on Capital Employed</p>
               </>
             ) : (
               <>
-                <p className="text-lg font-medium text-muted-foreground">—</p>
-                <p className="text-xs text-muted-foreground mt-1">Need rent & after refurb value</p>
+                <p className="text-lg font-medium text-gray-400">—</p>
+                <p className="text-xs text-gray-400 mt-1">Need rent & after refurb value</p>
               </>
             )}
           </div>
 
           {/* Deal Score */}
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Deal Score</p>
+            <p className="text-xs text-gray-400 mb-1">Deal Score</p>
             {metrics.dealScore !== null ? (
               <>
                 <p className={`text-2xl font-bold ${
                   metrics.dealScore >= 80 ? "text-success" :
-                  metrics.dealScore >= 70 ? "text-primary" :
-                  "text-muted-foreground"
+                  metrics.dealScore >= 70 ? "text-[#2563EB]" :
+                  "text-gray-400"
                 }`}>
                   {metrics.dealScore}/100
                 </p>
                 {metrics.packTier && (
-                  <p className="text-xs text-muted-foreground mt-1 capitalize">
+                  <p className="text-xs text-gray-400 mt-1 capitalize">
                     {metrics.packTier} pack
                   </p>
                 )}
                 {!metrics.packTier && (
-                  <p className="text-xs text-muted-foreground mt-1">Score too low</p>
+                  <p className="text-xs text-gray-400 mt-1">Score too low</p>
                 )}
               </>
             ) : (
               <>
-                <p className="text-lg font-medium text-muted-foreground">—</p>
-                <p className="text-xs text-muted-foreground mt-1">Need more data</p>
+                <p className="text-lg font-medium text-gray-400">—</p>
+                <p className="text-xs text-gray-400 mt-1">Need more data</p>
               </>
             )}
           </div>
@@ -234,76 +234,76 @@ export function DealMetricsPreview({
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
               {/* Cash-on-Cash Return */}
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Cash-on-Cash</p>
+                <p className="text-xs text-gray-400 mb-1">Cash-on-Cash</p>
                 {metrics.cashOnCashReturn !== null ? (
                   <>
-                    <p className="text-xl font-bold text-primary">
+                    <p className="text-xl font-bold text-[#2563EB]">
                       {metrics.cashOnCashReturn.toFixed(1)}%
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">Annual return</p>
+                    <p className="text-xs text-gray-400 mt-1">Annual return</p>
                   </>
                 ) : (
-                  <p className="text-sm font-medium text-muted-foreground">—</p>
+                  <p className="text-sm font-medium text-gray-400">—</p>
                 )}
               </div>
 
               {/* Monthly Cash Flow */}
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Monthly Cash Flow</p>
+                <p className="text-xs text-gray-400 mb-1">Monthly Cash Flow</p>
                 {metrics.monthlyCashFlow !== null ? (
                   <>
-                    <p className={`text-xl font-bold ${metrics.monthlyCashFlow >= 0 ? "text-success" : "text-destructive"}`}>
+                    <p className={`text-xl font-bold ${metrics.monthlyCashFlow >= 0 ? "text-success" : "text-red-500"}`}>
                       £{metrics.monthlyCashFlow.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">After expenses</p>
+                    <p className="text-xs text-gray-400 mt-1">After expenses</p>
                   </>
                 ) : (
-                  <p className="text-sm font-medium text-muted-foreground">—</p>
+                  <p className="text-sm font-medium text-gray-400">—</p>
                 )}
               </div>
 
               {/* Annual Cash Flow */}
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Annual Cash Flow</p>
+                <p className="text-xs text-gray-400 mb-1">Annual Cash Flow</p>
                 {metrics.annualCashFlow !== null ? (
                   <>
-                    <p className={`text-xl font-bold ${metrics.annualCashFlow >= 0 ? "text-success" : "text-destructive"}`}>
+                    <p className={`text-xl font-bold ${metrics.annualCashFlow >= 0 ? "text-success" : "text-red-500"}`}>
                       £{metrics.annualCashFlow.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">Per year</p>
+                    <p className="text-xs text-gray-400 mt-1">Per year</p>
                   </>
                 ) : (
-                  <p className="text-sm font-medium text-muted-foreground">—</p>
+                  <p className="text-sm font-medium text-gray-400">—</p>
                 )}
               </div>
 
               {/* Equity Gain */}
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Equity Gain</p>
+                <p className="text-xs text-gray-400 mb-1">Equity Gain</p>
                 {metrics.equityGain !== null ? (
                   <>
-                    <p className={`text-xl font-bold ${metrics.equityGain >= 0 ? "text-success" : "text-muted-foreground"}`}>
+                    <p className={`text-xl font-bold ${metrics.equityGain >= 0 ? "text-success" : "text-gray-400"}`}>
                       £{metrics.equityGain.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">After refurb</p>
+                    <p className="text-xs text-gray-400 mt-1">After refurb</p>
                   </>
                 ) : (
-                  <p className="text-sm font-medium text-muted-foreground">—</p>
+                  <p className="text-sm font-medium text-gray-400">—</p>
                 )}
               </div>
 
               {/* Payback Period */}
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Payback Period</p>
+                <p className="text-xs text-gray-400 mb-1">Payback Period</p>
                 {metrics.paybackPeriod !== null ? (
                   <>
                     <p className="text-xl font-bold">
                       {metrics.paybackPeriod.toFixed(1)}yrs
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">To recoup</p>
+                    <p className="text-xs text-gray-400 mt-1">To recoup</p>
                   </>
                 ) : (
-                  <p className="text-sm font-medium text-muted-foreground">—</p>
+                  <p className="text-sm font-medium text-gray-400">—</p>
                 )}
               </div>
             </div>
@@ -314,30 +314,30 @@ export function DealMetricsPreview({
                 <p className="text-xs font-medium mb-2">Total Acquisition Cost Breakdown</p>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
                   <div>
-                    <p className="text-muted-foreground">Purchase Price</p>
+                    <p className="text-gray-400">Purchase Price</p>
                     <p className="font-medium">£{askingPrice.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
                   </div>
                   {metrics.stampDuty !== null && (
                     <div>
-                      <p className="text-muted-foreground">Stamp Duty</p>
+                      <p className="text-gray-400">Stamp Duty</p>
                       <p className="font-medium">£{metrics.stampDuty.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
                     </div>
                   )}
                   {metrics.legalFees !== null && (
                     <div>
-                      <p className="text-muted-foreground">Legal Fees</p>
+                      <p className="text-gray-400">Legal Fees</p>
                       <p className="font-medium">£{metrics.legalFees.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
                     </div>
                   )}
                   {metrics.surveyCost !== null && (
                     <div>
-                      <p className="text-muted-foreground">Survey</p>
+                      <p className="text-gray-400">Survey</p>
                       <p className="font-medium">£{metrics.surveyCost.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
                     </div>
                   )}
                   {estimatedRefurbCost && (
                     <div>
-                      <p className="text-muted-foreground">Refurb Cost</p>
+                      <p className="text-gray-400">Refurb Cost</p>
                       <p className="font-medium">£{estimatedRefurbCost.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
                     </div>
                   )}
@@ -362,17 +362,17 @@ export function DealMetricsPreview({
             <div className="space-y-4">
               {/* Upfront Costs */}
               <div>
-                <p className="text-xs font-medium mb-2 text-muted-foreground uppercase tracking-wide">Upfront Investment</p>
+                <p className="text-xs font-medium mb-2 text-gray-400 uppercase tracking-wide">Upfront Investment</p>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
                   <div>
-                    <p className="text-muted-foreground mb-1">Deposit (25%)</p>
+                    <p className="text-gray-400 mb-1">Deposit (25%)</p>
                     <p className="font-semibold">
                       {metrics.mortgageDeposit ? `£${metrics.mortgageDeposit.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '—'}
                     </p>
                   </div>
                   {metrics.stampDuty !== null && (
                     <div>
-                      <p className="text-muted-foreground mb-1">Stamp Duty</p>
+                      <p className="text-gray-400 mb-1">Stamp Duty</p>
                       <p className="font-semibold">
                         £{metrics.stampDuty.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                       </p>
@@ -380,7 +380,7 @@ export function DealMetricsPreview({
                   )}
                   {metrics.legalFees !== null && (
                     <div>
-                      <p className="text-muted-foreground mb-1">Legal Fees</p>
+                      <p className="text-gray-400 mb-1">Legal Fees</p>
                       <p className="font-semibold">
                         £{metrics.legalFees.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                       </p>
@@ -388,7 +388,7 @@ export function DealMetricsPreview({
                   )}
                   {estimatedRefurbCost && (
                     <div>
-                      <p className="text-muted-foreground mb-1">Refurb Cost</p>
+                      <p className="text-gray-400 mb-1">Refurb Cost</p>
                       <p className="font-semibold">
                         £{estimatedRefurbCost.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                       </p>
@@ -396,7 +396,7 @@ export function DealMetricsPreview({
                   )}
                   {metrics.totalCashRequired !== null && (
                     <div>
-                      <p className="text-muted-foreground mb-1">Total Cash Required</p>
+                      <p className="text-gray-400 mb-1">Total Cash Required</p>
                       <p className="font-bold text-lg">
                         £{metrics.totalCashRequired.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                       </p>
@@ -407,47 +407,47 @@ export function DealMetricsPreview({
 
               {/* Mortgage & Cash Flow Metrics */}
               <div>
-                <p className="text-xs font-medium mb-2 text-muted-foreground uppercase tracking-wide">Monthly Cash Flow (Mortgaged)</p>
+                <p className="text-xs font-medium mb-2 text-gray-400 uppercase tracking-wide">Monthly Cash Flow (Mortgaged)</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {/* Monthly Mortgage Payment */}
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Mortgage Payment</p>
+                    <p className="text-xs text-gray-400 mb-1">Mortgage Payment</p>
                     <p className="text-xl font-bold">
                       £{metrics.monthlyMortgagePayment.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">Per month (25yr @ 4.5%)</p>
+                    <p className="text-xs text-gray-400 mt-1">Per month (25yr @ 4.5%)</p>
                   </div>
 
                   {/* Monthly Cash Flow (Mortgaged) */}
                   {metrics.netMonthlyCashFlowMortgaged !== null && (
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Monthly Cash Flow</p>
-                      <p className={`text-xl font-bold ${metrics.netMonthlyCashFlowMortgaged >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      <p className="text-xs text-gray-400 mb-1">Monthly Cash Flow</p>
+                      <p className={`text-xl font-bold ${metrics.netMonthlyCashFlowMortgaged >= 0 ? 'text-success' : 'text-red-500'}`}>
                         £{metrics.netMonthlyCashFlowMortgaged.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">After mortgage & costs</p>
+                      <p className="text-xs text-gray-400 mt-1">After mortgage & costs</p>
                     </div>
                   )}
 
                   {/* Annual Cash Flow (Mortgaged) */}
                   {metrics.netAnnualCashFlowMortgaged !== null && (
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Annual Cash Flow</p>
-                      <p className={`text-xl font-bold ${metrics.netAnnualCashFlowMortgaged >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      <p className="text-xs text-gray-400 mb-1">Annual Cash Flow</p>
+                      <p className={`text-xl font-bold ${metrics.netAnnualCashFlowMortgaged >= 0 ? 'text-success' : 'text-red-500'}`}>
                         £{metrics.netAnnualCashFlowMortgaged.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">Per year</p>
+                      <p className="text-xs text-gray-400 mt-1">Per year</p>
                     </div>
                   )}
 
                   {/* Cash-on-Cash Return (Mortgaged) */}
                   {metrics.cashOnCashReturnMortgaged !== null && (
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Cash-on-Cash Return</p>
-                      <p className="text-xl font-bold text-primary">
+                      <p className="text-xs text-gray-400 mb-1">Cash-on-Cash Return</p>
+                      <p className="text-xl font-bold text-[#2563EB]">
                         {metrics.cashOnCashReturnMortgaged.toFixed(1)}%
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">Based on cash invested</p>
+                      <p className="text-xs text-gray-400 mt-1">Based on cash invested</p>
                     </div>
                   )}
                 </div>
@@ -458,14 +458,14 @@ export function DealMetricsPreview({
                 <div className="pt-2 border-t">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1">Debt Coverage Ratio (DCR)</p>
-                      <p className="text-xs text-muted-foreground">NOI / Annual Mortgage Payment</p>
+                      <p className="text-xs font-medium text-gray-400 mb-1">Debt Coverage Ratio (DCR)</p>
+                      <p className="text-xs text-gray-400">NOI / Annual Mortgage Payment</p>
                     </div>
                     <div className="text-right">
-                      <p className={`text-2xl font-bold ${metrics.debtCoverageRatio >= 1.25 ? 'text-success' : metrics.debtCoverageRatio >= 1.0 ? 'text-primary' : 'text-destructive'}`}>
+                      <p className={`text-2xl font-bold ${metrics.debtCoverageRatio >= 1.25 ? 'text-success' : metrics.debtCoverageRatio >= 1.0 ? 'text-[#2563EB]' : 'text-red-500'}`}>
                         {metrics.debtCoverageRatio.toFixed(2)}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-gray-400">
                         {metrics.debtCoverageRatio >= 1.25 ? 'Excellent (>1.25)' : 
                          metrics.debtCoverageRatio >= 1.0 ? 'Good (>1.0)' : 
                          'Low (<1.0)'}
@@ -482,7 +482,7 @@ export function DealMetricsPreview({
           <p className="text-xs font-medium mb-2">
             Metric Requirements:
           </p>
-          <ul className="text-xs text-muted-foreground space-y-1">
+          <ul className="text-xs text-gray-400 space-y-1">
             {!marketValue && (
               <li>• <strong>BMV%:</strong> Add Market Value (30% of deal score)</li>
             )}

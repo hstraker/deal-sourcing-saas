@@ -107,7 +107,7 @@ export function DashboardAnalytics() {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
         </CardContent>
       </Card>
     )
@@ -138,7 +138,7 @@ export function DashboardAnalytics() {
                       Vendor Pipeline Overview
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                          <Info className="h-4 w-4 text-gray-400 cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent className="max-w-sm">
                           <p className="text-sm font-medium mb-1">How it&apos;s calculated:</p>
@@ -165,7 +165,7 @@ export function DashboardAnalytics() {
                   {analytics.vendorPipeline.byStage.map((stage) => {
                     const stageColor = getStageColor(stage.stage)
                     return (
-                      <div key={stage.stage} className="text-center p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div key={stage.stage} className="text-center p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                         <div className="text-2xl font-bold mb-2">{stage.count}</div>
                         <Badge className={stageColor.bg} variant="outline">
                           {stageLabels[stage.stage] || stage.stage}
@@ -179,10 +179,10 @@ export function DashboardAnalytics() {
                   <Card>
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-muted-foreground">Total Vendors</span>
+                        <span className="text-sm text-gray-400">Total Vendors</span>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                            <Info className="h-3 w-3 text-gray-400 cursor-help" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-sm">
                             <p className="text-sm font-medium mb-1">Total Vendors</p>
@@ -198,10 +198,10 @@ export function DashboardAnalytics() {
                   <Card>
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-muted-foreground">Total Offers</span>
+                        <span className="text-sm text-gray-400">Total Offers</span>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                            <Info className="h-3 w-3 text-gray-400 cursor-help" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-sm">
                             <p className="text-sm font-medium mb-1">Total Offers Made</p>
@@ -226,7 +226,7 @@ export function DashboardAnalytics() {
                   Conversion Rates
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                      <Info className="h-4 w-4 text-gray-400 cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-sm">
                       <p className="text-sm font-medium mb-1">Conversion Rate Calculation</p>
@@ -242,7 +242,7 @@ export function DashboardAnalytics() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                     <div>
                       <div className="font-medium flex items-center gap-2">
                         <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">Contacted</Badge>
@@ -250,7 +250,7 @@ export function DashboardAnalytics() {
                         <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Validated</Badge>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Info className="h-3 w-3 text-muted-foreground cursor-help ml-2" />
+                            <Info className="h-3 w-3 text-gray-400 cursor-help ml-2" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-sm">
                             <p className="text-sm font-medium mb-1">Contacted → Validated</p>
@@ -260,7 +260,7 @@ export function DashboardAnalytics() {
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      <div className="text-sm text-muted-foreground mt-1">
+                      <div className="text-sm text-gray-400 mt-1">
                         Vendors who passed initial validation
                       </div>
                     </div>
@@ -269,7 +269,7 @@ export function DashboardAnalytics() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                     <div>
                       <div className="font-medium flex items-center gap-2">
                         <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Validated</Badge>
@@ -277,7 +277,7 @@ export function DashboardAnalytics() {
                         <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">Offer Made</Badge>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Info className="h-3 w-3 text-muted-foreground cursor-help ml-2" />
+                            <Info className="h-3 w-3 text-gray-400 cursor-help ml-2" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-sm">
                             <p className="text-sm font-medium mb-1">Validated → Offer Made</p>
@@ -287,7 +287,7 @@ export function DashboardAnalytics() {
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      <div className="text-sm text-muted-foreground mt-1">
+                      <div className="text-sm text-gray-400 mt-1">
                         Validated vendors who received offers
                       </div>
                     </div>
@@ -296,7 +296,7 @@ export function DashboardAnalytics() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                     <div>
                       <div className="font-medium flex items-center gap-2">
                         <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">Offer</Badge>
@@ -304,7 +304,7 @@ export function DashboardAnalytics() {
                         <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200">Accepted</Badge>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Info className="h-3 w-3 text-muted-foreground cursor-help ml-2" />
+                            <Info className="h-3 w-3 text-gray-400 cursor-help ml-2" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-sm">
                             <p className="text-sm font-medium mb-1">Offer → Accepted</p>
@@ -314,7 +314,7 @@ export function DashboardAnalytics() {
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      <div className="text-sm text-muted-foreground mt-1">
+                      <div className="text-sm text-gray-400 mt-1">
                         Offers that were accepted by vendors
                       </div>
                     </div>
@@ -323,7 +323,7 @@ export function DashboardAnalytics() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                     <div>
                       <div className="font-medium flex items-center gap-2">
                         <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200">Accepted</Badge>
@@ -331,7 +331,7 @@ export function DashboardAnalytics() {
                         <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-200">Locked Out</Badge>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Info className="h-3 w-3 text-muted-foreground cursor-help ml-2" />
+                            <Info className="h-3 w-3 text-gray-400 cursor-help ml-2" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-sm">
                             <p className="text-sm font-medium mb-1">Accepted → Locked Out</p>
@@ -341,7 +341,7 @@ export function DashboardAnalytics() {
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      <div className="text-sm text-muted-foreground mt-1">
+                      <div className="text-sm text-gray-400 mt-1">
                         Accepted offers that reached lock-out
                       </div>
                     </div>
@@ -358,7 +358,7 @@ export function DashboardAnalytics() {
                         <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-200">Locked Out</Badge>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Info className="h-3 w-3 text-muted-foreground cursor-help ml-2" />
+                            <Info className="h-3 w-3 text-gray-400 cursor-help ml-2" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-sm">
                             <p className="text-sm font-medium mb-1">Overall Conversion Rate</p>
@@ -368,7 +368,7 @@ export function DashboardAnalytics() {
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      <div className="text-sm text-muted-foreground mt-1">
+                      <div className="text-sm text-gray-400 mt-1">
                         End-to-end conversion rate
                       </div>
                     </div>
@@ -388,7 +388,7 @@ export function DashboardAnalytics() {
                   Time in Stages
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                      <Info className="h-4 w-4 text-gray-400 cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-sm">
                       <p className="text-sm font-medium mb-1">Time Calculation</p>
@@ -407,14 +407,14 @@ export function DashboardAnalytics() {
                   {Object.entries(analytics.vendorPipeline.avgStageTimes).map(([stage, days]) => {
                     const stageColor = getStageColor(stage)
                     return (
-                      <div key={stage} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div key={stage} className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                         <div className="flex items-center gap-2 mb-2">
                           <Badge className={stageColor.bg} variant="outline">
                             {stageLabels[stage] || stage}
                           </Badge>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                              <Info className="h-3 w-3 text-gray-400 cursor-help" />
                             </TooltipTrigger>
                             <TooltipContent className="max-w-sm">
                               <p className="text-sm font-medium mb-1">Average Time in {stageLabels[stage]}</p>
@@ -431,12 +431,12 @@ export function DashboardAnalytics() {
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-4">
-                  <div className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm text-muted-foreground">Avg Offers per Deal</span>
+                      <span className="text-sm text-gray-400">Avg Offers per Deal</span>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                          <Info className="h-3 w-3 text-gray-400 cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent className="max-w-sm">
                           <p className="text-sm font-medium mb-1">Average Offers per Deal</p>
@@ -450,12 +450,12 @@ export function DashboardAnalytics() {
                       {analytics.vendorPipeline.avgOffersPerDeal.toFixed(1)}
                     </div>
                   </div>
-                  <div className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm text-muted-foreground">Avg Negotiation Time</span>
+                      <span className="text-sm text-gray-400">Avg Negotiation Time</span>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                          <Info className="h-3 w-3 text-gray-400 cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent className="max-w-sm">
                           <p className="text-sm font-medium mb-1">Average Negotiation Time</p>
@@ -484,7 +484,7 @@ export function DashboardAnalytics() {
                       Investor Pipeline Overview
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                          <Info className="h-4 w-4 text-gray-400 cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent className="max-w-sm">
                           <p className="text-sm font-medium mb-1">How it&apos;s calculated:</p>
@@ -508,12 +508,12 @@ export function DashboardAnalytics() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-4 border rounded-lg text-center hover:bg-muted/50 transition-colors">
+                  <div className="p-4 border rounded-lg text-center hover:bg-gray-50 transition-colors">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <div className="text-2xl font-bold">{analytics.investorPipeline.totalReservations}</div>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                          <Info className="h-3 w-3 text-gray-400 cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent className="max-w-sm">
                           <p className="text-sm font-medium mb-1">Total Reservations</p>
@@ -527,12 +527,12 @@ export function DashboardAnalytics() {
                       Total Reservations
                     </Badge>
                   </div>
-                  <div className="p-4 border rounded-lg text-center hover:bg-muted/50 transition-colors">
+                  <div className="p-4 border rounded-lg text-center hover:bg-gray-50 transition-colors">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <div className="text-2xl font-bold">{analytics.investorPipeline.reservationsWithProof}</div>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                          <Info className="h-3 w-3 text-gray-400 cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent className="max-w-sm">
                           <p className="text-sm font-medium mb-1">Proof Verified</p>
@@ -546,12 +546,12 @@ export function DashboardAnalytics() {
                       Proof Verified
                     </Badge>
                   </div>
-                  <div className="p-4 border rounded-lg text-center hover:bg-muted/50 transition-colors">
+                  <div className="p-4 border rounded-lg text-center hover:bg-gray-50 transition-colors">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <div className="text-2xl font-bold">{analytics.investorPipeline.reservationsLockedOut}</div>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                          <Info className="h-3 w-3 text-gray-400 cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent className="max-w-sm">
                           <p className="text-sm font-medium mb-1">Locked Out</p>
@@ -565,12 +565,12 @@ export function DashboardAnalytics() {
                       Locked Out
                     </Badge>
                   </div>
-                  <div className="p-4 border rounded-lg text-center hover:bg-muted/50 transition-colors">
+                  <div className="p-4 border rounded-lg text-center hover:bg-gray-50 transition-colors">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <div className="text-2xl font-bold">{analytics.investorPipeline.reservationsCompleted}</div>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                          <Info className="h-3 w-3 text-gray-400 cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent className="max-w-sm">
                           <p className="text-sm font-medium mb-1">Completed</p>
@@ -596,7 +596,7 @@ export function DashboardAnalytics() {
                   Reservation Conversion Rates
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                      <Info className="h-4 w-4 text-gray-400 cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-sm">
                       <p className="text-sm font-medium mb-1">Conversion Rate Calculation</p>
@@ -612,7 +612,7 @@ export function DashboardAnalytics() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                     <div>
                       <div className="font-medium flex items-center gap-2">
                         <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">Reservation</Badge>
@@ -620,7 +620,7 @@ export function DashboardAnalytics() {
                         <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Proof of Funds</Badge>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Info className="h-3 w-3 text-muted-foreground cursor-help ml-2" />
+                            <Info className="h-3 w-3 text-gray-400 cursor-help ml-2" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-sm">
                             <p className="text-sm font-medium mb-1">Reservation → Proof of Funds</p>
@@ -630,7 +630,7 @@ export function DashboardAnalytics() {
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      <div className="text-sm text-muted-foreground mt-1">
+                      <div className="text-sm text-gray-400 mt-1">
                         Reservations with verified proof of funds
                       </div>
                     </div>
@@ -639,7 +639,7 @@ export function DashboardAnalytics() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                     <div>
                       <div className="font-medium flex items-center gap-2">
                         <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Proof</Badge>
@@ -647,7 +647,7 @@ export function DashboardAnalytics() {
                         <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200">Locked Out</Badge>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Info className="h-3 w-3 text-muted-foreground cursor-help ml-2" />
+                            <Info className="h-3 w-3 text-gray-400 cursor-help ml-2" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-sm">
                             <p className="text-sm font-medium mb-1">Proof → Locked Out</p>
@@ -657,7 +657,7 @@ export function DashboardAnalytics() {
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      <div className="text-sm text-muted-foreground mt-1">
+                      <div className="text-sm text-gray-400 mt-1">
                         Verified reservations that reached lock-out
                       </div>
                     </div>
@@ -666,7 +666,7 @@ export function DashboardAnalytics() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                     <div>
                       <div className="font-medium flex items-center gap-2">
                         <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200">Locked Out</Badge>
@@ -674,7 +674,7 @@ export function DashboardAnalytics() {
                         <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-200">Completed</Badge>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Info className="h-3 w-3 text-muted-foreground cursor-help ml-2" />
+                            <Info className="h-3 w-3 text-gray-400 cursor-help ml-2" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-sm">
                             <p className="text-sm font-medium mb-1">Locked Out → Completed</p>
@@ -684,7 +684,7 @@ export function DashboardAnalytics() {
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      <div className="text-sm text-muted-foreground mt-1">
+                      <div className="text-sm text-gray-400 mt-1">
                         Locked out reservations that completed
                       </div>
                     </div>
@@ -701,7 +701,7 @@ export function DashboardAnalytics() {
                         <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-200">Completed</Badge>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Info className="h-3 w-3 text-muted-foreground cursor-help ml-2" />
+                            <Info className="h-3 w-3 text-gray-400 cursor-help ml-2" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-sm">
                             <p className="text-sm font-medium mb-1">Overall Conversion Rate</p>
@@ -711,7 +711,7 @@ export function DashboardAnalytics() {
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      <div className="text-sm text-muted-foreground mt-1">
+                      <div className="text-sm text-gray-400 mt-1">
                         End-to-end conversion rate
                       </div>
                     </div>

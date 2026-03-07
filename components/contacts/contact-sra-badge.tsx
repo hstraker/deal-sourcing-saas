@@ -55,7 +55,7 @@ export function ContactSRABadge({
 
   if (!current.sraNumber) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+      <span className="inline-flex items-center gap-1 text-xs text-gray-400">
         <ShieldAlert className="h-3.5 w-3.5" />
         No SRA number
       </span>
@@ -85,7 +85,7 @@ export function ContactSRABadge({
           </Tooltip>
         </TooltipProvider>
         {sraProfileUrl && (
-          <a href={sraProfileUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground" title="View on SRA register">
+          <a href={sraProfileUrl} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-900" title="View on SRA register">
             <ExternalLink className="h-3 w-3" />
           </a>
         )}
@@ -110,7 +110,7 @@ export function ContactSRABadge({
           </Tooltip>
         </TooltipProvider>
         {sraProfileUrl && (
-          <a href={sraProfileUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground">
+          <a href={sraProfileUrl} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-900">
             <ExternalLink className="h-3 w-3" />
           </a>
         )}
@@ -132,7 +132,7 @@ export function ContactSRABadge({
         {current.sraStatus ?? "Unverified"}
       </span>
       {sraProfileUrl && (
-        <a href={sraProfileUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground">
+        <a href={sraProfileUrl} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-900">
           <ExternalLink className="h-3 w-3" />
         </a>
       )}

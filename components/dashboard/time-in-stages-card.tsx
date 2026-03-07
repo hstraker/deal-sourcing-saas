@@ -80,7 +80,7 @@ export function TimeInStagesCard() {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
         </CardContent>
       </Card>
     )
@@ -97,7 +97,7 @@ export function TimeInStagesCard() {
             Time in Stages
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                <Info className="h-4 w-4 text-gray-400 cursor-help" />
               </TooltipTrigger>
               <TooltipContent className="max-w-sm">
                 <p className="text-sm font-medium mb-1">Time Calculation</p>
@@ -118,7 +118,7 @@ export function TimeInStagesCard() {
               return (
                 <div
                   key={stage}
-                  className="p-3 border rounded-lg hover:bg-muted/50 transition-colors bg-gradient-to-br from-background to-muted/20"
+                  className="p-3 border rounded-lg hover:bg-gray-50 transition-colors bg-gradient-to-br from-background to-muted/20"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <Badge className={stageColor} variant="outline">
@@ -134,10 +134,10 @@ export function TimeInStagesCard() {
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 border rounded-lg bg-gradient-to-br from-cyan-50/50 to-teal-50/50">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-muted-foreground">Avg Offers/Deal</span>
+                <span className="text-xs text-gray-400">Avg Offers/Deal</span>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                    <Info className="h-3 w-3 text-gray-400 cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-sm">
                     <p className="text-xs">
@@ -152,10 +152,10 @@ export function TimeInStagesCard() {
             </div>
             <div className="p-3 border rounded-lg bg-gradient-to-br from-emerald-50/50 to-green-50/50">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-muted-foreground">Avg Negotiation</span>
+                <span className="text-xs text-gray-400">Avg Negotiation</span>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                    <Info className="h-3 w-3 text-gray-400 cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-sm">
                     <p className="text-xs">

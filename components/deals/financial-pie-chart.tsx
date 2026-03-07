@@ -20,7 +20,7 @@ export function FinancialPieChart({ data, title }: FinancialPieChartProps) {
 
   if (filteredData.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+      <div className="flex items-center justify-center h-[300px] text-gray-400">
         <p>No data available for chart</p>
       </div>
     )

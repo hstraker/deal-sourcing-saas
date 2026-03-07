@@ -199,7 +199,7 @@ export function PropertyDetailModal({
             )}
           </div>
           <DialogTitle className="text-xl">{listing.title}</DialogTitle>
-          <p className="text-sm text-muted-foreground flex items-center gap-1">
+          <p className="text-sm text-gray-400 flex items-center gap-1">
             <MapPin className="h-3 w-3" />
             {address?.displayAddress}
             {address?.postcode && ` - ${address.postcode}`}
@@ -226,7 +226,7 @@ export function PropertyDetailModal({
             ))}
             {images.length > 6 && (
               <div
-                className="flex h-40 w-24 items-center justify-center rounded-md bg-muted text-sm text-muted-foreground flex-shrink-0 cursor-pointer hover:bg-muted/80 transition-colors"
+                className="flex h-40 w-24 items-center justify-center rounded-md bg-gray-100 text-sm text-gray-400 flex-shrink-0 cursor-pointer hover:bg-gray-50/80 transition-colors"
                 onClick={() => openLightbox(images, 6)}
               >
                 +{images.length - 6} more
@@ -238,27 +238,27 @@ export function PropertyDetailModal({
         {/* Key Details */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
-            <span className="text-xs text-muted-foreground">Price</span>
+            <span className="text-xs text-gray-400">Price</span>
             <p suppressHydrationWarning className="text-lg font-bold">£{listing.price.toLocaleString()}</p>
           </div>
           <div>
-            <span className="text-xs text-muted-foreground">Type</span>
+            <span className="text-xs text-gray-400">Type</span>
             <p className="font-medium capitalize">{listing.propertyType}</p>
           </div>
           {listing.bedrooms > 0 && (
             <div className="flex items-center gap-1">
-              <Bed className="h-4 w-4 text-muted-foreground" />
+              <Bed className="h-4 w-4 text-gray-400" />
               <div>
-                <span className="text-xs text-muted-foreground">Beds</span>
+                <span className="text-xs text-gray-400">Beds</span>
                 <p className="font-medium">{listing.bedrooms}</p>
               </div>
             </div>
           )}
           {listing.bathrooms > 0 && (
             <div className="flex items-center gap-1">
-              <Bath className="h-4 w-4 text-muted-foreground" />
+              <Bath className="h-4 w-4 text-gray-400" />
               <div>
-                <span className="text-xs text-muted-foreground">Baths</span>
+                <span className="text-xs text-gray-400">Baths</span>
                 <p className="font-medium">{listing.bathrooms}</p>
               </div>
             </div>
@@ -326,19 +326,19 @@ export function PropertyDetailModal({
                 <div className="grid grid-cols-3 gap-3 text-xs mb-3">
                   {listing.leaseYearsRemaining && (
                     <div>
-                      <span className="text-muted-foreground block">Lease Remaining</span>
+                      <span className="text-gray-400 block">Lease Remaining</span>
                       <span className="font-medium">{listing.leaseYearsRemaining} yrs</span>
                     </div>
                   )}
                   {listing.groundRent && (
                     <div>
-                      <span className="text-muted-foreground block">Ground Rent</span>
+                      <span className="text-gray-400 block">Ground Rent</span>
                       <span suppressHydrationWarning className="font-medium">£{listing.groundRent.toLocaleString()}/yr</span>
                     </div>
                   )}
                   {listing.serviceCharge && (
                     <div>
-                      <span className="text-muted-foreground block">Service Charge</span>
+                      <span className="text-gray-400 block">Service Charge</span>
                       <span suppressHydrationWarning className="font-medium">£{listing.serviceCharge.toLocaleString()}/yr</span>
                     </div>
                   )}
@@ -346,13 +346,13 @@ export function PropertyDetailModal({
               )}
               {listing.keyFeatures?.length > 0 && (
                 <div>
-                  <span className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                  <span className="text-xs text-gray-400 mb-1 flex items-center gap-1">
                     <Key className="h-3 w-3" />
                     Key Features
                   </span>
                   <ul className="grid grid-cols-1 md:grid-cols-2 gap-0.5 mt-1">
                     {listing.keyFeatures.slice(0, 12).map((f, i) => (
-                      <li key={i} className="text-xs text-muted-foreground flex items-start gap-1">
+                      <li key={i} className="text-xs text-gray-400 flex items-start gap-1">
                         <span className="mt-0.5 shrink-0">•</span>
                         {f}
                       </li>
@@ -387,7 +387,7 @@ export function PropertyDetailModal({
                 </div>
 
                 {/* Progress bar */}
-                <div className="h-2 rounded-full bg-muted overflow-hidden mb-3">
+                <div className="h-2 rounded-full bg-gray-100 overflow-hidden mb-3">
                   <div
                     className={`h-full rounded-full transition-all ${
                       computedPts >= 80 ? "bg-blue-500" :
@@ -399,7 +399,7 @@ export function PropertyDetailModal({
                 </div>
 
                 {/* Grade legend */}
-                <div className="flex gap-3 text-[11px] text-muted-foreground mb-3">
+                <div className="flex gap-3 text-[11px] text-gray-400 mb-3">
                   <span><span className="text-blue-500 font-semibold">Exceptional</span> 80+</span>
                   <span>·</span>
                   <span><span className="text-green-600 font-semibold">Strong</span> 60–79</span>
@@ -412,33 +412,33 @@ export function PropertyDetailModal({
                 {/* Signal breakdown table */}
                 <div>
                   <div className="rounded-md border overflow-hidden text-xs">
-                    <div className="bg-muted/40 px-3 py-1.5 font-medium text-muted-foreground flex justify-between">
+                    <div className="bg-gray-100 px-3 py-1.5 font-medium text-gray-400 flex justify-between">
                       <span>Signal</span>
                       <span>Points</span>
                     </div>
                     {activeItems.length === 0 && (
-                      <div className="px-3 py-3 text-center text-xs text-muted-foreground/70">
+                      <div className="px-3 py-3 text-center text-xs text-gray-400/70">
                         No BMV signals detected in listing text
                       </div>
                     )}
                     {activeItems.map((item) => (
                       <div key={item.label} className="flex items-start justify-between gap-2 px-3 py-1.5 border-t">
                         <span>
-                          <span className="font-medium text-foreground">{item.label}</span>
+                          <span className="font-medium text-gray-900">{item.label}</span>
                           {item.detail && (
-                            <span className="text-muted-foreground ml-1.5">— {item.detail}</span>
+                            <span className="text-gray-400 ml-1.5">— {item.detail}</span>
                           )}
                         </span>
                         <span className="font-semibold text-green-600 tabular-nums flex-shrink-0">+{item.points}</span>
                       </div>
                     ))}
-                    <div className="flex justify-between px-3 py-1.5 border-t bg-muted/40 font-semibold">
+                    <div className="flex justify-between px-3 py-1.5 border-t bg-gray-100 font-semibold">
                       <span>Total</span>
                       <span className={grade.textColor}>{computedPts} / 100</span>
                     </div>
                   </div>
                   {computedPts !== bmv.bmvScore && (
-                    <p className="mt-1.5 text-[11px] text-muted-foreground/70 leading-tight">
+                    <p className="mt-1.5 text-[11px] text-gray-400/70 leading-tight">
                       Originally scored {bmv.bmvScore} — re-scraping will refresh signals
                     </p>
                   )}
@@ -448,7 +448,7 @@ export function PropertyDetailModal({
           })()}
 
           {/* Footnote */}
-          <p className="mt-2 text-[11px] text-muted-foreground leading-relaxed">
+          <p className="mt-2 text-[11px] text-gray-400 leading-relaxed">
             Score uses listing signals only (text keywords + price history + days on market).
             Full market-value BMV analysis — PropertyData comparable sales + Land Registry
             ownership — runs in the vendor pipeline after approval.
@@ -479,7 +479,7 @@ export function PropertyDetailModal({
               <div className="space-y-1">
                 {priceHistory.map((entry, i) => (
                   <div key={i} className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground" suppressHydrationWarning>
+                    <span className="text-gray-400" suppressHydrationWarning>
                       {new Date(entry.date).toLocaleDateString()}
                     </span>
                     <span suppressHydrationWarning className="font-medium">
@@ -508,7 +508,7 @@ export function PropertyDetailModal({
         <Separator />
         <div>
           <h4 className="font-semibold text-sm mb-2">Description</h4>
-          <p className="text-sm text-muted-foreground whitespace-pre-line line-clamp-10">
+          <p className="text-sm text-gray-400 whitespace-pre-line line-clamp-10">
             {listing.description ? stripHtml(listing.description) : "No description available"}
           </p>
         </div>
@@ -521,10 +521,10 @@ export function PropertyDetailModal({
               <h4 className="font-semibold text-sm mb-1">Agent</h4>
               <p className="text-sm">{agent.name}</p>
               {agent.branch && (
-                <p className="text-xs text-muted-foreground">{agent.branch}</p>
+                <p className="text-xs text-gray-400">{agent.branch}</p>
               )}
               {agent.phone && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <p className="text-xs text-gray-400 flex items-center gap-1">
                   <Phone className="h-3 w-3" />
                   {agent.phone}
                 </p>
@@ -559,7 +559,7 @@ export function PropertyDetailModal({
         )}
 
         {/* Meta */}
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <div className="flex items-center gap-4 text-xs text-gray-400">
           <span className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
             {listing.daysOnMarket > 0
@@ -574,7 +574,7 @@ export function PropertyDetailModal({
               href={listing.listingUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-primary hover:underline"
+              className="flex items-center gap-1 text-[#2563EB] hover:underline"
             >
               <ExternalLink className="h-3 w-3" />
               {SOURCE_LABELS[listing.source]}
@@ -587,7 +587,7 @@ export function PropertyDetailModal({
                 href={d.listingUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-primary hover:underline"
+                className="flex items-center gap-1 text-[#2563EB] hover:underline"
               >
                 <ExternalLink className="h-3 w-3" />
                 {SOURCE_LABELS[d.source]}

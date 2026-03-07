@@ -191,7 +191,7 @@ export function PortalCheckDetailPanel({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
       </div>
     )
   }
@@ -203,7 +203,7 @@ export function PortalCheckDetailPanel({
         <div className="flex items-center gap-2">
           <PortalCheckBadge risk={(latestCheckRisk ?? check?.overallRisk) as any} isMockData={check?.isMockData} />
           {latestCheckedAt && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-gray-400">
               Last checked {formatDistanceToNow(new Date(latestCheckedAt), { addSuffix: true })}
             </span>
           )}
@@ -227,7 +227,7 @@ export function PortalCheckDetailPanel({
       </div>
 
       {!check ? (
-        <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground text-sm">
+        <div className="rounded-lg border border-dashed p-8 text-center text-gray-400 text-sm">
           No check has been run yet. Click &quot;Re-run Check&quot; to analyse this property.
         </div>
       ) : (
@@ -248,7 +248,7 @@ export function PortalCheckDetailPanel({
           {/* Flags */}
           {(check.summaryFlags?.length ?? 0) > 0 && (
             <div className="space-y-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Flags</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Flags</h4>
               <div className="space-y-2">
                 {check.summaryFlags!.map((flag) => (
                   <div
@@ -271,7 +271,7 @@ export function PortalCheckDetailPanel({
             <>
               <Separator />
               <div className="space-y-2">
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Active Listing (PropertyData)</h4>
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Active Listing (PropertyData)</h4>
                 <ActiveListingCard listing={check.portalCheckRaw.activeListing} />
               </div>
             </>
@@ -293,7 +293,7 @@ export function PortalCheckDetailPanel({
             <>
               <Separator />
               <div className="space-y-2">
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1">
                   <Search className="h-3.5 w-3.5" />
                   Portal Database Matches (Our Scraped Data)
                 </h4>
@@ -323,7 +323,7 @@ export function PortalCheckDetailPanel({
           )}
 
           {/* Check metadata */}
-          <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+          <div className="flex flex-wrap gap-4 text-xs text-gray-400">
             <span className="flex items-center gap-1">
               <Calendar className="h-3 w-3" />
               {format(new Date(check.triggeredAt), "d MMM yyyy HH:mm")}
@@ -345,18 +345,18 @@ export function PortalCheckDetailPanel({
         <>
           <Separator />
           <div className="space-y-2">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Check History</h4>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Check History</h4>
             <div className="space-y-1">
               {history.map((h) => (
                 <div key={h.id} className="flex items-center justify-between text-xs py-1">
                   <div className="flex items-center gap-2">
                     <PortalCheckBadge risk={h.overallRisk as any} isMockData={h.isMockData} />
-                    <span className="text-muted-foreground">
+                    <span className="text-gray-400">
                       {format(new Date(h.triggeredAt), "d MMM HH:mm")} · {h.triggeredBy}
                     </span>
                     {h.isMockData && <span className="text-purple-500">🧪</span>}
                   </div>
-                  <span className="text-muted-foreground">{h.checkStatus}</span>
+                  <span className="text-gray-400">{h.checkStatus}</span>
                 </div>
               ))}
             </div>
@@ -379,7 +379,7 @@ function ActiveListingCard({ listing }: { listing: ActiveListing }) {
         <div>
           <p className="font-semibold capitalize">{listing.source}</p>
           {listing.agent?.name && (
-            <p className="text-xs text-muted-foreground">{listing.agent.name}{listing.agent.branch ? ` · ${listing.agent.branch}` : ""}</p>
+            <p className="text-xs text-gray-400">{listing.agent.name}{listing.agent.branch ? ` · ${listing.agent.branch}` : ""}</p>
           )}
         </div>
         <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs">
@@ -393,7 +393,7 @@ function ActiveListingCard({ listing }: { listing: ActiveListing }) {
         <span>
           <span className="font-semibold">£{listing.price.toLocaleString()}</span>
           {priceReduced && (
-            <span className="text-muted-foreground line-through ml-1">£{listing.originalPrice?.toLocaleString()}</span>
+            <span className="text-gray-400 line-through ml-1">£{listing.originalPrice?.toLocaleString()}</span>
           )}
         </span>
         {listing.daysListed !== undefined && (
@@ -444,7 +444,7 @@ function LivePortalSection({
 }) {
   return (
     <div className="space-y-3">
-      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1">
         <Wifi className="h-3.5 w-3.5" />
         Live Portal Check (Direct Fetch)
       </h4>
@@ -506,7 +506,7 @@ function LivePortalSection({
                     <div>
                       <p className="font-semibold text-red-700">{PORTAL_LABEL[r.source]}</p>
                       {l.agent?.name && (
-                        <p className="text-xs text-muted-foreground">{l.agent.name}</p>
+                        <p className="text-xs text-gray-400">{l.agent.name}</p>
                       )}
                     </div>
                     {l.listingUrl && (
@@ -518,8 +518,8 @@ function LivePortalSection({
                       </Button>
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                    <span className="font-semibold text-foreground">£{l.price.toLocaleString()}</span>
+                  <div className="flex flex-wrap gap-3 text-xs text-gray-400">
+                    <span className="font-semibold text-gray-900">£{l.price.toLocaleString()}</span>
                     {l.isSoldSTC && (
                       <span className="text-amber-600 font-medium">Sold STC</span>
                     )}
@@ -562,7 +562,7 @@ function ScrapedListingCard({ listing }: { listing: ScrapedPortalListing }) {
             </span>
           </div>
           {listing.agent?.name && (
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-gray-400 mt-0.5">
               {listing.agent.name}
               {listing.agent.branch ? ` · ${listing.agent.branch}` : ""}
             </p>
@@ -582,7 +582,7 @@ function ScrapedListingCard({ listing }: { listing: ScrapedPortalListing }) {
         <span>
           <span className="font-semibold">£{listing.price.toLocaleString()}</span>
           {priceReduced && (
-            <span className="text-muted-foreground line-through ml-1">
+            <span className="text-gray-400 line-through ml-1">
               £{listing.originalPrice?.toLocaleString()}
             </span>
           )}
@@ -590,15 +590,15 @@ function ScrapedListingCard({ listing }: { listing: ScrapedPortalListing }) {
             <span className="text-amber-600 ml-1">({listing.reductionPct.toFixed(1)}% off)</span>
           )}
         </span>
-        <span className="flex items-center gap-1 text-muted-foreground">
+        <span className="flex items-center gap-1 text-gray-400">
           <Clock className="h-3 w-3" />
           {listing.daysOnMarket} days on market
         </span>
         {listing.bedrooms > 0 && (
-          <span className="text-muted-foreground">{listing.bedrooms} bed · {listing.propertyType}</span>
+          <span className="text-gray-400">{listing.bedrooms} bed · {listing.propertyType}</span>
         )}
         {listing.agent?.phone && (
-          <span className="flex items-center gap-1 text-muted-foreground">
+          <span className="flex items-center gap-1 text-gray-400">
             <Phone className="h-3 w-3" />
             {listing.agent.phone}
           </span>
@@ -615,43 +615,43 @@ function OwnershipSection({ data }: { data: CheckRecord["ownershipCheckRaw"] }) 
   if (!hasInfo) {
     return (
       <div className="space-y-2">
-        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1">
           <Building2 className="h-3.5 w-3.5" />
           Ownership
         </h4>
-        <p className="text-xs text-muted-foreground">No ownership data found in Land Registry or Price Paid Data.</p>
+        <p className="text-xs text-gray-400">No ownership data found in Land Registry or Price Paid Data.</p>
       </div>
     )
   }
 
   return (
     <div className="space-y-2">
-      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1">
         <Building2 className="h-3.5 w-3.5" />
         Ownership
       </h4>
       <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
         {data.tenure && (
           <>
-            <span className="text-muted-foreground">Tenure</span>
+            <span className="text-gray-400">Tenure</span>
             <span className="font-medium">{data.tenure}</span>
           </>
         )}
         {data.isCorporateOwned && (
           <>
-            <span className="text-muted-foreground">Owner type</span>
+            <span className="text-gray-400">Owner type</span>
             <span className="font-medium text-amber-700">Corporate{data.isOverseasOwned ? " (overseas)" : ""}</span>
           </>
         )}
         {data.companyName && (
           <>
-            <span className="text-muted-foreground">Company</span>
+            <span className="text-gray-400">Company</span>
             <span className="font-medium">{data.companyName}</span>
           </>
         )}
         {data.lastSalePrice && (
           <>
-            <span className="text-muted-foreground">Last sale</span>
+            <span className="text-gray-400">Last sale</span>
             <span className="font-medium">
               £{data.lastSalePrice.toLocaleString()}
               {data.lastSaleDate ? ` (${format(new Date(data.lastSaleDate), "MMM yyyy")})` : ""}
@@ -660,7 +660,7 @@ function OwnershipSection({ data }: { data: CheckRecord["ownershipCheckRaw"] }) 
         )}
         {data.equityEstimate !== undefined && data.equityEstimate !== null && (
           <>
-            <span className="text-muted-foreground">Est. equity</span>
+            <span className="text-gray-400">Est. equity</span>
             <span className={`font-medium ${data.equityEstimate >= 0 ? "text-green-700" : "text-red-700"}`}>
               £{data.equityEstimate.toLocaleString()}
             </span>

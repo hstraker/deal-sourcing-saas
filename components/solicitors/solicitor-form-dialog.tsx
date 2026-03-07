@@ -228,13 +228,13 @@ export function SolicitorFormDialog({
           <div className="space-y-1.5">
             <Label htmlFor="sol-sra" className="flex items-center gap-2">
               SRA Number
-              <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+              <span className="text-xs font-normal text-gray-400">(optional)</span>
               {sraProfileUrl && (
                 <a
                   href={sraProfileUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground font-normal ml-auto"
+                  className="inline-flex items-center gap-0.5 text-xs text-gray-400 hover:text-gray-900 font-normal ml-auto"
                 >
                   View on SRA register <ExternalLink className="h-3 w-3" />
                 </a>
@@ -269,7 +269,7 @@ export function SolicitorFormDialog({
             {/* Search results dropdown */}
             {sraMatches !== null && sraMatches.length > 0 && (
               <div className="rounded-md border shadow-sm divide-y overflow-hidden">
-                <p className="px-3 py-1.5 text-xs text-muted-foreground bg-muted/50">
+                <p className="px-3 py-1.5 text-xs text-gray-400 bg-gray-50">
                   {sraMatches.length} match{sraMatches.length > 1 ? "es" : ""} found — select the correct firm:
                 </p>
                 <div className="max-h-52 overflow-y-auto divide-y">
@@ -283,7 +283,7 @@ export function SolicitorFormDialog({
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <p className="font-medium truncate">{match.displayName}</p>
-                          <p className="text-xs text-muted-foreground">SRA: {match.sraNumber}</p>
+                          <p className="text-xs text-gray-400">SRA: {match.sraNumber}</p>
                         </div>
                         {match.status && (
                           <span className={cn(
@@ -306,7 +306,7 @@ export function SolicitorFormDialog({
                 <button
                   type="button"
                   onClick={() => setSraMatches(null)}
-                  className="w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground text-left bg-muted/30 hover:bg-muted/60 transition-colors"
+                  className="w-full px-3 py-1.5 text-xs text-gray-400 hover:text-gray-900 text-left bg-gray-50 hover:bg-gray-50 transition-colors"
                 >
                   None of these — I'll enter the SRA number manually
                 </button>

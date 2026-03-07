@@ -164,7 +164,7 @@ export function CompanyProfileSettings() {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
       </div>
     )
   }
@@ -288,8 +288,8 @@ export function CompanyProfileSettings() {
                     />
                   </div>
                 ) : (
-                  <div className="w-32 h-32 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted">
-                    <ImageIcon className="h-12 w-12 text-muted-foreground" />
+                  <div className="w-32 h-32 border-2 border-dashed rounded-lg flex items-center justify-center bg-gray-100">
+                    <ImageIcon className="h-12 w-12 text-gray-400" />
                   </div>
                 )}
 
@@ -512,7 +512,7 @@ export function CompanyProfileSettings() {
                   onChange={(e) => updateField("fcaNumber", e.target.value)}
                   placeholder="123456"
                 />
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-gray-400">
                   If your company is FCA registered
                 </p>
               </div>

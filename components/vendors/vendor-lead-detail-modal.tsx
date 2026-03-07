@@ -1771,7 +1771,7 @@ export function VendorLeadDetailModal({
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-6 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                            className="h-6 px-2 text-xs text-red-500 hover:text-red-500 hover:bg-red-50"
                             onClick={handleRemoveReservation}
                             disabled={isRemovingReservation}
                           >

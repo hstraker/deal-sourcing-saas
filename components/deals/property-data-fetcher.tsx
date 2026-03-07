@@ -308,7 +308,7 @@ export function PropertyDataFetcher({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium">Select a Property:</label>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-gray-400">
                   {searchResults.length} properties found near {postcode?.trim() || extractPostcode(address || "")}
                 </span>
               </div>
@@ -344,7 +344,7 @@ export function PropertyDataFetcher({
                             </span>
                           )}
                         </div>
-                        <span suppressHydrationWarning className="text-xs text-muted-foreground">
+                        <span suppressHydrationWarning className="text-xs text-gray-400">
                           {property.bedrooms} bed • {property.type} • £{property.price.toLocaleString()}
                           {property.sqf && ` • ${property.sqf} sqft`}
                           {distance && !isExactPostcode && ` • ${distance.toFixed(1)} miles away`}
@@ -440,7 +440,7 @@ export function PropertyDataFetcher({
                       </h4>
                       <ul className="space-y-1">
                         {propertyData.analysis.insights.map((insight, idx) => (
-                          <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
+                          <li key={idx} className="text-sm text-gray-400 flex items-start gap-2">
                             <CheckCircle2 className="h-3 w-3 text-green-600 mt-0.5 flex-shrink-0" />
                             {insight}
                           </li>
@@ -457,7 +457,7 @@ export function PropertyDataFetcher({
                       </h4>
                       <ul className="space-y-1">
                         {propertyData.analysis.recommendations.map((rec, idx) => (
-                          <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
+                          <li key={idx} className="text-sm text-gray-400 flex items-start gap-2">
                             <Info className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
                             {rec}
                           </li>
@@ -474,7 +474,7 @@ export function PropertyDataFetcher({
                       </h4>
                       <ul className="space-y-1">
                         {propertyData.analysis.riskFactors.map((risk, idx) => (
-                          <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
+                          <li key={idx} className="text-sm text-gray-400 flex items-start gap-2">
                             <AlertCircle className="h-3 w-3 text-orange-600 mt-0.5 flex-shrink-0" />
                             {risk}
                           </li>
@@ -489,12 +489,12 @@ export function PropertyDataFetcher({
               {propertyData.data.comparables && propertyData.data.comparables.length > 0 && (
                 <div>
                   <h4 className="text-sm font-semibold mb-2">Comparable Sales</h4>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-gray-400">
                     {propertyData.data.comparables.length} comparable properties found
                   </p>
                   <div className="mt-2 space-y-1">
                     {propertyData.data.comparables.slice(0, 3).map((comp, idx) => (
-                      <div key={idx} className="text-xs p-2 bg-muted rounded">
+                      <div key={idx} className="text-xs p-2 bg-gray-100 rounded">
                         <div className="font-medium">
                           {new Intl.NumberFormat("en-GB", {
                             style: "currency",
@@ -502,7 +502,7 @@ export function PropertyDataFetcher({
                             maximumFractionDigits: 0,
                           }).format(comp.salePrice)}
                         </div>
-                        <div className="text-muted-foreground">
+                        <div className="text-gray-400">
                           {comp.bedrooms} bed • {comp.distance.toFixed(1)} miles away • {new Date(comp.saleDate).getFullYear()}
                         </div>
                       </div>
@@ -517,7 +517,7 @@ export function PropertyDataFetcher({
                   <h4 className="text-sm font-semibold mb-2">Area Statistics</h4>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
-                      <div className="text-muted-foreground">Avg Price</div>
+                      <div className="text-gray-400">Avg Price</div>
                       <div className="font-medium">
                         {new Intl.NumberFormat("en-GB", {
                           style: "currency",
@@ -527,21 +527,21 @@ export function PropertyDataFetcher({
                       </div>
                     </div>
                     <div>
-                      <div className="text-muted-foreground">1yr Growth</div>
+                      <div className="text-gray-400">1yr Growth</div>
                       <div className={`font-medium ${propertyData.data.areaStats.growthLastYear > 0 ? "text-green-600" : "text-red-600"}`}>
                         {propertyData.data.areaStats.growthLastYear > 0 ? "+" : ""}
                         {propertyData.data.areaStats.growthLastYear.toFixed(1)}%
                       </div>
                     </div>
                     <div>
-                      <div className="text-muted-foreground">5yr Growth</div>
+                      <div className="text-gray-400">5yr Growth</div>
                       <div className={`font-medium ${propertyData.data.areaStats.growthLast5Years > 0 ? "text-green-600" : "text-red-600"}`}>
                         {propertyData.data.areaStats.growthLast5Years > 0 ? "+" : ""}
                         {propertyData.data.areaStats.growthLast5Years.toFixed(1)}%
                       </div>
                     </div>
                     <div>
-                      <div className="text-muted-foreground">Rental Yield</div>
+                      <div className="text-gray-400">Rental Yield</div>
                       <div className="font-medium">
                         {propertyData.data.areaStats.rentalYield.toFixed(1)}%
                       </div>

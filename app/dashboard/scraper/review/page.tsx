@@ -43,7 +43,7 @@ export default async function ReviewQueuePage() {
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Review Queue</h1>
-        <p className="text-muted-foreground">
+        <p className="text-gray-400">
           {totalPending} pending, {totalAmbiguous} ambiguous ({listings.length}{" "}
           total)
         </p>

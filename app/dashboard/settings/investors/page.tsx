@@ -24,7 +24,7 @@ export default async function InvestorManagementPage() {
     <div className="container mx-auto py-8 space-y-8">
       <div>
         <h1 className="text-3xl font-bold">Investor Management</h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-gray-400 mt-2">
           Track investor activities, pipeline stages, and performance metrics
         </p>
       </div>

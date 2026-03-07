@@ -97,12 +97,12 @@ export function RateLimitMonitor() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <div className="h-4 bg-muted animate-pulse rounded" />
-              <div className="h-2 bg-muted animate-pulse rounded" />
+              <div className="h-4 bg-gray-100 animate-pulse rounded" />
+              <div className="h-2 bg-gray-100 animate-pulse rounded" />
             </div>
             <div className="space-y-2">
-              <div className="h-4 bg-muted animate-pulse rounded" />
-              <div className="h-2 bg-muted animate-pulse rounded" />
+              <div className="h-4 bg-gray-100 animate-pulse rounded" />
+              <div className="h-2 bg-gray-100 animate-pulse rounded" />
             </div>
           </CardContent>
         </Card>
@@ -117,8 +117,8 @@ export function RateLimitMonitor() {
             <div className="grid grid-cols-2 gap-4">
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="p-3 border rounded-lg">
-                  <div className="h-3 bg-muted animate-pulse rounded mb-2" />
-                  <div className="h-6 bg-muted animate-pulse rounded" />
+                  <div className="h-3 bg-gray-100 animate-pulse rounded mb-2" />
+                  <div className="h-6 bg-gray-100 animate-pulse rounded" />
                 </div>
               ))}
             </div>
@@ -213,7 +213,7 @@ export function RateLimitMonitor() {
                 Claude API Rate Limits
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                    <Info className="h-4 w-4 text-gray-400 cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-sm">
                     <p className="text-sm font-medium mb-2">Tips to Manage Rate Limits</p>
@@ -247,7 +247,7 @@ export function RateLimitMonitor() {
             {/* Input Tokens */}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-muted-foreground">Input Tokens</span>
+                <span className="font-medium text-gray-400">Input Tokens</span>
                 <span suppressHydrationWarning className="text-xs font-mono">
                   {current.inputTokensRemaining.toLocaleString()} / {current.inputTokensLimit.toLocaleString()}
                 </span>
@@ -261,7 +261,7 @@ export function RateLimitMonitor() {
                   "bg-green-100"
                 }`}
               />
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center justify-between text-xs text-gray-400">
                 <span className="font-semibold">{current.inputTokensUsagePercent.toFixed(1)}% used</span>
                 {current.inputTokensReset && <span>Resets: {formatTimeUntilReset(current.inputTokensReset)}</span>}
               </div>
@@ -270,7 +270,7 @@ export function RateLimitMonitor() {
             {/* Output Tokens */}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-muted-foreground">Output Tokens</span>
+                <span className="font-medium text-gray-400">Output Tokens</span>
                 <span suppressHydrationWarning className="text-xs font-mono">
                   {current.outputTokensRemaining.toLocaleString()} / {current.outputTokensLimit.toLocaleString()}
                 </span>
@@ -284,7 +284,7 @@ export function RateLimitMonitor() {
                   "bg-green-100"
                 }`}
               />
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center justify-between text-xs text-gray-400">
                 <span className="font-semibold">{current.outputTokensUsagePercent.toFixed(1)}% used</span>
                 {current.outputTokensReset && <span>Resets: {formatTimeUntilReset(current.outputTokensReset)}</span>}
               </div>
@@ -293,7 +293,7 @@ export function RateLimitMonitor() {
             {/* Requests */}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-muted-foreground">API Requests</span>
+                <span className="font-medium text-gray-400">API Requests</span>
                 <span className="text-xs font-mono">
                   {current.requestsRemaining} / {current.requestsLimit}
                 </span>
@@ -307,7 +307,7 @@ export function RateLimitMonitor() {
                   "bg-green-100"
                 }`}
               />
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center justify-between text-xs text-gray-400">
                 <span className="font-semibold">{current.requestsUsagePercent.toFixed(1)}% used</span>
                 {current.requestsReset && <span>Resets: {formatTimeUntilReset(current.requestsReset)}</span>}
               </div>
@@ -327,14 +327,14 @@ export function RateLimitMonitor() {
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <div className="p-3 border rounded-lg bg-blue-50/50">
-                <p className="text-xs text-muted-foreground mb-1">Total AI Messages</p>
+                <p className="text-xs text-gray-400 mb-1">Total AI Messages</p>
                 <p suppressHydrationWarning className="text-xl font-bold text-blue-700">{stats.totalAIMessages.toLocaleString()}</p>
               </div>
               <div className="p-3 border rounded-lg bg-emerald-50/50">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="cursor-help">
-                      <p className="text-xs text-muted-foreground mb-1">Estimated Cost</p>
+                      <p className="text-xs text-gray-400 mb-1">Estimated Cost</p>
                       <p className="text-xl font-bold text-emerald-700">
                         ${stats.estimatedCost?.total?.toFixed(2) || '0.00'}
                       </p>
@@ -347,7 +347,7 @@ export function RateLimitMonitor() {
                       <p>Output: ${stats.estimatedCost?.output?.toFixed(4) || '0.00'}</p>
                       <p className="pt-1 border-t font-medium">Total: ${stats.estimatedCost?.total?.toFixed(4) || '0.00'}</p>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2">
+                    <p className="text-xs text-gray-400 mt-2">
                       Based on {stats.recentMessagesAnalyzed} recent messages
                     </p>
                   </TooltipContent>
@@ -357,7 +357,7 @@ export function RateLimitMonitor() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="cursor-help">
-                      <p className="text-xs text-muted-foreground mb-1">Input Tokens</p>
+                      <p className="text-xs text-gray-400 mb-1">Input Tokens</p>
                       <p suppressHydrationWarning className="text-lg font-bold text-purple-700">{(stats.totalInputTokensUsed || 0).toLocaleString()}</p>
                     </div>
                   </TooltipTrigger>
@@ -370,7 +370,7 @@ export function RateLimitMonitor() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="cursor-help">
-                      <p className="text-xs text-muted-foreground mb-1">Output Tokens</p>
+                      <p className="text-xs text-gray-400 mb-1">Output Tokens</p>
                       <p suppressHydrationWarning className="text-lg font-bold text-amber-700">{(stats.totalOutputTokensUsed || 0).toLocaleString()}</p>
                     </div>
                   </TooltipTrigger>
@@ -382,11 +382,11 @@ export function RateLimitMonitor() {
             </div>
             <div className="mt-4 p-3 border rounded-lg bg-slate-50/50">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">Avg Tokens/Message</p>
+                <p className="text-xs text-gray-400">Avg Tokens/Message</p>
                 <p className="text-sm font-bold text-slate-700">{stats.avgTokensPerMessage}</p>
               </div>
               <div className="flex items-center justify-between mt-2">
-                <p className="text-xs text-muted-foreground">Messages Analyzed</p>
+                <p className="text-xs text-gray-400">Messages Analyzed</p>
                 <p className="text-sm font-bold text-slate-700">{stats.recentMessagesAnalyzed}</p>
               </div>
             </div>
