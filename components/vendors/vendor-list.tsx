@@ -2,15 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import {
@@ -446,11 +437,9 @@ export function VendorList() {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center p-8">
-          <div className="text-muted-foreground">Loading vendors...</div>
-        </CardContent>
-      </Card>
+      <div className="ds-card flex items-center justify-center p-8">
+        <p className="text-sm text-gray-400">Loading vendors...</p>
+      </div>
     )
   }
 
@@ -458,59 +447,58 @@ export function VendorList() {
     <div className="space-y-4">
       {/* Bulk action bar */}
       {selectedIds.size > 0 && (
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="flex items-center justify-between py-3">
-            <span className="text-sm font-medium">
-              {selectedIds.size} vendor{selectedIds.size > 1 ? "s" : ""} selected
-            </span>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
-                Clear Selection
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBulkCalculateBMV}
-                disabled={isCalculating}
-                className="border-green-300 bg-green-50 hover:bg-green-100"
-              >
-                {isCalculating ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                )}
-                Calculate BMV
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleBulkDelete}
-                disabled={isDeleting}
-              >
-                {isDeleting ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4 mr-2" />
-                )}
-                Delete Selected
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 flex items-center justify-between">
+          <span className="text-sm font-medium">
+            {selectedIds.size} vendor{selectedIds.size > 1 ? "s" : ""} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
+              Clear Selection
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkCalculateBMV}
+              disabled={isCalculating}
+              className="border-green-300 bg-green-50 hover:bg-green-100"
+            >
+              {isCalculating ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <TrendingUp className="h-4 w-4 mr-2" />
+              )}
+              Calculate BMV
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleBulkDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Delete Selected
+            </Button>
+          </div>
+        </div>
       )}
 
-      <Card>
-        <CardHeader>
+      <div className="ds-card overflow-hidden">
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <CardTitle>Vendor Pipeline</CardTitle>
-              <CardDescription>
+              <h3 className="text-sm font-semibold text-gray-900">Vendor Pipeline</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
                 Track vendor leads through the acquisition pipeline ({filteredVendors.length} of {vendors.length})
-              </CardDescription>
+              </p>
             </div>
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+              <Filter className="h-4 w-4 text-gray-400 shrink-0" />
               <Select value={stageFilter} onValueChange={setStageFilter}>
                 <SelectTrigger className="w-[175px]">
                   <SelectValue placeholder="All Stages" />
@@ -549,403 +537,403 @@ export function VendorList() {
               />
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {filteredVendors.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Building2 className="mx-auto h-12 w-12 mb-4 opacity-50" />
-              <p className="text-lg font-medium">No vendor leads found</p>
-              <p className="text-sm mt-2">
-                {stageFilter !== "all"
-                  ? `No vendor leads in the selected stage`
-                  : "Vendor leads from the pipeline will appear here"}
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[40px] pl-4">
-                      <Checkbox
-                        checked={selectedIds.size === filteredVendors.length && filteredVendors.length > 0}
-                        onCheckedChange={toggleSelectAll}
-                        aria-label="Select all"
-                      />
-                    </TableHead>
-                    <TableHead>Vendor</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Stage</TableHead>
-                    <TableHead>Property</TableHead>
-                    <TableHead>Asking / BMV</TableHead>
-                    <TableHead>Yield</TableHead>
-                    <TableHead>Offer</TableHead>
-                    <TableHead>Investor</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredVendors.map((vendor) => {
-                    const annualRent = vendor.estimatedAnnualRent ?? (vendor.estimatedMonthlyRent ? vendor.estimatedMonthlyRent * 12 : null)
-                    const grossYield = annualRent && vendor.askingPrice
-                      ? (annualRent / vendor.askingPrice) * 100
-                      : null
+        </div>
 
-                    return (
-                      <TableRow key={vendor.id} className="cursor-pointer hover:bg-muted/40" onClick={() => handleViewDetails(vendor)}>
-                        {/* Checkbox */}
-                        <TableCell className="pl-4" onClick={(e) => e.stopPropagation()}>
-                          <Checkbox
-                            checked={selectedIds.has(vendor.id)}
-                            onCheckedChange={() => toggleSelect(vendor.id)}
-                            aria-label={`Select ${vendor.vendorName}`}
-                          />
-                        </TableCell>
+        {/* Body */}
+        {filteredVendors.length === 0 ? (
+          <div className="text-center py-12 text-gray-400">
+            <Building2 className="mx-auto h-12 w-12 mb-4 opacity-50" />
+            <p className="text-lg font-medium">No vendor leads found</p>
+            <p className="text-sm mt-2">
+              {stageFilter !== "all"
+                ? `No vendor leads in the selected stage`
+                : "Vendor leads from the pipeline will appear here"}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  <th className="table-header w-[40px] pl-4">
+                    <Checkbox
+                      checked={selectedIds.size === filteredVendors.length && filteredVendors.length > 0}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Select all"
+                    />
+                  </th>
+                  <th className="table-header">Vendor</th>
+                  <th className="table-header">Contact</th>
+                  <th className="table-header">Stage</th>
+                  <th className="table-header">Property</th>
+                  <th className="table-header">Asking / BMV</th>
+                  <th className="table-header">Yield</th>
+                  <th className="table-header">Offer</th>
+                  <th className="table-header">Investor</th>
+                  <th className="table-header text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredVendors.map((vendor) => {
+                  const annualRent = vendor.estimatedAnnualRent ?? (vendor.estimatedMonthlyRent ? vendor.estimatedMonthlyRent * 12 : null)
+                  const grossYield = annualRent && vendor.askingPrice
+                    ? (annualRent / vendor.askingPrice) * 100
+                    : null
 
-                        {/* Vendor */}
-                        <TableCell>
-                          <div className="font-medium whitespace-nowrap">{vendor.vendorName}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {vendor.leadSource ? vendor.leadSource.replace(/_/g, " ") : "Direct"}
+                  return (
+                    <tr key={vendor.id} className="table-row cursor-pointer" onClick={() => handleViewDetails(vendor)}>
+                      {/* Checkbox */}
+                      <td className="table-cell pl-4" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedIds.has(vendor.id)}
+                          onCheckedChange={() => toggleSelect(vendor.id)}
+                          aria-label={`Select ${vendor.vendorName}`}
+                        />
+                      </td>
+
+                      {/* Vendor */}
+                      <td className="table-cell">
+                        <div className="font-medium whitespace-nowrap">{vendor.vendorName}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">
+                          {vendor.leadSource ? vendor.leadSource.replace(/_/g, " ") : "Direct"}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {vendor._count.smsMessages > 0 && (
+                            <span className="text-xs text-gray-400">
+                              {vendor._count.smsMessages} msg{vendor._count.smsMessages !== 1 ? "s" : ""}
+                            </span>
+                          )}
+                          <TooltipProvider delayDuration={150}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span suppressHydrationWarning className="inline-flex items-center gap-0.5 text-xs text-gray-400 cursor-default">
+                                  <Clock className="h-3 w-3 shrink-0" />
+                                  {formatTimeAgo(vendor.lastContactAt)}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                Last contact: {vendor.lastContactAt
+                                  ? new Date(vendor.lastContactAt).toLocaleString("en-GB")
+                                  : "Never"}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </td>
+
+                      {/* Contact */}
+                      <td className="table-cell">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 text-sm whitespace-nowrap">
+                            <Phone className="h-3 w-3 shrink-0" />
+                            {vendor.vendorPhone}
                           </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            {vendor._count.smsMessages > 0 && (
-                              <span className="text-xs text-muted-foreground">
-                                {vendor._count.smsMessages} msg{vendor._count.smsMessages !== 1 ? "s" : ""}
-                              </span>
-                            )}
+                          {vendor.vendorEmail && (
+                            <div className="flex items-center gap-1.5 text-xs text-gray-400 whitespace-nowrap max-w-[180px] overflow-hidden">
+                              <Mail className="h-3 w-3 shrink-0" />
+                              <span className="truncate">{vendor.vendorEmail}</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Stage */}
+                      <td className="table-cell">
+                        <div className="flex flex-col gap-1">
+                          <span className={cn(
+                            "px-2 py-0.5 rounded text-xs font-medium border whitespace-nowrap self-start",
+                            STAGE_COLORS[vendor.pipelineStage] ?? "bg-gray-100 text-gray-800 border-gray-300"
+                          )}>
+                            {PIPELINE_STAGES.find((s) => s.id === vendor.pipelineStage)?.title
+                              ?? vendor.pipelineStage.replace(/_/g, " ")}
+                          </span>
+                          {vendor.motivationScore !== null && (
                             <TooltipProvider delayDuration={150}>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <span suppressHydrationWarning className="inline-flex items-center gap-0.5 text-xs text-muted-foreground cursor-default">
-                                    <Clock className="h-3 w-3 shrink-0" />
-                                    {formatTimeAgo(vendor.lastContactAt)}
+                                  <span className={cn(
+                                    "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-medium self-start cursor-default",
+                                    motivationColor(vendor.motivationScore)
+                                  )}>
+                                    <Zap className="h-2.5 w-2.5 shrink-0" />
+                                    {vendor.motivationScore}/10
                                   </span>
                                 </TooltipTrigger>
                                 <TooltipContent side="top" className="text-xs">
-                                  Last contact: {vendor.lastContactAt
-                                    ? new Date(vendor.lastContactAt).toLocaleString("en-GB")
-                                    : "Never"}
+                                  Motivation: {vendor.motivationScore}/10
+                                  {vendor.urgencyLevel && ` · ${vendor.urgencyLevel}`}
+                                  {vendor.timelineDays && ` (${vendor.timelineDays}d)`}
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
-                          </div>
-                        </TableCell>
+                          )}
+                        </div>
+                      </td>
 
-                        {/* Contact */}
-                        <TableCell>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1.5 text-sm whitespace-nowrap">
-                              <Phone className="h-3 w-3 shrink-0" />
-                              {vendor.vendorPhone}
+                      {/* Property */}
+                      <td className="table-cell">
+                        {vendor.propertyAddress ? (
+                          <div>
+                            <div className="text-sm font-medium max-w-[180px] truncate">{vendor.propertyAddress}</div>
+                            <VendorPostcodeBadge
+                              postcode={vendor.propertyPostcode}
+                              source={vendor.propertyPostcodeSource}
+                              fixed={vendor.propertyPostcodeFixed}
+                            />
+                            <div className="text-xs text-gray-400 mt-0.5">
+                              {[
+                                vendor.bedrooms && `${vendor.bedrooms}bd`,
+                                vendor.propertyType && vendor.propertyType.replace(/_/g, " "),
+                                vendor.condition && vendor.condition.replace(/_/g, " "),
+                              ].filter(Boolean).join(" · ")}
                             </div>
-                            {vendor.vendorEmail && (
-                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap max-w-[180px] overflow-hidden">
-                                <Mail className="h-3 w-3 shrink-0" />
-                                <span className="truncate">{vendor.vendorEmail}</span>
+                            {(vendor.latestCheckRisk || vendor.isTest) && (
+                              <div className="mt-1">
+                                <PortalCheckBadge
+                                  risk={vendor.latestCheckRisk as any}
+                                  isMockData={vendor.isTest}
+                                />
                               </div>
                             )}
                           </div>
-                        </TableCell>
+                        ) : (
+                          <span className="text-gray-400 text-sm">—</span>
+                        )}
+                      </td>
 
-                        {/* Stage */}
-                        <TableCell>
-                          <div className="flex flex-col gap-1">
-                            <span className={cn(
-                              "px-2 py-0.5 rounded text-xs font-medium border whitespace-nowrap self-start",
-                              STAGE_COLORS[vendor.pipelineStage] ?? "bg-gray-100 text-gray-800 border-gray-300"
-                            )}>
-                              {PIPELINE_STAGES.find((s) => s.id === vendor.pipelineStage)?.title
-                                ?? vendor.pipelineStage.replace(/_/g, " ")}
+                      {/* Asking / BMV */}
+                      <td className="table-cell">
+                        <div className="font-medium whitespace-nowrap">{formatCurrency(vendor.askingPrice)}</div>
+                        {vendor.estimatedMarketValue && (
+                          <div className="text-xs text-gray-400 whitespace-nowrap">
+                            MV {formatCurrency(vendor.estimatedMarketValue)}
+                          </div>
+                        )}
+                        <TooltipProvider delayDuration={150}>
+                          <div className="flex items-center gap-0.5 mt-1">
+                            {/* BMV score */}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className={cn(
+                                  "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-semibold cursor-default",
+                                  vendor.bmvScore === null
+                                    ? "text-gray-400/40"
+                                    : vendor.bmvScore >= 25
+                                    ? "bg-green-100 text-green-700"
+                                    : vendor.bmvScore >= 15
+                                    ? "bg-blue-100 text-blue-700"
+                                    : "bg-gray-100 text-gray-500"
+                                )}>
+                                  <TrendingUp className="h-3 w-3 shrink-0" />
+                                  {vendor.bmvScore !== null ? `${vendor.bmvScore.toFixed(1)}%` : "—"}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                {vendor.bmvScore === null
+                                  ? "BMV not yet calculated"
+                                  : `${vendor.bmvScore.toFixed(1)}% below market value`}
+                              </TooltipContent>
+                            </Tooltip>
+
+                            {/* Validation icon */}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center justify-center h-6 w-6 rounded cursor-default">
+                                  {vendor.bmvScore === null ? (
+                                    <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                                  ) : vendor.validationPassed ? (
+                                    <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                                  ) : (
+                                    <XCircle className="h-3.5 w-3.5 text-red-500" />
+                                  )}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                {vendor.bmvScore === null
+                                  ? "BMV not calculated — run analysis first"
+                                  : vendor.validationPassed
+                                  ? "Deal passed validation criteria"
+                                  : "Deal failed validation criteria"}
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </TooltipProvider>
+                      </td>
+
+                      {/* Yield */}
+                      <td className="table-cell">
+                        {grossYield !== null ? (
+                          <div>
+                            <span className="text-blue-600 font-medium">
+                              {grossYield.toFixed(1)}%
                             </span>
-                            {vendor.motivationScore !== null && (
-                              <TooltipProvider delayDuration={150}>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className={cn(
-                                      "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-medium self-start cursor-default",
-                                      motivationColor(vendor.motivationScore)
-                                    )}>
-                                      <Zap className="h-2.5 w-2.5 shrink-0" />
-                                      {vendor.motivationScore}/10
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top" className="text-xs">
-                                    Motivation: {vendor.motivationScore}/10
-                                    {vendor.urgencyLevel && ` · ${vendor.urgencyLevel}`}
-                                    {vendor.timelineDays && ` (${vendor.timelineDays}d)`}
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
+                            <div className="text-xs text-gray-400 whitespace-nowrap">
+                              {formatCurrency(vendor.estimatedMonthlyRent)}/mo
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">—</span>
+                        )}
+                      </td>
+
+                      {/* Offer */}
+                      <td className="table-cell">
+                        {vendor.offerAmount ? (
+                          <div className="text-sm space-y-0.5">
+                            <div className="font-medium whitespace-nowrap">{formatCurrency(vendor.offerAmount)}</div>
+                            {vendor.offerPercentage !== null && (
+                              <div className="text-xs text-gray-400">
+                                {vendor.offerPercentage.toFixed(1)}% BMV
+                              </div>
+                            )}
+                            {vendor.offerSentAt && (
+                              <div suppressHydrationWarning className="text-xs text-gray-400 whitespace-nowrap">
+                                Sent {new Date(vendor.offerSentAt).toLocaleDateString("en-GB")}
+                              </div>
+                            )}
+                            {vendor.offerAcceptedAt && (
+                              <div suppressHydrationWarning className="text-xs text-green-600 whitespace-nowrap">
+                                Accepted {new Date(vendor.offerAcceptedAt).toLocaleDateString("en-GB")}
+                              </div>
+                            )}
+                            {vendor.offerRejectedAt && (
+                              <div suppressHydrationWarning className="text-xs text-red-600 whitespace-nowrap">
+                                Rejected {new Date(vendor.offerRejectedAt).toLocaleDateString("en-GB")}
+                              </div>
+                            )}
+                            {vendor.retryCount > 0 && (
+                              <div className="text-xs text-gray-400">
+                                {vendor.retryCount} retr{vendor.retryCount === 1 ? "y" : "ies"}
+                              </div>
                             )}
                           </div>
-                        </TableCell>
+                        ) : (
+                          <span className="text-gray-400 text-sm">No offer</span>
+                        )}
+                      </td>
 
-                        {/* Property */}
-                        <TableCell>
-                          {vendor.propertyAddress ? (
-                            <div>
-                              <div className="text-sm font-medium max-w-[180px] truncate">{vendor.propertyAddress}</div>
-                              <VendorPostcodeBadge
-                                postcode={vendor.propertyPostcode}
-                                source={vendor.propertyPostcodeSource}
-                                fixed={vendor.propertyPostcodeFixed}
-                              />
-                              <div className="text-xs text-muted-foreground mt-0.5">
-                                {[
-                                  vendor.bedrooms && `${vendor.bedrooms}bd`,
-                                  vendor.propertyType && vendor.propertyType.replace(/_/g, " "),
-                                  vendor.condition && vendor.condition.replace(/_/g, " "),
-                                ].filter(Boolean).join(" · ")}
-                              </div>
-                              {(vendor.latestCheckRisk || vendor.isTest) && (
-                                <div className="mt-1">
-                                  <PortalCheckBadge
-                                    risk={vendor.latestCheckRisk as any}
-                                    isMockData={vendor.isTest}
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">—</span>
-                          )}
-                        </TableCell>
-
-                        {/* Asking / BMV */}
-                        <TableCell>
-                          <div className="font-medium whitespace-nowrap">{formatCurrency(vendor.askingPrice)}</div>
-                          {vendor.estimatedMarketValue && (
-                            <div className="text-xs text-muted-foreground whitespace-nowrap">
-                              MV {formatCurrency(vendor.estimatedMarketValue)}
-                            </div>
-                          )}
-                          <TooltipProvider delayDuration={150}>
-                            <div className="flex items-center gap-0.5 mt-1">
-                              {/* BMV score */}
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className={cn(
-                                    "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-semibold cursor-default",
-                                    vendor.bmvScore === null
-                                      ? "text-muted-foreground/40"
-                                      : vendor.bmvScore >= 25
-                                      ? "bg-green-100 text-green-700"
-                                      : vendor.bmvScore >= 15
-                                      ? "bg-blue-100 text-blue-700"
-                                      : "bg-gray-100 text-gray-500"
-                                  )}>
-                                    <TrendingUp className="h-3 w-3 shrink-0" />
-                                    {vendor.bmvScore !== null ? `${vendor.bmvScore.toFixed(1)}%` : "—"}
+                      {/* Investor reservation */}
+                      <td className="table-cell" onClick={(e) => e.stopPropagation()}>
+                        <TooltipProvider delayDuration={150}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className={cn(
+                                  "h-8 w-8 p-0",
+                                  vendor.reservation
+                                    ? cn(reservationStatusColors[vendor.reservation.status], "border hover:opacity-80")
+                                    : "text-gray-400/30 cursor-default hover:bg-transparent"
+                                )}
+                                onClick={vendor.reservation ? () => handleViewDetails(vendor) : undefined}
+                                tabIndex={vendor.reservation ? 0 : -1}
+                              >
+                                <KeyRound className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            {vendor.reservation ? (
+                              <TooltipContent side="left" className="text-xs max-w-[220px] space-y-1 p-3">
+                                <div className="flex items-center gap-1.5 mb-2">
+                                  <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-semibold border", reservationStatusColors[vendor.reservation.status])}>
+                                    {reservationStatusLabels[vendor.reservation.status] || vendor.reservation.status}
                                   </span>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="text-xs">
-                                  {vendor.bmvScore === null
-                                    ? "BMV not yet calculated"
-                                    : `${vendor.bmvScore.toFixed(1)}% below market value`}
-                                </TooltipContent>
-                              </Tooltip>
+                                </div>
+                                <p className="font-semibold">{getInvestorName(vendor.reservation.investor.user)}</p>
+                                <p className="text-gray-400">{vendor.reservation.investor.user.email}</p>
+                                {vendor.reservation.investor.user.phone && (
+                                  <p className="text-gray-400">{vendor.reservation.investor.user.phone}</p>
+                                )}
+                                <div className="border-t border-[var(--ds-border)] pt-1 mt-1">
+                                  <p className="text-gray-400">
+                                    Fee: <span className="text-gray-900 font-medium">£{vendor.reservation.reservationFee.toLocaleString()}</span>
+                                  </p>
+                                  {vendor.reservedAt && (
+                                    <p suppressHydrationWarning className="text-gray-400">
+                                      Reserved {formatTimeAgo(vendor.reservedAt)}
+                                    </p>
+                                  )}
+                                </div>
+                              </TooltipContent>
+                            ) : (
+                              <TooltipContent side="left" className="text-xs">
+                                No investor reservation
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
+                      </td>
 
-                              {/* Validation icon */}
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="inline-flex items-center justify-center h-6 w-6 rounded cursor-default">
-                                    {vendor.bmvScore === null ? (
-                                      <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
-                                    ) : vendor.validationPassed ? (
-                                      <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                                    ) : (
-                                      <XCircle className="h-3.5 w-3.5 text-destructive" />
-                                    )}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="text-xs">
-                                  {vendor.bmvScore === null
-                                    ? "BMV not calculated — run analysis first"
-                                    : vendor.validationPassed
-                                    ? "Deal passed validation criteria"
-                                    : "Deal failed validation criteria"}
-                                </TooltipContent>
-                              </Tooltip>
-                            </div>
-                          </TooltipProvider>
-                        </TableCell>
-
-                        {/* Yield */}
-                        <TableCell>
-                          {grossYield !== null ? (
-                            <div>
-                              <span className="text-blue-600 font-medium">
-                                {grossYield.toFixed(1)}%
-                              </span>
-                              <div className="text-xs text-muted-foreground whitespace-nowrap">
-                                {formatCurrency(vendor.estimatedMonthlyRent)}/mo
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">—</span>
-                          )}
-                        </TableCell>
-
-                        {/* Offer */}
-                        <TableCell>
-                          {vendor.offerAmount ? (
-                            <div className="text-sm space-y-0.5">
-                              <div className="font-medium whitespace-nowrap">{formatCurrency(vendor.offerAmount)}</div>
-                              {vendor.offerPercentage !== null && (
-                                <div className="text-xs text-muted-foreground">
-                                  {vendor.offerPercentage.toFixed(1)}% BMV
-                                </div>
-                              )}
-                              {vendor.offerSentAt && (
-                                <div suppressHydrationWarning className="text-xs text-muted-foreground whitespace-nowrap">
-                                  Sent {new Date(vendor.offerSentAt).toLocaleDateString("en-GB")}
-                                </div>
-                              )}
-                              {vendor.offerAcceptedAt && (
-                                <div suppressHydrationWarning className="text-xs text-green-600 whitespace-nowrap">
-                                  Accepted {new Date(vendor.offerAcceptedAt).toLocaleDateString("en-GB")}
-                                </div>
-                              )}
-                              {vendor.offerRejectedAt && (
-                                <div suppressHydrationWarning className="text-xs text-red-600 whitespace-nowrap">
-                                  Rejected {new Date(vendor.offerRejectedAt).toLocaleDateString("en-GB")}
-                                </div>
-                              )}
-                              {vendor.retryCount > 0 && (
-                                <div className="text-xs text-muted-foreground">
-                                  {vendor.retryCount} retr{vendor.retryCount === 1 ? "y" : "ies"}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">No offer</span>
-                          )}
-                        </TableCell>
-
-                        {/* Investor reservation */}
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <TooltipProvider delayDuration={150}>
+                      {/* Actions */}
+                      <td className="table-cell" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-end gap-1">
+                          <TooltipProvider delayDuration={300}>
+                            {/* Generate investor pack */}
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className={cn(
-                                    "h-8 w-8 p-0",
-                                    vendor.reservation
-                                      ? cn(reservationStatusColors[vendor.reservation.status], "border hover:opacity-80")
-                                      : "text-muted-foreground/30 cursor-default hover:bg-transparent"
-                                  )}
-                                  onClick={vendor.reservation ? () => handleViewDetails(vendor) : undefined}
-                                  tabIndex={vendor.reservation ? 0 : -1}
+                                  onClick={(e) => handleGenerateInvestorPack(vendor, e)}
+                                  disabled={generatingPackId === vendor.id || !vendor.propertyAddress || !vendor.askingPrice}
                                 >
-                                  <KeyRound className="h-3.5 w-3.5" />
+                                  {generatingPackId === vendor.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <FileDown className="h-4 w-4" />
+                                  )}
                                 </Button>
                               </TooltipTrigger>
-                              {vendor.reservation ? (
-                                <TooltipContent side="left" className="text-xs max-w-[220px] space-y-1 p-3">
-                                  <div className="flex items-center gap-1.5 mb-2">
-                                    <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-semibold border", reservationStatusColors[vendor.reservation.status])}>
-                                      {reservationStatusLabels[vendor.reservation.status] || vendor.reservation.status}
-                                    </span>
-                                  </div>
-                                  <p className="font-semibold">{getInvestorName(vendor.reservation.investor.user)}</p>
-                                  <p className="text-muted-foreground">{vendor.reservation.investor.user.email}</p>
-                                  {vendor.reservation.investor.user.phone && (
-                                    <p className="text-muted-foreground">{vendor.reservation.investor.user.phone}</p>
-                                  )}
-                                  <div className="border-t pt-1 mt-1">
-                                    <p className="text-muted-foreground">
-                                      Fee: <span className="text-foreground font-medium">£{vendor.reservation.reservationFee.toLocaleString()}</span>
-                                    </p>
-                                    {vendor.reservedAt && (
-                                      <p suppressHydrationWarning className="text-muted-foreground">
-                                        Reserved {formatTimeAgo(vendor.reservedAt)}
-                                      </p>
-                                    )}
-                                  </div>
-                                </TooltipContent>
-                              ) : (
-                                <TooltipContent side="left" className="text-xs">
-                                  No investor reservation
-                                </TooltipContent>
-                              )}
+                              <TooltipContent side="top" className="text-xs">
+                                {!vendor.propertyAddress || !vendor.askingPrice
+                                  ? "Address & price required"
+                                  : "Generate investor pack"}
+                              </TooltipContent>
+                            </Tooltip>
+
+                            {/* View details */}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleViewDetails(vendor)}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                View details
+                              </TooltipContent>
+                            </Tooltip>
+
+                            {/* Delete */}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteSingle(vendor)}
+                                  disabled={isDeleting}
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                Delete vendor
+                              </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
-                        </TableCell>
-
-                        {/* Actions */}
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <div className="flex justify-end gap-1">
-                            <TooltipProvider delayDuration={300}>
-                              {/* Generate investor pack */}
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) => handleGenerateInvestorPack(vendor, e)}
-                                    disabled={generatingPackId === vendor.id || !vendor.propertyAddress || !vendor.askingPrice}
-                                  >
-                                    {generatingPackId === vendor.id ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                      <FileDown className="h-4 w-4" />
-                                    )}
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="text-xs">
-                                  {!vendor.propertyAddress || !vendor.askingPrice
-                                    ? "Address & price required"
-                                    : "Generate investor pack"}
-                                </TooltipContent>
-                              </Tooltip>
-
-                              {/* View details */}
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleViewDetails(vendor)}
-                                  >
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="text-xs">
-                                  View details
-                                </TooltipContent>
-                              </Tooltip>
-
-                              {/* Delete */}
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDeleteSingle(vendor)}
-                                    disabled={isDeleting}
-                                  >
-                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="text-xs">
-                                  Delete vendor
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {selectedVendor && (
         <VendorLeadDetailModal
@@ -1031,7 +1019,7 @@ function VendorPostcodeBadge({
   }
 
   return (
-    <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground mt-0.5">
+    <span className="inline-flex items-center gap-0.5 text-[10px] text-gray-400 mt-0.5">
       <MapPin className="h-2.5 w-2.5 shrink-0" />
       {pc}
     </span>

@@ -527,15 +527,15 @@ export function VendorPipelineKanbanBoard() {
                                         <TooltipContent side="bottom" className="text-xs max-w-[220px]">
                                           <p className="font-medium mb-1">Investor Reservation</p>
                                           <p>{getInvestorName(lead.reservation.investor.user)}</p>
-                                          <p className="text-muted-foreground">{lead.reservation.investor.user.email}</p>
+                                          <p className="text-gray-400">{lead.reservation.investor.user.email}</p>
                                           {lead.reservation.investor.user.phone && (
-                                            <p className="text-muted-foreground">{lead.reservation.investor.user.phone}</p>
+                                            <p className="text-gray-400">{lead.reservation.investor.user.phone}</p>
                                           )}
-                                          <p className="text-muted-foreground mt-1">
+                                          <p className="text-gray-400 mt-1">
                                             Fee: £{lead.reservation.reservationFee.toLocaleString()}
                                           </p>
                                           {lead.reservedAt && (
-                                            <p suppressHydrationWarning className="text-muted-foreground">
+                                            <p suppressHydrationWarning className="text-gray-400">
                                               Reserved {formatTimeAgo(lead.reservedAt)}
                                             </p>
                                           )}

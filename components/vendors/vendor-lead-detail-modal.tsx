@@ -9,7 +9,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
@@ -885,11 +884,11 @@ export function VendorLeadDetailModal({
             {/* ── Row 1: stage pill + action buttons ──────────────────────────── */}
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <Badge className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border-0">
+                <Badge className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-[#2563EB]/10 text-[#2563EB] border-0">
                   {currentLead.pipelineStage.replace(/_/g, " ")}
                 </Badge>
                 {currentLead.dealId ? (
-                  <Badge className="text-[11px] bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-950/30 dark:text-emerald-400">
+                  <Badge className="text-[11px] bg-emerald-100 text-emerald-700 border border-emerald-300">
                     <CheckCircle2 className="h-2.5 w-2.5 mr-1" />
                     Deal Created
                   </Badge>
@@ -900,7 +899,7 @@ export function VendorLeadDetailModal({
                 {!isEditing ? (
                   <>
                     {/* Template selector + Pack button — grouped */}
-                    <div className="flex items-center rounded-md border bg-background overflow-hidden">
+                    <div className="flex items-center rounded-md border bg-white overflow-hidden">
                       {templates.length > 0 && (
                         <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
                           <SelectTrigger className="h-8 w-36 border-0 border-r rounded-none shadow-none focus:ring-0 text-xs pl-2.5 pr-1">
@@ -973,7 +972,7 @@ export function VendorLeadDetailModal({
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 dark:border-red-900 dark:hover:bg-red-950/30"
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
                             onClick={handleDelete}
                             disabled={isSaving || isDeleting}
                           >
@@ -1026,14 +1025,14 @@ export function VendorLeadDetailModal({
 
             {/* ── Row 2: property address as title ────────────────────────────── */}
             <DialogTitle className="mt-3 flex items-start gap-2 text-base font-semibold leading-snug">
-              <MapPin className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+              <MapPin className="h-4 w-4 text-[#2563EB] shrink-0 mt-0.5" />
               <span>{cleanPropertyAddress(currentLead.propertyAddress, currentLead.propertyPostcode)}</span>
             </DialogTitle>
 
             {/* ── Row 3: meta chips ────────────────────────────────────────────── */}
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               {currentLead.vendorName && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/20 dark:text-blue-300 dark:border-blue-800 rounded-md px-2 py-0.5">
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-md px-2 py-0.5">
                   <User className="h-3 w-3" />
                   {currentLead.vendorName}
                 </span>
@@ -1041,14 +1040,14 @@ export function VendorLeadDetailModal({
               {currentLead.vendorPhone && (
                 <a
                   href={`tel:${currentLead.vendorPhone}`}
-                  className="inline-flex items-center gap-1 text-[11px] font-medium bg-green-50 text-green-700 border border-green-200 dark:bg-green-950/20 dark:text-green-300 dark:border-green-800 rounded-md px-2 py-0.5 hover:bg-green-100 transition-colors"
+                  className="inline-flex items-center gap-1 text-[11px] font-medium bg-green-50 text-green-700 border border-green-200 rounded-md px-2 py-0.5 hover:bg-green-100 transition-colors"
                 >
                   <Phone className="h-3 w-3" />
                   {currentLead.vendorPhone}
                 </a>
               )}
               {currentLead.askingPrice && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-green-50 text-green-800 border border-green-300 dark:bg-green-950/20 dark:text-green-300 dark:border-green-700 rounded-md px-2 py-0.5">
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-green-50 text-green-800 border border-green-300 rounded-md px-2 py-0.5">
                   <PoundSterling className="h-3 w-3" />
                   {formatCurrency(currentLead.askingPrice)}
                 </span>
@@ -1057,8 +1056,8 @@ export function VendorLeadDetailModal({
                 <span className={cn(
                   "inline-flex items-center gap-1 text-[11px] font-semibold rounded-md px-2 py-0.5 border",
                   Number(currentLead.bmvScore) >= 15
-                    ? "bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/20 dark:text-emerald-300"
-                    : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-300"
+                    ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                    : "bg-red-50 text-red-700 border-red-200"
                 )}>
                   <TrendingUp className="h-3 w-3" />
                   {Number(currentLead.bmvScore).toFixed(1)}% BMV
@@ -1085,12 +1084,12 @@ export function VendorLeadDetailModal({
           onValueChange={setActiveTab}
           className="w-full"
         >
-          <TabsList className="grid w-full grid-cols-6 h-auto p-1 gap-0.5 bg-muted/60">
+          <TabsList className="grid w-full grid-cols-6 h-auto p-1 gap-0.5 bg-gray-50">
             <TabsTrigger
               value="details"
               className="relative flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
-                hover:bg-background hover:text-primary hover:shadow-sm
-                data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
+                hover:bg-gray-50 hover:text-[#2563EB] hover:shadow-sm
+                data-[state=active]:bg-white data-[state=active]:text-[#2563EB] data-[state=active]:shadow-sm"
             >
               <User className="h-3.5 w-3.5" />
               <span>Contact Info</span>
@@ -1101,8 +1100,8 @@ export function VendorLeadDetailModal({
             <TabsTrigger
               value="validation"
               className="flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
-                hover:bg-background hover:text-primary hover:shadow-sm
-                data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
+                hover:bg-gray-50 hover:text-[#2563EB] hover:shadow-sm
+                data-[state=active]:bg-white data-[state=active]:text-[#2563EB] data-[state=active]:shadow-sm"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
               <span>Validation</span>
@@ -1110,8 +1109,8 @@ export function VendorLeadDetailModal({
             <TabsTrigger
               value="comparables"
               className="flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
-                hover:bg-background hover:text-primary hover:shadow-sm
-                data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
+                hover:bg-gray-50 hover:text-[#2563EB] hover:shadow-sm
+                data-[state=active]:bg-white data-[state=active]:text-[#2563EB] data-[state=active]:shadow-sm"
             >
               <BarChart3 className="h-3.5 w-3.5" />
               <span>Comparables</span>
@@ -1119,8 +1118,8 @@ export function VendorLeadDetailModal({
             <TabsTrigger
               value="portal-check"
               className="flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
-                data-[state=active]:bg-background data-[state=active]:shadow-sm
-                hover:bg-background/50 data-[state=active]:text-foreground text-muted-foreground"
+                data-[state=active]:bg-white data-[state=active]:shadow-sm
+                hover:bg-gray-50/50 data-[state=active]:text-gray-900 text-gray-400"
             >
               <div className="relative">
                 <ShieldCheck className="h-3.5 w-3.5" />
@@ -1136,8 +1135,8 @@ export function VendorLeadDetailModal({
             <TabsTrigger
               value="offer"
               className="flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
-                hover:bg-background hover:text-primary hover:shadow-sm
-                data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
+                hover:bg-gray-50 hover:text-[#2563EB] hover:shadow-sm
+                data-[state=active]:bg-white data-[state=active]:text-[#2563EB] data-[state=active]:shadow-sm"
             >
               <Calculator className="h-3.5 w-3.5" />
               <span>Offer Analysis</span>
@@ -1145,8 +1144,8 @@ export function VendorLeadDetailModal({
             <TabsTrigger
               value="activity"
               className="flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
-                hover:bg-background hover:text-primary hover:shadow-sm
-                data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
+                hover:bg-gray-50 hover:text-[#2563EB] hover:shadow-sm
+                data-[state=active]:bg-white data-[state=active]:text-[#2563EB] data-[state=active]:shadow-sm"
             >
               <Clock className="h-3.5 w-3.5" />
               <span>Activity</span>
@@ -1157,14 +1156,14 @@ export function VendorLeadDetailModal({
             {/* ── Row 1: Contact + Property ──────────────────────────────────────── */}
             <div className="grid grid-cols-2 gap-4">
               {/* Contact */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <User className="h-4 w-4 text-primary" />
+              <div className="ds-card overflow-hidden">
+                <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                  <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <User className="h-4 w-4 text-[#2563EB]" />
                     Vendor Contact
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
+                  </h3>
+                </div>
+                <div className="p-5 space-y-2">
                   {isEditing ? (
                     <>
                       <div>
@@ -1195,40 +1194,40 @@ export function VendorLeadDetailModal({
                     </>
                   ) : (
                     <>
-                      <div className="flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-2">
-                        <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2">
+                        <User className="h-4 w-4 text-gray-400 shrink-0" />
                         <span className="font-semibold text-sm">{currentLead.vendorName}</span>
                       </div>
                       <a
                         href={`tel:${currentLead.vendorPhone}`}
-                        className="flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 px-3 py-2 hover:bg-green-100 dark:hover:bg-green-950/40 transition-colors"
+                        className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2 hover:bg-green-100 transition-colors"
                       >
-                        <Phone className="h-4 w-4 text-green-700 dark:text-green-400 shrink-0" />
-                        <span className="font-medium text-sm text-green-800 dark:text-green-300">{currentLead.vendorPhone}</span>
+                        <Phone className="h-4 w-4 text-green-700 shrink-0" />
+                        <span className="font-medium text-sm text-green-800">{currentLead.vendorPhone}</span>
                       </a>
                       {currentLead.vendorEmail && (
                         <a
                           href={`mailto:${currentLead.vendorEmail}`}
-                          className="flex items-center gap-2 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 px-3 py-2 hover:bg-blue-100 dark:hover:bg-blue-950/40 transition-colors"
+                          className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 hover:bg-blue-100 transition-colors"
                         >
-                          <Mail className="h-4 w-4 text-blue-700 dark:text-blue-400 shrink-0" />
-                          <span className="font-medium text-sm text-blue-800 dark:text-blue-300 truncate">{currentLead.vendorEmail}</span>
+                          <Mail className="h-4 w-4 text-blue-700 shrink-0" />
+                          <span className="font-medium text-sm text-blue-800 truncate">{currentLead.vendorEmail}</span>
                         </a>
                       )}
                     </>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
               {/* Property */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Home className="h-4 w-4 text-primary" />
+              <div className="ds-card overflow-hidden">
+                <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                  <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <Home className="h-4 w-4 text-[#2563EB]" />
                     Property
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
+                  </h3>
+                </div>
+                <div className="p-5 space-y-3">
                   {isEditing ? (
                     <>
                       <div>
@@ -1375,9 +1374,9 @@ export function VendorLeadDetailModal({
                   ) : (
                     <>
                       {(currentLead.propertyAddress || currentLead.propertyPostcode) && (
-                        <div className="rounded-lg bg-muted/60 px-3 py-2">
+                        <div className="rounded-lg bg-gray-50 px-3 py-2">
                           <div className="flex items-start gap-2">
-                            <MapPin className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                            <MapPin className="h-4 w-4 text-[#2563EB] shrink-0 mt-0.5" />
                             <span className="font-medium text-sm leading-snug flex-1">
                               {cleanPropertyAddress(currentLead.propertyAddress, currentLead.propertyPostcode)}
                             </span>
@@ -1412,25 +1411,25 @@ export function VendorLeadDetailModal({
                       {(currentLead.propertyType || currentLead.bedrooms != null || currentLead.bathrooms != null || currentLead.squareFeet || currentLead.condition) && (
                         <div className="flex flex-wrap gap-1.5">
                           {currentLead.propertyType && (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-muted px-2 py-0.5 rounded-full capitalize">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-gray-100 px-2 py-0.5 rounded-full capitalize">
                               <Building2 className="h-3 w-3" />
                               {currentLead.propertyType}
                             </span>
                           )}
                           {currentLead.bedrooms != null && (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-muted px-2 py-0.5 rounded-full">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-gray-100 px-2 py-0.5 rounded-full">
                               <BedDouble className="h-3 w-3" />
                               {currentLead.bedrooms} bed
                             </span>
                           )}
                           {currentLead.bathrooms != null && (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-muted px-2 py-0.5 rounded-full">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-gray-100 px-2 py-0.5 rounded-full">
                               <Bath className="h-3 w-3" />
                               {currentLead.bathrooms} bath
                             </span>
                           )}
                           {currentLead.squareFeet && (
-                            <span suppressHydrationWarning className="inline-flex items-center gap-1 text-[11px] font-medium bg-muted px-2 py-0.5 rounded-full">
+                            <span suppressHydrationWarning className="inline-flex items-center gap-1 text-[11px] font-medium bg-gray-100 px-2 py-0.5 rounded-full">
                               {currentLead.squareFeet.toLocaleString()} sq ft
                             </span>
                           )}
@@ -1438,7 +1437,7 @@ export function VendorLeadDetailModal({
                             <span className={cn(
                               "inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full capitalize",
                               currentLead.condition === "excellent" || currentLead.condition === "good"
-                                ? "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-300"
+                                ? "bg-green-100 text-green-800"
                                 : currentLead.condition === "needs_work" || currentLead.condition === "needs_modernisation"
                                 ? "bg-amber-100 text-amber-800"
                                 : "bg-red-100 text-red-800"
@@ -1450,22 +1449,22 @@ export function VendorLeadDetailModal({
                       )}
                       {/* Asking price highlight */}
                       {currentLead.askingPrice && (
-                        <div className="flex items-center justify-between rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 px-3 py-2">
+                        <div className="flex items-center justify-between rounded-lg bg-green-50 border border-green-200 px-3 py-2">
                           <div className="flex items-center gap-1.5">
-                            <PoundSterling className="h-4 w-4 text-green-700 dark:text-green-400" />
-                            <span className="text-xs font-medium text-green-700 dark:text-green-400">Asking Price</span>
+                            <PoundSterling className="h-4 w-4 text-green-700" />
+                            <span className="text-xs font-medium text-green-700">Asking Price</span>
                           </div>
-                          <span className="font-bold text-green-800 dark:text-green-300">{formatCurrency(currentLead.askingPrice)}</span>
+                          <span className="font-bold text-green-800">{formatCurrency(currentLead.askingPrice)}</span>
                         </div>
                       )}
                       {/* Rental estimate */}
                       {currentLead.estimatedMonthlyRent && (
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-xs text-muted-foreground">Rental estimate</span>
+                          <span className="text-xs text-gray-400">Rental estimate</span>
                           <span className="font-medium text-sm">
                             {formatCurrency(currentLead.estimatedMonthlyRent)}/mo
                             {currentLead.askingPrice && currentLead.estimatedAnnualRent && (
-                              <span className="text-xs text-green-600 dark:text-green-400 font-normal ml-1.5">
+                              <span className="text-xs text-green-600 font-normal ml-1.5">
                                 ({((Number(currentLead.estimatedAnnualRent) / Number(currentLead.askingPrice)) * 100).toFixed(1)}% yield)
                               </span>
                             )}
@@ -1474,21 +1473,21 @@ export function VendorLeadDetailModal({
                       )}
                     </>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
 
             {/* ── Row 2: Seller Intel + Activity ─────────────────────────────────── */}
             <div className="grid grid-cols-2 gap-4">
               {/* Seller Intelligence */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-primary" />
+              <div className="ds-card overflow-hidden">
+                <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                  <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-[#2563EB]" />
                     Seller Intelligence
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
+                  </h3>
+                </div>
+                <div className="p-5 space-y-3">
                   {isEditing ? (
                     <>
                       <div>
@@ -1565,12 +1564,12 @@ export function VendorLeadDetailModal({
                       {currentLead.motivationScore !== null && (
                         <div className="space-y-1.5">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-muted-foreground">Motivation</span>
+                            <span className="text-xs font-medium text-gray-400">Motivation</span>
                             <Badge className={motivationBadgeColor(currentLead.motivationScore)}>
                               {currentLead.motivationScore}/10
                             </Badge>
                           </div>
-                          <div className="w-full bg-muted rounded-full h-1.5">
+                          <div className="w-full bg-gray-100 rounded-full h-1.5">
                             <div
                               className={cn(
                                 "h-1.5 rounded-full transition-all",
@@ -1590,10 +1589,10 @@ export function VendorLeadDetailModal({
                               <TooltipTrigger asChild>
                                 <span className={cn(
                                   "inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full cursor-default",
-                                  currentLead.urgencyLevel === "urgent" ? "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-300"
+                                  currentLead.urgencyLevel === "urgent" ? "bg-red-100 text-red-800"
                                     : currentLead.urgencyLevel === "quick" ? "bg-orange-100 text-orange-800"
                                     : currentLead.urgencyLevel === "moderate" ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-muted text-muted-foreground"
+                                    : "bg-gray-100 text-gray-400"
                                 )}>
                                   <AlertTriangle className="h-2.5 w-2.5" />
                                   {currentLead.urgencyLevel}
@@ -1604,13 +1603,13 @@ export function VendorLeadDetailModal({
                           </TooltipProvider>
                         )}
                         {currentLead.timelineDays && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">
                             <Clock className="h-2.5 w-2.5" />
                             {currentLead.timelineDays}d timeline
                           </span>
                         )}
                         {currentLead.reasonForSelling && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-muted text-muted-foreground px-2 py-0.5 rounded-full capitalize">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full capitalize">
                             {currentLead.reasonForSelling.replace(/_/g, " ")}
                           </span>
                         )}
@@ -1621,22 +1620,22 @@ export function VendorLeadDetailModal({
                         )}
                       </div>
                       {currentLead.motivationScore === null && !currentLead.urgencyLevel && !currentLead.reasonForSelling && (
-                        <p className="text-xs text-muted-foreground italic">No seller intelligence gathered yet</p>
+                        <p className="text-xs text-gray-400 italic">No seller intelligence gathered yet</p>
                       )}
                     </>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
               {/* Activity */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-primary" />
+              <div className="ds-card overflow-hidden">
+                <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                  <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-[#2563EB]" />
                     Activity
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
+                  </h3>
+                </div>
+                <div className="p-5 space-y-3">
                   {isEditing ? (
                     <div>
                       <Label htmlFor="pipelineStage">Stage</Label>
@@ -1668,11 +1667,11 @@ export function VendorLeadDetailModal({
                   ) : (
                     <>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-muted-foreground">Stage</span>
+                        <span className="text-xs font-medium text-gray-400">Stage</span>
                         <Badge className="text-xs">{currentLead.pipelineStage.replace(/_/g, " ")}</Badge>
                       </div>
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <div className="flex items-center gap-1.5 text-gray-400">
                           <Clock className="h-3.5 w-3.5" />
                           <span className="text-xs">Last contact</span>
                         </div>
@@ -1680,7 +1679,7 @@ export function VendorLeadDetailModal({
                       </div>
                       {currentLead.conversationStartedAt && (
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <div className="flex items-center gap-1.5 text-gray-400">
                             <MessageSquare className="h-3.5 w-3.5" />
                             <span className="text-xs">Conv. started</span>
                           </div>
@@ -1689,28 +1688,28 @@ export function VendorLeadDetailModal({
                       )}
                       {currentLead.retryCount > 0 && (
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">Follow-up attempts</span>
+                          <span className="text-xs text-gray-400">Follow-up attempts</span>
                           <Badge variant="outline" className="text-xs">{currentLead.retryCount}</Badge>
                         </div>
                       )}
                     </>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
 
             {/* ── Solicitor ────────────────────────────────────────────────────────── */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-primary" />
+            <div className="ds-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-[#2563EB]" />
                   Solicitor
-                </CardTitle>
-                <CardDescription className="text-xs">
+                </h3>
+                <p className="text-xs text-gray-400 mt-0.5">
                   Conveyancing solicitor for this deal. Assign from the shared registry or add a new one.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+              </div>
+              <div className="p-5">
                 <SolicitorSelector
                   value={currentLead.solicitorId ?? null}
                   initialSolicitor={currentLead.solicitor ?? null}
@@ -1731,8 +1730,8 @@ export function VendorLeadDetailModal({
                     }
                   }}
                 />
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* ── Investor Reservation ─────────────────────────────────────────────── */}
             {(() => {
@@ -1757,13 +1756,13 @@ export function VendorLeadDetailModal({
               }
               const res = currentLead.reservation
               return (
-                <Card>
-                  <CardHeader className="pb-3">
+                <div className="ds-card overflow-hidden">
+                  <div className="px-5 py-4 border-b border-[var(--ds-border)]">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <KeyRound className="h-4 w-4 text-primary" />
+                      <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                        <KeyRound className="h-4 w-4 text-[#2563EB]" />
                         Investor Reservation
-                      </CardTitle>
+                      </h3>
                       {res && (
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className={cn("text-xs border", statusColor[res.status] || "")}>
@@ -1785,8 +1784,8 @@ export function VendorLeadDetailModal({
                         </div>
                       )}
                     </div>
-                  </CardHeader>
-                  <CardContent>
+                  </div>
+                  <div className="p-5">
                     {res ? (() => {
                       const inv = res.investor
                       const investorName = [inv.user.firstName, inv.user.lastName].filter(Boolean).join(" ") || inv.user.email
@@ -1804,32 +1803,32 @@ export function VendorLeadDetailModal({
                                 key={step}
                                 className={cn(
                                   "h-1.5 flex-1 rounded-full transition-colors",
-                                  i < currentStep ? "bg-violet-500" : i === currentStep ? "bg-violet-400" : "bg-muted"
+                                  i < currentStep ? "bg-violet-500" : i === currentStep ? "bg-violet-400" : "bg-gray-100"
                                 )}
                               />
                             ))}
                           </div>
-                          <div className="flex justify-between text-[10px] text-muted-foreground">
+                          <div className="flex justify-between text-[10px] text-gray-400">
                             <span>Pending</span>
                             <span>Step {Math.max(currentStep + 1, 1)} / {steps.length}</span>
                             <span>Completed</span>
                           </div>
                           <div className="grid grid-cols-3 gap-3 pt-1 text-sm border-t">
                             <div>
-                              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Investor</p>
+                              <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">Investor</p>
                               <p className="font-medium text-xs truncate">{investorName}</p>
                             </div>
                             <div>
-                              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Contact</p>
+                              <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">Contact</p>
                               <a href={`mailto:${inv.user.email}`} className="text-blue-600 hover:underline text-xs truncate block">{inv.user.email}</a>
                               {inv.user.phone && (
                                 <a href={`tel:${inv.user.phone}`} className="text-blue-600 hover:underline text-xs">{inv.user.phone}</a>
                               )}
                             </div>
                             <div>
-                              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Reservation Fee</p>
+                              <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">Reservation Fee</p>
                               <p className="font-semibold text-emerald-700">£{res.reservationFee.toLocaleString()}</p>
-                              <p suppressHydrationWarning className="text-[10px] text-muted-foreground mt-0.5">
+                              <p suppressHydrationWarning className="text-[10px] text-gray-400 mt-0.5">
                                 {currentLead.reservedAt ? formatDate(currentLead.reservedAt) : formatDate(res.createdAt)}
                               </p>
                             </div>
@@ -1837,24 +1836,24 @@ export function VendorLeadDetailModal({
                         </div>
                       )
                     })() : (
-                      <div className="flex items-center gap-2 text-muted-foreground py-1">
+                      <div className="flex items-center gap-2 text-gray-400 py-1">
                         <KeyRound className="h-4 w-4 shrink-0" />
                         <p className="text-xs">No investor reservation — will appear once an investor reserves the linked deal.</p>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )
             })()}
 
             {/* ── Conversation ─────────────────────────────────────────────────────── */}
-            <Card>
-              <CardHeader className="pb-3">
+            <div className="ds-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-[var(--ds-border)]">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-[#2563EB]" />
                     Conversation
-                  </CardTitle>
+                  </h3>
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className="text-xs">
                       {currentLead.smsMessages.length} message{currentLead.smsMessages.length !== 1 ? "s" : ""}
@@ -1862,18 +1861,18 @@ export function VendorLeadDetailModal({
                     <button
                       type="button"
                       onClick={() => setShowConversation((v) => !v)}
-                      className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+                      className="text-xs text-gray-400 hover:text-gray-900 underline underline-offset-2 transition-colors"
                     >
                       {showConversation ? "Hide" : "Show"}
                     </button>
                   </div>
                 </div>
-              </CardHeader>
+              </div>
               {showConversation && (
-                <CardContent>
-                  <div className="space-y-3 max-h-80 overflow-y-auto p-3 bg-muted/30 rounded-lg mb-4">
+                <div className="p-5">
+                  <div className="space-y-3 max-h-80 overflow-y-auto p-3 bg-gray-50 rounded-lg mb-4">
                     {currentLead.smsMessages.length === 0 ? (
-                      <p className="text-center text-muted-foreground py-6 text-sm">No messages yet</p>
+                      <p className="text-center text-gray-400 py-6 text-sm">No messages yet</p>
                     ) : (
                       currentLead.smsMessages.map((message: any) => {
                         const isOutbound = message.direction === "outbound"
@@ -1886,7 +1885,7 @@ export function VendorLeadDetailModal({
                               <p className="text-sm whitespace-pre-wrap">{message.messageBody}</p>
                               <p
                                 suppressHydrationWarning
-                                className={cn("text-xs mt-1", isOutbound ? "text-blue-100" : "text-muted-foreground")}
+                                className={cn("text-xs mt-1", isOutbound ? "text-blue-100" : "text-gray-400")}
                               >
                                 {formatTimeAgo(message.createdAt)}
                               </p>
@@ -1911,21 +1910,21 @@ export function VendorLeadDetailModal({
                       {sendingMessage ? "Sending..." : "Send Message"}
                     </Button>
                   </div>
-                </CardContent>
+                </div>
               )}
-            </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="validation" className="space-y-4">
             {/* ── Header card: title + Calculate BMV action ────────────────────── */}
-            <Card>
-              <CardHeader>
+            <div className="ds-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-[var(--ds-border)]">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>BMV Analysis Results</CardTitle>
-                    <CardDescription>
+                    <h3 className="text-base font-semibold text-gray-900">BMV Analysis Results</h3>
+                    <p className="text-xs text-gray-400 mt-0.5">
                       {currentLead.validatedAt ? `Validated on ${formatDate(currentLead.validatedAt)}` : "Not yet validated"}
-                    </CardDescription>
+                    </p>
                     {landRegistryUsed && (
                       <div className="flex items-center gap-2 mt-2">
                         <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 border gap-1 font-medium">
@@ -1933,7 +1932,7 @@ export function VendorLeadDetailModal({
                           Land Registry Used
                         </Badge>
                         {landRegistryOwnership && (
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-gray-400">
                             Owner: {landRegistryOwnership.companyName}
                             {landRegistryOwnership.isCorporateOwned && " · Corporate"}
                             {landRegistryOwnership.isOverseasOwned && " · Overseas"}
@@ -1944,7 +1943,7 @@ export function VendorLeadDetailModal({
                     )}
                     {landRegistryCheckedNoMatch && (
                       <div className="flex items-center gap-2 mt-2">
-                        <Badge variant="outline" className="text-muted-foreground gap-1 font-normal">
+                        <Badge variant="outline" className="text-gray-400 gap-1 font-normal">
                           <Building2 className="h-3 w-3" />
                           No Land Registry Match
                         </Badge>
@@ -1955,7 +1954,7 @@ export function VendorLeadDetailModal({
                         <Badge className="bg-amber-100 text-amber-800 border-amber-300 border gap-1 font-medium">
                           ⚠️ Incomplete Postcode: {currentLead.propertyPostcode ?? "none"}
                         </Badge>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-gray-400">
                           Edit and add full postcode for accurate BMV
                         </span>
                       </div>
@@ -1965,7 +1964,7 @@ export function VendorLeadDetailModal({
                         <Badge className="bg-blue-100 text-blue-800 border-blue-300 border gap-1 font-medium">
                           ℹ️ Postcode corrected → {postcodeUsed}
                         </Badge>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-gray-400">
                           Auto-resolved via {postcodeResolutionSource} (was: {currentLead.propertyPostcode})
                         </span>
                       </div>
@@ -1985,9 +1984,9 @@ export function VendorLeadDetailModal({
                     {isCalculating ? "Calculating..." : "Calculate BMV"}
                   </Button>
                 </div>
-              </CardHeader>
+              </div>
               {isEditing && (
-                <CardContent className="space-y-4">
+                <div className="p-5 space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="estimatedMarketValue">Estimated Market Value (£)</Label>
@@ -2029,25 +2028,25 @@ export function VendorLeadDetailModal({
                     </ul>
                     <p className="mt-2 font-medium">To pass validation: BMV ≥ 15% AND Profit ≥ £10,000</p>
                   </div>
-                </CardContent>
+                </div>
               )}
-            </Card>
+            </div>
 
             {/* ── Empty state: missing asking price ────────────────────────────── */}
             {!isEditing && !currentLead.askingPrice && (
               <div className="flex flex-col items-center justify-center py-12 gap-3 rounded-xl border-2 border-dashed border-muted text-center">
-                <PoundSterling className="h-10 w-10 text-muted-foreground/30" />
-                <p className="font-medium text-muted-foreground">Missing Asking Price</p>
-                <p className="text-sm text-muted-foreground max-w-xs">Add an asking price in the Contact Info tab before calculating BMV.</p>
+                <PoundSterling className="h-10 w-10 text-gray-400/30" />
+                <p className="font-medium text-gray-400">Missing Asking Price</p>
+                <p className="text-sm text-gray-400 max-w-xs">Add an asking price in the Contact Info tab before calculating BMV.</p>
               </div>
             )}
 
             {/* ── Empty state: not yet calculated ──────────────────────────────── */}
             {!isEditing && currentLead.askingPrice !== null && currentLead.bmvScore === null && (
               <div className="flex flex-col items-center justify-center py-12 gap-3 rounded-xl border-2 border-dashed border-muted text-center">
-                <BarChart3 className="h-10 w-10 text-muted-foreground/30" />
-                <p className="font-medium text-muted-foreground">BMV Not Yet Calculated</p>
-                <p className="text-sm text-muted-foreground max-w-xs">
+                <BarChart3 className="h-10 w-10 text-gray-400/30" />
+                <p className="font-medium text-gray-400">BMV Not Yet Calculated</p>
+                <p className="text-sm text-gray-400 max-w-xs">
                   Click &quot;Calculate BMV&quot; above to analyse this deal and get offer recommendations.
                 </p>
               </div>
@@ -2058,7 +2057,7 @@ export function VendorLeadDetailModal({
               <>
                 {/* Stale data notice */}
                 {currentLead.validatedAt && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5 px-1">
+                  <p className="text-xs text-gray-400 flex items-center gap-1.5 px-1">
                     <Clock className="h-3 w-3 shrink-0" />
                     Last calculated {formatDate(currentLead.validatedAt)} — recalculate if you&apos;ve changed property details.
                   </p>
@@ -2068,8 +2067,8 @@ export function VendorLeadDetailModal({
                 <div className={cn(
                   "rounded-xl p-5 border-2",
                   currentLead.validationPassed
-                    ? "bg-green-50 border-green-300 dark:bg-green-950/30 dark:border-green-700"
-                    : "bg-red-50 border-red-300 dark:bg-red-950/30 dark:border-red-700"
+                    ? "bg-green-50 border-green-300"
+                    : "bg-red-50 border-red-300"
                 )}>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
@@ -2079,10 +2078,10 @@ export function VendorLeadDetailModal({
                         <XCircle className="h-9 w-9 text-red-600 shrink-0" />
                       )}
                       <div>
-                        <p className={cn("text-xl font-bold", currentLead.validationPassed ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400")}>
+                        <p className={cn("text-xl font-bold", currentLead.validationPassed ? "text-green-700" : "text-red-700")}>
                           {currentLead.validationPassed ? "Validation Passed" : "Validation Failed"}
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-gray-400">
                           {currentLead.validationPassed
                             ? "This deal meets minimum investment criteria"
                             : "This deal does not meet minimum investment criteria"}
@@ -2091,20 +2090,20 @@ export function VendorLeadDetailModal({
                     </div>
                     <div className="flex items-center gap-6 shrink-0">
                       <div className="text-center">
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">BMV</p>
+                        <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">BMV</p>
                         <p className={cn("text-2xl font-bold", Number(currentLead.bmvScore) >= 15 ? "text-green-600" : "text-red-600")}>
                           {Number(currentLead.bmvScore).toFixed(1)}%
                         </p>
                       </div>
                       {currentLead.offerAmount !== null && (
                         <div className="text-center">
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Our Offer</p>
+                          <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Our Offer</p>
                           <p className="text-2xl font-bold">{formatCurrency(currentLead.offerAmount)}</p>
                         </div>
                       )}
                       {currentLead.profitPotential !== null && (
                         <div className="text-center">
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Net Profit</p>
+                          <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Net Profit</p>
                           <p className={cn("text-2xl font-bold", Number(currentLead.profitPotential) >= 10000 ? "text-green-600" : "text-amber-600")}>
                             {formatCurrency(currentLead.profitPotential)}
                           </p>
@@ -2117,40 +2116,40 @@ export function VendorLeadDetailModal({
                 {/* ── Key Metrics Row ────────────────────────────────────────────── */}
                 <div className="grid grid-cols-3 gap-4">
                   {currentLead.estimatedMarketValue !== null && (
-                    <Card>
-                      <CardContent className="pt-5">
+                    <div className="ds-card overflow-hidden">
+                      <div className="p-5">
                         <div className="flex items-center gap-1.5 mb-2">
                           <TrendingUp className="h-3.5 w-3.5 text-blue-500" />
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Market Value</p>
+                          <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Market Value</p>
                         </div>
                         <p className="text-2xl font-bold">{formatCurrency(currentLead.estimatedMarketValue)}</p>
                         {parsedNotes?.marketValueSource?.count && (
-                          <p className="text-xs text-muted-foreground mt-1.5">{parsedNotes.marketValueSource.count} comparable sales</p>
+                          <p className="text-xs text-gray-400 mt-1.5">{parsedNotes.marketValueSource.count} comparable sales</p>
                         )}
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   )}
                   {currentLead.askingPrice !== null && (
-                    <Card>
-                      <CardContent className="pt-5">
+                    <div className="ds-card overflow-hidden">
+                      <div className="p-5">
                         <div className="flex items-center gap-1.5 mb-2">
-                          <PoundSterling className="h-3.5 w-3.5 text-muted-foreground" />
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Asking Price</p>
+                          <PoundSterling className="h-3.5 w-3.5 text-gray-400" />
+                          <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Asking Price</p>
                         </div>
                         <p className="text-2xl font-bold">{formatCurrency(currentLead.askingPrice)}</p>
                         {currentLead.estimatedMarketValue !== null && (
-                          <p className="text-xs text-muted-foreground mt-1.5">
+                          <p className="text-xs text-gray-400 mt-1.5">
                             £{(currentLead.estimatedMarketValue - currentLead.askingPrice).toLocaleString()} below market
                           </p>
                         )}
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   )}
-                  <Card className={cn("border", Number(currentLead.bmvScore) >= 15 ? "border-green-300" : "border-red-300")}>
-                    <CardContent className="pt-5">
+                  <div className={cn("ds-card overflow-hidden border", Number(currentLead.bmvScore) >= 15 ? "border-green-300" : "border-red-300")}>
+                    <div className="p-5">
                       <div className="flex items-center gap-1.5 mb-2">
-                        <Percent className="h-3.5 w-3.5 text-muted-foreground" />
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">BMV Discount</p>
+                        <Percent className="h-3.5 w-3.5 text-gray-400" />
+                        <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">BMV Discount</p>
                       </div>
                       <p className={cn("text-2xl font-bold", Number(currentLead.bmvScore) >= 15 ? "text-green-600" : "text-red-600")}>
                         {Number(currentLead.bmvScore).toFixed(1)}%
@@ -2161,34 +2160,34 @@ export function VendorLeadDetailModal({
                         ) : (
                           <XCircle className="h-3 w-3 text-red-500" />
                         )}
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-gray-400">
                           {Number(currentLead.bmvScore) >= 15
                             ? "Meets 15% threshold"
                             : `${(15 - Number(currentLead.bmvScore)).toFixed(1)}% below threshold`}
                         </p>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 </div>
 
                 {/* ── Offer + Profit Cards ───────────────────────────────────────── */}
                 {currentLead.offerAmount !== null && (
                   <div className="grid grid-cols-2 gap-4">
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                          <Calculator className="h-4 w-4 text-muted-foreground" />
+                    <div className="ds-card overflow-hidden">
+                      <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                        <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                          <Calculator className="h-4 w-4 text-gray-400" />
                           Offer Calculation
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2.5">
+                        </h3>
+                      </div>
+                      <div className="p-5 space-y-2.5">
                         <div className="flex justify-between items-center text-sm">
-                          <span className="text-muted-foreground">Market Value</span>
+                          <span className="text-gray-400">Market Value</span>
                           <span className="font-medium">{formatCurrency(currentLead.estimatedMarketValue)}</span>
                         </div>
                         {currentLead.offerPercentage !== null && (
                           <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">
+                            <span className="text-gray-400">
                               Offer at {Number(currentLead.offerPercentage).toFixed(1)}% of MV
                             </span>
                             <span className="font-medium text-blue-600">{formatCurrency(currentLead.offerAmount)}</span>
@@ -2196,7 +2195,7 @@ export function VendorLeadDetailModal({
                         )}
                         {currentLead.estimatedRefurbCost !== null && currentLead.estimatedRefurbCost > 0 && (
                           <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">Refurb Allowance</span>
+                            <span className="text-gray-400">Refurb Allowance</span>
                             <span className="font-medium text-orange-600">−{formatCurrency(currentLead.estimatedRefurbCost)}</span>
                           </div>
                         )}
@@ -2204,29 +2203,29 @@ export function VendorLeadDetailModal({
                           <span className="text-sm font-semibold">Recommended Offer</span>
                           <span className="font-bold">{formatCurrency(currentLead.offerAmount)}</span>
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
 
                     {currentLead.profitPotential !== null && (
-                      <Card className={cn("border", Number(currentLead.profitPotential) >= 10000 ? "border-green-300" : "border-red-300")}>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                            <Target className="h-4 w-4 text-muted-foreground" />
+                      <div className={cn("ds-card overflow-hidden border", Number(currentLead.profitPotential) >= 10000 ? "border-green-300" : "border-red-300")}>
+                        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                          <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                            <Target className="h-4 w-4 text-gray-400" />
                             Profit Analysis
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2.5">
+                          </h3>
+                        </div>
+                        <div className="p-5 space-y-2.5">
                           <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">Market Value</span>
+                            <span className="text-gray-400">Market Value</span>
                             <span className="font-medium">{formatCurrency(currentLead.estimatedMarketValue)}</span>
                           </div>
                           <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">Less: Our Offer</span>
+                            <span className="text-gray-400">Less: Our Offer</span>
                             <span className="font-medium text-red-600">−{formatCurrency(currentLead.offerAmount)}</span>
                           </div>
                           {currentLead.estimatedRefurbCost !== null && currentLead.estimatedRefurbCost > 0 && (
                             <div className="flex justify-between items-center text-sm">
-                              <span className="text-muted-foreground">Less: Refurb Cost</span>
+                              <span className="text-gray-400">Less: Refurb Cost</span>
                               <span className="font-medium text-red-600">−{formatCurrency(currentLead.estimatedRefurbCost)}</span>
                             </div>
                           )}
@@ -2242,33 +2241,33 @@ export function VendorLeadDetailModal({
                                 ) : (
                                   <XCircle className="h-3 w-3 text-red-500" />
                                 )}
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-xs text-gray-400">
                                   {Number(currentLead.profitPotential) >= 10000 ? "Meets £10k threshold" : "Below £10k threshold"}
                                 </p>
                               </div>
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
 
                 {/* ── Strategy Analysis ─────────────────────────────────────────── */}
                 {parsedNotes?.strategyData && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-semibold flex items-center justify-between">
+                  <div className="ds-card overflow-hidden">
+                    <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                      <h3 className="text-sm font-semibold text-gray-900 flex items-center justify-between">
                         <span className="flex items-center gap-2">
-                          <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                          <BarChart3 className="h-4 w-4 text-gray-400" />
                           Investment Strategy Analysis
                         </span>
                         <Badge className="bg-blue-100 text-blue-800 border-blue-300 border text-xs font-semibold">
                           Recommended: {parsedNotes.strategyData.strategies.find(s => s.key === parsedNotes.strategyData!.recommended)?.name ?? parsedNotes.strategyData.recommended}
                         </Badge>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
+                      </h3>
+                    </div>
+                    <div className="p-5">
                       <div className="grid grid-cols-2 gap-3">
                         {parsedNotes.strategyData.strategies.map((s) => {
                           const isRec = s.key === parsedNotes.strategyData!.recommended
@@ -2278,10 +2277,10 @@ export function VendorLeadDetailModal({
                               className={cn(
                                 "rounded-lg border p-3 flex flex-col gap-1.5",
                                 isRec
-                                  ? "border-blue-300 bg-blue-50 dark:bg-blue-950/20"
+                                  ? "border-blue-300 bg-blue-50"
                                   : s.viable
-                                  ? "border-green-200 bg-green-50/50 dark:bg-green-950/10"
-                                  : "border-muted bg-muted/30 opacity-60"
+                                  ? "border-green-200 bg-green-50/50"
+                                  : "border-muted bg-gray-50 opacity-60"
                               )}
                             >
                               <div className="flex items-center justify-between">
@@ -2296,10 +2295,10 @@ export function VendorLeadDetailModal({
                                     : <XCircle className="h-3.5 w-3.5 text-red-400" />}
                                 </div>
                               </div>
-                              <div className="space-y-0.5 text-xs text-muted-foreground">
+                              <div className="space-y-0.5 text-xs text-gray-400">
                                 <div className="flex justify-between">
                                   <span>Max offer</span>
-                                  <span className={cn("font-medium", s.viable ? "text-foreground" : "")}>
+                                  <span className={cn("font-medium", s.viable ? "text-gray-900" : "")}>
                                     {formatCurrency(s.maxOffer)}
                                   </span>
                                 </div>
@@ -2322,35 +2321,35 @@ export function VendorLeadDetailModal({
                           )
                         })}
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 )}
 
                 {/* ── Investment Criteria Checklist ──────────────────────────────── */}
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                      <ListChecks className="h-4 w-4 text-muted-foreground" />
+                <div className="ds-card overflow-hidden">
+                  <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                    <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                      <ListChecks className="h-4 w-4 text-gray-400" />
                       Investment Criteria
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                    </h3>
+                  </div>
+                  <div className="p-5">
                     <div className="space-y-2">
                       {currentLead.bmvScore !== null && (() => {
                         const pass = Number(currentLead.bmvScore) >= 15
                         return (
-                          <div className={cn("flex items-center justify-between p-3 rounded-lg", pass ? "bg-green-50 dark:bg-green-950/20" : "bg-red-50 dark:bg-red-950/20")}>
+                          <div className={cn("flex items-center justify-between p-3 rounded-lg", pass ? "bg-green-50" : "bg-red-50")}>
                             <div className="flex items-center gap-2 min-w-0">
                               {pass ? <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" /> : <XCircle className="h-4 w-4 text-red-600 shrink-0" />}
                               <span className="text-sm font-medium">BMV ≥ 15%</span>
-                              <span className="text-xs text-muted-foreground hidden sm:inline">asking price discount from market value</span>
+                              <span className="text-xs text-gray-400 hidden sm:inline">asking price discount from market value</span>
                             </div>
                             <div className="text-right shrink-0 ml-4">
                               <span className={cn("text-sm font-bold", pass ? "text-green-600" : "text-red-600")}>
                                 {Number(currentLead.bmvScore).toFixed(1)}%
                               </span>
                               {!pass && (
-                                <p className="text-xs text-muted-foreground">{(15 - Number(currentLead.bmvScore)).toFixed(1)}% short</p>
+                                <p className="text-xs text-gray-400">{(15 - Number(currentLead.bmvScore)).toFixed(1)}% short</p>
                               )}
                             </div>
                           </div>
@@ -2359,36 +2358,36 @@ export function VendorLeadDetailModal({
                       {currentLead.profitPotential !== null && (() => {
                         const pass = Number(currentLead.profitPotential) >= 10000
                         return (
-                          <div className={cn("flex items-center justify-between p-3 rounded-lg", pass ? "bg-green-50 dark:bg-green-950/20" : "bg-red-50 dark:bg-red-950/20")}>
+                          <div className={cn("flex items-center justify-between p-3 rounded-lg", pass ? "bg-green-50" : "bg-red-50")}>
                             <div className="flex items-center gap-2 min-w-0">
                               {pass ? <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" /> : <XCircle className="h-4 w-4 text-red-600 shrink-0" />}
                               <span className="text-sm font-medium">Net Profit ≥ £10,000</span>
-                              <span className="text-xs text-muted-foreground hidden sm:inline">market value minus offer and refurb</span>
+                              <span className="text-xs text-gray-400 hidden sm:inline">market value minus offer and refurb</span>
                             </div>
                             <div className="text-right shrink-0 ml-4">
                               <span className={cn("text-sm font-bold", pass ? "text-green-600" : "text-red-600")}>
                                 {formatCurrency(currentLead.profitPotential)}
                               </span>
                               {!pass && Number(currentLead.profitPotential) > 0 && (
-                                <p className="text-xs text-muted-foreground">£{(10000 - Number(currentLead.profitPotential)).toLocaleString()} short</p>
+                                <p className="text-xs text-gray-400">£{(10000 - Number(currentLead.profitPotential)).toLocaleString()} short</p>
                               )}
                             </div>
                           </div>
                         )
                       })()}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
 
                 {/* ── Rental Yield Analysis ─────────────────────────────────────── */}
                 {parsedNotes?.rentalYield && (
-                  <Card>
-                    <CardHeader className="pb-2">
+                  <div className="ds-card overflow-hidden">
+                    <div className="px-5 py-4 border-b border-[var(--ds-border)]">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                          <Home className="h-4 w-4 text-muted-foreground" />
+                        <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                          <Home className="h-4 w-4 text-gray-400" />
                           Rental Yield Analysis
-                        </CardTitle>
+                        </h3>
                         {parsedNotes.rentalYield.passed !== undefined && (
                           <Badge className={cn("border text-xs", parsedNotes.rentalYield.passed
                             ? "bg-green-100 text-green-800 border-green-300"
@@ -2397,43 +2396,43 @@ export function VendorLeadDetailModal({
                           </Badge>
                         )}
                       </div>
-                    </CardHeader>
-                    <CardContent>
+                    </div>
+                    <div className="p-5">
                       <div className="grid grid-cols-2 gap-x-8 gap-y-2.5">
                         {parsedNotes.rentalYield.monthlyRent !== undefined && (
                           <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">Monthly Rent</span>
+                            <span className="text-gray-400">Monthly Rent</span>
                             <span className="font-medium">£{parsedNotes.rentalYield.monthlyRent.toLocaleString()}</span>
                           </div>
                         )}
                         {parsedNotes.rentalYield.annualRent !== undefined && (
                           <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">Annual Rent</span>
+                            <span className="text-gray-400">Annual Rent</span>
                             <span className="font-medium">£{parsedNotes.rentalYield.annualRent.toLocaleString()}</span>
                           </div>
                         )}
                         {parsedNotes.rentalYield.grossYield !== undefined && (
                           <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">Gross Yield</span>
+                            <span className="text-gray-400">Gross Yield</span>
                             <div className="text-right">
                               <span className={cn("font-bold", parsedNotes.rentalYield.grossYield >= 7 ? "text-green-600" : "text-amber-600")}>
                                 {parsedNotes.rentalYield.grossYield.toFixed(2)}%
                               </span>
                               {parsedNotes.rentalYield.grossYieldLabel && (
-                                <span className="text-xs text-muted-foreground ml-1.5">({parsedNotes.rentalYield.grossYieldLabel})</span>
+                                <span className="text-xs text-gray-400 ml-1.5">({parsedNotes.rentalYield.grossYieldLabel})</span>
                               )}
                             </div>
                           </div>
                         )}
                         {parsedNotes.rentalYield.netYield !== undefined && (
                           <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">Net Yield</span>
+                            <span className="text-gray-400">Net Yield</span>
                             <span className="font-medium">{parsedNotes.rentalYield.netYield.toFixed(2)}%</span>
                           </div>
                         )}
                         {parsedNotes.rentalYield.cashFlow !== undefined && (
                           <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">Est. Monthly Cash Flow</span>
+                            <span className="text-gray-400">Est. Monthly Cash Flow</span>
                             <span className={cn("font-medium", parsedNotes.rentalYield.cashFlow >= 0 ? "text-green-600" : "text-red-600")}>
                               £{parsedNotes.rentalYield.cashFlow.toLocaleString()}/mo
                             </span>
@@ -2441,24 +2440,24 @@ export function VendorLeadDetailModal({
                         )}
                         {parsedNotes.rentalYield.dataSource !== undefined && (
                           <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">Data Source</span>
+                            <span className="text-gray-400">Data Source</span>
                             <span>{parsedNotes.rentalYield.dataSource}</span>
                           </div>
                         )}
                       </div>
                       {parsedNotes.rentalYield.note && (
-                        <p className="mt-3 text-xs text-muted-foreground italic border-t pt-2">
+                        <p className="mt-3 text-xs text-gray-400 italic border-t pt-2">
                           💡 {parsedNotes.rentalYield.note}
                         </p>
                       )}
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 )}
 
                 {/* ── Market Value Source ───────────────────────────────────────── */}
                 {parsedNotes?.marketValueSource && (
-                  <Card className="bg-muted/30">
-                    <CardContent className="py-3 px-4">
+                  <div className="ds-card overflow-hidden bg-gray-50">
+                    <div className="py-3 px-4">
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="flex items-center gap-2 mr-1">
                           <BarChart3 className="h-4 w-4 text-blue-500" />
@@ -2479,25 +2478,25 @@ export function VendorLeadDetailModal({
                           </Badge>
                         )}
                         {parsedNotes.creditsUsed !== null && (
-                          <span className="text-xs text-muted-foreground ml-auto">
+                          <span className="text-xs text-gray-400 ml-auto">
                             {parsedNotes.creditsUsed} API credit{parsedNotes.creditsUsed !== 1 ? "s" : ""} used
                           </span>
                         )}
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 )}
 
                 {/* ── Failure Reasons ───────────────────────────────────────────── */}
                 {!currentLead.validationPassed && parsedNotes?.failureReasons && parsedNotes.failureReasons.length > 0 && (
-                  <Card className="border-red-200 dark:border-red-900">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-semibold text-red-700 dark:text-red-400 flex items-center gap-2">
+                  <div className="ds-card overflow-hidden border-red-200">
+                    <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                      <h3 className="text-sm font-semibold text-red-700 flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4" />
                         Why This Deal Failed
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
+                      </h3>
+                    </div>
+                    <div className="p-5">
                       <ul className="space-y-2">
                         {parsedNotes.failureReasons.map((reason, i) => (
                           <li key={i} className="flex items-start gap-2 text-sm">
@@ -2506,8 +2505,8 @@ export function VendorLeadDetailModal({
                           </li>
                         ))}
                       </ul>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 )}
               </>
             )}
@@ -2563,21 +2562,21 @@ export function VendorLeadDetailModal({
             )}
 
             {currentLead.offerAmount === null ? (
-              <Card>
-                <CardContent className="py-12">
-                  <div className="text-center text-muted-foreground">
+              <div className="ds-card overflow-hidden">
+                <div className="px-5 py-12">
+                  <div className="text-center text-gray-400">
                     <Calculator className="h-12 w-12 mx-auto mb-3 opacity-50" />
                     <p className="text-lg font-medium">No Offer Calculated Yet</p>
                     <p className="text-sm mt-2">Run &quot;Calculate BMV&quot; in the Validation tab to generate an offer</p>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ) : (
               <>
                 {/* Key Metrics Overview */}
                 <div className="grid grid-cols-3 gap-4">
-                  <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-                    <CardContent className="pt-6">
+                  <div className="ds-card overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                    <div className="p-5">
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-sm font-medium text-blue-700 mb-1">Our Offer</p>
@@ -2590,11 +2589,11 @@ export function VendorLeadDetailModal({
                         </div>
                         <Wallet className="h-8 w-8 text-blue-600 opacity-80" />
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
 
-                  <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
-                    <CardContent className="pt-6">
+                  <div className="ds-card overflow-hidden bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
+                    <div className="p-5">
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-sm font-medium text-amber-700 mb-1">Asking Price</p>
@@ -2607,11 +2606,11 @@ export function VendorLeadDetailModal({
                         </div>
                         <Home className="h-8 w-8 text-amber-600 opacity-80" />
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
 
-                  <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-                    <CardContent className="pt-6">
+                  <div className="ds-card overflow-hidden bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                    <div className="p-5">
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-sm font-medium text-purple-700 mb-1">Market Value</p>
@@ -2626,20 +2625,20 @@ export function VendorLeadDetailModal({
                         </div>
                         <Target className="h-8 w-8 text-purple-600 opacity-80" />
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Investment Returns */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                <div className="ds-card overflow-hidden">
+                  <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                    <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
                       <TrendingUp className="h-5 w-5 text-green-600" />
                       Investment Returns
-                    </CardTitle>
-                    <CardDescription>Key metrics for this deal</CardDescription>
-                  </CardHeader>
-                  <CardContent>
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-0.5">Key metrics for this deal</p>
+                  </div>
+                  <div className="p-5">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {currentLead.bmvScore && (
                         <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
@@ -2675,13 +2674,13 @@ export function VendorLeadDetailModal({
                         </div>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
 
                 {/* Offer Strategy */}
-                <Card className="bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200">
-                  <CardHeader>
-                    <CardTitle className="text-slate-800 flex items-center gap-2">
+                <div className="ds-card overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200">
+                  <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                    <h3 className="font-semibold text-slate-800 flex items-center gap-2">
                       Offer Strategy
                       {landRegistryUsed && (
                         <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 border gap-1 font-medium text-xs">
@@ -2689,15 +2688,15 @@ export function VendorLeadDetailModal({
                           Land Registry
                         </Badge>
                       )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                    </h3>
+                  </div>
+                  <div className="p-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                       {currentLead.offerAmount !== null && currentLead.askingPrice !== null && (
-                        <div className="flex items-start gap-2.5 rounded-lg bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-slate-700 p-3">
+                        <div className="flex items-start gap-2.5 rounded-lg bg-white/70 border border-slate-200 p-3">
                           <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
                           <div className="min-w-0">
-                            <p className="font-medium text-slate-900 dark:text-slate-100">
+                            <p className="font-medium text-slate-900">
                               {formatCurrency(currentLead.offerAmount)} — {(((Number(currentLead.askingPrice) - Number(currentLead.offerAmount)) / Number(currentLead.askingPrice)) * 100).toFixed(1)}% below asking
                             </p>
                             <p className="text-slate-500 text-xs mt-0.5">
@@ -2711,10 +2710,10 @@ export function VendorLeadDetailModal({
                       )}
 
                       {currentLead.offerPercentage && (
-                        <div className="flex items-start gap-2.5 rounded-lg bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-slate-700 p-3">
+                        <div className="flex items-start gap-2.5 rounded-lg bg-white/70 border border-slate-200 p-3">
                           <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
                           <div className="min-w-0">
-                            <p className="font-medium text-slate-900 dark:text-slate-100">Vendor motivation adjusted</p>
+                            <p className="font-medium text-slate-900">Vendor motivation adjusted</p>
                             <p className="text-slate-500 text-xs mt-0.5">
                               {currentLead.motivationScore && `Motivation ${currentLead.motivationScore}/10`}
                               {currentLead.urgencyLevel && ` · ${currentLead.urgencyLevel}`}
@@ -2725,10 +2724,10 @@ export function VendorLeadDetailModal({
                       )}
 
                       {landRegistryUsed && landRegistryOwnership && (
-                        <div className="flex items-start gap-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 p-3">
+                        <div className="flex items-start gap-2.5 rounded-lg bg-emerald-50 border border-emerald-200 p-3">
                           <Building2 className="h-4 w-4 text-emerald-600 flex-shrink-0 mt-0.5" />
                           <div className="min-w-0">
-                            <p className="font-medium text-slate-900 dark:text-slate-100">Land Registry applied</p>
+                            <p className="font-medium text-slate-900">Land Registry applied</p>
                             <p className="text-slate-500 text-xs mt-0.5">
                               {landRegistryOwnership.companyName}
                               {landRegistryOwnership.isCorporateOwned && " · Corporate (-2%)"}
@@ -2740,20 +2739,20 @@ export function VendorLeadDetailModal({
                       )}
 
                       {currentLead.bmvScore && Number(currentLead.bmvScore) >= 15 && (
-                        <div className="flex items-start gap-2.5 rounded-lg bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-slate-700 p-3">
+                        <div className="flex items-start gap-2.5 rounded-lg bg-white/70 border border-slate-200 p-3">
                           <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
                           <div className="min-w-0">
-                            <p className="font-medium text-slate-900 dark:text-slate-100">{Number(currentLead.bmvScore).toFixed(1)}% BMV ✓</p>
+                            <p className="font-medium text-slate-900">{Number(currentLead.bmvScore).toFixed(1)}% BMV ✓</p>
                             <p className="text-slate-500 text-xs mt-0.5">Exceeds 15% minimum threshold</p>
                           </div>
                         </div>
                       )}
 
                       {currentLead.profitPotential && Number(currentLead.profitPotential) >= 10000 && (
-                        <div className="flex items-start gap-2.5 rounded-lg bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-slate-700 p-3">
+                        <div className="flex items-start gap-2.5 rounded-lg bg-white/70 border border-slate-200 p-3">
                           <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
                           <div className="min-w-0">
-                            <p className="font-medium text-slate-900 dark:text-slate-100">Profit potential ✓</p>
+                            <p className="font-medium text-slate-900">Profit potential ✓</p>
                             <p className="text-slate-500 text-xs mt-0.5">
                               {formatCurrency(currentLead.profitPotential)} net after costs
                             </p>
@@ -2762,10 +2761,10 @@ export function VendorLeadDetailModal({
                       )}
 
                       {currentLead.estimatedMonthlyRent && (
-                        <div className="flex items-start gap-2.5 rounded-lg bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-slate-700 p-3">
+                        <div className="flex items-start gap-2.5 rounded-lg bg-white/70 border border-slate-200 p-3">
                           <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
                           <div className="min-w-0">
-                            <p className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(currentLead.estimatedMonthlyRent)}/mo rental</p>
+                            <p className="font-medium text-slate-900">{formatCurrency(currentLead.estimatedMonthlyRent)}/mo rental</p>
                             <p className="text-slate-500 text-xs mt-0.5">
                               {currentLead.offerAmount && currentLead.estimatedAnnualRent && (
                                 <>{((Number(currentLead.estimatedAnnualRent) / Number(currentLead.offerAmount)) * 100).toFixed(2)}% gross yield</>
@@ -2775,30 +2774,30 @@ export function VendorLeadDetailModal({
                         </div>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
 
                 {/* Additional Info */}
                 {(currentLead.offerSentAt || currentLead.retryCount > 0) && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Offer History</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
+                  <div className="ds-card overflow-hidden">
+                    <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                      <h3 className="text-base font-semibold text-gray-900">Offer History</h3>
+                    </div>
+                    <div className="p-5 space-y-3">
                       {currentLead.offerSentAt && (
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Offer Sent</span>
+                          <span className="text-gray-400">Offer Sent</span>
                           <span className="font-medium">{formatDate(currentLead.offerSentAt)}</span>
                         </div>
                       )}
                       {currentLead.retryCount > 0 && (
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Follow-up Attempts</span>
+                          <span className="text-gray-400">Follow-up Attempts</span>
                           <Badge variant="outline">{currentLead.retryCount}</Badge>
                         </div>
                       )}
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 )}
               </>
             )}
@@ -2880,19 +2879,19 @@ export function VendorLeadDetailModal({
               const events = currentLead.pipelineEvents ?? []
 
               return (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-primary" />
+                <div className="ds-card overflow-hidden">
+                  <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                    <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-[#2563EB]" />
                       Pipeline Activity
-                    </CardTitle>
-                    <CardDescription className="text-xs">
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-0.5">
                       {events.length} event{events.length !== 1 ? "s" : ""} recorded
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
+                    </p>
+                  </div>
+                  <div className="p-5">
                     {events.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-8">No activity recorded yet</p>
+                      <p className="text-sm text-gray-400 text-center py-8">No activity recorded yet</p>
                     ) : (
                       <ol className="relative border-l border-border ml-3 space-y-5">
                         {events.map((ev: PipelineEvent) => {
@@ -2904,8 +2903,8 @@ export function VendorLeadDetailModal({
                                 color
                               )} />
                               <p className="text-sm font-medium leading-tight">{title}</p>
-                              {detail && <p className="text-xs text-muted-foreground mt-0.5">{detail}</p>}
-                              <time suppressHydrationWarning className="text-xs text-muted-foreground/70 mt-0.5 block">
+                              {detail && <p className="text-xs text-gray-400 mt-0.5">{detail}</p>}
+                              <time suppressHydrationWarning className="text-xs text-gray-400/70 mt-0.5 block">
                                 {formatDate(ev.createdAt)}
                               </time>
                             </li>
@@ -2913,8 +2912,8 @@ export function VendorLeadDetailModal({
                         })}
                       </ol>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )
             })()}
           </TabsContent>
