@@ -305,7 +305,7 @@ export function ContactDetailModal({
               <TabsTrigger value="links">
                 Links
                 {(contact._count.vendorLeads + contact._count.investors) > 0 && (
-                  <span className="ml-1.5 bg-primary/10 text-[#2563EB] rounded-full px-1.5 py-0.5 text-[10px] font-semibold">
+                  <span className="ml-1.5 bg-[#2563EB]/10 text-[#2563EB] rounded-full px-1.5 py-0.5 text-[10px] font-semibold">
                     {contact._count.vendorLeads + contact._count.investors}
                   </span>
                 )}
@@ -425,9 +425,9 @@ export function ContactDetailModal({
                       >
                         <div className="flex items-center gap-2 flex-wrap">
                           {contact.sraVerified ? (
-                            <span className="font-medium text-green-700 dark:text-green-400">{contact.sraStatus ?? "Authorised"}</span>
+                            <span className="font-medium text-green-700">{contact.sraStatus ?? "Authorised"}</span>
                           ) : (
-                            <span className="font-medium text-amber-600 dark:text-amber-400">{contact.sraStatus ?? "Not verified"}</span>
+                            <span className="font-medium text-amber-600">{contact.sraStatus ?? "Not verified"}</span>
                           )}
                           {contact.sraVerifiedAt && (() => {
                             const days = Math.floor((Date.now() - new Date(contact.sraVerifiedAt).getTime()) / 86400000)

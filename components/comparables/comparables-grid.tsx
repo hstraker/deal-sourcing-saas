@@ -192,7 +192,7 @@ export function ComparablesGrid({
             variant="outline"
             size="icon"
             onClick={() => setShowFilters(!showFilters)}
-            className={activeFiltersCount > 0 ? "border-primary" : ""}
+            className={activeFiltersCount > 0 ? "border-[#2563EB]" : ""}
           >
             <SlidersHorizontal className="h-4 w-4" />
             {activeFiltersCount > 0 && (

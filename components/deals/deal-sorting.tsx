@@ -76,7 +76,7 @@ export function DealSorting({ sortConfig, onSortChange }: DealSortingProps) {
       </Select>
       <button
         onClick={handleDirectionToggle}
-        className="rounded-md border border-input bg-background p-2 hover:bg-accent hover:text-accent-foreground transition-colors"
+        className="rounded-md border border-[var(--ds-border)] bg-white p-2 hover:bg-gray-50 hover:text-gray-900 transition-colors"
         aria-label={`Sort ${sortConfig.direction === "asc" ? "descending" : "ascending"}`}
       >
         <ArrowUpDown

@@ -1,9 +1,9 @@
 "use client"
+import { toast } from "sonner"
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { FileDown, Loader2 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
 
 interface GenerateInvestorPackButtonProps {
   dealId: string
@@ -12,7 +12,6 @@ interface GenerateInvestorPackButtonProps {
 
 export function GenerateInvestorPackButton({ dealId, dealAddress }: GenerateInvestorPackButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false)
-  const { toast } = useToast()
 
   const handleGenerateInvestorPack = async () => {
     setIsGenerating(true)
@@ -40,15 +39,12 @@ export function GenerateInvestorPackButton({ dealId, dealAddress }: GenerateInve
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
 
-      toast({
-        title: "Success",
+      toast.success("Success", {
         description: "Investor pack generated successfully",
       })
     } catch (error) {
       console.error("Error generating investor pack:", error)
-      toast({
-        variant: "destructive",
-        title: "Error",
+      toast.error("Error", {
         description: error instanceof Error ? error.message : "Failed to generate investor pack",
       })
     } finally {

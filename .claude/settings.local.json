@@ -29,7 +29,9 @@
       "Bash(npx prisma db execute:*)",
       "Bash(PGPASSWORD=dev_password_123 psql:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(/tmp/fix-cards.pl:*)",
+      "Bash(chmod:*)"
     ]
   }
 }

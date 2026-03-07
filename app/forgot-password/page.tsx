@@ -6,7 +6,6 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function ForgotPasswordPage() {
   const router = useRouter()
@@ -46,14 +45,13 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Reset Password</CardTitle>
-          <CardDescription>
+      <div className="ds-card overflow-hidden w-full max-w-md">        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900 text-2xl font-bold">Reset Password</h3>
+          <p className="text-xs text-gray-400 mt-0.5">
             Enter your email address and we&apos;ll send you a link to reset your password
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div className="p-5">
           {success ? (
             <div className="space-y-4">
               <div className="rounded-md bg-green-50 p-3 text-sm text-green-800">
@@ -93,8 +91,8 @@ export default function ForgotPasswordPage() {
               </div>
             </form>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

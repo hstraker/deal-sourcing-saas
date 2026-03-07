@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Loader2, Home, Calendar, MapPin, ArrowRight, TrendingUp } from "lucide-react"
@@ -63,35 +62,32 @@ export function RecentComparablesCard({ limit = 10 }: { limit?: number }) {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Home className="h-5 w-5" />
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">            <Home className="h-5 w-5" />
             Recent Comparables
-          </CardTitle>
-          <CardDescription>Latest comparable properties fetched</CardDescription>
-        </CardHeader>
-        <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-        </CardContent>
-      </Card>
+          </h3>
+          <p className="text-xs text-gray-400 mt-0.5">Latest comparable properties fetched</p>
+        </div>
+        <div className="p-5 flex items-center justify-center py-8">          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+        </div>
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <div className="ds-card overflow-hidden">
+      <div className="px-5 py-4 border-b border-[var(--ds-border)]">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              <Home className="h-5 w-5" />
+            <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">              <Home className="h-5 w-5" />
               Recent Comparables
-            </CardTitle>
-            <CardDescription>
+            </h3>
+            <p className="text-xs text-gray-400 mt-0.5">
               {comparables.length === 0
                 ? "No comparables fetched yet"
                 : `${comparables.length} most recent properties`}
-            </CardDescription>
+            </p>
           </div>
           <Button variant="ghost" size="sm" asChild>
             <Link href="/dashboard/vendors">
@@ -100,8 +96,8 @@ export function RecentComparablesCard({ limit = 10 }: { limit?: number }) {
             </Link>
           </Button>
         </div>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div className="p-5">
         {comparables.length === 0 ? (
           <div className="text-center py-8 text-gray-400">
             <p>No comparable properties have been fetched yet.</p>
@@ -164,7 +160,7 @@ export function RecentComparablesCard({ limit = 10 }: { limit?: number }) {
             ))}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

@@ -1,6 +1,5 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Tooltip,
   TooltipContent,
@@ -38,10 +37,9 @@ export function MetricCard({
 }: MetricCardProps) {
   return (
     <TooltipProvider>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            {title}
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900 text-sm font-medium flex items-center gap-2">            {title}
             {tooltip && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -52,10 +50,10 @@ export function MetricCard({
                 </TooltipContent>
               </Tooltip>
             )}
-          </CardTitle>
+          </h3>
           {icon}
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="p-5">
           <div className="flex items-baseline justify-between">
             <div>
               <div className="text-2xl font-bold">{value}</div>
@@ -74,8 +72,8 @@ export function MetricCard({
               {trend.value}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </TooltipProvider>
   )
 }

@@ -353,7 +353,7 @@ export function SendPackModal({
               Investor *
             </Label>
             {initialInvestorId ? (
-              <div className="flex items-center gap-2 rounded-md border border-border bg-gray-100 px-3 py-2.5">
+              <div className="flex items-center gap-2 rounded-md border border-[var(--ds-border)] bg-gray-100 px-3 py-2.5">
                 <User className="h-4 w-4 shrink-0 text-gray-400" />
                 <span className="text-sm font-medium">{initialInvestorName || "Selected Investor"}</span>
               </div>

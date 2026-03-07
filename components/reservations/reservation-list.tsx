@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -173,22 +172,22 @@ export function ReservationList({ dealId, initialReservations = [] }: Reservatio
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <div className="ds-card overflow-hidden">
+      <div className="px-5 py-4 border-b border-[var(--ds-border)]">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Investor Reservations</CardTitle>
-            <CardDescription>
+            <h3 className="text-sm font-semibold text-gray-900">Investor Reservations</h3>
+            <p className="text-xs text-gray-400 mt-0.5">
               Manage reservations and track proof of funds
-            </CardDescription>
+            </p>
           </div>
           <Button onClick={handleCreate} size="sm">
             <Plus className="mr-2 h-4 w-4" />
             New Reservation
           </Button>
         </div>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div className="p-5">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
@@ -317,7 +316,7 @@ export function ReservationList({ dealId, initialReservations = [] }: Reservatio
             </Table>
           </div>
         )}
-      </CardContent>
+      </div>
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -342,7 +341,7 @@ export function ReservationList({ dealId, initialReservations = [] }: Reservatio
           />
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   )
 }
 

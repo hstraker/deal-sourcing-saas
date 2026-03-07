@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Loader2, Plus, User, Phone, Mail, MapPin, FileText } from "lucide-react"
 import { VendorForm } from "./vendor-form"
@@ -114,22 +113,21 @@ export function VendorSection({ dealId, vendorId }: VendorSectionProps) {
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center p-8">
-          <Loader2 className="h-6 w-6 animate-spin" />
-        </CardContent>
-      </Card>
+      <div className="ds-card overflow-hidden">
+        <div className="p-5 flex items-center justify-center p-8">          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      </div>
     )
   }
 
   if (!vendor) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Vendor Information</CardTitle>
-          <CardDescription>No vendor assigned to this deal</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900">Vendor Information</h3>
+          <p className="text-xs text-gray-400 mt-0.5">No vendor assigned to this deal</p>
+        </div>
+        <div className="p-5">
           <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
@@ -149,22 +147,22 @@ export function VendorSection({ dealId, vendorId }: VendorSectionProps) {
             <Plus className="mr-2 h-4 w-4" />
             Add Vendor
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
           <div>
-            <CardTitle>Vendor Information</CardTitle>
-            <CardDescription>
+            <h3 className="text-sm font-semibold text-gray-900">Vendor Information</h3>
+            <p className="text-xs text-gray-400 mt-0.5">
               {vendor.firstName || vendor.lastName
                 ? `${vendor.firstName || ""} ${vendor.lastName || ""}`.trim()
                 : "Vendor Details"}
-            </CardDescription>
+            </p>
           </div>
           <div className="flex items-center gap-2">
             {getStatusBadge(vendor.status)}
@@ -191,8 +189,8 @@ export function VendorSection({ dealId, vendorId }: VendorSectionProps) {
               Edit
             </Button>
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="p-5">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-4">
               <div>
@@ -277,8 +275,8 @@ export function VendorSection({ dealId, vendorId }: VendorSectionProps) {
               <p className="text-sm whitespace-pre-wrap">{vendor.notes}</p>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <Tabs defaultValue="offers" className="w-full">
         <TabsList>

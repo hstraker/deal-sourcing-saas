@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import {
   ChevronLeft,
@@ -172,9 +171,9 @@ export function PhotoGallery({
       {!hideThumbnails && (
         <div className={cn("grid gap-2 sm:grid-cols-2 lg:grid-cols-3", className)}>
           {photos.map((photo, index) => (
-          <Card
+          <div
             key={photo.id}
-            className="group relative cursor-pointer overflow-hidden border transition-all hover:shadow-lg"
+            className="ds-card group relative cursor-pointer overflow-hidden transition-all hover:shadow-md"
             onClick={() => openLightbox(index)}
           >
             <div className={cn("relative w-full", thumbnailClasses[thumbnailSize])}>
@@ -185,7 +184,7 @@ export function PhotoGallery({
                 className="object-cover transition-transform group-hover:scale-105"
               />
               {showCoverBadge && photo.isCover && (
-                <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-primary px-2 py-1 text-xs font-semibold text-[#2563EB]-foreground">
+                <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-[#2563EB] px-2 py-1 text-xs font-semibold text-white">
                   <Crown className="h-3 w-3" />
                   Cover
                 </span>
@@ -197,7 +196,7 @@ export function PhotoGallery({
                 {photo.caption}
               </div>
             )}
-          </Card>
+          </div>
           ))}
         </div>
       )}

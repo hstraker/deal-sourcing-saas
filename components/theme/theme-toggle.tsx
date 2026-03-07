@@ -21,7 +21,7 @@ export function ThemeToggle() {
             variant="outline"
             size="icon"
             aria-label="Select theme"
-            className="bg-background/80 backdrop-blur hover:bg-background shadow-lg"
+            className="bg-white/80 backdrop-blur hover:bg-white shadow-lg"
           >
             {theme === "dark" ? (
               <Moon className="h-4 w-4" />

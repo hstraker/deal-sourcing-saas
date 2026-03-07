@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -395,9 +394,7 @@ export function ScraperOverview({
 
         {/* Stats summary card (spans 2 cols on lg) */}
         <div className="col-span-2 sm:col-span-4 lg:col-span-2">
-          <Card className="h-full">
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-center justify-between">
+          <div className="ds-card overflow-hidden h-full">            <div className="p-5 p-4 space-y-3">              <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold">Overview</span>
                 <div className="flex gap-2">
                   <Link href="/dashboard/settings/scraper">
@@ -421,25 +418,25 @@ export function ScraperOverview({
               {/* Counts grid */}
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="rounded-md bg-gray-50 px-3 py-2">
-                  <div className="text-lg font-bold text-blue-700 dark:text-blue-400">
+                  <div className="text-lg font-bold text-blue-700">
                     {stats.totalListings}
                   </div>
                   <div className="text-[11px] text-gray-400">Total</div>
                 </div>
                 <div className="rounded-md bg-gray-50 px-3 py-2">
-                  <div className="text-lg font-bold text-amber-700 dark:text-amber-400">
+                  <div className="text-lg font-bold text-amber-700">
                     {stats.pendingReview}
                   </div>
                   <div className="text-[11px] text-gray-400">Pending</div>
                 </div>
                 <div className="rounded-md bg-gray-50 px-3 py-2">
-                  <div className="text-lg font-bold text-green-700 dark:text-green-400">
+                  <div className="text-lg font-bold text-green-700">
                     {stats.byReviewStatus.find((s) => s.status === "APPROVED")?.count || 0}
                   </div>
                   <div className="text-[11px] text-gray-400">Approved</div>
                 </div>
                 <div className="rounded-md bg-gray-50 px-3 py-2">
-                  <div className="text-lg font-bold text-red-700 dark:text-red-400">
+                  <div className="text-lg font-bold text-red-700">
                     {stats.ambiguousCount}
                   </div>
                   <div className="text-[11px] text-gray-400">Ambiguous</div>
@@ -456,14 +453,14 @@ export function ScraperOverview({
                 <span className="text-gray-400">·</span>
                 <span className="text-orange-600 font-medium">{getSourceCount("PRIMELOCATION")} PL</span>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* ── 2. Criteria banner ── */}
       {!hasCriteria ? (
-        <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-md px-3 py-2">
+        <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
           <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
           <p>
             No search criteria configured. Go to{" "}
@@ -504,8 +501,8 @@ export function ScraperOverview({
                 key={job.source}
                 className={`flex items-center gap-3 text-sm rounded-md px-3 py-2 ${
                   job.status === "COMPLETED"
-                    ? "bg-green-50 text-green-800 dark:bg-green-950/30 dark:text-green-400"
-                    : "bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-400"
+                    ? "bg-green-50 text-green-800"
+                    : "bg-red-50 text-red-800"
                 }`}
               >
                 {job.status === "COMPLETED" ? (
@@ -532,7 +529,7 @@ export function ScraperOverview({
             onClick={() => setActiveTab("all")}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === "all"
-                ? "border-primary text-[#2563EB]"
+                ? "border-[#2563EB] text-[#2563EB]"
                 : "border-transparent text-gray-400 hover:text-gray-900"
             }`}
           >
@@ -546,7 +543,7 @@ export function ScraperOverview({
             onClick={() => setActiveTab("review")}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === "review"
-                ? "border-primary text-[#2563EB]"
+                ? "border-[#2563EB] text-[#2563EB]"
                 : "border-transparent text-gray-400 hover:text-gray-900"
             }`}
           >
@@ -562,7 +559,7 @@ export function ScraperOverview({
             onClick={() => setActiveTab("jobs")}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === "jobs"
-                ? "border-primary text-[#2563EB]"
+                ? "border-[#2563EB] text-[#2563EB]"
                 : "border-transparent text-gray-400 hover:text-gray-900"
             }`}
           >
@@ -588,11 +585,11 @@ export function ScraperOverview({
 
         {/* Job History tab */}
         {activeTab === "jobs" && (
-          <Card>
+          <div className="ds-card overflow-hidden">
             <div className="px-6 pt-4 pb-2">
               <h3 className="text-lg font-semibold">Recent Scraper Jobs</h3>
             </div>
-            <CardContent>
+            <div className="p-5">
               {recentJobs.length === 0 ? (
                 <p className="text-sm text-gray-400 py-4 text-center">
                   No scraper jobs have been run yet
@@ -632,8 +629,8 @@ export function ScraperOverview({
                   </table>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
       </div>
     </div>

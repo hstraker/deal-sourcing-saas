@@ -151,7 +151,7 @@ export function ProfilePictureUpload({
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <div className="relative h-32 w-32 overflow-hidden rounded-full border-2 border-border bg-gray-100">
+      <div className="relative h-32 w-32 overflow-hidden rounded-full border-2 border-[var(--ds-border)] bg-gray-100">
         {displayUrl ? (
           <Image
             src={displayUrl}
@@ -166,7 +166,7 @@ export function ProfilePictureUpload({
           </div>
         )}
         {isUploading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+          <div className="absolute inset-0 flex items-center justify-center bg-white/80">
             <Loader2 className="h-6 w-6 animate-spin text-[#2563EB]" />
           </div>
         )}

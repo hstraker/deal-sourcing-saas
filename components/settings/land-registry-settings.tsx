@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -342,17 +341,15 @@ export function LandRegistrySettings() {
     <div className="space-y-6">
       {/* Overview cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-blue-500" />
+        <div className="ds-card overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+            <h3 className="text-sm font-semibold text-gray-900 text-sm flex items-center gap-2">              <Building2 className="h-4 w-4 text-blue-500" />
               UK Companies (CCOD)
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Companies registered in England & Wales that own property
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </h3>
+            <p className="text-xs text-gray-400 mt-0.5 text-xs">              Companies registered in England & Wales that own property
+            </p>
+          </div>
+          <div className="p-5">
             <p className="text-2xl font-bold">
               {stats?.ccodCount != null
                 ? stats.ccodCount.toLocaleString()
@@ -363,20 +360,18 @@ export function LandRegistrySettings() {
                 ? `Last imported ${new Date(stats.lastCcodImport).toLocaleDateString()}`
                 : "Never imported"}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Globe className="h-4 w-4 text-purple-500" />
+        <div className="ds-card overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+            <h3 className="text-sm font-semibold text-gray-900 text-sm flex items-center gap-2">              <Globe className="h-4 w-4 text-purple-500" />
               Overseas Companies (OCOD)
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Overseas companies that own property in England & Wales
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </h3>
+            <p className="text-xs text-gray-400 mt-0.5 text-xs">              Overseas companies that own property in England & Wales
+            </p>
+          </div>
+          <div className="p-5">
             <p className="text-2xl font-bold">
               {stats?.ocodCount != null
                 ? stats.ocodCount.toLocaleString()
@@ -387,8 +382,8 @@ export function LandRegistrySettings() {
                 ? `Last imported ${new Date(stats.lastOcodImport).toLocaleDateString()}`
                 : "Never imported"}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Info banner */}
@@ -403,10 +398,10 @@ export function LandRegistrySettings() {
       </Alert>
 
       {/* Import buttons */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Trigger Import</CardTitle>
-          <CardDescription>
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900 text-base">Trigger Import</h3>
+          <p className="text-xs text-gray-400 mt-0.5">
             Downloads the latest dataset from HM Land Registry and imports it into your database.
             Imports run in the background and may take 15–60 minutes for the full CCOD dataset.
             {hasRunningImport && (
@@ -419,10 +414,9 @@ export function LandRegistrySettings() {
                 ℹ️ Reimporting will skip duplicate records. Only new or updated records will be added.
               </span>
             )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-3">
-          <Button
+          </p>
+        </div>
+        <div className="p-5 flex flex-wrap gap-3">          <Button
             variant="outline"
             onClick={() => triggerImport("ccod")}
             disabled={!!importing || hasRunningImport}
@@ -468,15 +462,15 @@ export function LandRegistrySettings() {
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Import history */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Import History</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900 text-base">Import History</h3>
+        </div>
+        <div className="p-5">
           {recentImports.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-6">
               No imports have been run yet.
@@ -488,17 +482,16 @@ export function LandRegistrySettings() {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Postcode repair tool */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <RefreshCw className="h-4 w-4 text-green-500" />
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900 text-base flex items-center gap-2">            <RefreshCw className="h-4 w-4 text-green-500" />
             Repair Existing Postcodes
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p className="text-xs text-gray-400 mt-0.5">
             Scans your <strong>scraped property listings</strong> and <strong>vendor leads</strong> and
             corrects postcodes that are wrong (e.g. Zoopla captures SE1 2LH — its own London office —
             instead of the property&apos;s actual postcode) or outcode-only (e.g. SA6 with no incode).
@@ -506,10 +499,9 @@ export function LandRegistrySettings() {
             <span className="block mt-1 text-gray-400">
               Note: this scans your scraped properties, not the 4.4M Land Registry records.
             </span>
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {fixResult && (
+          </p>
+        </div>
+        <div className="p-5 space-y-4">          {fixResult && (
             <Alert>
               <CheckCircle className="h-4 w-4" />
               <AlertDescription className="text-sm space-y-1">
@@ -558,25 +550,23 @@ export function LandRegistrySettings() {
           <p className="text-xs text-gray-400">
             Run a dry run first to preview. The fix also runs automatically for every new scrape.
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Price Paid Data */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Home className="h-4 w-4 text-emerald-500" />
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900 text-base flex items-center gap-2">            <Home className="h-4 w-4 text-emerald-500" />
             Price Paid Data (PPD)
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p className="text-xs text-gray-400 mt-0.5">
             HM Land Registry Price Paid Data covers <strong>all residential property sales</strong> since 1995
             in England &amp; Wales (~28M transactions). Imported as a deduplicated street→postcode mapping and
             used for postcode resolution when CCOD/OCOD has no matching record (which is &gt;95% of properties).
             Download one year at a time (fast, ~50–100 MB) or the complete dataset (~5 GB).
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Stats */}
+          </p>
+        </div>
+        <div className="p-5 space-y-4">          {/* Stats */}
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-md border p-3">
               <p className="text-gray-400 text-xs mb-1">Street→Postcode pairs</p>
@@ -649,18 +639,18 @@ export function LandRegistrySettings() {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* BMV scoring info */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">BMV Score Bonuses</CardTitle>
-          <CardDescription>
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900 text-base">BMV Score Bonuses</h3>
+          <p className="text-xs text-gray-400 mt-0.5">
             Applied automatically when a scraped property's postcode matches a company-owned record
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div className="p-5">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div className="flex items-start gap-2">
               <Building2 className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
@@ -684,8 +674,8 @@ export function LandRegistrySettings() {
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

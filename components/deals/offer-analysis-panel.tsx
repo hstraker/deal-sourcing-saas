@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -73,7 +72,7 @@ function ViabilityDots({ score }: { score: number }) {
         <span
           key={i}
           className={`inline-block w-3 h-3 rounded-full ${
-            i < filled ? "bg-primary" : "bg-gray-100"
+            i < filled ? "bg-[#2563EB]" : "bg-gray-100"
           }`}
         />
       ))}
@@ -190,7 +189,7 @@ function StrategyRationale({ result }: { result: OfferCalculationResult }) {
         <div className={`rounded-lg border p-3 space-y-2 ${
           flipViable ? "border-green-200 bg-green-50/40" :
           flipSteep  ? "border-amber-200 bg-amber-50/30" :
-                       "border-border bg-gray-50 opacity-80"
+                       "border-[var(--ds-border)] bg-gray-50 opacity-80"
         }`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -243,7 +242,7 @@ function StrategyRationale({ result }: { result: OfferCalculationResult }) {
         <div className={`rounded-lg border p-3 space-y-2 ${
           holdViable ? "border-green-200 bg-green-50/40" :
           holdSteep  ? "border-amber-200 bg-amber-50/30" :
-                       "border-border bg-gray-50 opacity-80"
+                       "border-[var(--ds-border)] bg-gray-50 opacity-80"
         }`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -415,7 +414,7 @@ function StrategyColumn({
             <p className="text-sm text-gray-400 italic">No viable price</p>
             {/* Diagnostic metrics at asking price so user can see why */}
             {atAsking && (
-              <div className="rounded border border-dashed border-border bg-gray-50 p-2 space-y-1 text-xs">
+              <div className="rounded border border-dashed border-[var(--ds-border)] bg-gray-50 p-2 space-y-1 text-xs">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Why not viable — at asking price</p>
                 {!isFlip && (
                   <>
@@ -867,7 +866,7 @@ function AssumptionsPanel({
                 value={vals.gdv}
                 onChange={set("gdv")}
                 placeholder="e.g. 120000"
-                className="h-8 text-sm bg-background"
+                className="h-8 text-sm bg-white"
               />
             </div>
             <div className="space-y-1">
@@ -876,7 +875,7 @@ function AssumptionsPanel({
                 value={vals.estimatedRent}
                 onChange={set("estimatedRent")}
                 placeholder="e.g. 830"
-                className="h-8 text-sm bg-background"
+                className="h-8 text-sm bg-white"
               />
             </div>
             <div className="space-y-1">
@@ -885,7 +884,7 @@ function AssumptionsPanel({
                 value={vals.totalRefurbishment}
                 onChange={set("totalRefurbishment")}
                 placeholder="e.g. 28000"
-                className="h-8 text-sm bg-background"
+                className="h-8 text-sm bg-white"
               />
             </div>
             <div className="space-y-1">
@@ -894,7 +893,7 @@ function AssumptionsPanel({
                 value={vals.bridgingMonths}
                 onChange={set("bridgingMonths")}
                 placeholder="12"
-                className="h-8 text-sm bg-background"
+                className="h-8 text-sm bg-white"
               />
             </div>
             <div className="space-y-1">
@@ -903,7 +902,7 @@ function AssumptionsPanel({
                 value={vals.mortgageRate}
                 onChange={set("mortgageRate")}
                 placeholder="4.59"
-                className="h-8 text-sm bg-background"
+                className="h-8 text-sm bg-white"
               />
             </div>
           </div>
@@ -1087,11 +1086,11 @@ export function OfferAnalysisPanel({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <Card>
-        <CardHeader className="pb-3">
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <CardTitle className="text-base">Offer Analysis Engine</CardTitle>
+              <h3 className="text-sm font-semibold text-gray-900 text-base">Offer Analysis Engine</h3>
               <p className="text-xs text-gray-400 mt-0.5">
                 Based on Excel PropertyAnalyser methodology
                 {calculatedAt && ` · Last calculated: ${calculatedAt}`}
@@ -1116,10 +1115,9 @@ export function OfferAnalysisPanel({
               {result ? "Recalculate" : "Calculate"}
             </Button>
           </div>
-        </CardHeader>
+        </div>
 
-        <CardContent className="space-y-5">
-          {/* Missing inputs warning */}
+        <div className="p-5 space-y-5">          {/* Missing inputs warning */}
           {!hasRequiredInputs && !result && (
             <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-sm">
               <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
@@ -1181,22 +1179,22 @@ export function OfferAnalysisPanel({
                 const isFlipRec = rec === "flip" || rec === "both"
                 const isHoldRec = rec === "hold" || rec === "both"
                 return (
-                  <div className="rounded-lg border border-border bg-gray-50 p-3 space-y-2">
+                  <div className="rounded-lg border border-[var(--ds-border)] bg-gray-50 p-3 space-y-2">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
                       Offer Ceilings — Opening → Best &amp; Final
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       {/* Flip tile */}
                       <div className={`rounded-md border p-2.5 ${
-                        !flipHasPrice ? "opacity-60 bg-gray-50 border-border" :
-                        isFlipRec ? "border-primary/40 bg-primary/5" : "border-border bg-background"
+                        !flipHasPrice ? "opacity-60 bg-gray-50 border-[var(--ds-border)]" :
+                        isFlipRec ? "border-[#2563EB]/40 bg-[#2563EB]/5" : "border-[var(--ds-border)] bg-white"
                       }`}>
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="text-xs font-semibold flex items-center gap-1 text-gray-400">
                             <TrendingUp className="h-3 w-3" /> Flip
                           </span>
                           {isFlipRec && flipHasPrice && (
-                            <span className="text-[9px] font-semibold text-[#2563EB] bg-primary/10 px-1.5 py-0.5 rounded-full">
+                            <span className="text-[9px] font-semibold text-[#2563EB] bg-[#2563EB]/10 px-1.5 py-0.5 rounded-full">
                               Recommended
                             </span>
                           )}
@@ -1218,15 +1216,15 @@ export function OfferAnalysisPanel({
 
                       {/* BTL / BRRR tile */}
                       <div className={`rounded-md border p-2.5 ${
-                        !holdHasPrice ? "opacity-60 bg-gray-50 border-border" :
-                        isHoldRec ? "border-primary/40 bg-primary/5" : "border-border bg-background"
+                        !holdHasPrice ? "opacity-60 bg-gray-50 border-[var(--ds-border)]" :
+                        isHoldRec ? "border-[#2563EB]/40 bg-[#2563EB]/5" : "border-[var(--ds-border)] bg-white"
                       }`}>
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="text-xs font-semibold flex items-center gap-1 text-gray-400">
                             <Home className="h-3 w-3" /> BTL / BRRR
                           </span>
                           {isHoldRec && holdHasPrice && (
-                            <span className="text-[9px] font-semibold text-[#2563EB] bg-primary/10 px-1.5 py-0.5 rounded-full">
+                            <span className="text-[9px] font-semibold text-[#2563EB] bg-[#2563EB]/10 px-1.5 py-0.5 rounded-full">
                               Recommended
                             </span>
                           )}
@@ -1368,8 +1366,8 @@ export function OfferAnalysisPanel({
               loading={loading}
             />
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </TooltipProvider>
   )
 }

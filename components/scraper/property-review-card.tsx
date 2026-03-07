@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -47,10 +46,10 @@ function stripHtml(html: string): string {
 }
 
 const SOURCE_COLORS: Record<string, string> = {
-  RIGHTMOVE: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  ZOOPLA: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  ONTHEMARKET: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
-  PRIMELOCATION: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+  RIGHTMOVE: "bg-blue-100 text-blue-800",
+  ZOOPLA: "bg-purple-100 text-purple-800",
+  ONTHEMARKET: "bg-emerald-100 text-emerald-800",
+  PRIMELOCATION: "bg-orange-100 text-orange-800",
 }
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -143,8 +142,7 @@ export function PropertyReviewCard({
   const isLong = cleanDesc.length > DESC_LIMIT
 
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow">
-      {/* Image */}
+    <div className="ds-card overflow-hidden overflow-hidden hover:shadow-md transition-shadow">      {/* Image */}
       <div className="relative h-40 bg-gray-100">
         {firstImage ? (
           <img
@@ -174,15 +172,14 @@ export function PropertyReviewCard({
             </span>
           )}
           {listing.category === "COMMERCIAL" && (
-            <Badge variant="outline" className="bg-background/80">
+            <Badge variant="outline" className="bg-white/80">
               Commercial
             </Badge>
           )}
         </div>
       </div>
 
-      <CardContent className="p-4 space-y-3">
-        {/* Title & Address */}
+      <div className="p-5 p-4 space-y-3">        {/* Title & Address */}
         <div className="space-y-1">
           <h3 className="font-semibold text-sm line-clamp-1">{listing.title}</h3>
           <p className="text-xs text-gray-400 line-clamp-1">
@@ -349,13 +346,13 @@ export function PropertyReviewCard({
 
         {/* Ambiguity Warning */}
         {listing.isAmbiguous && (
-          <div className="rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-2">
-            <div className="flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+          <div className="rounded-md bg-amber-50 border border-amber-200 p-2">
+            <div className="flex items-center gap-1 text-xs font-medium text-amber-700">
               <AlertTriangle className="h-3 w-3" />
               Needs review
             </div>
             {listing.ambiguityReasons?.length > 0 && (
-              <ul className="mt-1 text-[10px] text-amber-600 dark:text-amber-500 space-y-0.5">
+              <ul className="mt-1 text-[10px] text-amber-600 space-y-0.5">
                 {listing.ambiguityReasons.map((reason, i) => (
                   <li key={i}>- {reason}</li>
                 ))}
@@ -457,8 +454,8 @@ export function PropertyReviewCard({
             </a>
           )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
@@ -475,7 +472,7 @@ function PostcodeBadge({ address }: { address: Record<string, unknown> | null | 
   // No postcode at all
   if (!pc || (!isFullPostcode && !isOutcodeOnly)) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 text-[10px] font-medium px-2 py-0.5">
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 text-red-700 text-[10px] font-medium px-2 py-0.5">
         <MapPinOff className="h-2.5 w-2.5 shrink-0" />
         No postcode
       </span>
@@ -485,7 +482,7 @@ function PostcodeBadge({ address }: { address: Record<string, unknown> | null | 
   // Outcode only (e.g. "SA6")
   if (isOutcodeOnly) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-[10px] font-medium px-2 py-0.5">
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 text-[10px] font-medium px-2 py-0.5">
         <MapPin className="h-2.5 w-2.5 shrink-0" />
         {pc} (outcode only)
       </span>
@@ -498,7 +495,7 @@ function PostcodeBadge({ address }: { address: Record<string, unknown> | null | 
       <TooltipProvider delayDuration={200}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 text-[10px] font-medium px-2 py-0.5 cursor-default">
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-medium px-2 py-0.5 cursor-default">
               <MapPin className="h-2.5 w-2.5 shrink-0" />
               {pc}
               <Shield className="h-2.5 w-2.5 shrink-0" />
@@ -518,7 +515,7 @@ function PostcodeBadge({ address }: { address: Record<string, unknown> | null | 
       <TooltipProvider delayDuration={200}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="inline-flex items-center gap-1 rounded-full bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200 text-[10px] font-medium px-2 py-0.5 cursor-default">
+            <span className="inline-flex items-center gap-1 rounded-full bg-teal-100 text-teal-800 text-[10px] font-medium px-2 py-0.5 cursor-default">
               <MapPin className="h-2.5 w-2.5 shrink-0" />
               {pc}
               <Globe className="h-2.5 w-2.5 shrink-0" />
@@ -538,7 +535,7 @@ function PostcodeBadge({ address }: { address: Record<string, unknown> | null | 
       <TooltipProvider delayDuration={200}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200 text-[10px] font-medium px-2 py-0.5 cursor-default">
+            <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 text-violet-800 text-[10px] font-medium px-2 py-0.5 cursor-default">
               <MapPin className="h-2.5 w-2.5 shrink-0" />
               {pc}
               <span className="text-[9px] font-bold shrink-0">×2</span>
@@ -554,7 +551,7 @@ function PostcodeBadge({ address }: { address: Record<string, unknown> | null | 
 
   // Full postcode — scraped correctly, no fix needed
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-[10px] font-medium px-2 py-0.5">
+    <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 text-blue-800 text-[10px] font-medium px-2 py-0.5">
       <MapPin className="h-2.5 w-2.5 shrink-0" />
       {pc}
     </span>

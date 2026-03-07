@@ -2,7 +2,6 @@
 
 import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function Error({
   error,
@@ -18,15 +17,13 @@ export default function Error({
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Something went wrong!</CardTitle>
-          <CardDescription>
+      <div className="ds-card overflow-hidden w-full max-w-md">        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900">Something went wrong!</h3>
+          <p className="text-xs text-gray-400 mt-0.5">
             An unexpected error occurred. Please try again.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {error.message && (
+          </p>
+        </div>
+        <div className="p-5 space-y-4">          {error.message && (
             <div className="rounded-md bg-red-50 p-3 text-sm text-red-500">
               {error.message}
             </div>
@@ -39,8 +36,8 @@ export default function Error({
               Go to Dashboard
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

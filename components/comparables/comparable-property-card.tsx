@@ -1,6 +1,5 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -118,13 +117,12 @@ export function ComparablePropertyCard({
 
   return (
     <TooltipProvider>
-      <Card className={`hover:shadow-md transition-shadow ${isNearAverage && highlightIfAverage ? "ring-2 ring-primary" : ""}`}>
-        <CardHeader className="pb-3">
+      <div className={`ds-card overflow-hidden hover:shadow-md transition-shadow ${isNearAverage && highlightIfAverage ? "ring-2 ring-[#2563EB]" : ""}`}>
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
-              <CardTitle className="text-base font-semibold leading-tight">
-                {property.address}
-              </CardTitle>
+              <h3 className="text-sm font-semibold text-gray-900 text-base font-semibold leading-tight">                {property.address}
+              </h3>
               {property.postcode && (
                 <p className="text-sm text-gray-400 mt-1">{property.postcode}</p>
               )}
@@ -149,7 +147,7 @@ export function ComparablePropertyCard({
               {isNearAverage && highlightIfAverage && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Badge variant="default" className="shrink-0 bg-primary">
+                    <Badge variant="default" className="shrink-0 bg-[#2563EB]">
                       BMV Reference
                     </Badge>
                   </TooltipTrigger>
@@ -163,10 +161,9 @@ export function ComparablePropertyCard({
               )}
             </div>
           </div>
-        </CardHeader>
+        </div>
 
-        <CardContent className="space-y-4">
-          {/* Sale Price & Date */}
+        <div className="p-5 space-y-4">          {/* Sale Price & Date */}
           <div className="flex items-center justify-between">
             <div>
               <Tooltip>
@@ -250,7 +247,7 @@ export function ComparablePropertyCard({
 
           {/* Rental Data - ALWAYS SHOW THIS SECTION */}
           {showRentalData && (
-            <div className="border-t pt-3 space-y-2 bg-gradient-to-br from-primary/5 to-primary/10 p-3 rounded-lg border-primary/20">
+            <div className="border-t pt-3 space-y-2 bg-gradient-to-br from-[#2563EB]/5 to-[#2563EB]/10 p-3 rounded-lg border-[#2563EB]/20">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <Tooltip>
@@ -306,7 +303,7 @@ export function ComparablePropertyCard({
                       </p>
                       {property.monthlyRent && property.rentalYield !== undefined ? (
                         <>
-                          <p className="text-xs mb-1 bg-primary/10 p-2 rounded">
+                          <p className="text-xs mb-1 bg-[#2563EB]/10 p-2 rounded">
                             <strong>This property:</strong><br/>
                             ({formatCurrency(property.monthlyRent * 12)} ÷ {formatCurrency(property.salePrice)}) × 100 = <strong>{property.rentalYield.toFixed(2)}%</strong>
                           </p>
@@ -436,8 +433,8 @@ export function ComparablePropertyCard({
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </TooltipProvider>
   )
 }

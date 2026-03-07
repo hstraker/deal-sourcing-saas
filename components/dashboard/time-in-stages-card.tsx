@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Clock, Loader2 } from "lucide-react"
 import {
@@ -78,11 +77,10 @@ export function TimeInStagesCard() {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-        </CardContent>
-      </Card>
+      <div className="ds-card overflow-hidden">
+        <div className="p-5 flex items-center justify-center py-12">          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+        </div>
+      </div>
     )
   }
 
@@ -90,10 +88,9 @@ export function TimeInStagesCard() {
 
   return (
     <TooltipProvider>
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Clock className="h-5 w-5 text-teal-600" />
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900 text-base font-semibold flex items-center gap-2">            <Clock className="h-5 w-5 text-teal-600" />
             Time in Stages
             <Tooltip>
               <TooltipTrigger asChild>
@@ -106,12 +103,11 @@ export function TimeInStagesCard() {
                 </p>
               </TooltipContent>
             </Tooltip>
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Average time vendors spend in each stage
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </h3>
+          <p className="text-xs text-gray-400 mt-0.5 text-xs">            Average time vendors spend in each stage
+          </p>
+        </div>
+        <div className="p-5">
           <div className="grid grid-cols-2 gap-3 mb-4">
             {Object.entries(data.avgStageTimes).map(([stage, days]) => {
               const stageColor = getStageColor(stage)
@@ -169,8 +165,8 @@ export function TimeInStagesCard() {
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </TooltipProvider>
   )
 }

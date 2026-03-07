@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Search, AlertCircle, CheckCircle2, TrendingUp, TrendingDown, Info, MapPin } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
@@ -268,18 +267,16 @@ export function PropertyDataFetcher({
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">            <Search className="h-5 w-5" />
             Property Data Enrichment
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p className="text-xs text-gray-400 mt-0.5">
             Search by postcode to find properties, or fetch data for a specific address
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Search by Postcode */}
+          </p>
+        </div>
+        <div className="p-5 space-y-4">          {/* Search by Postcode */}
           {hasPostcode && (
             <div className="space-y-2">
               <Button
@@ -334,12 +331,12 @@ export function PropertyDataFetcher({
                           <div className="flex items-center gap-2">
                           <span className="font-medium">{property.address}</span>
                           {isExactPostcode && (
-                            <span className="text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-1.5 py-0.5 rounded">
+                            <span className="text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded">
                               Exact match
                             </span>
                           )}
                           {property.sourceListLabel && (
-                            <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-1.5 py-0.5 rounded">
+                            <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">
                               {property.sourceListLabel}
                             </span>
                           )}
@@ -410,10 +407,10 @@ export function PropertyDataFetcher({
           {propertyData && propertyData.data && (
             <div className="space-y-4">
               {propertyData.warning ? (
-                <Alert variant="default" className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
+                <Alert variant="default" className="border-yellow-500 bg-yellow-50">
                   <AlertCircle className="h-4 w-4 text-yellow-600" />
-                  <AlertTitle className="text-yellow-800 dark:text-yellow-200">Warning</AlertTitle>
-                  <AlertDescription className="text-yellow-700 dark:text-yellow-300">
+                  <AlertTitle className="text-yellow-800">Warning</AlertTitle>
+                  <AlertDescription className="text-yellow-700">
                     {propertyData.warning}
                   </AlertDescription>
                 </Alert>
@@ -551,8 +548,8 @@ export function PropertyDataFetcher({
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

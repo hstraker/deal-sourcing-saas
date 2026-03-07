@@ -289,8 +289,8 @@ export function SolicitorFormDialog({
                           <span className={cn(
                             "shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium",
                             /authoris/i.test(match.status)
-                              ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400"
-                              : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-amber-100 text-amber-700"
                           )}>
                             {/authoris/i.test(match.status)
                               ? <ShieldCheck className="h-3 w-3" />
@@ -315,8 +315,8 @@ export function SolicitorFormDialog({
 
             {/* No matches found */}
             {sraSearchEmpty && !isSraSearching && (
-              <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 px-3 py-2">
-                <p className="text-xs text-amber-700 dark:text-amber-400">
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                <p className="text-xs text-amber-700">
                   No results found for &ldquo;{firmName}&rdquo;. You can enter the SRA number manually above — look it up at{" "}
                   <a
                     href="https://www.sra.org.uk/consumers/register/"
@@ -398,7 +398,7 @@ export function SolicitorFormDialog({
 
           {/* Post-save SRA badge */}
           {saved?.sraVerified && (
-            <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 dark:border-green-800 dark:bg-green-900/20">
+            <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2">
               <SRABadge
                 solicitor={saved}
                 onVerified={(updated) => setSaved((prev) => prev ? { ...prev, ...updated } : prev)}
@@ -407,8 +407,8 @@ export function SolicitorFormDialog({
           )}
 
           {saved && !saved.sraVerified && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm dark:border-amber-800 dark:bg-amber-900/20">
-              <p className="text-amber-800 dark:text-amber-300 mb-1.5 font-medium">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
+              <p className="text-amber-800 mb-1.5 font-medium">
                 Solicitor saved — SRA authorisation not yet verified
               </p>
               <SRABadge

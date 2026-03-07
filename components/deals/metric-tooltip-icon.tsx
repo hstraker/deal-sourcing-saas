@@ -57,14 +57,14 @@ export function MetricTooltipIcon({ tooltipKey, override, className }: MetricToo
         )}
         {tooltip.goodRange && (
           <div className="border-t pt-1.5">
-            <p className="text-xs text-emerald-600 dark:text-emerald-400">
+            <p className="text-xs text-emerald-600">
               ✓ Good range: {tooltip.goodRange}
             </p>
           </div>
         )}
         {tooltip.example && (
           <div className="border-t pt-1.5">
-            <p className="text-xs text-blue-600 dark:text-blue-400">
+            <p className="text-xs text-blue-600">
               Example: {tooltip.example}
             </p>
           </div>
@@ -72,7 +72,7 @@ export function MetricTooltipIcon({ tooltipKey, override, className }: MetricToo
         {tooltip.negotiationTip && (
           <div className="border-t pt-1.5">
             <p className="text-xs font-medium">Negotiation tip:</p>
-            <p className="text-xs text-amber-600 dark:text-amber-400 italic">
+            <p className="text-xs text-amber-600 italic">
               {tooltip.negotiationTip}
             </p>
           </div>

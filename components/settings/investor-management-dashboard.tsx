@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -102,16 +101,16 @@ function StatCard({
   valueClass?: string
 }) {
   return (
-    <Card>
-      <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-sm font-medium text-gray-400">{title}</CardTitle>
+    <div className="ds-card overflow-hidden">
+      <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+        <h3 className="text-sm font-semibold text-gray-900 text-sm font-medium text-gray-400">{title}</h3>
         <span className="text-gray-400">{icon}</span>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div className="p-5">
         <div className={`text-2xl font-bold ${valueClass}`}>{value}</div>
         <p className="text-xs text-gray-400 mt-1">{sub}</p>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
@@ -174,9 +173,8 @@ export function InvestorManagementDashboard() {
       {/* ── Section 2: Investor pipeline ──────────────────────────────────── */}
       <section className="space-y-3">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Investor Pipeline</h3>
-        <Card>
-          <CardContent className="pt-5">
-            <div className="flex flex-wrap gap-3">
+        <div className="ds-card overflow-hidden">
+          <div className="p-5 pt-5">            <div className="flex flex-wrap gap-3">
               {INVESTOR_STAGES.map((s) => {
                 const count = byStage[s.key] ?? 0
                 return (
@@ -189,8 +187,8 @@ export function InvestorManagementDashboard() {
                 )
               })}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </section>
 
       {/* ── Section 3: Reservation overview ───────────────────────────────── */}
@@ -229,9 +227,8 @@ export function InvestorManagementDashboard() {
       {/* ── Section 4: Reservation pipeline ───────────────────────────────── */}
       <section className="space-y-3">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Reservation Pipeline</h3>
-        <Card>
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-1 overflow-x-auto pb-1">
+        <div className="ds-card overflow-hidden">
+          <div className="p-5 pt-5">            <div className="flex items-center gap-1 overflow-x-auto pb-1">
               {RESERVATION_PIPELINE.map((w, i) => (
                 <div key={w.key} className="flex items-center gap-1 shrink-0">
                   <div className={`flex flex-col items-center justify-center gap-1 rounded-lg border px-3 py-2 min-w-[82px] ${w.color}`}>
@@ -246,8 +243,8 @@ export function InvestorManagementDashboard() {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </section>
 
       {/* ── Section 5: Conversion + Pack performance ──────────────────────── */}
@@ -262,12 +259,11 @@ export function InvestorManagementDashboard() {
               { label: "Qualified → Purchased",  value: conversionRates.qualifiedToPurchased },
               { label: "Viewing → Reserved",     value: conversionRates.viewingToReserved },
             ].map(({ label, value }) => (
-              <Card key={label}>
-                <CardContent className="pt-4 pb-4 flex items-center justify-between">
-                  <span className="text-sm text-gray-400">{label}</span>
+              <div key={label} className="ds-card overflow-hidden">
+                <div className="p-5 pt-4 pb-4 flex items-center justify-between">                  <span className="text-sm text-gray-400">{label}</span>
                   <span className="text-xl font-bold">{pct(value)}</span>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         </section>
@@ -281,16 +277,15 @@ export function InvestorManagementDashboard() {
               { icon: <Eye className="h-5 w-5 text-blue-600" />,        label: "Viewed",      value: packStats.packsViewed,        sub: `${packStats.viewRate.toFixed(1)}% of sent` },
               { icon: <Download className="h-5 w-5 text-green-600" />,  label: "Downloaded",  value: packStats.packsDownloaded,    sub: `${packStats.downloadRate.toFixed(1)}% of sent` },
             ].map(({ icon, label, value, sub }) => (
-              <Card key={label}>
-                <CardContent className="pt-4 pb-4 flex items-center gap-4">
-                  {icon}
+              <div key={label} className="ds-card overflow-hidden">
+                <div className="p-5 pt-4 pb-4 flex items-center gap-4">                  {icon}
                   <div className="flex-1">
                     <p className="text-xs text-gray-400">{label}</p>
                     <p className="text-xl font-bold leading-tight">{value}</p>
                     <p className="text-xs text-gray-400">{sub}</p>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         </section>
@@ -299,9 +294,8 @@ export function InvestorManagementDashboard() {
       {/* ── Section 6: Top investors ───────────────────────────────────────── */}
       <section className="space-y-3">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Top Investors by Spend</h3>
-        <Card>
-          <CardContent className="pt-4">
-            <Table>
+        <div className="ds-card overflow-hidden">
+          <div className="p-5 pt-4">            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Investor</TableHead>
@@ -327,16 +321,15 @@ export function InvestorManagementDashboard() {
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </section>
 
       {/* ── Section 7: Recent activity ─────────────────────────────────────── */}
       <section className="space-y-3">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Recent Activity</h3>
-        <Card>
-          <CardContent className="pt-4">
-            {stats.recentActivities.length === 0 ? (
+        <div className="ds-card overflow-hidden">
+          <div className="p-5 pt-4">            {stats.recentActivities.length === 0 ? (
               <p className="text-center text-gray-400 py-6">No recent activities</p>
             ) : (
               <div className="divide-y">
@@ -358,8 +351,8 @@ export function InvestorManagementDashboard() {
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </section>
 
     </div>

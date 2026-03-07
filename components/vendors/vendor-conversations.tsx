@@ -12,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Plus, Send, ArrowRight, ArrowLeft } from "lucide-react"
 import {
   Dialog,
@@ -136,20 +135,19 @@ export function VendorConversations({ vendorId }: VendorConversationsProps) {
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center p-8">
-          <Loader2 className="h-6 w-6 animate-spin" />
-        </CardContent>
-      </Card>
+      <div className="ds-card overflow-hidden">
+        <div className="p-5 flex items-center justify-center p-8">          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+    <div className="ds-card overflow-hidden">
+      <div className="px-5 py-4 border-b border-[var(--ds-border)]">
         <div>
-          <CardTitle>AI Conversations</CardTitle>
-          <CardDescription>Track all SMS conversations with this vendor</CardDescription>
+          <h3 className="text-sm font-semibold text-gray-900">AI Conversations</h3>
+          <p className="text-xs text-gray-400 mt-0.5">Track all SMS conversations with this vendor</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -304,8 +302,8 @@ export function VendorConversations({ vendorId }: VendorConversationsProps) {
             </div>
           </DialogContent>
         </Dialog>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div className="p-5">
         {conversations.length === 0 ? (
           <div className="text-center py-8 text-gray-400">
             No conversations recorded yet. Click &quot;Add Conversation&quot; to log one.
@@ -370,8 +368,8 @@ export function VendorConversations({ vendorId }: VendorConversationsProps) {
             ))}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 

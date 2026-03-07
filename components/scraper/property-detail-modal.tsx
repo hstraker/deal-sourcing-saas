@@ -11,7 +11,6 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Separator } from "@/components/ui/separator"
 import {
   Tooltip,
   TooltipContent,
@@ -284,7 +283,7 @@ export function PropertyDetailModal({
           listing.isRetirement || listing.leaseYearsRemaining || listing.groundRent ||
           listing.serviceCharge || (listing.keyFeatures?.length > 0)) && (
           <>
-            <Separator />
+            <div className="border-t border-[var(--ds-border)]" />
             <div>
               <h4 className="font-semibold text-sm mb-2">Property Details</h4>
               <div className="flex flex-wrap gap-2 mb-3">
@@ -364,7 +363,7 @@ export function PropertyDetailModal({
           </>
         )}
 
-        <Separator />
+        <div className="border-t border-[var(--ds-border)]" />
 
         {/* BMV Indicators — full breakdown */}
         <div>
@@ -457,12 +456,12 @@ export function PropertyDetailModal({
 
         {/* Ambiguity Reasons */}
         {listing.isAmbiguous && listing.ambiguityReasons?.length > 0 && (
-          <div className="rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3">
-            <h4 className="font-semibold text-sm text-amber-700 dark:text-amber-400 flex items-center gap-1 mb-1">
+          <div className="rounded-md bg-amber-50 border border-amber-200 p-3">
+            <h4 className="font-semibold text-sm text-amber-700 flex items-center gap-1 mb-1">
               <AlertTriangle className="h-4 w-4" />
               Flagged for Review
             </h4>
-            <ul className="text-xs text-amber-600 dark:text-amber-500 space-y-1">
+            <ul className="text-xs text-amber-600 space-y-1">
               {listing.ambiguityReasons.map((reason, i) => (
                 <li key={i}>- {reason}</li>
               ))}
@@ -473,7 +472,7 @@ export function PropertyDetailModal({
         {/* Price History */}
         {priceHistory?.length > 0 && (
           <>
-            <Separator />
+            <div className="border-t border-[var(--ds-border)]" />
             <div>
               <h4 className="font-semibold text-sm mb-2">Price History</h4>
               <div className="space-y-1">
@@ -505,7 +504,7 @@ export function PropertyDetailModal({
         )}
 
         {/* Description */}
-        <Separator />
+        <div className="border-t border-[var(--ds-border)]" />
         <div>
           <h4 className="font-semibold text-sm mb-2">Description</h4>
           <p className="text-sm text-gray-400 whitespace-pre-line line-clamp-10">
@@ -516,7 +515,7 @@ export function PropertyDetailModal({
         {/* Agent Info */}
         {agent?.name && (
           <>
-            <Separator />
+            <div className="border-t border-[var(--ds-border)]" />
             <div>
               <h4 className="font-semibold text-sm mb-1">Agent</h4>
               <p className="text-sm">{agent.name}</p>
@@ -536,7 +535,7 @@ export function PropertyDetailModal({
         {/* Floor Plans */}
         {floorPlans?.length > 0 && (
           <>
-            <Separator />
+            <div className="border-t border-[var(--ds-border)]" />
             <div>
               <h4 className="font-semibold text-sm mb-2">Floor Plans</h4>
               <div className="flex gap-2 overflow-x-auto">
@@ -596,7 +595,7 @@ export function PropertyDetailModal({
           )}
         </div>
 
-        <Separator />
+        <div className="border-t border-[var(--ds-border)]" />
 
         {/* Review Actions */}
         <div className="space-y-3">

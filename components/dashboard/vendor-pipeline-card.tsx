@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Building2, ArrowRight, Loader2 } from "lucide-react"
 import {
@@ -70,11 +69,10 @@ export function VendorPipelineCard() {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-        </CardContent>
-      </Card>
+      <div className="ds-card overflow-hidden">
+        <div className="p-5 flex items-center justify-center py-12">          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+        </div>
+      </div>
     )
   }
 
@@ -82,12 +80,11 @@ export function VendorPipelineCard() {
 
   return (
     <TooltipProvider>
-      <Card>
-        <CardHeader className="pb-3">
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-indigo-600" />
+              <h3 className="text-sm font-semibold text-gray-900 text-base font-semibold flex items-center gap-2">                <Building2 className="h-5 w-5 text-indigo-600" />
                 Vendor Pipeline Overview
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -100,10 +97,9 @@ export function VendorPipelineCard() {
                     </p>
                   </TooltipContent>
                 </Tooltip>
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Track vendors through acquisition stages
-              </CardDescription>
+              </h3>
+              <p className="text-xs text-gray-400 mt-0.5 text-xs">                Track vendors through acquisition stages
+              </p>
             </div>
             <Link href="/dashboard/vendors">
               <Button variant="ghost" size="sm" className="text-xs h-8">
@@ -112,8 +108,8 @@ export function VendorPipelineCard() {
               </Button>
             </Link>
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="p-5">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             {data.byStage.map((stage) => {
               const stageColor = getStageColor(stage.stage)
@@ -165,8 +161,8 @@ export function VendorPipelineCard() {
               <div className="text-xl font-bold text-purple-700">{data.totalOffers}</div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </TooltipProvider>
   )
 }

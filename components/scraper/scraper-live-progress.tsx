@@ -17,30 +17,30 @@ const SOURCE_STYLE: Record<string, { bar: string; dot: string; border: string; t
   RIGHTMOVE: {
     bar: "bg-blue-500",
     dot: "bg-blue-500",
-    border: "border-blue-200 dark:border-blue-800",
-    text: "text-blue-700 dark:text-blue-400",
-    subtleBg: "bg-blue-50 dark:bg-blue-950/20",
+    border: "border-blue-200",
+    text: "text-blue-700",
+    subtleBg: "bg-blue-50",
   },
   ZOOPLA: {
     bar: "bg-purple-500",
     dot: "bg-purple-500",
-    border: "border-purple-200 dark:border-purple-800",
-    text: "text-purple-700 dark:text-purple-400",
-    subtleBg: "bg-purple-50 dark:bg-purple-950/20",
+    border: "border-purple-200",
+    text: "text-purple-700",
+    subtleBg: "bg-purple-50",
   },
   ONTHEMARKET: {
     bar: "bg-emerald-500",
     dot: "bg-emerald-500",
-    border: "border-emerald-200 dark:border-emerald-800",
-    text: "text-emerald-700 dark:text-emerald-400",
-    subtleBg: "bg-emerald-50 dark:bg-emerald-950/20",
+    border: "border-emerald-200",
+    text: "text-emerald-700",
+    subtleBg: "bg-emerald-50",
   },
   PRIMELOCATION: {
     bar: "bg-orange-500",
     dot: "bg-orange-500",
-    border: "border-orange-200 dark:border-orange-800",
-    text: "text-orange-700 dark:text-orange-400",
-    subtleBg: "bg-orange-50 dark:bg-orange-950/20",
+    border: "border-orange-200",
+    text: "text-orange-700",
+    subtleBg: "bg-orange-50",
   },
 }
 
@@ -55,9 +55,9 @@ export function ScraperLiveProgress({ job }: ScraperLiveProgressProps) {
   const style = SOURCE_STYLE[job.source] ?? {
     bar: "bg-gray-500",
     dot: "bg-gray-500",
-    border: "border-gray-200 dark:border-gray-700",
-    text: "text-gray-700 dark:text-gray-400",
-    subtleBg: "bg-gray-50 dark:bg-gray-900/20",
+    border: "border-gray-200",
+    text: "text-gray-700",
+    subtleBg: "bg-gray-50",
   }
   const sourceLabel = SOURCE_LABELS[job.source] ?? job.source
   const isQueued = job.status === "QUEUED"
@@ -88,14 +88,14 @@ export function ScraperLiveProgress({ job }: ScraperLiveProgressProps) {
           {/* Right: stat chips + percentage */}
           {!isQueued && (
             <div className="flex items-center gap-1.5 text-xs flex-shrink-0">
-              <span className="rounded-full bg-background/80 border border-border px-2 py-0.5 font-medium tabular-nums">
+              <span className="rounded-full bg-white/80 border border-[var(--ds-border)] px-2 py-0.5 font-medium tabular-nums">
                 {job.totalFound} found
               </span>
-              <span className="rounded-full bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 px-2 py-0.5 font-medium tabular-nums">
+              <span className="rounded-full bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 font-medium tabular-nums">
                 {job.successful} saved
               </span>
               {job.failed > 0 && (
-                <span className="rounded-full bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 px-2 py-0.5 font-medium tabular-nums">
+                <span className="rounded-full bg-red-100 text-red-700 border border-red-200 px-2 py-0.5 font-medium tabular-nums">
                   {job.failed} failed
                 </span>
               )}
@@ -109,7 +109,7 @@ export function ScraperLiveProgress({ job }: ScraperLiveProgressProps) {
         </div>
 
         {/* Progress bar */}
-        <div className="mt-2.5 h-1.5 w-full rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+        <div className="mt-2.5 h-1.5 w-full rounded-full bg-black/10 overflow-hidden">
           {isQueued || job.totalFound === 0 ? (
             /* Indeterminate pulse for queued / not-yet-found state */
             <div

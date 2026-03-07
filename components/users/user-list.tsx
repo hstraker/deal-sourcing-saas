@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -131,13 +130,13 @@ export function UserList() {
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case "admin":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+        return "bg-red-100 text-red-800"
       case "sourcer":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+        return "bg-blue-100 text-blue-800"
       case "investor":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+        return "bg-green-100 text-green-800"
       default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+        return "bg-gray-100 text-gray-800"
     }
   }
 
@@ -184,14 +183,14 @@ export function UserList() {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Users</CardTitle>
-          <CardDescription>
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900">All Users</h3>
+          <p className="text-xs text-gray-400 mt-0.5">
             {users.length} user{users.length !== 1 ? "s" : ""} total
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div className="p-5">
           <Table>
             <TableHeader>
               <TableRow>
@@ -216,7 +215,7 @@ export function UserList() {
                   <TableRow key={user.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="relative h-10 w-10 overflow-hidden rounded-full border border-border bg-gray-100">
+                        <div className="relative h-10 w-10 overflow-hidden rounded-full border border-[var(--ds-border)] bg-gray-100">
                           {profileImageUrls[user.id] ? (
                             <Image
                               src={profileImageUrls[user.id]}
@@ -262,8 +261,8 @@ export function UserList() {
                       <span
                         className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
                           user.isActive
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                            : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
                         }`}
                       >
                         {user.isActive ? "Active" : "Inactive"}
@@ -338,8 +337,8 @@ export function UserList() {
               )}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

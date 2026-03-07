@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
@@ -132,14 +131,14 @@ export function PropertyAnalysisPanel({
   const bmv = calculateBMV()
 
   return (
-    <Card>
-      <CardHeader>
+    <div className="ds-card overflow-hidden">
+      <div className="px-5 py-4 border-b border-[var(--ds-border)]">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Property Analysis</CardTitle>
-            <CardDescription>
+            <h3 className="text-sm font-semibold text-gray-900">Property Analysis</h3>
+            <p className="text-xs text-gray-400 mt-0.5">
               Comprehensive market data and investment insights
-            </CardDescription>
+            </p>
           </div>
           <Button
             variant="outline"
@@ -154,9 +153,8 @@ export function PropertyAnalysisPanel({
             )}
           </Button>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {isLoading && !propertyData && (
+      </div>
+      <div className="p-5 space-y-6">        {isLoading && !propertyData && (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
           </div>
@@ -215,7 +213,7 @@ export function PropertyAnalysisPanel({
                     </h4>
                     <div className="space-y-1">
                       {propertyData.analysis.insights.map((insight, idx) => (
-                        <div key={idx} className="text-sm flex items-start gap-2 p-2 bg-green-50 dark:bg-green-950/20 rounded">
+                        <div key={idx} className="text-sm flex items-start gap-2 p-2 bg-green-50 rounded">
                           <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
                           <span>{insight}</span>
                         </div>
@@ -232,7 +230,7 @@ export function PropertyAnalysisPanel({
                     </h4>
                     <div className="space-y-1">
                       {propertyData.analysis.recommendations.map((rec, idx) => (
-                        <div key={idx} className="text-sm flex items-start gap-2 p-2 bg-blue-50 dark:bg-blue-950/20 rounded">
+                        <div key={idx} className="text-sm flex items-start gap-2 p-2 bg-blue-50 rounded">
                           <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
                           <span>{rec}</span>
                         </div>
@@ -249,7 +247,7 @@ export function PropertyAnalysisPanel({
                     </h4>
                     <div className="space-y-1">
                       {propertyData.analysis.riskFactors.map((risk, idx) => (
-                        <div key={idx} className="text-sm flex items-start gap-2 p-2 bg-orange-50 dark:bg-orange-950/20 rounded">
+                        <div key={idx} className="text-sm flex items-start gap-2 p-2 bg-orange-50 rounded">
                           <AlertCircle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
                           <span>{risk}</span>
                         </div>
@@ -347,8 +345,8 @@ export function PropertyAnalysisPanel({
             <p>Click refresh to fetch property analysis data</p>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 

@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { calculateAllMetrics, type DealCalculationInput } from "@/lib/calculations/deal-metrics"
 
 interface DealMetricsPreviewProps {
@@ -62,14 +61,13 @@ export function DealMetricsPreview({
   }
 
   return (
-    <Card className="border-primary/20 bg-primary/5">
-      <CardHeader>
-        <CardTitle>Calculated Metrics</CardTitle>
-        <CardDescription>
+    <div className="ds-card overflow-hidden border-[#2563EB]/20 bg-[#2563EB]/5">      <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+        <h3 className="text-sm font-semibold text-gray-900">Calculated Metrics</h3>
+        <p className="text-xs text-gray-400 mt-0.5">
           These metrics are automatically calculated and will be saved with your deal
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+        </p>
+      </div>
+      <div className="p-5">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {/* BMV % */}
           <div>
@@ -500,8 +498,8 @@ export function DealMetricsPreview({
             )}
           </ul>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 

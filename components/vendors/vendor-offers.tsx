@@ -12,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Plus, Edit2, CheckCircle2, XCircle, Clock, MessageSquare } from "lucide-react"
 import {
   Table,
@@ -205,20 +204,19 @@ export function VendorOffers({ vendorId, dealId }: VendorOffersProps) {
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center p-8">
-          <Loader2 className="h-6 w-6 animate-spin" />
-        </CardContent>
-      </Card>
+      <div className="ds-card overflow-hidden">
+        <div className="p-5 flex items-center justify-center p-8">          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+    <div className="ds-card overflow-hidden">
+      <div className="px-5 py-4 border-b border-[var(--ds-border)]">
         <div>
-          <CardTitle>Vendor Offers</CardTitle>
-          <CardDescription>Track all offers made to this vendor</CardDescription>
+          <h3 className="text-sm font-semibold text-gray-900">Vendor Offers</h3>
+          <p className="text-xs text-gray-400 mt-0.5">Track all offers made to this vendor</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -370,8 +368,8 @@ export function VendorOffers({ vendorId, dealId }: VendorOffersProps) {
             </div>
           </DialogContent>
         </Dialog>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div className="p-5">
         {offers.length === 0 ? (
           <div className="text-center py-8 text-gray-400">
             No offers made yet. Click &quot;New Offer&quot; to create one.
@@ -425,8 +423,8 @@ export function VendorOffers({ vendorId, dealId }: VendorOffersProps) {
             </TableBody>
           </Table>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 

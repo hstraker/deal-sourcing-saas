@@ -13,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 import { z } from "zod"
 
@@ -191,12 +190,11 @@ export function InvestorForm({ investor, onSuccess, onCancel }: InvestorFormProp
       )}
 
       {/* Personal Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Personal Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900">Personal Information</h3>
+        </div>
+        <div className="p-5 space-y-4">          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="firstName">First Name *</Label>
               <Input id="firstName" {...register("firstName")} required />
@@ -238,16 +236,15 @@ export function InvestorForm({ investor, onSuccess, onCancel }: InvestorFormProp
               <Input id="phone" type="tel" {...register("phone")} />
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Investment Criteria */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Investment Criteria</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900">Investment Criteria</h3>
+        </div>
+        <div className="p-5 space-y-4">          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="minBudget">Min Budget (£)</Label>
               <Input
@@ -290,8 +287,8 @@ export function InvestorForm({ investor, onSuccess, onCancel }: InvestorFormProp
                   onClick={() => toggleStrategy(strategy)}
                   className={`px-3 py-1 rounded-md text-sm border transition-colors ${
                     selectedStrategies.includes(strategy)
-                      ? "bg-primary text-[#2563EB]-foreground border-primary"
-                      : "bg-background border-border hover:bg-gray-50"
+                      ? "bg-[#2563EB] text-white border-[#2563EB]"
+                      : "bg-white border-[var(--ds-border)] hover:bg-gray-50"
                   }`}
                 >
                   {strategy}
@@ -334,16 +331,15 @@ export function InvestorForm({ investor, onSuccess, onCancel }: InvestorFormProp
               </Select>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Preferences */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Communication Preferences</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center space-x-2">
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900">Communication Preferences</h3>
+        </div>
+        <div className="p-5 space-y-4">          <div className="flex items-center space-x-2">
             <input
               type="checkbox"
               id="emailAlerts"
@@ -361,8 +357,8 @@ export function InvestorForm({ investor, onSuccess, onCancel }: InvestorFormProp
             />
             <Label htmlFor="smsAlerts">SMS Alerts</Label>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>

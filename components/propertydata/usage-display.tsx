@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { AlertCircle, CheckCircle2 } from "lucide-react"
 
@@ -37,14 +36,14 @@ export function PropertyDataUsageDisplay() {
   // Don't show anything if still loading or if user is not admin (component handles this)
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">PropertyData API Usage</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900 text-sm">PropertyData API Usage</h3>
+        </div>
+        <div className="p-5">
           <div className="text-sm text-gray-400">Loading...</div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     )
   }
 
@@ -57,15 +56,14 @@ export function PropertyDataUsageDisplay() {
   const isAtLimit = usagePercentage >= 100
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm">PropertyData API Usage</CardTitle>
-        <CardDescription suppressHydrationWarning className="text-xs">
+    <div className="ds-card overflow-hidden">
+      <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+        <h3 className="text-sm font-semibold text-gray-900 text-sm">PropertyData API Usage</h3>
+        <p suppressHydrationWarning className="text-xs text-gray-400 mt-0.5">
           Monthly credit limit: {usage.limit.toLocaleString()}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="space-y-2">
+        </p>
+      </div>
+      <div className="p-5 space-y-3">        <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-400">Credits Used</span>
             <span suppressHydrationWarning className="font-semibold">
@@ -91,20 +89,20 @@ export function PropertyDataUsageDisplay() {
         )}
 
         {isNearLimit && !isAtLimit && (
-          <div className="rounded-md bg-orange-50 dark:bg-orange-950/20 p-2 text-xs text-orange-600 dark:text-orange-400 flex items-center gap-2">
+          <div className="rounded-md bg-orange-50 p-2 text-xs text-orange-600 flex items-center gap-2">
             <AlertCircle className="h-4 w-4" />
             <span>Approaching credit limit. Use cached data when possible.</span>
           </div>
         )}
 
         {!isNearLimit && (
-          <div className="rounded-md bg-green-50 dark:bg-green-950/20 p-2 text-xs text-green-600 dark:text-green-400 flex items-center gap-2">
+          <div className="rounded-md bg-green-50 p-2 text-xs text-green-600 flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4" />
             <span suppressHydrationWarning>Usage is healthy. {usage.creditsRemaining.toLocaleString()} credits available.</span>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 

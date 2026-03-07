@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Play, Loader2, Clock, CheckCircle2, XCircle } from "lucide-react"
 
@@ -31,32 +30,32 @@ const SOURCE_CONFIG: Record<
   { border: string; dotIdle: string; dotRunning: string; button: string; countColor: string }
 > = {
   RIGHTMOVE: {
-    border: "border-blue-200 dark:border-blue-800",
+    border: "border-blue-200",
     dotIdle: "bg-green-500",
     dotRunning: "bg-amber-400",
-    button: "text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/30",
-    countColor: "text-blue-700 dark:text-blue-400",
+    button: "text-blue-600 border-blue-200 hover:bg-blue-50",
+    countColor: "text-blue-700",
   },
   ZOOPLA: {
-    border: "border-purple-200 dark:border-purple-800",
+    border: "border-purple-200",
     dotIdle: "bg-green-500",
     dotRunning: "bg-amber-400",
-    button: "text-purple-600 border-purple-200 hover:bg-purple-50 dark:text-purple-400 dark:border-purple-800 dark:hover:bg-purple-950/30",
-    countColor: "text-purple-700 dark:text-purple-400",
+    button: "text-purple-600 border-purple-200 hover:bg-purple-50",
+    countColor: "text-purple-700",
   },
   ONTHEMARKET: {
-    border: "border-emerald-200 dark:border-emerald-800",
+    border: "border-emerald-200",
     dotIdle: "bg-green-500",
     dotRunning: "bg-amber-400",
-    button: "text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-950/30",
-    countColor: "text-emerald-700 dark:text-emerald-400",
+    button: "text-emerald-600 border-emerald-200 hover:bg-emerald-50",
+    countColor: "text-emerald-700",
   },
   PRIMELOCATION: {
-    border: "border-orange-200 dark:border-orange-800",
+    border: "border-orange-200",
     dotIdle: "bg-green-500",
     dotRunning: "bg-amber-400",
-    button: "text-orange-600 border-orange-200 hover:bg-orange-50 dark:text-orange-400 dark:border-orange-800 dark:hover:bg-orange-950/30",
-    countColor: "text-orange-700 dark:text-orange-400",
+    button: "text-orange-600 border-orange-200 hover:bg-orange-50",
+    countColor: "text-orange-700",
   },
 }
 
@@ -94,7 +93,7 @@ export function ScraperSourceCard({
   }, [lastJobAt])
 
   const statusDot = (() => {
-    if (!enabled) return "bg-gray-300 dark:bg-gray-600"
+    if (!enabled) return "bg-gray-300"
     if (progress?.status === "FAILED" || progress?.status === "CANCELLED") return "bg-red-500"
     if (isRunning) return cfg.dotRunning + " animate-pulse"
     return cfg.dotIdle
@@ -113,9 +112,8 @@ export function ScraperSourceCard({
   const isDisabled = !enabled || isRunning || !hasCriteria
 
   return (
-    <Card className={`border ${cfg.border} hover:shadow-sm transition-shadow`}>
-      <CardContent className="p-4 space-y-3">
-        {/* Header: name + status dot */}
+    <div className={`ds-card overflow-hidden border ${cfg.border} hover:shadow-sm transition-shadow`}>
+      <div className="p-4 space-y-3">        {/* Header: name + status dot */}
         <div className="flex items-center justify-between">
           <span className="font-semibold text-sm">{label}</span>
           <div className="flex items-center gap-1.5">
@@ -183,7 +181,7 @@ export function ScraperSourceCard({
           )}
           {isRunning ? "Scraping…" : "Scrape Now"}
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

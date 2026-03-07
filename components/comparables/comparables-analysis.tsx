@@ -1,6 +1,5 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
   Tooltip,
@@ -152,21 +151,20 @@ export function ComparablesAnalysis({
     <TooltipProvider>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-w-0 w-full">
         {/* Summary Statistics Card */}
-        <Card>
-          <CardHeader>
+        <div className="ds-card overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--ds-border)]">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Market Analysis</CardTitle>
+              <h3 className="text-sm font-semibold text-gray-900 text-lg">Market Analysis</h3>
               <Badge variant={confidenceBadge.variant} className="flex items-center gap-1">
                 {confidenceBadge.icon}
                 {confidenceBadge.label}
               </Badge>
             </div>
-            <CardDescription>
+            <p className="text-xs text-gray-400 mt-0.5">
               Based on {comparables.length} comparable propert{comparables.length === 1 ? "y" : "ies"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Average Price */}
+            </p>
+          </div>
+          <div className="p-5 space-y-4">            {/* Average Price */}
             <div className="flex items-start justify-between">
               <div>
                 <div className="flex items-center gap-2 text-sm text-gray-400 mb-1">
@@ -200,7 +198,7 @@ export function ComparablesAnalysis({
 
             {/* Rental Yield - ALWAYS SHOW */}
             {showRentalData && (
-              <div className="border-t pt-4 bg-gradient-to-br from-primary/5 to-primary/10 -mx-6 px-6 py-4 mt-4">
+              <div className="border-t pt-4 bg-gradient-to-br from-[#2563EB]/5 to-[#2563EB]/10 -mx-6 px-6 py-4 mt-4">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center gap-2 text-sm font-semibold text-[#2563EB] mb-3 cursor-help">
@@ -301,19 +299,18 @@ export function ComparablesAnalysis({
                 })()}
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Yield Distribution Chart */}
         {showRentalData && yieldDistribution.length > 0 && (
-          <Card className="min-w-0">
-            <CardHeader>
-              <CardTitle className="text-lg">Rental Yield Distribution</CardTitle>
-              <CardDescription>
+          <div className="ds-card overflow-hidden min-w-0">            <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+              <h3 className="text-sm font-semibold text-gray-900 text-lg">Rental Yield Distribution</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
                 Distribution of rental yields across {yields.length} properties
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+              </p>
+            </div>
+            <div className="p-5">
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={yieldDistribution}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -350,18 +347,18 @@ export function ComparablesAnalysis({
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
         {/* Info Card (if no rental data) */}
         {showRentalData && yields.length === 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Rental Analysis</CardTitle>
-              <CardDescription>Investment potential analysis</CardDescription>
-            </CardHeader>
-            <CardContent>
+          <div className="ds-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+              <h3 className="text-sm font-semibold text-gray-900 text-lg">Rental Analysis</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Investment potential analysis</p>
+            </div>
+            <div className="p-5">
               <div className="flex items-start gap-3 text-sm text-gray-400">
                 <Info className="h-5 w-5 shrink-0 mt-0.5" />
                 <div>
@@ -369,8 +366,8 @@ export function ComparablesAnalysis({
                   <p>Rental yield information is not available for these comparables. This data helps assess investment potential for buy-to-let properties.</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
       </div>
     </TooltipProvider>

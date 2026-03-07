@@ -2893,7 +2893,7 @@ export function VendorLeadDetailModal({
                     {events.length === 0 ? (
                       <p className="text-sm text-gray-400 text-center py-8">No activity recorded yet</p>
                     ) : (
-                      <ol className="relative border-l border-border ml-3 space-y-5">
+                      <ol className="relative border-l border-[var(--ds-border)] ml-3 space-y-5">
                         {events.map((ev: PipelineEvent) => {
                           const { title, detail, color } = eventLabel(ev)
                           return (

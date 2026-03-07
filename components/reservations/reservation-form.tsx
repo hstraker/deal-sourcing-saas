@@ -14,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, CheckCircle2, XCircle, FileText, Upload } from "lucide-react"
 import { z } from "zod"
 
@@ -198,12 +197,12 @@ export function ReservationForm({
 
       {/* Investor Selection (only for new reservations) */}
       {!isEditMode && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Investor</CardTitle>
-            <CardDescription>Select the investor making this reservation</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <div className="ds-card overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+            <h3 className="text-sm font-semibold text-gray-900">Investor</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Select the investor making this reservation</p>
+          </div>
+          <div className="p-5">
             <div className="space-y-2">
               <Label htmlFor="investorId">Investor *</Label>
               <Select value={selectedInvestorId} onValueChange={setSelectedInvestorId}>
@@ -227,17 +226,16 @@ export function ReservationForm({
                 <p className="text-sm text-red-500">Please select an investor</p>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Reservation Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Reservation Details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900">Reservation Details</h3>
+        </div>
+        <div className="p-5 space-y-4">          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="reservationFee">Reservation Fee (£) *</Label>
               <Input
@@ -313,18 +311,17 @@ export function ReservationForm({
               </div>
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Legal Details */}
       {isEditMode && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Legal Details</CardTitle>
-            <CardDescription>Solicitor information</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
+        <div className="ds-card overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+            <h3 className="text-sm font-semibold text-gray-900">Legal Details</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Solicitor information</p>
+          </div>
+          <div className="p-5 space-y-4">            <div className="space-y-2">
               <Label htmlFor="solicitorName">Solicitor Name</Label>
               <Input
                 id="solicitorName"
@@ -361,18 +358,17 @@ export function ReservationForm({
                 placeholder="Law Firm Name"
               />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Lock-out Agreement */}
       {isEditMode && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Lock-out Agreement</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center space-x-4">
+        <div className="ds-card overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+            <h3 className="text-sm font-semibold text-gray-900">Lock-out Agreement</h3>
+          </div>
+          <div className="p-5 space-y-4">            <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -391,16 +387,16 @@ export function ReservationForm({
                 <Label htmlFor="lockOutAgreementSigned">Agreement Signed</Label>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Notes */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Notes</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900">Notes</h3>
+        </div>
+        <div className="p-5">
           <div className="space-y-2">
             <Label htmlFor="notes">Additional Notes</Label>
             <Textarea
@@ -410,8 +406,8 @@ export function ReservationForm({
               rows={4}
             />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>

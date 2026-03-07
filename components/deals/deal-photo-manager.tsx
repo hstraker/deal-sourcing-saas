@@ -3,7 +3,6 @@
 import { useRef, useState } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { Camera, Crown, Loader2, Trash2, Upload } from "lucide-react"
@@ -311,7 +310,7 @@ export function DealPhotoManager({ dealId, initialPhotos }: DealPhotoManagerProp
       </div>
 
       {uploadProgress !== null && (
-        <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-4">
+        <div className="space-y-2 rounded-lg border border-[#2563EB]/30 bg-[#2563EB]/5 p-4">
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2 text-[#2563EB]">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -327,9 +326,9 @@ export function DealPhotoManager({ dealId, initialPhotos }: DealPhotoManagerProp
             <span className="font-medium text-[#2563EB]">{uploadProgress.overallProgress}%</span>
           </div>
           <div className="space-y-1">
-            <div className="h-2 rounded-full bg-primary/20">
+            <div className="h-2 rounded-full bg-[#2563EB]/20">
               <div
-                className="h-full rounded-full bg-primary transition-all duration-300"
+                className="h-full rounded-full bg-[#2563EB] transition-all duration-300"
                 style={{ width: `${uploadProgress.overallProgress}%` }}
               />
             </div>
@@ -350,8 +349,7 @@ export function DealPhotoManager({ dealId, initialPhotos }: DealPhotoManagerProp
       )}
 
       {photos.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center gap-3 border-dashed py-10 text-center text-gray-400">
-          <Camera className="h-10 w-10" />
+        <div className="ds-card overflow-hidden flex flex-col items-center justify-center gap-3 border-dashed py-10 text-center text-gray-400">          <Camera className="h-10 w-10" />
           <div>
             <p className="font-medium text-gray-900">No photos yet</p>
             <p className="text-sm">Upload property photos to help investors visualise the deal.</p>
@@ -360,15 +358,15 @@ export function DealPhotoManager({ dealId, initialPhotos }: DealPhotoManagerProp
             <Upload className="h-4 w-4" />
             Upload Photos
           </Button>
-        </Card>
+        </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {photos.map((photo) => (
-            <Card
+            <div
               key={photo.id}
               className={cn(
-                "overflow-hidden border transition",
-                photo.isCover && "border-primary shadow-lg"
+                "ds-card overflow-hidden border transition",
+                photo.isCover && "border-[#2563EB] shadow-lg"
               )}
             >
               <div className="relative h-48 w-full">
@@ -379,7 +377,7 @@ export function DealPhotoManager({ dealId, initialPhotos }: DealPhotoManagerProp
                   className="object-cover"
                 />
                 {photo.isCover && (
-                  <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-primary px-2 py-1 text-xs font-semibold text-[#2563EB]-foreground">
+                  <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-[#2563EB] px-2 py-1 text-xs font-semibold text-white">
                     <Crown className="h-3 w-3" />
                     Cover
                   </span>
@@ -406,7 +404,7 @@ export function DealPhotoManager({ dealId, initialPhotos }: DealPhotoManagerProp
                   Delete
                 </Button>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       )}

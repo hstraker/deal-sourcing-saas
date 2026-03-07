@@ -1,4 +1,5 @@
 "use client"
+import { toast } from "sonner"
 
 /**
  * PortalCheckBadge — compact risk badge for Kanban cards and list views.
@@ -9,7 +10,6 @@ import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Loader2, RefreshCw } from "lucide-react"
 import { useState } from "react"
-import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
 type Risk = "clear" | "caution" | "red_flag" | "pending" | "running" | null | undefined
@@ -26,11 +26,11 @@ interface PortalCheckBadgeProps {
 }
 
 const RISK_CONFIG: Record<NonNullable<Exclude<Risk, null | undefined>>, { label: string; emoji: string; variant: string; tooltip: string }> = {
-  clear:    { label: "Clear",    emoji: "✅", variant: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800", tooltip: "No portal listing issues found" },
-  caution:  { label: "Caution",  emoji: "⚠️", variant: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800",  tooltip: "Amber flags detected — review before proceeding" },
-  red_flag: { label: "Red Flag", emoji: "🚨", variant: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",             tooltip: "Red flags detected — verify before proceeding" },
-  pending:  { label: "Checking", emoji: "⏳", variant: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700",            tooltip: "Portal check in progress…" },
-  running:  { label: "Checking", emoji: "⏳", variant: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700",            tooltip: "Portal check in progress…" },
+  clear:    { label: "Clear",    emoji: "✅", variant: "bg-green-100 text-green-800 border-green-200", tooltip: "No portal listing issues found" },
+  caution:  { label: "Caution",  emoji: "⚠️", variant: "bg-amber-100 text-amber-800 border-amber-200",  tooltip: "Amber flags detected — review before proceeding" },
+  red_flag: { label: "Red Flag", emoji: "🚨", variant: "bg-red-100 text-red-800 border-red-200",             tooltip: "Red flags detected — verify before proceeding" },
+  pending:  { label: "Checking", emoji: "⏳", variant: "bg-gray-100 text-gray-600 border-gray-200",            tooltip: "Portal check in progress…" },
+  running:  { label: "Checking", emoji: "⏳", variant: "bg-gray-100 text-gray-600 border-gray-200",            tooltip: "Portal check in progress…" },
 }
 
 export function PortalCheckBadge({
@@ -41,7 +41,6 @@ export function PortalCheckBadge({
   className,
   showRerun = false,
 }: PortalCheckBadgeProps) {
-  const { toast } = useToast()
   const [isRerunning, setIsRerunning] = useState(false)
 
   if (!risk) {
@@ -52,7 +51,7 @@ export function PortalCheckBadge({
           <TooltipTrigger asChild>
             <span className={cn(
               "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
-              "bg-gray-50 text-gray-400 border-gray-200 dark:bg-gray-800 dark:text-gray-500",
+              "bg-gray-50 text-gray-400 border-gray-200",
               className
             )}>
               — Not checked
@@ -74,13 +73,13 @@ export function PortalCheckBadge({
       const res = await fetch(`/api/vendor-pipeline/leads/${leadId}/run-check`, { method: "POST" })
       const data = await res.json()
       if (res.ok) {
-        toast({ title: "Check complete", description: `Risk: ${data.overallRisk?.replace("_", " ")}` })
+        toast.success("Check complete", { description: `Risk: ${data.overallRisk?.replace("_", " ")}` })
         // Caller should refresh the lead data
       } else {
-        toast({ title: "Check failed", description: data.error, variant: "destructive" })
+        toast.error("Check failed", { description: data.error })
       }
     } catch {
-      toast({ title: "Check failed", description: "Network error", variant: "destructive" })
+      toast.error("Check failed", { description: "Network error" })
     } finally {
       setIsRerunning(false)
     }

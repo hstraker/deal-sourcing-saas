@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -99,15 +98,14 @@ function TemplateCard({
     : "Never used"
 
   return (
-    <Card className="relative overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-      {/* 3-stripe colour bar */}
+    <div className="ds-card overflow-hidden relative overflow-hidden flex flex-col hover:shadow-md transition-shadow">      {/* 3-stripe colour bar */}
       <div className="flex h-2 shrink-0">
         {colors.map((c, i) => (
           <div key={i} className="flex-1" style={{ background: c }} />
         ))}
       </div>
 
-      <CardHeader className="pb-2 pt-3 px-4">
+      <div className="px-5 py-4 border-b border-[var(--ds-border)]">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <h3 className="font-semibold text-sm leading-tight truncate">{template.name}</h3>
@@ -136,10 +134,9 @@ function TemplateCard({
             </div>
           </div>
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="px-4 pb-4 flex-1 flex flex-col justify-between gap-3">
-        {/* Badges */}
+      <div className="p-5 px-4 pb-4 flex-1 flex flex-col justify-between gap-3">        {/* Badges */}
         <div className="flex flex-wrap gap-1.5 items-center">
           {template.isDefault && (
             <Badge className="text-[10px] px-1.5 py-0 h-4 gap-0.5 bg-blue-600 hover:bg-blue-600">
@@ -204,8 +201,8 @@ function TemplateCard({
             </Button>
           )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 

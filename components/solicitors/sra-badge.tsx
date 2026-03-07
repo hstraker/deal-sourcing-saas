@@ -76,7 +76,7 @@ export function SRABadge({
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400">
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 SRA Verified
               </span>
@@ -111,7 +111,7 @@ export function SRABadge({
 
   return (
     <div className="flex items-center gap-1.5">
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600">
         <ShieldAlert className="h-3.5 w-3.5" />
         {current.sraStatus ?? "Unverified"}
       </span>

@@ -1,4 +1,5 @@
 "use client"
+import { toast } from "sonner"
 
 /**
  * PortalCheckDetailPanel — full detail view of the latest VendorPropertyCheck.
@@ -10,13 +11,11 @@
 import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import {
   RefreshCw, Loader2, ExternalLink, ShieldCheck, ShieldAlert,
   AlertTriangle, Building2, Clock, TrendingDown, FlaskConical, Calendar,
   Search, Phone, Wifi, WifiOff, CheckCircle2, XCircle, MinusCircle
 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
 import { PortalCheckBadge } from "./portal-check-badge"
 import { formatDistanceToNow, format } from "date-fns"
 
@@ -123,9 +122,9 @@ interface PortalCheckDetailPanelProps {
 // ---------------------------------------------------------------------------
 
 const FLAG_SEVERITY_STYLE: Record<string, string> = {
-  clear:    "border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300",
-  caution:  "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300",
-  red_flag: "border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300",
+  clear:    "border-green-200 bg-green-50 text-green-800",
+  caution:  "border-amber-200 bg-amber-50 text-amber-800",
+  red_flag: "border-red-200 bg-red-50 text-red-800",
 }
 
 const FLAG_ICON: Record<string, React.ReactNode> = {
@@ -144,7 +143,6 @@ export function PortalCheckDetailPanel({
   latestCheckedAt,
   onRiskUpdated,
 }: PortalCheckDetailPanelProps) {
-  const { toast } = useToast()
   const [check, setCheck] = useState<CheckRecord | null>(null)
   const [history, setHistory] = useState<CheckRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -159,7 +157,7 @@ export function PortalCheckDetailPanel({
       setCheck(data.latestCheck ?? null)
       setHistory(data.history ?? [])
     } catch (err: any) {
-      toast({ title: "Failed to load check results", description: err.message, variant: "destructive" })
+      toast.error("Failed to load check results", { description: err.message })
     } finally {
       setLoading(false)
     }
@@ -173,14 +171,13 @@ export function PortalCheckDetailPanel({
       const res = await fetch(`/api/vendor-pipeline/leads/${leadId}/run-check`, { method: "POST" })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? "Check failed")
-      toast({
-        title: "Check complete",
+      toast.success("Check complete", {
         description: `Risk level: ${data.overallRisk?.replace("_", " ")} • ${data.flagCount} flag(s)`,
       })
       onRiskUpdated?.(data.overallRisk, new Date().toISOString())
       await fetchResults()
     } catch (err: any) {
-      toast({ title: "Check failed", description: err.message, variant: "destructive" })
+      toast.error("Check failed", { description: err.message })
     } finally {
       setIsRunning(false)
     }
@@ -236,10 +233,10 @@ export function PortalCheckDetailPanel({
           {check.recommendedAction && (
             <div className={`rounded-lg border p-3 text-sm ${
               check.overallRisk === "red_flag"
-                ? "bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300"
+                ? "bg-red-50 border-red-200 text-red-800"
                 : check.overallRisk === "caution"
-                ? "bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300"
-                : "bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300"
+                ? "bg-amber-50 border-amber-200 text-amber-800"
+                : "bg-green-50 border-green-200 text-green-800"
             }`}>
               <p className="font-medium">{check.recommendedAction}</p>
             </div>
@@ -269,7 +266,7 @@ export function PortalCheckDetailPanel({
           {/* Active listing (PropertyData API) */}
           {check.portalCheckRaw?.activeListing && (
             <>
-              <Separator />
+              <div className="border-t border-[var(--ds-border)]" />
               <div className="space-y-2">
                 <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Active Listing (PropertyData)</h4>
                 <ActiveListingCard listing={check.portalCheckRaw.activeListing} />
@@ -280,7 +277,7 @@ export function PortalCheckDetailPanel({
           {/* Live portal check results */}
           {(check.portalCheckRaw?.liveResults?.length ?? 0) > 0 && (
             <>
-              <Separator />
+              <div className="border-t border-[var(--ds-border)]" />
               <LivePortalSection
                 results={check.portalCheckRaw!.liveResults!}
                 blockedPortals={check.portalCheckRaw?.blockedPortals ?? []}
@@ -291,7 +288,7 @@ export function PortalCheckDetailPanel({
           {/* Scraped portal database matches */}
           {(check.portalCheckRaw?.scrapedMatches?.length ?? 0) > 0 && (
             <>
-              <Separator />
+              <div className="border-t border-[var(--ds-border)]" />
               <div className="space-y-2">
                 <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1">
                   <Search className="h-3.5 w-3.5" />
@@ -309,7 +306,7 @@ export function PortalCheckDetailPanel({
           {/* Ownership data */}
           {check.ownershipCheckRaw && (
             <>
-              <Separator />
+              <div className="border-t border-[var(--ds-border)]" />
               <OwnershipSection data={check.ownershipCheckRaw} />
             </>
           )}
@@ -343,7 +340,7 @@ export function PortalCheckDetailPanel({
       {/* History */}
       {history.length > 1 && (
         <>
-          <Separator />
+          <div className="border-t border-[var(--ds-border)]" />
           <div className="space-y-2">
             <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Check History</h4>
             <div className="space-y-1">
@@ -459,10 +456,10 @@ function LivePortalSection({
               key={r.source}
               className={`rounded-lg border p-2 text-xs space-y-1 ${
                 hasMatch
-                  ? "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20"
+                  ? "border-red-200 bg-red-50"
                   : r.status === "blocked" || r.status === "error"
-                  ? "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20"
-                  : "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20"
+                  ? "border-amber-200 bg-amber-50"
+                  : "border-green-200 bg-green-50"
               }`}
             >
               <p className="font-semibold">{PORTAL_LABEL[r.source]}</p>
@@ -481,7 +478,7 @@ function LivePortalSection({
 
       {/* Blocked portals warning */}
       {blockedPortals.length > 0 && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
           <WifiOff className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
           <span>
             <span className="font-semibold">
@@ -501,7 +498,7 @@ function LivePortalSection({
             .filter((r) => r.matchedListings.length > 0)
             .flatMap((r) =>
               r.matchedListings.map((l, i) => (
-                <div key={`${r.source}-${i}`} className="rounded-lg border border-red-200 bg-white p-3 text-sm space-y-1.5 dark:bg-transparent">
+                <div key={`${r.source}-${i}`} className="rounded-lg border border-red-200 bg-white p-3 text-sm space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
                     <div>
                       <p className="font-semibold text-red-700">{PORTAL_LABEL[r.source]}</p>

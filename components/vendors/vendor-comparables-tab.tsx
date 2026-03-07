@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, RefreshCw, Home, Settings, TrendingUp, Clock } from "lucide-react"
@@ -181,29 +180,28 @@ export function VendorComparablesTab({
 
       {/* No postcode warning */}
       {!propertyPostcode && (
-        <Card>
-          <CardContent className="flex items-center gap-3 py-6">
-            <Home className="h-5 w-5 text-gray-400" />
+        <div className="ds-card overflow-hidden">
+          <div className="p-5 flex items-center gap-3 py-6">            <Home className="h-5 w-5 text-gray-400" />
             <div>
               <p className="font-medium">Property postcode required</p>
               <p className="text-sm text-gray-400">
                 Add a property postcode to fetch comparable properties in the area.
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* No comparables yet */}
       {propertyPostcode && (!data || data.comparables.length === 0) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>No Comparables Yet</CardTitle>
-            <CardDescription>
+        <div className="ds-card overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+            <h3 className="text-sm font-semibold text-gray-900">No Comparables Yet</h3>
+            <p className="text-xs text-gray-400 mt-0.5">
               Click &quot;Fetch Comparables&quot; to find similar properties that have sold in the area
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </p>
+          </div>
+          <div className="p-5">
             <div className="space-y-2 text-sm text-gray-400">
               <p>Comparables help you:</p>
               <ul className="list-disc list-inside space-y-1 ml-2">
@@ -213,8 +211,8 @@ export function VendorComparablesTab({
                 <li>Make data-driven offers</li>
               </ul>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Comparables data */}
@@ -227,9 +225,7 @@ export function VendorComparablesTab({
 
             if (!hasRentalData) {
               return (
-                <Card className="bg-yellow-50 border-yellow-200">
-                  <CardContent className="py-4">
-                    <div className="flex items-start gap-3">
+                <div className="ds-card overflow-hidden bg-yellow-50 border-yellow-200">                  <div className="p-5 py-4">                    <div className="flex items-start gap-3">
                       <TrendingUp className="h-5 w-5 text-yellow-600 mt-0.5" />
                       <div>
                         <p className="font-semibold text-yellow-900">Rental Data Not Available</p>
@@ -238,14 +234,12 @@ export function VendorComparablesTab({
                         </p>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )
             } else if (rentalDataCount < data.comparables.length) {
               return (
-                <Card className="bg-blue-50 border-blue-200">
-                  <CardContent className="py-4">
-                    <div className="flex items-start gap-3">
+                <div className="ds-card overflow-hidden bg-blue-50 border-blue-200">                  <div className="p-5 py-4">                    <div className="flex items-start gap-3">
                       <TrendingUp className="h-5 w-5 text-blue-600 mt-0.5" />
                       <div>
                         <p className="font-semibold text-blue-900">Partial Rental Data</p>
@@ -254,8 +248,8 @@ export function VendorComparablesTab({
                         </p>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )
             }
             return null

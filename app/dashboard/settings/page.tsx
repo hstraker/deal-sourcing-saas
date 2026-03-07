@@ -1,4 +1,5 @@
 "use client"
+import { toast } from "sonner"
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
@@ -40,7 +41,6 @@ import {
 } from "lucide-react"
 import { MOCK_SCENARIOS, MOCK_SCENARIO_IDS } from "@/lib/vendor-checks/test-mode/mock-scenarios"
 import type { MockScenarioId } from "@/lib/vendor-checks/test-mode/mock-scenarios"
-import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -66,7 +66,6 @@ const currencies = [
 const STORAGE_KEY = "dealstack_settings"
 
 export default function SettingsPage() {
-  const { toast } = useToast()
   const router = useRouter()
   const [settings, setSettings] = useState<SettingsState>({
     currency: "GBP",
@@ -106,7 +105,7 @@ export default function SettingsPage() {
 
   const sendTestEmail = async () => {
     if (!testEmailTo) {
-      toast({ title: "Enter an email address", variant: "destructive" })
+      toast.error("Enter an email address")
       return
     }
     setSendingTestEmail(true)
@@ -120,12 +119,12 @@ export default function SettingsPage() {
       const data = await res.json()
       setTestEmailResult(data)
       if (data.success) {
-        toast({ title: "Test email sent!", description: `Delivered to ${testEmailTo}` })
+        toast.success("Test email sent!", { description: `Delivered to ${testEmailTo}` })
       } else {
-        toast({ title: "Failed to send", description: data.error, variant: "destructive" })
+        toast.error("Failed to send", { description: data.error })
       }
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" })
+      toast.error("Error", { description: err.message })
     } finally {
       setSendingTestEmail(false)
     }
@@ -178,7 +177,7 @@ export default function SettingsPage() {
     const updated = { ...settings, ...newSettings }
     setSettings(updated)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-    toast({ title: "Settings saved", description: "Your preferences have been updated successfully." })
+    toast.success("Settings saved", { description: "Your preferences have been updated successfully." })
   }
 
   const runAITest = async () => {
@@ -204,15 +203,14 @@ export default function SettingsPage() {
       const data = await response.json()
       if (data.success) {
         setTestResult(data)
-        toast({
-          title: "Test completed successfully!",
+        toast.success("Test completed successfully!", {
           description: `Created lead with ${data.messageCount} messages. Click "View Lead" to see results.`,
         })
       } else {
         throw new Error(data.error || "Test failed")
       }
     } catch (error: any) {
-      toast({ title: "Test failed", description: error.message, variant: "destructive" })
+      toast.error("Test failed", { description: error.message })
       setTestResult({ success: false, error: error.message })
     } finally {
       setIsTestRunning(false)
@@ -226,15 +224,14 @@ export default function SettingsPage() {
       const response = await fetch("/api/dev/clear-test-data", { method: "DELETE" })
       const data = await response.json()
       if (data.success) {
-        toast({
-          title: "Test data cleared",
+        toast.success("Test data cleared", {
           description: `Deleted ${data.deletedCount.leads} test leads, ${data.deletedCount.messages} messages, and ${data.deletedCount.comparables} comparables.`,
         })
       } else {
         throw new Error(data.error || "Failed to clear data")
       }
     } catch (error: any) {
-      toast({ title: "Failed to clear test data", description: error.message, variant: "destructive" })
+      toast.error("Failed to clear test data", { description: error.message })
     } finally {
       setIsClearing(false)
     }
@@ -258,7 +255,7 @@ export default function SettingsPage() {
       urgency: n(urgencies),
       sellingReason: n(reasons),
     })
-    toast({ title: "Random lead generated", description: "Form filled with random test data" })
+    toast.success("Random lead generated", { description: "Form filled with random test data" })
   }
 
   const submitFacebookLead = async () => {
@@ -290,12 +287,12 @@ export default function SettingsPage() {
       const data = await response.json()
       if (data.success) {
         setFBResult(data)
-        toast({ title: "Lead submitted successfully!", description: "Facebook lead has been added to the vendor pipeline." })
+        toast.success("Lead submitted successfully!", { description: "Facebook lead has been added to the vendor pipeline." })
       } else {
         throw new Error(data.message || "Failed to submit lead")
       }
     } catch (error: any) {
-      toast({ title: "Submission failed", description: error.message, variant: "destructive" })
+      toast.error("Submission failed", { description: error.message })
       setFBResult({ success: false, error: error.message })
     } finally {
       setIsFBSubmitting(false)

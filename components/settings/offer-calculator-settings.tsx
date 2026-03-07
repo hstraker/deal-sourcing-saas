@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,7 +8,6 @@ import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Tooltip,
@@ -517,21 +515,19 @@ export function OfferCalculatorSettings() {
 
         <TabsContent value="configuration" className="space-y-6 mt-6">
       {/* ── Card 0: Investor Constraints (always visible, most impactful) ──── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-[#2563EB]" />
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">            <ShieldCheck className="h-5 w-5 text-[#2563EB]" />
             Investor Offer Constraints
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p className="text-xs text-gray-400 mt-0.5">
             Hard rules applied to every offer regardless of strategy. These ensure the calculator
             always behaves like a professional investor — offering below asking and requiring
             a minimum profit margin.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Min discount from asking — THE key investor rule */}
-          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+          </p>
+        </div>
+        <div className="p-5 space-y-6">          {/* Min discount from asking — THE key investor rule */}
+          <div className="rounded-lg border border-[#2563EB]/20 bg-[#2563EB]/5 p-4 space-y-3">
             <div className="flex items-start gap-3">
               <div className="flex-1 space-y-1">
                 <Label className="text-sm font-semibold">
@@ -553,7 +549,7 @@ export function OfferCalculatorSettings() {
               />
             </div>
             {/* Live example */}
-            <div className="rounded-md bg-background border px-3 py-2 text-xs space-y-1">
+            <div className="rounded-md bg-white border px-3 py-2 text-xs space-y-1">
               <p className="text-gray-400 font-medium">Live example</p>
               <div className="flex gap-6">
                 <span>Asking: <strong>£119,950</strong></span>
@@ -567,7 +563,7 @@ export function OfferCalculatorSettings() {
             </div>
           </div>
 
-          <Separator />
+          <div className="border-t border-[var(--ds-border)]" />
 
           {/* Validation thresholds — moved here from Card 5 */}
           <div>
@@ -613,23 +609,21 @@ export function OfferCalculatorSettings() {
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* ── Card 1: Calculator Mode ─────────────────────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings2 className="h-5 w-5 text-[#2563EB]" />
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">            <Settings2 className="h-5 w-5 text-[#2563EB]" />
             Calculator Mode
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p className="text-xs text-gray-400 mt-0.5">
             Choose between the legacy motivation-based calculation or the professional
             strategy-aware model.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Enable toggle */}
+          </p>
+        </div>
+        <div className="p-5 space-y-6">          {/* Enable toggle */}
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
               <Label className="text-sm font-medium">Enable Strategy-Aware Calculator</Label>
@@ -647,7 +641,7 @@ export function OfferCalculatorSettings() {
 
           {config.enableStrategyMode && (
             <>
-              <Separator />
+              <div className="border-t border-[var(--ds-border)]" />
 
               {/* Active strategies */}
               <div className="space-y-3">
@@ -666,8 +660,8 @@ export function OfferCalculatorSettings() {
                         onClick={() => toggleStrategy(s)}
                         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
                           active
-                            ? "bg-primary text-[#2563EB]-foreground border-primary"
-                            : "bg-background text-gray-400 border-input hover:border-primary/50"
+                            ? "bg-[#2563EB] text-white border-[#2563EB]"
+                            : "bg-white text-gray-400 border-input hover:border-[#2563EB]/50"
                         }`}
                       >
                         {STRATEGY_ICONS[s]}
@@ -679,7 +673,7 @@ export function OfferCalculatorSettings() {
                 </div>
               </div>
 
-              <Separator />
+              <div className="border-t border-[var(--ds-border)]" />
 
               {/* Default strategy */}
               <div className="flex items-center gap-4">
@@ -718,23 +712,21 @@ export function OfferCalculatorSettings() {
               </AlertDescription>
             </Alert>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* ── Card 2: Base Discount Range ─────────────────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingDown className="h-5 w-5 text-[#2563EB]" />
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">            <TrendingDown className="h-5 w-5 text-[#2563EB]" />
             Base Discount Range
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p className="text-xs text-gray-400 mt-0.5">
             The calculator starts at the midpoint of this range, then shifts up or down based on
             risk factors below. The final discount is always clamped within these bounds.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-2 gap-6 max-w-sm">
+          </p>
+        </div>
+        <div className="p-5 space-y-6">          <div className="grid grid-cols-2 gap-6 max-w-sm">
             <div className="space-y-2">
               <Label className="text-sm">Minimum discount</Label>
               <PctInput
@@ -767,14 +759,14 @@ export function OfferCalculatorSettings() {
             </div>
             <div className="h-2 rounded-full bg-gray-100 relative">
               <div
-                className="absolute h-full rounded-full bg-primary/40"
+                className="absolute h-full rounded-full bg-[#2563EB]/40"
                 style={{
                   left: `${(config.baseDiscountMin / 60) * 100}%`,
                   width: `${((config.baseDiscountMax - config.baseDiscountMin) / 60) * 100}%`,
                 }}
               />
               <div
-                className="absolute h-4 w-1 bg-primary rounded-full top-1/2 -translate-y-1/2"
+                className="absolute h-4 w-1 bg-[#2563EB] rounded-full top-1/2 -translate-y-1/2"
                 style={{ left: `${(((config.baseDiscountMin + config.baseDiscountMax) / 2) / 60) * 100}%` }}
               />
             </div>
@@ -783,22 +775,21 @@ export function OfferCalculatorSettings() {
               <span>{config.baseDiscountMax}%</span>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* ── Card 3: Risk Adjustments ─────────────────────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5 text-[#2563EB]" />
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">            <Target className="h-5 w-5 text-[#2563EB]" />
             Risk Adjustments
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p className="text-xs text-gray-400 mt-0.5">
             Each factor increases or decreases the discount from market value. Adjustments stack
             and are clamped to the range above.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div className="p-5">
           <div className="space-y-0 divide-y">
             {[
               {
@@ -857,7 +848,7 @@ export function OfferCalculatorSettings() {
               </div>
             ))}
 
-            <Separator className="my-2" />
+            <div className="border-t border-[var(--ds-border)] my-2" />
 
             {/* Demand reduction */}
             <div className="pt-3 space-y-3">
@@ -905,24 +896,22 @@ export function OfferCalculatorSettings() {
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* ── Card 4: Strategy Targets ─────────────────────────────────────────── */}
       {config.enableStrategyMode && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calculator className="h-5 w-5 text-[#2563EB]" />
+        <div className="ds-card overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+            <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">              <Calculator className="h-5 w-5 text-[#2563EB]" />
               Strategy Targets
-            </CardTitle>
-            <CardDescription>
+            </h3>
+            <p className="text-xs text-gray-400 mt-0.5">
               Each strategy applies an independent ceiling to ensure the offer meets professional
               investment criteria. The lower of the discount-based offer and the ceiling is used.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-
+            </p>
+          </div>
+          <div className="p-5 space-y-6">
             {/* Flip */}
             {config.activeStrategies.includes("Flip") && (
               <div className="rounded-lg border p-4 space-y-3">
@@ -1056,8 +1045,8 @@ export function OfferCalculatorSettings() {
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Bottom save */}
@@ -1070,18 +1059,16 @@ export function OfferCalculatorSettings() {
         </TabsContent>
 
         <TabsContent value="test" className="space-y-6 mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Play className="h-5 w-5 text-[#2563EB]" />
+          <div className="ds-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">                <Play className="h-5 w-5 text-[#2563EB]" />
                 Test workflow
-              </CardTitle>
-              <CardDescription>
+              </h3>
+              <p className="text-xs text-gray-400 mt-0.5">
                 Run BMV screening on a vendor lead or scraped listing. If screening passes, run the Capital Allocator for the full decision summary and best-fit strategy.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
+              </p>
+            </div>
+            <div className="p-5 space-y-6">              <div className="space-y-2">
                 <Label>Source</Label>
                 <Select value={testSource} onValueChange={(v: TestSource) => { setTestSource(v); setScreeningResult(null); setAllocationResult(null); setAllocationAskingPrice(null) }}>
                   <SelectTrigger className="w-[240px]">
@@ -1171,27 +1158,24 @@ export function OfferCalculatorSettings() {
               </div>
 
               {screeningResult && (
-                <Card className="border-muted">
-                  <CardHeader className="py-3">
-                    <CardTitle className="text-base">Screening result</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2">
+                <div className="ds-card overflow-hidden border-muted">                  <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                    <h3 className="text-sm font-semibold text-gray-900 text-base">Screening result</h3>
+                  </div>
+                  <div className="p-5 space-y-2 text-sm">                    <div className="flex items-center gap-2">
                       <span className="font-medium">Pass:</span>
                       <Badge variant={screeningResult.passesScreening ? "default" : "secondary"}>
                         {screeningResult.passesScreening ? "Pass" : "Fail"}
                       </Badge>
                     </div>
                     <p>Discount: {screeningResult.discountPercent.toFixed(1)}% · Gross yield: {screeningResult.grossYield.toFixed(1)}% · Basic ROI: {screeningResult.basicROI.toFixed(1)}% · Quick score: {screeningResult.quickScore}</p>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )}
 
               {allocationResult && (
-                <Card className="border-primary/30">
-                  <CardHeader className="py-3">
-                    <CardTitle className="text-base">Capital Allocator result</CardTitle>
-                    <CardDescription>
+                <div className="ds-card overflow-hidden border-[#2563EB]/30">                  <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                    <h3 className="text-sm font-semibold text-gray-900 text-base">Capital Allocator result</h3>
+                    <p className="text-xs text-gray-400 mt-0.5">
                       <div className="space-y-1">
                         <span>
                           Recommended: {allocationResult.recommendedStrategy} · Recommended offer: £{(allocationAskingPrice != null ? Math.min(allocationResult.finalMaxOffer, allocationAskingPrice) : allocationResult.finalMaxOffer).toLocaleString("en-GB")} · Institutional score: {allocationResult.institutionalScore.toFixed(1)}
@@ -1202,10 +1186,9 @@ export function OfferCalculatorSettings() {
                           </p>
                         )}
                       </div>
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
+                    </p>
+                  </div>
+                  <div className="p-5 space-y-4">                    <div className="space-y-2">
                       <Label className="text-xs uppercase text-gray-400">Strategies (max offer = highest price model allows and still meets targets)</Label>
                       <div className="rounded-md border divide-y">
                         {allocationResult.strategies.map((s) => (
@@ -1222,11 +1205,11 @@ export function OfferCalculatorSettings() {
                         ))}
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

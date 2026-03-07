@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, TrendingUp, Clock, Building2, Users, ArrowRight } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -105,11 +104,10 @@ export function DashboardAnalytics() {
 
   if (isLoading || !analytics) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-        </CardContent>
-      </Card>
+      <div className="ds-card overflow-hidden">
+        <div className="p-5 flex items-center justify-center py-8">          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+        </div>
+      </div>
     )
   }
 
@@ -130,12 +128,11 @@ export function DashboardAnalytics() {
 
           <TabsContent value="vendor" className="space-y-6">
             {/* Vendor Pipeline Overview */}
-            <Card>
-              <CardHeader>
+            <div className="ds-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-[var(--ds-border)]">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="flex items-center gap-2">
-                      Vendor Pipeline Overview
+                    <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">                      Vendor Pipeline Overview
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Info className="h-4 w-4 text-gray-400 cursor-help" />
@@ -147,10 +144,10 @@ export function DashboardAnalytics() {
                           </p>
                         </TooltipContent>
                       </Tooltip>
-                    </CardTitle>
-                    <CardDescription>
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-0.5">
                       Track vendors through each stage of the workflow
-                    </CardDescription>
+                    </p>
                   </div>
                   <Link href="/dashboard/vendors">
                     <Button variant="ghost" size="sm">
@@ -159,8 +156,8 @@ export function DashboardAnalytics() {
                     </Button>
                   </Link>
                 </div>
-              </CardHeader>
-              <CardContent>
+              </div>
+              <div className="p-5">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                   {analytics.vendorPipeline.byStage.map((stage) => {
                     const stageColor = getStageColor(stage.stage)
@@ -176,9 +173,8 @@ export function DashboardAnalytics() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-2">
+                  <div className="ds-card overflow-hidden">
+                    <div className="p-5 p-4">                      <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-gray-400">Total Vendors</span>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -193,11 +189,10 @@ export function DashboardAnalytics() {
                         </Tooltip>
                       </div>
                       <div className="text-2xl font-bold">{analytics.vendorPipeline.totalVendors}</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-2">
+                    </div>
+                  </div>
+                  <div className="ds-card overflow-hidden">
+                    <div className="p-5 p-4">                      <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-gray-400">Total Offers</span>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -212,17 +207,16 @@ export function DashboardAnalytics() {
                         </Tooltip>
                       </div>
                       <div className="text-2xl font-bold">{analytics.vendorPipeline.totalOffers}</div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Conversion Rates */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
+            <div className="ds-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">                  <TrendingUp className="h-5 w-5" />
                   Conversion Rates
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -235,12 +229,12 @@ export function DashboardAnalytics() {
                       </p>
                     </TooltipContent>
                   </Tooltip>
-                </CardTitle>
-                <CardDescription>
+                </h3>
+                <p className="text-xs text-gray-400 mt-0.5">
                   Track conversion rates between workflow stages
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+              </div>
+              <div className="p-5">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                     <div>
@@ -350,7 +344,7 @@ export function DashboardAnalytics() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 border-2 rounded-lg bg-primary/5 border-primary/20">
+                  <div className="flex items-center justify-between p-4 border-2 rounded-lg bg-[#2563EB]/5 border-[#2563EB]/20">
                     <div>
                       <div className="font-medium flex items-center gap-2">
                         <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">Contacted</Badge>
@@ -377,14 +371,13 @@ export function DashboardAnalytics() {
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Time Metrics */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
+            <div className="ds-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">                  <Clock className="h-5 w-5" />
                   Time in Stages
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -397,12 +390,12 @@ export function DashboardAnalytics() {
                       </p>
                     </TooltipContent>
                   </Tooltip>
-                </CardTitle>
-                <CardDescription>
+                </h3>
+                <p className="text-xs text-gray-400 mt-0.5">
                   Average time vendors spend in each stage
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+              </div>
+              <div className="p-5">
                 <div className="grid grid-cols-2 gap-4">
                   {Object.entries(analytics.vendorPipeline.avgStageTimes).map(([stage, days]) => {
                     const stageColor = getStageColor(stage)
@@ -470,18 +463,17 @@ export function DashboardAnalytics() {
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="investor" className="space-y-6">
             {/* Investor Pipeline Overview */}
-            <Card>
-              <CardHeader>
+            <div className="ds-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-[var(--ds-border)]">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="flex items-center gap-2">
-                      Investor Pipeline Overview
+                    <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">                      Investor Pipeline Overview
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Info className="h-4 w-4 text-gray-400 cursor-help" />
@@ -493,10 +485,10 @@ export function DashboardAnalytics() {
                           </p>
                         </TooltipContent>
                       </Tooltip>
-                    </CardTitle>
-                    <CardDescription>
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-0.5">
                       Track investor reservations through the workflow
-                    </CardDescription>
+                    </p>
                   </div>
                   <Link href="/dashboard/investors">
                     <Button variant="ghost" size="sm">
@@ -505,8 +497,8 @@ export function DashboardAnalytics() {
                     </Button>
                   </Link>
                 </div>
-              </CardHeader>
-              <CardContent>
+              </div>
+              <div className="p-5">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="p-4 border rounded-lg text-center hover:bg-gray-50 transition-colors">
                     <div className="flex items-center justify-center gap-2 mb-2">
@@ -585,14 +577,13 @@ export function DashboardAnalytics() {
                     </Badge>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Investor Conversion Rates */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
+            <div className="ds-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">                  <TrendingUp className="h-5 w-5" />
                   Reservation Conversion Rates
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -605,12 +596,12 @@ export function DashboardAnalytics() {
                       </p>
                     </TooltipContent>
                   </Tooltip>
-                </CardTitle>
-                <CardDescription>
+                </h3>
+                <p className="text-xs text-gray-400 mt-0.5">
                   Track conversion rates through the reservation process
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+              </div>
+              <div className="p-5">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                     <div>
@@ -693,7 +684,7 @@ export function DashboardAnalytics() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 border-2 rounded-lg bg-primary/5 border-primary/20">
+                  <div className="flex items-center justify-between p-4 border-2 rounded-lg bg-[#2563EB]/5 border-[#2563EB]/20">
                     <div>
                       <div className="font-medium flex items-center gap-2">
                         <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">Reservation</Badge>
@@ -720,8 +711,8 @@ export function DashboardAnalytics() {
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

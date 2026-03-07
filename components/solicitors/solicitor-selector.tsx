@@ -348,7 +348,7 @@ export function SolicitorCard({
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="px-4 py-3 flex items-center gap-3 bg-gray-50">
         {/* Avatar */}
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[#2563EB] font-semibold text-sm select-none">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2563EB]/10 text-[#2563EB] font-semibold text-sm select-none">
           {solicitor.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
@@ -454,7 +454,7 @@ export function SolicitorCard({
           {showPracticeAreas && (
             <div className="px-4 pb-3 pt-1 flex flex-wrap gap-1.5">
               {solicitor.specialisation?.split(/,\s*/).map((area) => (
-                <span key={area} className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-[#2563EB]">
+                <span key={area} className="inline-flex items-center rounded-full bg-[#2563EB]/10 px-2 py-0.5 text-xs font-medium text-[#2563EB]">
                   {area.trim()}
                 </span>
               ))}
@@ -525,8 +525,8 @@ export function SolicitorCard({
 
             {/* Manual SRA entry */}
             {showManualInput && onFullUpdate && (
-              <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-2 space-y-2">
-                <p className="text-xs text-amber-700 dark:text-amber-400">
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-2 space-y-2">
+                <p className="text-xs text-amber-700">
                   Not found automatically. Enter the SRA number — look it up at{" "}
                   <a href="https://www.sra.org.uk/consumers/register/" target="_blank" rel="noopener noreferrer" className="underline">
                     sra.org.uk/consumers/register

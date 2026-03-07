@@ -13,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ProfilePictureUpload } from "./profile-picture-upload"
 import { createUserSchema, updateUserSchema, type CreateUserFormData, type UpdateUserFormData } from "@/lib/validations/user"
 import { Loader2 } from "lucide-react"
@@ -116,12 +115,12 @@ export function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
       )}
 
       {/* Profile Picture */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile Picture</CardTitle>
-          <CardDescription>Upload a profile picture for this user</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900">Profile Picture</h3>
+          <p className="text-xs text-gray-400 mt-0.5">Upload a profile picture for this user</p>
+        </div>
+        <div className="p-5">
           {user && (
             <ProfilePictureUpload
               userId={user.id}
@@ -135,19 +134,18 @@ export function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
               Profile picture can be uploaded after creating the user.
             </p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* User Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle>User Details</CardTitle>
-          <CardDescription>
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900">User Details</h3>
+          <p className="text-xs text-gray-400 mt-0.5">
             {isEditMode ? "Update user information" : "Create a new user account"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          </p>
+        </div>
+        <div className="p-5 space-y-4">          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="firstName">First Name</Label>
               <Input
@@ -251,8 +249,8 @@ export function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
               <p className="text-sm text-red-500">{errors.password.message}</p>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>

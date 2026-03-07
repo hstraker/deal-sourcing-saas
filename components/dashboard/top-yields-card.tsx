@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Loader2, TrendingUp, Home, MapPin, ArrowRight, Award } from "lucide-react"
@@ -73,35 +72,32 @@ export function TopYieldsCard({ limit = 10 }: { limit?: number }) {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">            <TrendingUp className="h-5 w-5" />
             Top Rental Yields
-          </CardTitle>
-          <CardDescription>Properties with highest investment potential</CardDescription>
-        </CardHeader>
-        <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-        </CardContent>
-      </Card>
+          </h3>
+          <p className="text-xs text-gray-400 mt-0.5">Properties with highest investment potential</p>
+        </div>
+        <div className="p-5 flex items-center justify-center py-8">          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+        </div>
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <div className="ds-card overflow-hidden">
+      <div className="px-5 py-4 border-b border-[var(--ds-border)]">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
+            <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">              <TrendingUp className="h-5 w-5" />
               Top Rental Yields
-            </CardTitle>
-            <CardDescription>
+            </h3>
+            <p className="text-xs text-gray-400 mt-0.5">
               {comparables.length === 0
                 ? "No rental data available yet"
                 : `${comparables.length} highest-yielding properties`}
-            </CardDescription>
+            </p>
           </div>
           <Button variant="ghost" size="sm" asChild>
             <Link href="/dashboard/vendors">
@@ -110,8 +106,8 @@ export function TopYieldsCard({ limit = 10 }: { limit?: number }) {
             </Link>
           </Button>
         </div>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div className="p-5">
         {comparables.length === 0 ? (
           <div className="text-center py-8 text-gray-400">
             <p>No rental yield data available yet.</p>
@@ -129,7 +125,7 @@ export function TopYieldsCard({ limit = 10 }: { limit?: number }) {
                 >
                   <div className="flex items-start gap-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
                     {/* Rank Badge */}
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 shrink-0">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#2563EB]/10 shrink-0">
                       {index === 0 && <Award className="h-4 w-4 text-yellow-600" />}
                       {index !== 0 && <span className="text-sm font-bold text-gray-400">#{index + 1}</span>}
                     </div>
@@ -186,7 +182,7 @@ export function TopYieldsCard({ limit = 10 }: { limit?: number }) {
             })}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

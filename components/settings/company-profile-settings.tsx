@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -204,13 +203,12 @@ export function CompanyProfileSettings() {
 
         {/* Basic Info Tab */}
         <TabsContent value="basic" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Company Information</CardTitle>
-              <CardDescription>Basic details about your company</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
+          <div className="ds-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+              <h3 className="text-sm font-semibold text-gray-900">Company Information</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Basic details about your company</p>
+            </div>
+            <div className="p-5 space-y-4">              <div className="space-y-2">
                 <Label htmlFor="companyName">Company Name *</Label>
                 <Input
                   id="companyName"
@@ -263,21 +261,20 @@ export function CompanyProfileSettings() {
                   rows={3}
                 />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
         {/* Branding Tab */}
         <TabsContent value="branding" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Company Logo</CardTitle>
-              <CardDescription>
+          <div className="ds-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+              <h3 className="text-sm font-semibold text-gray-900">Company Logo</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
                 Upload your company logo. Recommended size: 200x200px, max 5MB
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-4">
+              </p>
+            </div>
+            <div className="p-5 space-y-4">              <div className="flex items-center gap-4">
                 {profile.logoUrl ? (
                   <div className="relative w-32 h-32 border rounded-lg overflow-hidden bg-white">
                     <Image
@@ -330,18 +327,17 @@ export function CompanyProfileSettings() {
                   )}
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Brand Colors</CardTitle>
-              <CardDescription>
+          <div className="ds-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+              <h3 className="text-sm font-semibold text-gray-900">Brand Colors</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
                 Primary and secondary colors for your brand
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              </p>
+            </div>
+            <div className="p-5 space-y-4">              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="primaryColor">Primary Color</Label>
                   <div className="flex gap-2">
@@ -378,21 +374,20 @@ export function CompanyProfileSettings() {
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
         {/* About Tab */}
         <TabsContent value="about" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>About Your Company</CardTitle>
-              <CardDescription>
+          <div className="ds-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+              <h3 className="text-sm font-semibold text-gray-900">About Your Company</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
                 Tell investors and partners about your business
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
+              </p>
+            </div>
+            <div className="p-5 space-y-4">              <div className="space-y-2">
                 <Label htmlFor="tagline">Tagline</Label>
                 <Input
                   id="tagline"
@@ -413,21 +408,20 @@ export function CompanyProfileSettings() {
                   rows={6}
                 />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
         {/* Social Media Tab */}
         <TabsContent value="social" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Social Media Links</CardTitle>
-              <CardDescription>
+          <div className="ds-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+              <h3 className="text-sm font-semibold text-gray-900">Social Media Links</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
                 Connect your social media profiles
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
+              </p>
+            </div>
+            <div className="p-5 space-y-4">              <div className="space-y-2">
                 <Label htmlFor="linkedinUrl">LinkedIn</Label>
                 <Input
                   id="linkedinUrl"
@@ -470,21 +464,20 @@ export function CompanyProfileSettings() {
                   placeholder="https://instagram.com/yourcompany"
                 />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
         {/* Legal Tab */}
         <TabsContent value="legal" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Legal & Registration</CardTitle>
-              <CardDescription>
+          <div className="ds-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+              <h3 className="text-sm font-semibold text-gray-900">Legal & Registration</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
                 Company registration and legal information
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
+              </p>
+            </div>
+            <div className="p-5 space-y-4">              <div className="space-y-2">
                 <Label htmlFor="companyNumber">Company Registration Number</Label>
                 <Input
                   id="companyNumber"
@@ -516,8 +509,8 @@ export function CompanyProfileSettings() {
                   If your company is FCA registered
                 </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 

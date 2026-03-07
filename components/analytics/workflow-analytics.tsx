@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, TrendingUp, Clock, Target, BarChart3 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -61,21 +60,19 @@ export function WorkflowAnalytics() {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-        </CardContent>
-      </Card>
+      <div className="ds-card overflow-hidden">
+        <div className="p-5 flex items-center justify-center py-8">          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+        </div>
+      </div>
     )
   }
 
   if (!analytics) {
     return (
-      <Card>
-        <CardContent className="py-8 text-center text-gray-400">
-          <p>No analytics data available</p>
-        </CardContent>
-      </Card>
+      <div className="ds-card overflow-hidden">
+        <div className="p-5 py-8 text-center text-gray-400">          <p>No analytics data available</p>
+        </div>
+      </div>
     )
   }
 
@@ -129,17 +126,16 @@ export function WorkflowAnalytics() {
 
         <TabsContent value="vendor" className="space-y-6">
           {/* Vendor Pipeline Overview */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
+          <div className="ds-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">                <BarChart3 className="h-5 w-5" />
                 Vendor Pipeline Overview
-              </CardTitle>
-              <CardDescription>
+              </h3>
+              <p className="text-xs text-gray-400 mt-0.5">
                 Track vendors through each stage of the workflow
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+              </p>
+            </div>
+            <div className="p-5">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 {analytics.vendorPipeline.byStage.map((stage) => {
                   const stageColor = getStageColor(stage.stage)
@@ -164,21 +160,20 @@ export function WorkflowAnalytics() {
                   <div className="text-2xl font-bold">{analytics.vendorPipeline.totalOffers}</div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Conversion Rates */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
+          <div className="ds-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">                <TrendingUp className="h-5 w-5" />
                 Conversion Rates
-              </CardTitle>
-              <CardDescription>
+              </h3>
+              <p className="text-xs text-gray-400 mt-0.5">
                 Track conversion rates between workflow stages
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+              </p>
+            </div>
+            <div className="p-5">
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                   <div>
@@ -244,7 +239,7 @@ export function WorkflowAnalytics() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-4 border-2 rounded-lg bg-primary/5 border-primary/20">
+                <div className="flex items-center justify-between p-4 border-2 rounded-lg bg-[#2563EB]/5 border-[#2563EB]/20">
                   <div>
                     <div className="font-medium flex items-center gap-2">
                       <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">Contacted</Badge>
@@ -260,21 +255,20 @@ export function WorkflowAnalytics() {
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Time Metrics */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
+          <div className="ds-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">                <Clock className="h-5 w-5" />
                 Time in Stages
-              </CardTitle>
-              <CardDescription>
+              </h3>
+              <p className="text-xs text-gray-400 mt-0.5">
                 Average time vendors spend in each stage
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+              </p>
+            </div>
+            <div className="p-5">
               <div className="grid grid-cols-2 gap-4">
                 {Object.entries(analytics.vendorPipeline.avgStageTimes).map(([stage, days]) => {
                   const stageColor = getStageColor(stage)
@@ -303,23 +297,22 @@ export function WorkflowAnalytics() {
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="investor" className="space-y-6">
           {/* Investor Pipeline Overview */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
+          <div className="ds-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">                <BarChart3 className="h-5 w-5" />
                 Investor Pipeline Overview
-              </CardTitle>
-              <CardDescription>
+              </h3>
+              <p className="text-xs text-gray-400 mt-0.5">
                 Track investor reservations through the workflow
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+              </p>
+            </div>
+            <div className="p-5">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 border rounded-lg text-center hover:bg-gray-50 transition-colors">
                   <div className="text-2xl font-bold mb-2">{analytics.investorPipeline.totalReservations}</div>
@@ -346,21 +339,20 @@ export function WorkflowAnalytics() {
                   </Badge>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Investor Conversion Rates */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5" />
+          <div className="ds-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">                <Target className="h-5 w-5" />
                 Reservation Conversion Rates
-              </CardTitle>
-              <CardDescription>
+              </h3>
+              <p className="text-xs text-gray-400 mt-0.5">
                 Track conversion rates through the reservation process
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+              </p>
+            </div>
+            <div className="p-5">
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                   <div>
@@ -410,7 +402,7 @@ export function WorkflowAnalytics() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-4 border-2 rounded-lg bg-primary/5 border-primary/20">
+                <div className="flex items-center justify-between p-4 border-2 rounded-lg bg-[#2563EB]/5 border-[#2563EB]/20">
                   <div>
                     <div className="font-medium flex items-center gap-2">
                       <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">Reservation</Badge>
@@ -426,8 +418,8 @@ export function WorkflowAnalytics() {
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

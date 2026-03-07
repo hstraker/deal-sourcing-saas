@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -87,16 +86,14 @@ export function RateLimitMonitor() {
   if (loading) {
     return (
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Activity className="h-5 w-5 text-blue-600 animate-pulse" />
+        <div className="ds-card overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+            <h3 className="text-sm font-semibold text-gray-900 text-base font-semibold flex items-center gap-2">              <Activity className="h-5 w-5 text-blue-600 animate-pulse" />
               Claude API Rate Limits
-            </CardTitle>
-            <CardDescription className="text-xs">Loading rate limit data...</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
+            </h3>
+            <p className="text-xs text-gray-400 mt-0.5 text-xs">Loading rate limit data...</p>
+          </div>
+          <div className="p-5 space-y-4">            <div className="space-y-2">
               <div className="h-4 bg-gray-100 animate-pulse rounded" />
               <div className="h-2 bg-gray-100 animate-pulse rounded" />
             </div>
@@ -104,16 +101,15 @@ export function RateLimitMonitor() {
               <div className="h-4 bg-gray-100 animate-pulse rounded" />
               <div className="h-2 bg-gray-100 animate-pulse rounded" />
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-emerald-600" />
+          </div>
+        </div>
+        <div className="ds-card overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+            <h3 className="text-sm font-semibold text-gray-900 text-base font-semibold flex items-center gap-2">              <TrendingUp className="h-5 w-5 text-emerald-600" />
               Usage Statistics
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </h3>
+          </div>
+          <div className="p-5">
             <div className="grid grid-cols-2 gap-4">
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="p-3 border rounded-lg">
@@ -122,8 +118,8 @@ export function RateLimitMonitor() {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     )
   }
@@ -131,17 +127,15 @@ export function RateLimitMonitor() {
   if (error || !data) {
     return (
       <div className="grid gap-4 md:grid-cols-2">
-        <Card className="md:col-span-2">
-          <CardContent className="pt-6">
-            <Alert>
+        <div className="ds-card overflow-hidden md:col-span-2">          <div className="p-5 pt-6">            <Alert>
               <Info className="h-4 w-4" />
               <AlertTitle>Claude API Not Configured</AlertTitle>
               <AlertDescription>
                 {error || "Unable to fetch rate limit data. Please ensure your ANTHROPIC_API_KEY is configured in your environment variables."}
               </AlertDescription>
             </Alert>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     )
   }
@@ -205,11 +199,9 @@ export function RateLimitMonitor() {
         )}
 
         {/* Main Rate Limits Card */}
-        <Card className="md:col-span-1">
-          <CardHeader className="pb-3">
+        <div className="ds-card overflow-hidden md:col-span-1">          <div className="px-5 py-4 border-b border-[var(--ds-border)]">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Activity className="h-5 w-5 text-blue-600" />
+              <h3 className="text-sm font-semibold text-gray-900 text-base font-semibold flex items-center gap-2">                <Activity className="h-5 w-5 text-blue-600" />
                 Claude API Rate Limits
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -226,7 +218,7 @@ export function RateLimitMonitor() {
                     </ul>
                   </TooltipContent>
                 </Tooltip>
-              </CardTitle>
+              </h3>
               <Badge
                 variant="outline"
                 className={
@@ -239,12 +231,10 @@ export function RateLimitMonitor() {
                 {inputStatus.text}
               </Badge>
             </div>
-            <CardDescription className="text-xs">
-              Real-time API usage (updates every 10s)
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Input Tokens */}
+            <p className="text-xs text-gray-400 mt-0.5 text-xs">              Real-time API usage (updates every 10s)
+            </p>
+          </div>
+          <div className="p-5 space-y-4">            {/* Input Tokens */}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-gray-400">Input Tokens</span>
@@ -312,19 +302,17 @@ export function RateLimitMonitor() {
                 {current.requestsReset && <span>Resets: {formatTimeUntilReset(current.requestsReset)}</span>}
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Usage Statistics Card */}
-        <Card className="md:col-span-1">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-emerald-600" />
+        <div className="ds-card overflow-hidden md:col-span-1">          <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+            <h3 className="text-sm font-semibold text-gray-900 text-base font-semibold flex items-center gap-2">              <TrendingUp className="h-5 w-5 text-emerald-600" />
               Usage Statistics
-            </CardTitle>
-            <CardDescription className="text-xs">AI conversation metrics</CardDescription>
-          </CardHeader>
-          <CardContent>
+            </h3>
+            <p className="text-xs text-gray-400 mt-0.5 text-xs">AI conversation metrics</p>
+          </div>
+          <div className="p-5">
             <div className="grid grid-cols-2 gap-4">
               <div className="p-3 border rounded-lg bg-blue-50/50">
                 <p className="text-xs text-gray-400 mb-1">Total AI Messages</p>
@@ -390,8 +378,8 @@ export function RateLimitMonitor() {
                 <p className="text-sm font-bold text-slate-700">{stats.recentMessagesAnalyzed}</p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </TooltipProvider>
   )

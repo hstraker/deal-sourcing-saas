@@ -14,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 import { z } from "zod"
 
@@ -158,13 +157,12 @@ export function VendorForm({ vendor, dealId, onSuccess, onCancel }: VendorFormPr
       )}
 
       {/* Contact Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Contact Information</CardTitle>
-          <CardDescription>Vendor contact details</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900">Contact Information</h3>
+          <p className="text-xs text-gray-400 mt-0.5">Vendor contact details</p>
+        </div>
+        <div className="p-5 space-y-4">          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="firstName">First Name</Label>
               <Input id="firstName" {...register("firstName")} placeholder="John" />
@@ -205,17 +203,16 @@ export function VendorForm({ vendor, dealId, onSuccess, onCancel }: VendorFormPr
             <Label htmlFor="address">Address</Label>
             <Input id="address" {...register("address")} placeholder="123 Main St" />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Source Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Source Information</CardTitle>
-          <CardDescription>Where did this vendor come from?</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900">Source Information</h3>
+          <p className="text-xs text-gray-400 mt-0.5">Where did this vendor come from?</p>
+        </div>
+        <div className="p-5 space-y-4">          <div className="space-y-2">
             <Label htmlFor="source">Source</Label>
             <Select
               value={watch("source")}
@@ -251,17 +248,16 @@ export function VendorForm({ vendor, dealId, onSuccess, onCancel }: VendorFormPr
               />
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Property Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Property Details</CardTitle>
-          <CardDescription>Property information from vendor</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900">Property Details</h3>
+          <p className="text-xs text-gray-400 mt-0.5">Property information from vendor</p>
+        </div>
+        <div className="p-5 space-y-4">          <div className="space-y-2">
             <Label htmlFor="propertyAddress">Property Address</Label>
             <Input
               id="propertyAddress"
@@ -315,18 +311,17 @@ export function VendorForm({ vendor, dealId, onSuccess, onCancel }: VendorFormPr
               rows={3}
             />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Legal Details */}
       {isEditMode && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Legal Details</CardTitle>
-            <CardDescription>Solicitor information</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
+        <div className="ds-card overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+            <h3 className="text-sm font-semibold text-gray-900">Legal Details</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Solicitor information</p>
+          </div>
+          <div className="p-5 space-y-4">            <div className="space-y-2">
               <Label htmlFor="solicitorName">Solicitor Name</Label>
               <Input
                 id="solicitorName"
@@ -354,16 +349,16 @@ export function VendorForm({ vendor, dealId, onSuccess, onCancel }: VendorFormPr
                 />
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Notes */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Notes</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="ds-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <h3 className="text-sm font-semibold text-gray-900">Notes</h3>
+        </div>
+        <div className="p-5">
           <div className="space-y-2">
             <Label htmlFor="notes">Additional Notes</Label>
             <Textarea
@@ -373,8 +368,8 @@ export function VendorForm({ vendor, dealId, onSuccess, onCancel }: VendorFormPr
               rows={4}
             />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
