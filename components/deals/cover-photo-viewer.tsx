@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { ChevronLeft, ChevronRight, Maximize2 } from "lucide-react"
 
@@ -104,7 +103,7 @@ export function CoverPhotoViewer({
   // If only 1 photo, show it full width
   if (photos.length === 1) {
     return (
-      <Card className={cn("group relative overflow-hidden", className)}>
+      <div className={cn("rounded-xl border border-[var(--ds-border)] bg-white shadow-sm group relative overflow-hidden", className)}>
         <div className="relative aspect-square w-full">
           <Image
             src={currentPhoto.s3Url}
@@ -115,16 +114,16 @@ export function CoverPhotoViewer({
           />
         </div>
         {currentPhoto.caption && (
-          <div className="px-4 py-2 text-sm text-muted-foreground">{currentPhoto.caption}</div>
+          <div className="px-4 py-2 text-sm text-gray-400">{currentPhoto.caption}</div>
         )}
-      </Card>
+      </div>
     )
   }
 
   // If 2 photos, show main + 1 side
   if (photos.length === 2) {
     return (
-      <Card className={cn("group relative overflow-hidden", className)}>
+      <div className={cn("rounded-xl border border-[var(--ds-border)] bg-white shadow-sm group relative overflow-hidden", className)}>
         <div className="grid grid-cols-3 gap-2">
         {/* Main photo - takes 2 columns */}
         <div
@@ -228,15 +227,15 @@ export function CoverPhotoViewer({
           </div>
         </div>
         {currentPhoto.caption && (
-          <div className="px-4 py-2 text-sm text-muted-foreground">{currentPhoto.caption}</div>
+          <div className="px-4 py-2 text-sm text-gray-400">{currentPhoto.caption}</div>
         )}
-      </Card>
+      </div>
     )
   }
 
   // 3+ photos - show full layout
   return (
-    <Card className={cn("group relative overflow-hidden", className)}>
+    <div className={cn("rounded-xl border border-[var(--ds-border)] bg-white shadow-sm group relative overflow-hidden", className)}>
       <div className="grid grid-cols-3 gap-2">
         {/* Main photo - takes 2 columns */}
         <div
@@ -354,9 +353,9 @@ export function CoverPhotoViewer({
 
       {/* Caption */}
       {currentPhoto.caption && (
-        <div className="px-4 py-2 text-sm text-muted-foreground">{currentPhoto.caption}</div>
+        <div className="px-4 py-2 text-sm text-gray-400">{currentPhoto.caption}</div>
       )}
-    </Card>
+    </div>
   )
 }
 

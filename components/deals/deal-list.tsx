@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { LayoutGrid, List, Table as TableIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { calculateAllMetrics } from "@/lib/calculations/deal-metrics"
 import { DealSearch } from "@/components/deals/deal-search"
 import { DealCardSections } from "@/components/deals/deal-card-sections"
@@ -239,14 +238,12 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
 
   if (deals.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <p className="text-muted-foreground mb-4">No deals found</p>
-          <Link href="/dashboard/deals/new">
-            <Button>Create Your First Deal</Button>
-          </Link>
-        </CardContent>
-      </Card>
+      <div className="ds-card py-12 text-center">
+        <p className="text-gray-400 mb-4">No deals found</p>
+        <Link href="/dashboard/deals/new">
+          <Button className="btn-primary">Create Your First Deal</Button>
+        </Link>
+      </div>
     )
   }
 
@@ -263,7 +260,7 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
               onSearchQueryChange={handleSearchChange}
             />
           </div>
-          <div className="flex items-center gap-1 rounded-lg border p-1">
+          <div className="flex items-center gap-1 rounded-lg border border-[var(--ds-border)] p-1">
             <Button
               variant={viewMode === "cards" ? "default" : "ghost"}
               size="sm"
@@ -303,7 +300,7 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
       </div>
 
       {/* Results Count */}
-      <div className="text-sm text-muted-foreground">
+      <div className="text-sm text-gray-400">
         {sortedDeals.length === filteredDeals.length ? (
           <>
             Showing {sortedDeals.length} of {deals.length} deals
@@ -323,13 +320,9 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
 
       {/* Render based on view mode */}
       {paginatedDeals.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">
-              No deals match your search or filters
-            </p>
-          </CardContent>
-        </Card>
+        <div className="ds-card py-12 text-center">
+          <p className="text-gray-400">No deals match your search or filters</p>
+        </div>
       ) : (
         <>
           {viewMode === "cards" && <CardView deals={paginatedDeals} />}
@@ -369,15 +362,15 @@ function ListView({ deals }: DealListProps) {
     <div className="space-y-2">
       {deals.map((deal) => (
         <Link key={deal.id} href={`/dashboard/deals/${deal.id}`}>
-          <Card className="cursor-pointer transition-shadow hover:shadow-md">
-            <CardContent className="p-4">
+          <div className="ds-card ds-card-hover cursor-pointer overflow-hidden">
+            <div className="p-4">
               <div className="flex items-center gap-4">
                 {/* Left: Address & Status */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold truncate">{deal.address}</h3>
                     {deal.postcode && (
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm text-gray-400">
                         {deal.postcode}
                       </span>
                     )}
@@ -387,7 +380,7 @@ function ListView({ deals }: DealListProps) {
                       {formatStatus(deal.status)}
                     </span>
                   </div>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-4 text-sm text-gray-400">
                     {deal.bedrooms && <span>{deal.bedrooms} beds</span>}
                     {deal.bathrooms && <span>{deal.bathrooms} baths</span>}
                     {deal.propertyType && (
@@ -405,7 +398,7 @@ function ListView({ deals }: DealListProps) {
                 <div className="text-right min-w-[140px]">
                   <div className="font-bold">{formatCurrency(Number(deal.askingPrice))}</div>
                   {deal.marketValue && (
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-gray-400">
                       MV: {formatCurrency(Number(deal.marketValue))}
                     </div>
                   )}
@@ -415,9 +408,9 @@ function ListView({ deals }: DealListProps) {
                 <div className="flex items-center gap-6 min-w-[200px]">
                   {deal.dealScore !== null && (
                     <div className="text-center">
-                      <div className="text-xs text-muted-foreground">Score</div>
+                      <div className="text-xs text-gray-400">Score</div>
                       <div
-                        className={`font-bold ${deal.dealScore >= 70 ? "text-success" : "text-muted-foreground"}`}
+                        className={`font-bold ${deal.dealScore >= 70 ? "text-success" : "text-gray-400"}`}
                       >
                         {deal.dealScore}/100
                       </div>
@@ -425,7 +418,7 @@ function ListView({ deals }: DealListProps) {
                   )}
                   {deal.bmvPercentage !== null && (
                     <div className="text-center">
-                      <div className="text-xs text-muted-foreground">BMV</div>
+                      <div className="text-xs text-gray-400">BMV</div>
                       <div className="font-bold text-success">
                         {Number(deal.bmvPercentage).toFixed(1)}%
                       </div>
@@ -433,7 +426,7 @@ function ListView({ deals }: DealListProps) {
                   )}
                   {deal.grossYield !== null && (
                     <div className="text-center">
-                      <div className="text-xs text-muted-foreground">Yield</div>
+                      <div className="text-xs text-gray-400">Yield</div>
                       <div className="font-bold">
                         {Number(deal.grossYield).toFixed(1)}%
                       </div>
@@ -441,16 +434,16 @@ function ListView({ deals }: DealListProps) {
                   )}
                   {deal.roi !== null && (
                     <div className="text-center">
-                      <div className="text-xs text-muted-foreground">ROI</div>
-                      <div className="font-bold text-primary">
+                      <div className="text-xs text-gray-400">ROI</div>
+                      <div className="font-bold text-[#2563EB]">
                         {Number(deal.roi).toFixed(1)}%
                       </div>
                     </div>
                   )}
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </Link>
       ))}
     </div>
@@ -460,50 +453,27 @@ function ListView({ deals }: DealListProps) {
 // Table View (traditional table)
 function TableView({ deals }: DealListProps) {
   return (
-    <div className="rounded-md border">
+    <div className="ds-card overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
-                Address
-              </th>
-              <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
-                Status
-              </th>
-              <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">
-                Asking Price
-              </th>
-              <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">
-                Market Value
-              </th>
-              <th className="h-12 px-4 text-center align-middle font-medium text-muted-foreground">
-                Score
-              </th>
-              <th className="h-12 px-4 text-center align-middle font-medium text-muted-foreground">
-                BMV%
-              </th>
-              <th className="h-12 px-4 text-center align-middle font-medium text-muted-foreground">
-                Yield
-              </th>
-              <th className="h-12 px-4 text-center align-middle font-medium text-muted-foreground">
-                ROI
-              </th>
-              <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
-                Assigned To
-              </th>
-              <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
-                Created
-              </th>
+            <tr>
+              <th className="table-header">Address</th>
+              <th className="table-header">Status</th>
+              <th className="table-header text-right">Asking Price</th>
+              <th className="table-header text-right">Market Value</th>
+              <th className="table-header text-center">Score</th>
+              <th className="table-header text-center">BMV%</th>
+              <th className="table-header text-center">Yield</th>
+              <th className="table-header text-center">ROI</th>
+              <th className="table-header">Assigned To</th>
+              <th className="table-header">Created</th>
             </tr>
           </thead>
           <tbody>
             {deals.map((deal) => (
-              <tr
-                key={deal.id}
-                className="border-b transition-colors hover:bg-muted/50 cursor-pointer"
-              >
-                <td className="p-4 align-middle">
+              <tr key={deal.id} className="table-row cursor-pointer">
+                <td className="table-cell">
                   <Link
                     href={`/dashboard/deals/${deal.id}`}
                     className="font-medium hover:underline"
@@ -511,68 +481,66 @@ function TableView({ deals }: DealListProps) {
                     {deal.address}
                   </Link>
                   {deal.postcode && (
-                    <div className="text-sm text-muted-foreground">
-                      {deal.postcode}
-                    </div>
+                    <div className="text-sm text-gray-400">{deal.postcode}</div>
                   )}
                 </td>
-                <td className="p-4 align-middle">
+                <td className="table-cell">
                   <span
                     className={`inline-block rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(deal.status)}`}
                   >
                     {formatStatus(deal.status)}
                   </span>
                 </td>
-                <td className="p-4 align-middle text-right font-medium">
+                <td className="table-cell text-right font-medium">
                   {formatCurrency(Number(deal.askingPrice))}
                 </td>
-                <td className="p-4 align-middle text-right">
+                <td className="table-cell text-right">
                   {formatCurrency(Number(deal.marketValue))}
                 </td>
-                <td className="p-4 align-middle text-center">
+                <td className="table-cell text-center">
                   {deal.dealScore !== null ? (
                     <span
-                      className={`font-bold ${deal.dealScore >= 70 ? "text-success" : "text-muted-foreground"}`}
+                      className={`font-bold ${deal.dealScore >= 70 ? "text-success" : "text-gray-400"}`}
                     >
                       {deal.dealScore}/100
                     </span>
                   ) : (
-                    <span className="text-muted-foreground">—</span>
+                    <span className="text-gray-400">—</span>
                   )}
                 </td>
-                <td className="p-4 align-middle text-center">
+                <td className="table-cell text-center">
                   {deal.bmvPercentage !== null ? (
                     <span className="font-bold text-success">
                       {Number(deal.bmvPercentage).toFixed(1)}%
                     </span>
                   ) : (
-                    <span className="text-muted-foreground">—</span>
+                    <span className="text-gray-400">—</span>
                   )}
                 </td>
-                <td className="p-4 align-middle text-center">
+                <td className="table-cell text-center">
                   {deal.grossYield !== null ? (
                     <span className="font-medium">
                       {Number(deal.grossYield).toFixed(1)}%
                     </span>
                   ) : (
-                    <span className="text-muted-foreground">—</span>
+                    <span className="text-gray-400">—</span>
                   )}
                 </td>
-                <td className="p-4 align-middle text-center">
+                <td className="table-cell text-center">
                   {deal.roi !== null ? (
-                    <span className="font-medium text-primary">
+                    <span className="font-medium text-[#2563EB]">
                       {Number(deal.roi).toFixed(1)}%
                     </span>
                   ) : (
-                    <span className="text-muted-foreground">—</span>
+                    <span className="text-gray-400">—</span>
                   )}
                 </td>
-                <td className="p-4 align-middle text-sm">
+                <td className="table-cell text-sm">
                   {deal.assignedTo
                     ? `${deal.assignedTo.firstName} ${deal.assignedTo.lastName}`
                     : "—"}
                 </td>
-                <td className="p-4 align-middle text-sm text-muted-foreground">
+                <td className="table-cell text-sm text-gray-400">
                   {new Date(deal.createdAt).toLocaleDateString("en-GB", {
                     day: "numeric",
                     month: "short",
@@ -620,13 +588,13 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
 
   return (
     <Link href={`/dashboard/deals/${deal.id}`}>
-      <Card className="cursor-pointer transition-shadow hover:shadow-lg">
-        <CardHeader className="pb-3">
+      <div className="ds-card ds-card-hover cursor-pointer overflow-hidden">
+        <div className="px-5 pt-4 pb-3">
           <div className="flex items-start justify-between gap-2 mb-2">
             <div className="flex-1 min-w-0">
-              <CardTitle className="text-lg truncate">{deal.address}</CardTitle>
+              <h3 className="text-lg font-semibold text-gray-900 truncate">{deal.address}</h3>
               {deal.postcode && (
-                <p className="text-sm text-muted-foreground">{deal.postcode}</p>
+                <p className="text-sm text-gray-400">{deal.postcode}</p>
               )}
             </div>
             <span
@@ -635,15 +603,15 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
               {formatStatus(deal.status)}
             </span>
           </div>
-        </CardHeader>
-        <CardContent className="pt-0">
+        </div>
+        <div className="px-5 pb-4 pt-0">
           <div className="space-y-3">
             {/* Data Section */}
             <div className="space-y-2">
               {/* Pricing Information */}
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="text-[11px] text-gray-400">
                     Asking Price
                   </span>
                   <span className="font-bold text-base">
@@ -652,7 +620,7 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
                 </div>
                 {deal.marketValue && (
                   <div className="flex justify-between items-center">
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-[11px] text-gray-400">
                       Market Value
                     </span>
                     <span className="font-semibold text-sm">
@@ -662,7 +630,7 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
                 )}
                 {deal.estimatedMonthlyRent && (
                   <div className="flex justify-between items-center">
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-[11px] text-gray-400">
                       Monthly Rent
                     </span>
                     <span className="font-semibold text-sm">
@@ -677,19 +645,19 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
                 <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
                   {deal.bedrooms && (
                     <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">Beds:</span>
+                      <span className="text-gray-400">Beds:</span>
                       <span className="font-medium">{deal.bedrooms}</span>
                     </div>
                   )}
                   {deal.bathrooms && (
                     <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">Baths:</span>
+                      <span className="text-gray-400">Baths:</span>
                       <span className="font-medium">{deal.bathrooms}</span>
                     </div>
                   )}
                   {deal.propertyType && (
                     <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">Type:</span>
+                      <span className="text-gray-400">Type:</span>
                       <span className="font-medium capitalize">
                         {deal.propertyType}
                       </span>
@@ -697,7 +665,7 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
                   )}
                   {deal.squareFeet && (
                     <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">Sqft:</span>
+                      <span className="text-gray-400">Sqft:</span>
                       <span className="font-medium">
                         {deal.squareFeet.toLocaleString("en-GB")}
                       </span>
@@ -712,31 +680,31 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
                 sections={{
                   metrics: (
                     <div className="pt-2 border-t space-y-2">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
                   Investment Metrics
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <p className="text-[10px] text-muted-foreground mb-0.5">
+                    <p className="text-[10px] text-gray-400 mb-0.5">
                       Score
                     </p>
                     <p
                       className={`text-sm font-bold ${
                         deal.dealScore && deal.dealScore >= 70
                           ? "text-success"
-                          : "text-muted-foreground"
+                          : "text-gray-400"
                       }`}
                     >
                       {deal.dealScore ? `${deal.dealScore}/100` : "—"}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground mb-0.5">
+                    <p className="text-[10px] text-gray-400 mb-0.5">
                       BMV
                     </p>
                     <p
                       className={`text-sm font-bold ${
-                        deal.bmvPercentage ? "text-success" : "text-muted-foreground"
+                        deal.bmvPercentage ? "text-success" : "text-gray-400"
                       }`}
                     >
                       {deal.bmvPercentage
@@ -745,12 +713,12 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground mb-0.5">
+                    <p className="text-[10px] text-gray-400 mb-0.5">
                       Gross Yield
                     </p>
                     <p
                       className={`text-sm font-bold ${
-                        deal.grossYield ? "" : "text-muted-foreground"
+                        deal.grossYield ? "" : "text-gray-400"
                       }`}
                     >
                       {deal.grossYield
@@ -759,12 +727,12 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground mb-0.5">
+                    <p className="text-[10px] text-gray-400 mb-0.5">
                       Net Yield
                     </p>
                     <p
                       className={`text-sm font-bold ${
-                        deal.netYield ? "" : "text-muted-foreground"
+                        deal.netYield ? "" : "text-gray-400"
                       }`}
                     >
                       {deal.netYield
@@ -773,38 +741,38 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground mb-0.5">
+                    <p className="text-[10px] text-gray-400 mb-0.5">
                       ROI
                     </p>
                     <p
                       className={`text-sm font-bold ${
-                        deal.roi ? "text-primary" : "text-muted-foreground"
+                        deal.roi ? "text-[#2563EB]" : "text-gray-400"
                       }`}
                     >
                       {deal.roi ? `${Number(deal.roi).toFixed(1)}%` : "—"}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground mb-0.5">
+                    <p className="text-[10px] text-gray-400 mb-0.5">
                       ROCE
                     </p>
                     <p
                       className={`text-sm font-bold ${
-                        deal.roce ? "text-primary" : "text-muted-foreground"
+                        deal.roce ? "text-[#2563EB]" : "text-gray-400"
                       }`}
                     >
                       {deal.roce ? `${Number(deal.roce).toFixed(1)}%` : "—"}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground mb-0.5">
+                    <p className="text-[10px] text-gray-400 mb-0.5">
                       Cap Rate
                     </p>
                     <p
                       className={`text-sm font-bold ${
                         calculatedMetrics.capRate
                           ? ""
-                          : "text-muted-foreground"
+                          : "text-gray-400"
                       }`}
                     >
                       {calculatedMetrics.capRate
@@ -813,12 +781,12 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground mb-0.5">
+                    <p className="text-[10px] text-gray-400 mb-0.5">
                       GRM
                     </p>
                     <p
                       className={`text-sm font-bold ${
-                        calculatedMetrics.grm ? "" : "text-muted-foreground"
+                        calculatedMetrics.grm ? "" : "text-gray-400"
                       }`}
                     >
                       {calculatedMetrics.grm
@@ -852,14 +820,14 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
               <div className="pt-2 border-t space-y-1">
                 {deal.assignedTo && (
                   <div className="flex justify-between text-[10px]">
-                    <span className="text-muted-foreground">Assigned:</span>
+                    <span className="text-gray-400">Assigned:</span>
                     <span className="truncate ml-2 font-medium">
                       {deal.assignedTo.firstName} {deal.assignedTo.lastName}
                     </span>
                   </div>
                 )}
                 <div className="flex justify-between text-[10px]">
-                  <span className="text-muted-foreground">Created:</span>
+                  <span className="text-gray-400">Created:</span>
                   <span className="font-medium">
                     {new Date(deal.createdAt).toLocaleDateString("en-GB", {
                       day: "numeric",
@@ -870,8 +838,8 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </Link>
   )
 }

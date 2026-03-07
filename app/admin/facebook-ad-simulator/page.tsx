@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,8 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Separator } from "@/components/ui/separator"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import {
   Facebook,
   Home,
@@ -42,7 +40,6 @@ interface LeadFormData {
 }
 
 export default function FacebookAdSimulatorPage() {
-  const { toast } = useToast()
   const router = useRouter()
 
   const [formData, setFormData] = useState<LeadFormData>({
@@ -112,8 +109,7 @@ export default function FacebookAdSimulatorPage() {
       reason: randomReason
     })
 
-    toast({
-      title: "Random lead generated",
+    toast.success("Random lead generated", {
       description: "Form filled with test data. Click Submit to send to pipeline.",
     })
   }
@@ -162,9 +158,8 @@ export default function FacebookAdSimulatorPage() {
           leadUrl: result.leadUrl || `/dashboard/vendors/pipeline?leadId=${result.leadId}`
         })
 
-        toast({
-          title: "Success!",
-          description: `Lead created and added to vendor pipeline. AI conversation will start automatically.`,
+        toast.success("Success!", {
+          description: "Lead created and added to vendor pipeline. AI conversation will start automatically.",
         })
 
         // Reset form
@@ -186,10 +181,8 @@ export default function FacebookAdSimulatorPage() {
         message: error.message || "Failed to submit lead"
       })
 
-      toast({
-        title: "Submission failed",
+      toast.error("Submission failed", {
         description: error.message,
-        variant: "destructive"
       })
     } finally {
       setIsSubmitting(false)
@@ -197,16 +190,15 @@ export default function FacebookAdSimulatorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-              <Facebook className="h-8 w-8 text-blue-600" />
+            <h1 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
+              <Facebook className="h-6 w-6 text-blue-600" />
               Facebook Lead Ad Simulator
             </h1>
-            <p className="text-muted-foreground mt-2">
+            <p className="text-sm text-gray-400 mt-1">
               Test your vendor pipeline by simulating Facebook Lead Ads submissions
             </p>
           </div>
@@ -221,19 +213,17 @@ export default function FacebookAdSimulatorPage() {
 
         <div className="grid gap-6 md:grid-cols-2">
           {/* Ad Preview */}
-          <Card className="border-blue-200">
-            <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+          <div className="rounded-xl border border-blue-200 bg-white shadow-sm overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-5 py-4">
               <div className="flex items-center gap-2">
                 <Facebook className="h-6 w-6" />
                 <div>
-                  <CardTitle>Ad Preview</CardTitle>
-                  <CardDescription className="text-blue-100">
-                    What vendors see on Facebook
-                  </CardDescription>
+                  <h3 className="text-sm font-semibold text-white">Ad Preview</h3>
+                  <p className="text-xs text-blue-100 mt-0.5">What vendors see on Facebook</p>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-4">
+            </div>
+            <div className="p-6 space-y-4">
               {/* Mock Ad Creative */}
               <div className="bg-gray-50 border rounded-lg overflow-hidden">
                 {/* Mock Image */}
@@ -276,23 +266,21 @@ export default function FacebookAdSimulatorPage() {
                 <p><strong>Placement:</strong> Facebook Feed, Instagram Feed</p>
                 <p><strong>Objective:</strong> Lead Generation</p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Lead Form */}
-          <Card className="border-blue-200">
-            <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+          <div className="rounded-xl border border-blue-200 bg-white shadow-sm overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-5 py-4">
               <div className="flex items-center gap-2">
                 <Send className="h-6 w-6" />
                 <div>
-                  <CardTitle>Lead Form</CardTitle>
-                  <CardDescription className="text-blue-100">
-                    Submit test leads to pipeline
-                  </CardDescription>
+                  <h3 className="text-sm font-semibold text-white">Lead Form</h3>
+                  <p className="text-xs text-blue-100 mt-0.5">Submit test leads to pipeline</p>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="pt-6">
+            </div>
+            <div className="p-6">
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Full Name */}
                 <div className="space-y-2">
@@ -321,7 +309,7 @@ export default function FacebookAdSimulatorPage() {
                     placeholder="+447700900123"
                     required
                   />
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-gray-400">
                     UK format: +447XXXXXXXXX
                   </p>
                 </div>
@@ -423,12 +411,12 @@ export default function FacebookAdSimulatorPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-gray-400">
                     {MOCK_SCENARIOS[testScenario].description}
                   </p>
                 </div>
 
-                <Separator />
+                <div className="border-t border-[var(--ds-border)]" />
 
                 {/* Action Buttons */}
                 <div className="flex gap-2">
@@ -499,13 +487,12 @@ export default function FacebookAdSimulatorPage() {
                   </Alert>
                 )}
               </form>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
         {/* Info Card */}
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="pt-6">
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-6">
             <div className="flex gap-3">
               <Facebook className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div className="space-y-2 text-sm text-blue-900">
@@ -519,9 +506,7 @@ export default function FacebookAdSimulatorPage() {
                 </ul>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+        </div>
     </div>
   )
 }
