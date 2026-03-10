@@ -99,6 +99,7 @@ export function ValidationListClient({ leads: initialLeads }: { leads: Lead[] })
     setPopupLoading(true)
     try {
       const res = await fetch(`/api/vendor-leads/${lead.id}`)
+      if (!res.ok) throw new Error(`Failed to load lead (${res.status})`)
       const data = await res.json()
       setPopupLeadData(data)
     } catch {
