@@ -36,6 +36,8 @@ const updateVendorLeadSchema = z.object({
   solicitorFirm: z.string().optional().nullable(),
   solicitorPhone: z.string().optional().nullable(),
   solicitorEmail: z.string().email().optional().nullable(),
+  offerAcceptedAt: z.string().datetime().optional().nullable(),
+  offerRejectedAt: z.string().datetime().optional().nullable(),
 })
 
 // GET /api/vendor-leads/[id] - Get a single vendor lead
