@@ -22,7 +22,7 @@ interface Lead {
   id: string
   vendorName: string
   vendorEmail: string | null
-  vendorPhone: string        // non-nullable in schema
+  vendorPhone: string | null
   propertyAddress: string | null
   propertyPostcode: string | null
   askingPrice: number | null
