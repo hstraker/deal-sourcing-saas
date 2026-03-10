@@ -115,8 +115,19 @@ export default function DualSidebar() {
   const activeSection =
     NAV_SECTIONS.find((s) => s.id === activeSectionId) ?? NAV_SECTIONS[0]
 
-  const isActiveItem = (href: string) =>
-    pathname === href || pathname.startsWith(href + "/")
+  // Find the single most-specific matching item (longest href) so that
+  // ancestor paths like /dashboard and /dashboard/vendors don't also
+  // light up when you're on /dashboard/vendors/portal-check.
+  const activeItemHref =
+    activeSection.groups
+      .flatMap((g) => g.items)
+      .filter(
+        (item) =>
+          pathname === item.href || pathname.startsWith(item.href + "/")
+      )
+      .sort((a, b) => b.href.length - a.href.length)[0]?.href ?? null
+
+  const isActiveItem = (href: string) => href === activeItemHref
 
   const handleSectionClick = (sectionId: string) => {
     if (sectionId === activeSectionId) {
