@@ -18,7 +18,7 @@ import { toast } from "sonner"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface Lead {
+export interface Lead {
   id: string
   vendorName: string
   vendorEmail: string | null
@@ -131,8 +131,8 @@ export function OfferListClient({ leads: initialLeads }: { leads: Lead[] }) {
         prev.map((l) => (l.id === lead.id ? { ...l, [field]: value } : l))
       )
       toast.success(decision === "accept" ? "Offer accepted" : "Offer rejected")
-    } catch (err: any) {
-      toast.error(err.message)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update offer status")
     } finally {
       setDecidingId(null)
     }

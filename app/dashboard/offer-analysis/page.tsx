@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth"
 import { redirect } from "next/navigation"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { OfferListClient } from "./offer-list-client"
+import { OfferListClient, type Lead } from "./offer-list-client"
 
 export const metadata = { title: "Offer Analysis — DealStack" }
 export const dynamic = "force-dynamic"
@@ -50,5 +50,5 @@ export default async function OfferAnalysisPage() {
     offerRejectedAt:      l.offerRejectedAt?.toISOString() ?? null,
   }))
 
-  return <OfferListClient leads={serialised as any} />
+  return <OfferListClient leads={serialised as Lead[]} />
 }
