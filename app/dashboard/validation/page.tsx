@@ -36,5 +36,5 @@ export default async function ValidationPage() {
     validatedAt: l.validatedAt?.toISOString() ?? null,
   }))
 
-  return <ValidationListClient leads={serialised as any} />
+  return <ValidationListClient leads={serialised} />
 }
