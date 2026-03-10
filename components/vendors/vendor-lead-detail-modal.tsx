@@ -69,6 +69,7 @@ import { OfferAnalysisPanel } from "@/components/deals/offer-analysis-panel"
 import { formatCurrency } from "@/lib/format"
 import { ShieldCheck } from "lucide-react"
 import { SolicitorSelector, type Solicitor as SolicitorType } from "@/components/solicitors/solicitor-selector"
+import { PortalCheckDetailPanel } from "./portal-check-detail-panel"
 
 interface SMSMessage {
   id: string
@@ -87,7 +88,7 @@ interface PipelineEvent {
   createdBy?: string | null
 }
 
-interface VendorLead {
+export interface VendorLead {
   id: string
   vendorName: string
   vendorPhone: string
@@ -163,6 +164,7 @@ interface VendorLeadDetailModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onUpdate?: () => void
+  initialTab?: "details" | "comparables" | "activity" | "portal-check"
 }
 
 const formatDate = (date: Date | null) => {
@@ -365,13 +367,14 @@ export function VendorLeadDetailModal({
   open,
   onOpenChange,
   onUpdate,
+  initialTab,
 }: VendorLeadDetailModalProps) {
   const [manualMessage, setManualMessage] = useState("")
   const [sendingMessage, setSendingMessage] = useState(false)
   const [showConversation, setShowConversation] = useState(false)
   const [fullLead, setFullLead] = useState<VendorLead | null>(null)
   const [isEditing, setIsEditing] = useState(false)
-  const [activeTab, setActiveTab] = useState("details")
+  const [activeTab, setActiveTab] = useState<string>(initialTab ?? "details")
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isRemovingReservation, setIsRemovingReservation] = useState(false)
@@ -1078,7 +1081,7 @@ export function VendorLeadDetailModal({
           onValueChange={setActiveTab}
           className="w-full"
         >
-          <TabsList className="grid w-full grid-cols-3 h-auto p-1 gap-0.5 bg-gray-50">
+          <TabsList className="grid w-full grid-cols-4 h-auto p-1 gap-0.5 bg-gray-50">
             <TabsTrigger
               value="details"
               className="relative flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
@@ -1108,6 +1111,15 @@ export function VendorLeadDetailModal({
             >
               <Clock className="h-3.5 w-3.5" />
               <span>Activity</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="portal-check"
+              className="flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
+                hover:bg-gray-50 hover:text-[#2563EB] hover:shadow-sm
+                data-[state=active]:bg-white data-[state=active]:text-[#2563EB] data-[state=active]:shadow-sm"
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              <span>Portal Check</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1983,6 +1995,18 @@ export function VendorLeadDetailModal({
               vendorLeadId={lead.id}
               askingPrice={typeof currentLead.askingPrice === 'number' ? currentLead.askingPrice : (currentLead.askingPrice ? Number(currentLead.askingPrice) : undefined)}
               propertyPostcode={currentLead.propertyPostcode}
+            />
+          </TabsContent>
+          <TabsContent value="portal-check" className="space-y-4">
+            <PortalCheckDetailPanel
+              leadId={currentLead.id}
+              latestCheckRisk={currentLead.latestCheckRisk ?? null}
+              latestCheckedAt={
+                currentLead.latestCheckedAt
+                  ? new Date(currentLead.latestCheckedAt).toISOString()
+                  : null
+              }
+              onRiskUpdated={() => onUpdate?.()}
             />
           </TabsContent>
         </Tabs>
