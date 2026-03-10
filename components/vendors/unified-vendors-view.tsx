@@ -17,16 +17,20 @@ type ViewMode = "table" | "board"
  *
  * User preference is saved to localStorage for persistence across sessions.
  */
-export function UnifiedVendorsView() {
+export function UnifiedVendorsView({ defaultView }: { defaultView?: "table" | "board" }) {
   const [viewMode, setViewMode] = useState<ViewMode>("table")
   const [isClient, setIsClient] = useState(false)
 
   // Load saved view preference on mount
   useEffect(() => {
     setIsClient(true)
-    const savedView = localStorage.getItem("vendors-view-mode") as ViewMode
-    if (savedView === "table" || savedView === "board") {
-      setViewMode(savedView)
+    if (defaultView) {
+      setViewMode(defaultView)
+    } else {
+      const savedView = localStorage.getItem("vendors-view-mode") as ViewMode
+      if (savedView === "table" || savedView === "board") {
+        setViewMode(savedView)
+      }
     }
   }, [])
 
