@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db"
 import { ValidationListClient } from "./validation-list-client"
 
 export const metadata = { title: "Validation — DealStack" }
+export const dynamic = "force-dynamic"
 
 export default async function ValidationPage() {
   const session = await getServerSession(authOptions)
@@ -35,5 +36,5 @@ export default async function ValidationPage() {
     validatedAt: l.validatedAt?.toISOString() ?? null,
   }))
 
-  return <ValidationListClient leads={serialised} />
+  return <ValidationListClient leads={serialised as any} />
 }
