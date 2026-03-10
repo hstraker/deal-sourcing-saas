@@ -24,7 +24,6 @@ import {
   GlobeAltIcon,
   ArrowTrendingUpIcon,
   ClockIcon,
-  UserIcon,
   PresentationChartLineIcon,
 } from "@heroicons/react/24/outline"
 
@@ -79,8 +78,7 @@ export const NAV_SECTIONS = [
       {
         label: "Client Management",
         items: [
-          { label: "Contacts",     href: "/dashboard/contacts",         icon: UserGroupIcon },
-          { label: "Contact Info", href: "/dashboard/vendors/contacts", icon: UserIcon },
+          { label: "Contacts", href: "/dashboard/contacts", icon: UserGroupIcon },
         ],
       },
       {
