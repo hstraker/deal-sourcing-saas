@@ -1,10 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { VendorLeadDetailModal, type VendorLead } from "./vendor-lead-detail-modal"
+import type { VendorLead } from "./vendor-lead-detail-modal"
+import { PortalCheckDetailPanel } from "./portal-check-detail-panel"
 import { PortalCheckBadge } from "./portal-check-badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 import { formatDistanceToNow } from "date-fns"
-import { ShieldCheck } from "lucide-react"
+import { ShieldCheck, Eye } from "lucide-react"
 
 const RISK_ORDER: Record<string, number> = {
   red_flag: 0,
@@ -33,7 +36,7 @@ export function PortalCheckList({ leads }: PortalCheckListProps) {
       riskSortValue(b.latestCheckRisk ?? null)
   )
 
-  const handleRowClick = (lead: VendorLead) => {
+  const handleView = (lead: VendorLead) => {
     setSelectedLead(lead)
     setModalOpen(true)
   }
@@ -62,14 +65,14 @@ export function PortalCheckList({ leads }: PortalCheckListProps) {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   Last Checked
                 </th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {sorted.map((lead) => (
                 <tr
                   key={lead.id}
-                  onClick={() => handleRowClick(lead)}
-                  className="bg-white hover:bg-gray-50 cursor-pointer transition-colors"
+                  className="bg-white hover:bg-gray-50 transition-colors"
                 >
                   <td className="px-4 py-3 font-medium text-gray-900 max-w-xs truncate">
                     {lead.propertyAddress || "—"}
@@ -90,6 +93,17 @@ export function PortalCheckList({ leads }: PortalCheckListProps) {
                         })
                       : "Never"}
                   </td>
+                  <td className="px-4 py-3 text-right">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleView(lead)}
+                      className="gap-1.5"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      View
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -97,14 +111,37 @@ export function PortalCheckList({ leads }: PortalCheckListProps) {
         </div>
       )}
 
-      {selectedLead && (
-        <VendorLeadDetailModal
-          lead={selectedLead}
-          open={modalOpen}
-          onOpenChange={setModalOpen}
-          initialTab="portal-check"
-        />
-      )}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-gray-400" />
+              Portal Check
+            </DialogTitle>
+            {selectedLead && (
+              <p className="text-sm text-gray-500 font-normal mt-0.5">
+                {selectedLead.propertyAddress || "Unknown address"}
+              </p>
+            )}
+          </DialogHeader>
+
+          {selectedLead && (
+            <PortalCheckDetailPanel
+              leadId={selectedLead.id}
+              latestCheckRisk={selectedLead.latestCheckRisk ?? null}
+              latestCheckedAt={
+                selectedLead.latestCheckedAt
+                  ? new Date(selectedLead.latestCheckedAt as any).toISOString()
+                  : null
+              }
+              onRiskUpdated={() => {
+                // Refresh will happen on next page load; close is enough for now
+                setModalOpen(false)
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
