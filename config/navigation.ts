@@ -94,7 +94,7 @@ export const NAV_SECTIONS = [
         items: [
           { label: "Investors",    href: "/dashboard/investors",                icon: UsersIcon },
           { label: "Reservations", href: "/dashboard/reservations",             icon: BookmarkSquareIcon },
-          { label: "Packs",        href: "/dashboard/settings/investor-packs",  icon: DocumentDuplicateIcon },
+          { label: "Packs",        href: "/dashboard/investors/packs",  icon: DocumentDuplicateIcon },
         ],
       },
     ],
