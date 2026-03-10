@@ -86,9 +86,9 @@ export const NAV_SECTIONS = [
       {
         label: "Vendors",
         items: [
-          { label: "Leads",        href: "/dashboard/vendors",  icon: FunnelIcon },
-          { label: "Board",        href: "/dashboard/vendors",  icon: Squares2X2Icon },  // TODO: dedicated board route
-          { label: "Portal Check", href: "/dashboard/vendors",  icon: ShieldCheckIcon }, // TODO: dedicated portal check route
+          { label: "Leads",        href: "/dashboard/vendors",           icon: FunnelIcon },
+          { label: "Board",        href: "/dashboard/vendors/board",     icon: Squares2X2Icon },
+          { label: "Portal Check", href: "/dashboard/vendors/portal-check", icon: ShieldCheckIcon },
         ],
       },
       {
