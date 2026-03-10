@@ -246,6 +246,9 @@ model User {
   communicationsSent  Communication[]    @relation("CommunicationSender")
   vendorOffersCreated VendorOffer[]      @relation("OfferCreator")
   comparablesConfig   ComparablesConfig?
+  sourcingAlerts      SourcingAlert[]
+  notificationPrefs   NotificationPreference?
+  watchlist           WatchlistProperty[]
 
   @@index([email])
   @@index([role])
@@ -1562,7 +1565,9 @@ model PropertyListing {
   deal            Deal?            @relation(fields: [dealId], references: [id], onDelete: SetNull)
 
   // Relations
-  exports         PropertyExport[]
+  exports          PropertyExport[]
+  alertMatches     AlertMatch[]
+  watchlistEntries WatchlistProperty[]
 
   @@unique([source, sourceId])
   @@index([category])
@@ -1804,3 +1809,83 @@ model LandRegistryImport {
   @@index([status])
   @@map("land_registry_imports")
 }
+
+// ─── Sourcing Alerts ──────────────────────────────────────────────────────────
+
+model SourcingAlert {
+  id            String       @id @default(cuid())
+  userId        String       @map("user_id")
+  name          String?
+  address       String
+  radius        String       // e.g. "+1km", "+5km", "+10km", "+20km", "+40km"
+  latitude      Float?
+  longitude     Float?
+  minPrice      Int?         @map("min_price")
+  maxPrice      Int?         @map("max_price")
+  minBedrooms   Int?         @map("min_bedrooms")
+  maxBedrooms   Int?         @map("max_bedrooms")
+  propertyTypes String[]     @map("property_types")
+  isActive      Boolean      @default(true) @map("is_active")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  user          User         @relation(fields: [userId], references: [id])
+  matches       AlertMatch[]
+
+  @@index([userId])
+  @@index([isActive])
+  @@map("sourcing_alerts")
+}
+
+model AlertMatch {
+  id                  String          @id @default(cuid())
+  alertId             String          @map("alert_id")
+  scrapedPropertyId   String          @map("scraped_property_id")
+  matchedAt           DateTime        @default(now()) @map("matched_at")
+  notifiedEmail       Boolean         @default(false) @map("notified_email")
+  notifiedSms         Boolean         @default(false) @map("notified_sms")
+  notifiedInApp       Boolean         @default(false) @map("notified_in_app")
+
+  alert           SourcingAlert   @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  propertyListing PropertyListing @relation(fields: [scrapedPropertyId], references: [id], onDelete: Cascade)
+
+  @@unique([alertId, scrapedPropertyId])
+  @@index([alertId])
+  @@map("alert_matches")
+}
+
+model NotificationPreference {
+  id                    String   @id @default(cuid())
+  userId                String   @unique @map("user_id")
+  priceIncrease         Boolean  @default(true) @map("price_increase")
+  priceDecrease         Boolean  @default(true) @map("price_decrease")
+  auctionReminder7Days  Boolean  @default(true) @map("auction_reminder_7_days")
+  auctionReminder3Days  Boolean  @default(true) @map("auction_reminder_3_days")
+  auctionReminder1Day   Boolean  @default(true) @map("auction_reminder_1_day")
+  newPropertyMatch      Boolean  @default(true) @map("new_property_match")
+  deliveryEmail         Boolean  @default(true) @map("delivery_email")
+  deliverySms           Boolean  @default(false) @map("delivery_sms")
+  deliveryInApp         Boolean  @default(true) @map("delivery_in_app")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  user  User @relation(fields: [userId], references: [id])
+
+  @@map("notification_preferences")
+}
+
+model WatchlistProperty {
+  id                String          @id @default(cuid())
+  userId            String          @map("user_id")
+  scrapedPropertyId String          @map("scraped_property_id")
+  lastKnownPrice    Int             @map("last_known_price")
+  addedAt           DateTime        @default(now()) @map("added_at")
+
+  user            User            @relation(fields: [userId], references: [id])
+  propertyListing PropertyListing @relation(fields: [scrapedPropertyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, scrapedPropertyId])
+  @@index([userId])
+  @@map("watchlist_properties")
+}
+

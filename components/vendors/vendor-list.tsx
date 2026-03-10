@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -38,7 +39,7 @@ import {
   Clock,
   Zap,
 } from "lucide-react"
-import { VendorLeadDetailModal } from "./vendor-lead-detail-modal"
+// VendorLeadDetailModal removed — vendor pages are now standalone routes
 import { PortalCheckBadge } from "./portal-check-badge"
 import { toast } from "sonner"
 import { formatCurrency } from "@/lib/format"
@@ -256,14 +257,13 @@ const transformLead = (lead: any): VendorLead => ({
 })
 
 export function VendorList() {
+  const router = useRouter()
   const [vendors, setVendors] = useState<VendorLead[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [stageFilter, setStageFilter] = useState<string>("all")
   const [motivationFilter, setMotivationFilter] = useState<string>("all")
   const [dateFrom, setDateFrom] = useState<string>("")
   const [dateTo, setDateTo] = useState<string>("")
-  const [selectedVendor, setSelectedVendor] = useState<VendorLead | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
   const [isCalculating, setIsCalculating] = useState(false)
@@ -309,18 +309,7 @@ export function VendorList() {
   }, [vendors, stageFilter, motivationFilter, dateFrom, dateTo])
 
   const handleViewDetails = (vendor: VendorLead) => {
-    setSelectedVendor(vendor)
-    setIsModalOpen(true)
-  }
-
-  const handleModalClose = () => {
-    setIsModalOpen(false)
-    setSelectedVendor(null)
-  }
-
-  const handleUpdate = () => {
-    fetchVendors()
-    setSelectedIds(new Set())
+    router.push(`/dashboard/vendors/${vendor.id}/contact`)
   }
 
   const toggleSelectAll = () => {
@@ -935,14 +924,6 @@ export function VendorList() {
         )}
       </div>
 
-      {selectedVendor && (
-        <VendorLeadDetailModal
-          lead={selectedVendor as any}
-          open={isModalOpen}
-          onOpenChange={handleModalClose}
-          onUpdate={handleUpdate}
-        />
-      )}
     </div>
   )
 }

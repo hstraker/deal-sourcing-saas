@@ -1,0 +1,335 @@
+"use client"
+
+import Link from "next/link"
+import Image from "next/image"
+import { usePathname } from "next/navigation"
+import { useSession, signOut } from "next-auth/react"
+import { useState, useEffect } from "react"
+import {
+  ChevronDoubleLeftIcon,
+  ChevronDoubleRightIcon,
+  ArrowRightStartOnRectangleIcon,
+} from "@heroicons/react/24/outline"
+import { NAV_SECTIONS } from "@/config/navigation"
+import { useSidebar } from "@/context/SidebarContext"
+
+// ── LogoMark: fetches real company profile ──────────────────────────────────
+
+interface CompanyProfile {
+  companyName: string
+  logoUrl: string | null
+}
+
+function LogoMark() {
+  const [profile, setProfile] = useState<CompanyProfile | null>(null)
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch("/api/company-profile")
+        if (res.ok) {
+          const data = await res.json()
+          if (data.profile) setProfile(data.profile)
+        }
+      } catch {
+        // silently ignore
+      }
+    }
+    load()
+    window.addEventListener("company-profile-updated", load)
+    return () => window.removeEventListener("company-profile-updated", load)
+  }, [])
+
+  const initials = (profile?.companyName || "D").charAt(0).toUpperCase()
+
+  if (profile?.logoUrl) {
+    return (
+      <div className="relative w-8 h-8 flex-shrink-0 rounded-lg overflow-hidden">
+        <Image
+          src={profile.logoUrl}
+          alt={profile.companyName}
+          fill
+          className="object-contain"
+          unoptimized
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#F5A623] flex items-center justify-center flex-shrink-0">
+      <span className="text-[#1A1A1F] font-bold text-sm">{initials}</span>
+    </div>
+  )
+}
+
+function CompanyName() {
+  const [name, setName] = useState<string>("DealStack")
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch("/api/company-profile")
+        if (res.ok) {
+          const data = await res.json()
+          if (data.profile?.companyName) setName(data.profile.companyName)
+        }
+      } catch {
+        // silently ignore
+      }
+    }
+    load()
+    window.addEventListener("company-profile-updated", load)
+    return () => window.removeEventListener("company-profile-updated", load)
+  }, [])
+
+  return <>{name}</>
+}
+
+// ── UserAvatar: uses NextAuth session ──────────────────────────────────────
+
+function UserAvatar() {
+  const { data: session } = useSession()
+  const name = session?.user?.name || session?.user?.email || "U"
+  const initials = name.charAt(0).toUpperCase()
+
+  return (
+    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0">
+      <span className="text-white text-xs font-semibold">{initials}</span>
+    </div>
+  )
+}
+
+function UserName() {
+  const { data: session } = useSession()
+  return <>{session?.user?.name || session?.user?.email || "My Account"}</>
+}
+
+// ── DualSidebar ────────────────────────────────────────────────────────────
+
+export default function DualSidebar() {
+  const pathname = usePathname()
+  const { activeSectionId, setActiveSectionId, secondaryOpen, setSecondaryOpen } =
+    useSidebar()
+
+  const activeSection =
+    NAV_SECTIONS.find((s) => s.id === activeSectionId) ?? NAV_SECTIONS[0]
+
+  const isActiveItem = (href: string) =>
+    pathname === href || pathname.startsWith(href + "/")
+
+  const handleSectionClick = (sectionId: string) => {
+    if (sectionId === activeSectionId) {
+      setSecondaryOpen(!secondaryOpen)
+    } else {
+      setActiveSectionId(sectionId)
+      setSecondaryOpen(true)
+    }
+  }
+
+  return (
+    <>
+      {/* ═══════════════════════════════════════════════════
+          NAV1 — PRIMARY SIDEBAR
+          56px collapsed. Expands to 200px on CSS hover.
+          Overlays content — does NOT shift layout.
+      ═══════════════════════════════════════════════════ */}
+      <aside
+        className={`
+          fixed left-0 top-0 h-screen z-50
+          bg-[#1A1A1F] border-r border-[#2D2D38]
+          flex flex-col py-3
+          w-14 hover:w-[200px]
+          transition-all duration-200 ease-in-out
+          overflow-hidden
+          group
+        `}
+      >
+        {/* Logo row */}
+        <div className="flex items-center gap-2.5 px-3 mb-3 flex-shrink-0 min-w-[200px]">
+          <LogoMark />
+          <span
+            className="
+              text-sm font-bold text-white whitespace-nowrap
+              opacity-0 group-hover:opacity-100
+              transition-opacity duration-150 delay-75
+            "
+          >
+            <CompanyName />
+          </span>
+        </div>
+
+        {/* Divider */}
+        <div className="mx-3 h-px bg-[#2D2D38] mb-2 flex-shrink-0" />
+
+        {/* NAV1 section buttons */}
+        <div className="flex flex-col gap-0.5 px-2 flex-1">
+          {NAV_SECTIONS.map((section) => {
+            const isActive = section.id === activeSectionId
+            return (
+              <button
+                key={section.id}
+                onClick={() => handleSectionClick(section.id)}
+                className={`
+                  flex items-center gap-3 w-full px-2 py-2.5 rounded-xl
+                  transition-all duration-150 text-left min-w-[176px]
+                  ${
+                    isActive
+                      ? "bg-[#F5A623] text-[#1A1A1F] font-semibold shadow-sm"
+                      : "text-gray-400 hover:bg-[#2A2A32] hover:text-white"
+                  }
+                `}
+              >
+                <section.icon className="w-5 h-5 flex-shrink-0" />
+                <span
+                  className="
+                    text-sm whitespace-nowrap
+                    opacity-0 group-hover:opacity-100
+                    transition-opacity duration-150 delay-75
+                  "
+                >
+                  {section.label}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Sign out + user row */}
+        <div className="border-t border-[#2D2D38] mt-2 pt-2 px-2 space-y-0.5 min-w-[200px]">
+          <button
+            type="button"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="flex items-center gap-3 w-full px-2 py-2 rounded-xl text-gray-400 hover:bg-[#2A2A32] hover:text-white transition-all duration-150"
+          >
+            <ArrowRightStartOnRectangleIcon className="w-5 h-5 flex-shrink-0" />
+            <span
+              className="
+                text-sm whitespace-nowrap
+                opacity-0 group-hover:opacity-100
+                transition-opacity duration-150 delay-75
+              "
+            >
+              Sign Out
+            </span>
+          </button>
+
+          <div className="flex items-center gap-2.5 px-2 py-2">
+            <UserAvatar />
+            <span
+              className="
+                text-sm font-medium text-gray-300 whitespace-nowrap truncate
+                opacity-0 group-hover:opacity-100
+                transition-opacity duration-150 delay-75
+              "
+            >
+              <UserName />
+            </span>
+          </div>
+        </div>
+      </aside>
+
+      {/* ═══════════════════════════════════════════════════
+          NAV2 — SECONDARY SIDEBAR
+          Collapsible. Shows the active section's nav groups.
+          Independent of NAV1 hover state.
+      ═══════════════════════════════════════════════════ */}
+      <aside
+        className={`
+          fixed left-14 top-0 h-screen bg-white border-r border-gray-200 z-40
+          flex flex-col transition-all duration-200 ease-in-out overflow-hidden
+          ${secondaryOpen ? "w-[260px]" : "w-0"}
+        `}
+      >
+        {/* NAV2 header: section title + « collapse button */}
+        <div
+          className="
+            flex items-center justify-between
+            px-4 py-[14px] border-b border-gray-100
+            flex-shrink-0 min-w-[260px]
+          "
+        >
+          <h2 className="text-[15px] font-bold text-gray-900 whitespace-nowrap tracking-tight">
+            {activeSection.title}
+          </h2>
+          <button
+            onClick={() => setSecondaryOpen(false)}
+            className="
+              w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0
+              text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-all
+            "
+            aria-label="Collapse sidebar"
+          >
+            <ChevronDoubleLeftIcon className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* NAV2 scrollable nav groups */}
+        <nav className="flex-1 overflow-y-auto py-3 px-2 min-w-[260px]">
+          {activeSection.groups.map((group) => (
+            <div key={group.label} className="mb-5 last:mb-0">
+              {/* Group heading */}
+              <p
+                className="
+                  text-[10px] font-semibold uppercase tracking-widest
+                  text-gray-400 px-3 mb-1.5 whitespace-nowrap
+                "
+              >
+                {group.label}
+              </p>
+
+              {/* Nav items */}
+              {group.items.map((item) => {
+                const active = isActiveItem(item.href)
+                return (
+                  <Link
+                    key={`${group.label}-${item.label}`}
+                    href={item.href}
+                    className={`
+                      flex items-center gap-2.5 px-3 py-[7px] rounded-lg
+                      text-sm transition-all duration-100 mb-0.5 whitespace-nowrap
+                      ${
+                        active
+                          ? "bg-[#FEF3C7] text-gray-900 font-semibold"
+                          : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                      }
+                    `}
+                  >
+                    <item.icon
+                      className={`
+                        w-4 h-4 flex-shrink-0 transition-colors
+                        ${active ? "text-[#D97706]" : "text-gray-400"}
+                      `}
+                    />
+                    <span>{item.label}</span>
+                  </Link>
+                )
+              })}
+            </div>
+          ))}
+        </nav>
+      </aside>
+
+      {/* ═══════════════════════════════════════════════════
+          NAV2 EXPAND TAB
+          Visible only when NAV2 is collapsed.
+      ═══════════════════════════════════════════════════ */}
+      {!secondaryOpen && (
+        <button
+          onClick={() => setSecondaryOpen(true)}
+          aria-label="Expand sidebar"
+          className="
+            fixed left-14 top-1/2 -translate-y-1/2 z-40
+            w-5 h-10 bg-white border border-gray-200 border-l-0
+            rounded-r-lg shadow-sm
+            flex items-center justify-center
+            text-gray-400 hover:text-gray-600 hover:w-6
+            transition-all duration-150
+          "
+        >
+          <ChevronDoubleRightIcon className="w-3 h-3" />
+        </button>
+      )}
+    </>
+  )
+}

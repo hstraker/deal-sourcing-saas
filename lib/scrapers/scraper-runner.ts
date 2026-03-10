@@ -113,6 +113,23 @@ export async function runScraperJob(
     console.log(
       `${LOG_PREFIX} Job ${jobId} completed: ${progress.successful} properties saved`
     )
+
+    // Fire-and-forget: run alert matching engine after each scrape
+    if (progress.successful > 0 && process.env.INTERNAL_API_SECRET) {
+      const appUrl = process.env.APP_URL || "http://localhost:3000"
+      fetch(`${appUrl}/api/sourcing-alerts/match`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-internal-secret": process.env.INTERNAL_API_SECRET,
+        },
+        body: JSON.stringify({ since: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() }),
+      })
+        .then((r) => r.json())
+        .then((data) => console.log(`${LOG_PREFIX} Alert matching: ${data.matched} matched, ${data.notified} notified`))
+        .catch((err) => console.warn(`${LOG_PREFIX} Alert matching failed:`, err.message))
+    }
+
     return progress
   } catch (error: any) {
     console.error(`${LOG_PREFIX} Job ${jobId} failed:`, error.message)

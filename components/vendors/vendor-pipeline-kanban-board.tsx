@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -21,7 +22,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { VendorLeadDetailModal } from "./vendor-lead-detail-modal"
+// VendorLeadDetailModal removed — vendor pages are now standalone routes
 import { PipelineStatsCards } from "./pipeline-stats-cards"
 import { formatCurrency } from "@/lib/format"
 import { PortalCheckBadge } from "./portal-check-badge"
@@ -177,10 +178,10 @@ const motivationColors = (score: number | null) => {
 }
 
 export function VendorPipelineKanbanBoard() {
+  const router = useRouter()
   const [leads, setLeads] = useState<VendorLead[]>([])
   const [stats, setStats] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [selectedLead, setSelectedLead] = useState<VendorLead | null>(null)
   const [refreshing, setRefreshing] = useState(false)
 
   const [stageFilter, setStageFilter] = useState<string>("all")
@@ -420,7 +421,7 @@ export function VendorPipelineKanbanBoard() {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                onClick={() => setSelectedLead(lead)}
+                                onClick={() => router.push(`/dashboard/vendors/${lead.id}/contact`)}
                                 className={cn(
                                   "ds-card ds-card-hover cursor-pointer border-l-[3px] p-3",
                                   snapshot.isDragging && "shadow-dropdown rotate-1 opacity-95"
@@ -566,14 +567,6 @@ export function VendorPipelineKanbanBoard() {
         </DragDropContext>
       </div>
 
-      {selectedLead && (
-        <VendorLeadDetailModal
-          lead={selectedLead}
-          open={!!selectedLead}
-          onOpenChange={(open) => !open && setSelectedLead(null)}
-          onUpdate={fetchData}
-        />
-      )}
     </>
   )
 }

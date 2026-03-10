@@ -31,7 +31,9 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(/tmp/fix-cards.pl:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(sort find /mnt/c/Users/henry/Projects/deal-sourcing-saas/components/vendors -type f)",
+      "Bash(sort find /mnt/c/Users/henry/Projects/deal-sourcing-saas/components/vendors -name *.tsx)"
     ]
   }
 }
