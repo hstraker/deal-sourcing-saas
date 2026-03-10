@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
-import { getSectionIdFromPath } from "@/config/navigation"
+import { getSectionIdFromPath, NAV_SECTIONS } from "@/config/navigation"
 
 type SidebarContextType = {
   activeSectionId: string
@@ -21,7 +21,15 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [secondaryOpen, setSecondaryOpen] = useState(true)
 
   useEffect(() => {
-    setActiveSectionId(getSectionIdFromPath(pathname))
+    const currentSection = NAV_SECTIONS.find(s => s.id === activeSectionId)
+    const currentOwnsPath = currentSection?.groups.some(g =>
+      g.items.some(item =>
+        pathname === item.href || pathname.startsWith(item.href + "/")
+      )
+    )
+    if (!currentOwnsPath) {
+      setActiveSectionId(getSectionIdFromPath(pathname))
+    }
   }, [pathname])
 
   return (
