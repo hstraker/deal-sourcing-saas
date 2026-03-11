@@ -13,7 +13,9 @@ import {
   Trash2,
   Users,
   Loader2,
+  Zap,
 } from "lucide-react"
+import type { ActionItem } from "@/app/api/action-counts/route"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
@@ -125,6 +127,24 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
       .then(setInvestorCriteria)
       .catch((err) => {
         console.error("Failed to fetch investor criteria:", err)
+      })
+  }, [])
+
+  // Fetch action-counts to know which deals need attention
+  const [actionDealIds, setActionDealIds] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    fetch("/api/action-counts")
+      .then((r) => {
+        if (!r.ok) throw new Error(`API error: ${r.status}`)
+        return r.json()
+      })
+      .then((data: { items: ActionItem[] }) => {
+        setActionDealIds(
+          new Set(data.items.filter((i) => i.type === "deal").map((i) => i.id))
+        )
+      })
+      .catch((err) => {
+        console.error("Failed to fetch action counts:", err)
       })
   }, [])
 
@@ -350,13 +370,13 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
       ) : (
         <>
           {viewMode === "cards" && (
-            <CardView deals={paginatedDeals} matchesByDealId={matchesByDealId} />
+            <CardView deals={paginatedDeals} matchesByDealId={matchesByDealId} actionDealIds={actionDealIds} />
           )}
           {viewMode === "list" && (
-            <ListView deals={paginatedDeals} matchesByDealId={matchesByDealId} />
+            <ListView deals={paginatedDeals} matchesByDealId={matchesByDealId} actionDealIds={actionDealIds} />
           )}
           {viewMode === "table" && (
-            <TableView deals={paginatedDeals} matchesByDealId={matchesByDealId} />
+            <TableView deals={paginatedDeals} matchesByDealId={matchesByDealId} actionDealIds={actionDealIds} />
           )}
 
           {totalPages > 1 && (
@@ -379,9 +399,11 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
 function CardView({
   deals,
   matchesByDealId,
+  actionDealIds,
 }: {
   deals: DealWithRelations[]
   matchesByDealId: Map<string, MatchResult[]>
+  actionDealIds: Set<string>
 }) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -394,6 +416,7 @@ function CardView({
               ? []
               : (matchesByDealId.get(deal.id) ?? [])
           }
+          needsAction={actionDealIds.has(deal.id)}
         />
       ))}
     </div>
@@ -405,9 +428,11 @@ function CardView({
 function ListView({
   deals,
   matchesByDealId,
+  actionDealIds,
 }: {
   deals: DealWithRelations[]
   matchesByDealId: Map<string, MatchResult[]>
+  actionDealIds: Set<string>
 }) {
   return (
     <div className="space-y-2">
@@ -420,6 +445,7 @@ function ListView({
               ? []
               : (matchesByDealId.get(deal.id) ?? [])
           }
+          needsAction={actionDealIds.has(deal.id)}
         />
       ))}
     </div>
@@ -429,14 +455,16 @@ function ListView({
 function ListItem({
   deal,
   matches,
+  needsAction,
 }: {
   deal: DealWithRelations
   matches: MatchResult[]
+  needsAction: boolean
 }) {
   const router = useRouter()
   return (
     <div
-      className="ds-card ds-card-hover cursor-pointer overflow-hidden"
+      className={`ds-card ds-card-hover cursor-pointer overflow-hidden ${needsAction ? "ring-1 ring-amber-300" : ""}`}
       onClick={() => router.push(`/dashboard/deals/${deal.id}`)}
     >
       <div className="p-4">
@@ -453,6 +481,16 @@ function ListItem({
               >
                 {formatStatus(deal.status)}
               </span>
+              {needsAction && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Zap className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                    </TooltipTrigger>
+                    <TooltipContent>Needs investor reservation</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
             <div className="flex items-center gap-4 text-sm text-gray-400">
               {deal.bedrooms && <span>{deal.bedrooms} beds</span>}
@@ -535,9 +573,11 @@ function ListItem({
 function TableView({
   deals,
   matchesByDealId,
+  actionDealIds,
 }: {
   deals: DealWithRelations[]
   matchesByDealId: Map<string, MatchResult[]>
+  actionDealIds: Set<string>
 }) {
   const router = useRouter()
   return (
@@ -568,10 +608,24 @@ function TableView({
                 onClick={() => router.push(`/dashboard/deals/${deal.id}`)}
               >
                 <td className="table-cell">
-                  <div className="font-medium">{deal.address}</div>
-                  {deal.postcode && (
-                    <div className="text-sm text-gray-400">{deal.postcode}</div>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    <div>
+                      <div className="font-medium">{deal.address}</div>
+                      {deal.postcode && (
+                        <div className="text-sm text-gray-400">{deal.postcode}</div>
+                      )}
+                    </div>
+                    {actionDealIds.has(deal.id) && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Zap className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                          </TooltipTrigger>
+                          <TooltipContent>Needs investor reservation</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
                 </td>
                 <td className="table-cell">
                   <span
@@ -668,9 +722,11 @@ function TableView({
 function DealCard({
   deal,
   matches,
+  needsAction,
 }: {
   deal: DealWithRelations
   matches: MatchResult[]
+  needsAction: boolean
 }) {
   const router = useRouter()
   const calculatedMetrics = calculateAllMetrics({
@@ -702,13 +758,25 @@ function DealCard({
 
   return (
     <div
-      className="ds-card ds-card-hover cursor-pointer overflow-hidden flex flex-col"
+      className={`ds-card ds-card-hover cursor-pointer overflow-hidden flex flex-col ${needsAction ? "ring-1 ring-amber-300" : ""}`}
       onClick={() => router.push(`/dashboard/deals/${deal.id}`)}
     >
       <div className="px-5 pt-4 pb-3">
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-gray-900 truncate">{deal.address}</h3>
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-lg font-semibold text-gray-900 truncate">{deal.address}</h3>
+              {needsAction && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Zap className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                    </TooltipTrigger>
+                    <TooltipContent>Needs investor reservation</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
             {deal.postcode && (
               <p className="text-sm text-gray-400">{deal.postcode}</p>
             )}
