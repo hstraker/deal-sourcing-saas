@@ -17,6 +17,7 @@ import { GenerateInvestorPackButton } from "@/components/deals/generate-investor
 import { QuickAssignUser } from "@/components/deals/quick-assign-user"
 import { PropertyAnalysisPanel } from "@/components/deals/property-analysis-panel"
 import { OfferAnalysisPanel } from "@/components/deals/offer-analysis-panel"
+import { MatchingInvestorsPanel } from "@/components/deals/matching-investors-panel"
 import { VendorSection } from "@/components/vendors/vendor-section"
 import { ReservationList } from "@/components/reservations/reservation-list"
 import { Decimal } from "@prisma/client/runtime/library"
@@ -836,6 +837,16 @@ export default async function DealDetailPage({ params }: DealDetailPageProps) {
 
             {/* Vendor Information */}
             <VendorSection dealId={deal.id} vendorId={deal.vendor?.id} />
+
+            {/* Matching Investors */}
+            <MatchingInvestorsPanel
+              dealId={deal.id}
+              postcode={deal.postcode ?? null}
+              askingPrice={Number(deal.askingPrice)}
+              bmvPercentage={deal.bmvPercentage ? Number(deal.bmvPercentage) : null}
+              grossYield={deal.grossYield ? Number(deal.grossYield) : null}
+              recommendedStrategy={deal.recommendedStrategy ?? null}
+            />
 
             {/* Investor Reservations */}
             <ReservationList
