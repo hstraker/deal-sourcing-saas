@@ -32,6 +32,7 @@ export interface MatchResult {
 function dealStrategies(recommendedStrategy: string | null): string[] {
   if (recommendedStrategy === "flip") return ["Flip"]
   if (recommendedStrategy === "hold") return ["BTL", "BRRRR"]
+  if (recommendedStrategy === "both") return ["Flip", "BTL", "BRRRR"]
   return []
 }
 

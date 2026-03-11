@@ -4,14 +4,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { AlertTriangle } from "lucide-react"
-
-interface ActionItem {
-  type: "deal" | "vendor"
-  id: string
-  label: string
-  href: string
-  action: string
-}
+import type { ActionItem } from "@/app/api/action-counts/route"
 
 interface ActionCounts {
   dealsCount: number
