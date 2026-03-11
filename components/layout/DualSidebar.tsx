@@ -129,6 +129,24 @@ export default function DualSidebar() {
 
   const isActiveItem = (href: string) => href === activeItemHref
 
+  const [vendorsCount, setVendorsCount] = useState(0)
+  const [dealsCount, setDealsCount] = useState(0)
+
+  useEffect(() => {
+    fetch("/api/action-counts")
+      .then((r) => {
+        if (!r.ok) throw new Error(`API error: ${r.status}`)
+        return r.json()
+      })
+      .then((d) => {
+        setVendorsCount(d.vendorsCount ?? 0)
+        setDealsCount(d.dealsCount ?? 0)
+      })
+      .catch((err) => {
+        console.error("Failed to fetch action counts:", err)
+      })
+  }, [])
+
   const handleSectionClick = (sectionId: string) => {
     if (sectionId === activeSectionId) {
       setSecondaryOpen(!secondaryOpen)
@@ -313,6 +331,19 @@ export default function DualSidebar() {
                       `}
                     />
                     <span>{item.label}</span>
+                    {(() => {
+                      const count =
+                        item.href === "/dashboard/vendors"
+                          ? vendorsCount
+                          : item.href === "/dashboard/deals"
+                          ? dealsCount
+                          : 0
+                      return count > 0 ? (
+                        <span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                          {count}
+                        </span>
+                      ) : null
+                    })()}
                   </Link>
                 )
               })}
