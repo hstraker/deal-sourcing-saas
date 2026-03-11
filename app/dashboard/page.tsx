@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db"
 import { RateLimitMonitor } from "@/components/vendor-pipeline/rate-limit-monitor"
 import { VendorPipelineCard } from "@/components/dashboard/vendor-pipeline-card"
 import { TimeInStagesCard } from "@/components/dashboard/time-in-stages-card"
+import { ActionRequiredStrip } from "@/components/dashboard/action-required-strip"
 import { DashboardKpiStrip } from "@/components/dashboard/dashboard-kpi-strip"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -78,6 +79,9 @@ export default async function DashboardPage() {
           </Link>
         }
       />
+
+      {/* Pipeline action alerts — amber strip showing deals/vendors needing attention */}
+      <ActionRequiredStrip />
 
       {/* KPI strip — client component, fetches /api/analytics/kpis with date filter */}
       <DashboardKpiStrip />
