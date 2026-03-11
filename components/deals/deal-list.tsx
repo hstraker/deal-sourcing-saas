@@ -2,8 +2,34 @@
 
 import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
-import { LayoutGrid, List, Table as TableIcon } from "lucide-react"
+import { useRouter } from "next/navigation"
+import {
+  LayoutGrid,
+  List,
+  Table as TableIcon,
+  Eye,
+  Pencil,
+  Trash2,
+  Users,
+  Loader2,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { calculateAllMetrics } from "@/lib/calculations/deal-metrics"
 import { DealSearch } from "@/components/deals/deal-search"
 import { DealCardSections } from "@/components/deals/deal-card-sections"
@@ -18,6 +44,11 @@ import {
 } from "@/components/deals/deal-sorting"
 import type { DealWithRelations } from "@/types/deal"
 import { formatCurrency } from "@/lib/format"
+import {
+  matchInvestors,
+  type InvestorCriteria,
+  type MatchResult,
+} from "@/lib/deals/investor-matcher"
 
 type ViewMode = "cards" | "list" | "table"
 
@@ -73,6 +104,7 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
     direction: "desc",
   })
   const [currentPage, setCurrentPage] = useState(1)
+  const [investorCriteria, setInvestorCriteria] = useState<InvestorCriteria[]>([])
 
   // Load view preference from localStorage
   useEffect(() => {
@@ -82,40 +114,61 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
     }
   }, [])
 
+  // Fetch investor criteria once for match badges
+  useEffect(() => {
+    fetch("/api/investors/criteria")
+      .then((r) => {
+        if (!r.ok) throw new Error(`API error: ${r.status}`)
+        return r.json()
+      })
+      .then(setInvestorCriteria)
+      .catch((err) => {
+        console.error("Failed to fetch investor criteria:", err)
+      })
+  }, [])
+
   // Reset to page 1 when filters or search change
   useEffect(() => {
     setCurrentPage(1)
   }, [filters, searchQuery])
 
+  // Compute investor matches for all deals (pure, fast, no network)
+  const matchesByDealId = useMemo(() => {
+    const map = new Map<string, MatchResult[]>()
+    if (!investorCriteria.length) return map
+    for (const deal of deals) {
+      map.set(
+        deal.id,
+        matchInvestors(investorCriteria, {
+          postcode: deal.postcode ?? null,
+          askingPrice: Number(deal.askingPrice),
+          bmvPercentage: deal.bmvPercentage ? Number(deal.bmvPercentage) : null,
+          grossYield: deal.grossYield ? Number(deal.grossYield) : null,
+          recommendedStrategy: (deal as any).recommendedStrategy ?? null,
+        })
+      )
+    }
+    return map
+  }, [deals, investorCriteria])
+
   // Apply search
   const searchFiltered = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return deals
-    }
-
+    if (!searchQuery.trim()) return deals
     const query = searchQuery.toLowerCase().trim()
     return deals.filter((deal) => {
-      const addressMatch = deal.address.toLowerCase().includes(query)
-      const postcodeMatch = deal.postcode?.toLowerCase().includes(query)
-      const priceMatch = deal.askingPrice.toString().includes(query)
-      return addressMatch || postcodeMatch || priceMatch
+      return (
+        deal.address.toLowerCase().includes(query) ||
+        deal.postcode?.toLowerCase().includes(query) ||
+        deal.askingPrice.toString().includes(query)
+      )
     })
   }, [deals, searchQuery])
 
   // Apply filters
   const filteredDeals = useMemo(() => {
     return searchFiltered.filter((deal) => {
-      // Status filter
-      if (filters.status && deal.status !== filters.status) {
-        return false
-      }
-
-      // Property type filter
-      if (filters.propertyType && deal.propertyType !== filters.propertyType) {
-        return false
-      }
-
-      // Assigned to filter
+      if (filters.status && deal.status !== filters.status) return false
+      if (filters.propertyType && deal.propertyType !== filters.propertyType) return false
       if (filters.assignedToId) {
         if (filters.assignedToId === "unassigned") {
           if (deal.assignedToId !== null) return false
@@ -123,36 +176,13 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
           if (deal.assignedToId !== filters.assignedToId) return false
         }
       }
-
-      // Postcode filter
-      if (filters.postcode && deal.postcode !== filters.postcode) {
-        return false
-      }
-
-      // Deal score range
-      if (filters.minScore !== null && (deal.dealScore === null || deal.dealScore < filters.minScore)) {
-        return false
-      }
-      if (filters.maxScore !== null && (deal.dealScore === null || deal.dealScore > filters.maxScore)) {
-        return false
-      }
-
-      // BMV% range
-      if (filters.minBmv !== null && (deal.bmvPercentage === null || Number(deal.bmvPercentage) < filters.minBmv)) {
-        return false
-      }
-      if (filters.maxBmv !== null && (deal.bmvPercentage === null || Number(deal.bmvPercentage) > filters.maxBmv)) {
-        return false
-      }
-
-      // Yield range
-      if (filters.minYield !== null && (deal.grossYield === null || Number(deal.grossYield) < filters.minYield)) {
-        return false
-      }
-      if (filters.maxYield !== null && (deal.grossYield === null || Number(deal.grossYield) > filters.maxYield)) {
-        return false
-      }
-
+      if (filters.postcode && deal.postcode !== filters.postcode) return false
+      if (filters.minScore !== null && (deal.dealScore === null || deal.dealScore < filters.minScore)) return false
+      if (filters.maxScore !== null && (deal.dealScore === null || deal.dealScore > filters.maxScore)) return false
+      if (filters.minBmv !== null && (deal.bmvPercentage === null || Number(deal.bmvPercentage) < filters.minBmv)) return false
+      if (filters.maxBmv !== null && (deal.bmvPercentage === null || Number(deal.bmvPercentage) > filters.maxBmv)) return false
+      if (filters.minYield !== null && (deal.grossYield === null || Number(deal.grossYield) < filters.minYield)) return false
+      if (filters.maxYield !== null && (deal.grossYield === null || Number(deal.grossYield) > filters.maxYield)) return false
       return true
     })
   }, [searchFiltered, filters])
@@ -204,15 +234,10 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
           return 0
       }
 
-      if (aValue < bValue) {
-        return sortConfig.direction === "asc" ? -1 : 1
-      }
-      if (aValue > bValue) {
-        return sortConfig.direction === "asc" ? 1 : -1
-      }
+      if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1
+      if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1
       return 0
     })
-
     return sorted
   }, [filteredDeals, sortConfig])
 
@@ -220,18 +245,14 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
   const totalPages = Math.ceil(sortedDeals.length / ITEMS_PER_PAGE)
   const paginatedDeals = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
-    const endIndex = startIndex + ITEMS_PER_PAGE
-    return sortedDeals.slice(startIndex, endIndex)
+    return sortedDeals.slice(startIndex, startIndex + ITEMS_PER_PAGE)
   }, [sortedDeals, currentPage])
 
-  // Save view preference to localStorage
   const handleViewChange = (mode: ViewMode) => {
     setViewMode(mode)
     localStorage.setItem("deal-view-mode", mode)
   }
 
-  // Handle search - we need to extract search query from DealSearch component
-  // For now, we'll create a custom search handler
   const handleSearchChange = (query: string) => {
     setSearchQuery(query)
   }
@@ -251,7 +272,6 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
     <div className="space-y-4">
       {/* Search, Filters, Sorting, and View Toggle */}
       <div className="space-y-4">
-        {/* Search Bar and View Toggle */}
         <div className="flex items-center gap-4">
           <div className="flex-1">
             <DealSearch
@@ -288,7 +308,6 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
           </div>
         </div>
 
-        {/* Filters and Sorting */}
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <DealFiltersComponent
             deals={deals}
@@ -325,11 +344,16 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
         </div>
       ) : (
         <>
-          {viewMode === "cards" && <CardView deals={paginatedDeals} />}
-          {viewMode === "list" && <ListView deals={paginatedDeals} />}
-          {viewMode === "table" && <TableView deals={paginatedDeals} />}
+          {viewMode === "cards" && (
+            <CardView deals={paginatedDeals} matchesByDealId={matchesByDealId} />
+          )}
+          {viewMode === "list" && (
+            <ListView deals={paginatedDeals} matchesByDealId={matchesByDealId} />
+          )}
+          {viewMode === "table" && (
+            <TableView deals={paginatedDeals} matchesByDealId={matchesByDealId} />
+          )}
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <DealPagination
               currentPage={currentPage}
@@ -345,113 +369,164 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
   )
 }
 
-// Card View (existing grid layout)
-function CardView({ deals }: DealListProps) {
+// ── Card View ─────────────────────────────────────────────────────────────────
+
+function CardView({
+  deals,
+  matchesByDealId,
+}: {
+  deals: DealWithRelations[]
+  matchesByDealId: Map<string, MatchResult[]>
+}) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {deals.map((deal) => (
-        <DealCard key={deal.id} deal={deal} />
+        <DealCard
+          key={deal.id}
+          deal={deal}
+          matches={matchesByDealId.get(deal.id) ?? []}
+        />
       ))}
     </div>
   )
 }
 
-// List View (horizontal compact cards)
-function ListView({ deals }: DealListProps) {
+// ── List View ─────────────────────────────────────────────────────────────────
+
+function ListView({
+  deals,
+  matchesByDealId,
+}: {
+  deals: DealWithRelations[]
+  matchesByDealId: Map<string, MatchResult[]>
+}) {
   return (
     <div className="space-y-2">
       {deals.map((deal) => (
-        <Link key={deal.id} href={`/dashboard/deals/${deal.id}`}>
-          <div className="ds-card ds-card-hover cursor-pointer overflow-hidden">
-            <div className="p-4">
-              <div className="flex items-center gap-4">
-                {/* Left: Address & Status */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold truncate">{deal.address}</h3>
-                    {deal.postcode && (
-                      <span className="text-sm text-gray-400">
-                        {deal.postcode}
-                      </span>
-                    )}
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${getStatusColor(deal.status)}`}
-                    >
-                      {formatStatus(deal.status)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-gray-400">
-                    {deal.bedrooms && <span>{deal.bedrooms} beds</span>}
-                    {deal.bathrooms && <span>{deal.bathrooms} baths</span>}
-                    {deal.propertyType && (
-                      <span className="capitalize">{deal.propertyType}</span>
-                    )}
-                    {deal.assignedTo && (
-                      <span>
-                        {deal.assignedTo.firstName} {deal.assignedTo.lastName}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Center: Pricing */}
-                <div className="text-right min-w-[140px]">
-                  <div className="font-bold">{formatCurrency(Number(deal.askingPrice))}</div>
-                  {deal.marketValue && (
-                    <div className="text-sm text-gray-400">
-                      MV: {formatCurrency(Number(deal.marketValue))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Right: Key Metrics */}
-                <div className="flex items-center gap-6 min-w-[200px]">
-                  {deal.dealScore !== null && (
-                    <div className="text-center">
-                      <div className="text-xs text-gray-400">Score</div>
-                      <div
-                        className={`font-bold ${deal.dealScore >= 70 ? "text-success" : "text-gray-400"}`}
-                      >
-                        {deal.dealScore}/100
-                      </div>
-                    </div>
-                  )}
-                  {deal.bmvPercentage !== null && (
-                    <div className="text-center">
-                      <div className="text-xs text-gray-400">BMV</div>
-                      <div className="font-bold text-success">
-                        {Number(deal.bmvPercentage).toFixed(1)}%
-                      </div>
-                    </div>
-                  )}
-                  {deal.grossYield !== null && (
-                    <div className="text-center">
-                      <div className="text-xs text-gray-400">Yield</div>
-                      <div className="font-bold">
-                        {Number(deal.grossYield).toFixed(1)}%
-                      </div>
-                    </div>
-                  )}
-                  {deal.roi !== null && (
-                    <div className="text-center">
-                      <div className="text-xs text-gray-400">ROI</div>
-                      <div className="font-bold text-[#2563EB]">
-                        {Number(deal.roi).toFixed(1)}%
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </Link>
+        <ListItem
+          key={deal.id}
+          deal={deal}
+          matches={matchesByDealId.get(deal.id) ?? []}
+        />
       ))}
     </div>
   )
 }
 
-// Table View (traditional table)
-function TableView({ deals }: DealListProps) {
+function ListItem({
+  deal,
+  matches,
+}: {
+  deal: DealWithRelations
+  matches: MatchResult[]
+}) {
+  const router = useRouter()
+  return (
+    <div
+      className="ds-card ds-card-hover cursor-pointer overflow-hidden"
+      onClick={() => router.push(`/dashboard/deals/${deal.id}`)}
+    >
+      <div className="p-4">
+        <div className="flex items-center gap-4">
+          {/* Left: Address & Status */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-semibold truncate">{deal.address}</h3>
+              {deal.postcode && (
+                <span className="text-sm text-gray-400">{deal.postcode}</span>
+              )}
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${getStatusColor(deal.status)}`}
+              >
+                {formatStatus(deal.status)}
+              </span>
+            </div>
+            <div className="flex items-center gap-4 text-sm text-gray-400">
+              {deal.bedrooms && <span>{deal.bedrooms} beds</span>}
+              {deal.bathrooms && <span>{deal.bathrooms} baths</span>}
+              {deal.propertyType && (
+                <span className="capitalize">{deal.propertyType}</span>
+              )}
+              {deal.assignedTo && (
+                <span>
+                  {deal.assignedTo.firstName} {deal.assignedTo.lastName}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Center: Pricing */}
+          <div className="text-right min-w-[140px]">
+            <div className="font-bold">{formatCurrency(Number(deal.askingPrice))}</div>
+            {deal.marketValue && (
+              <div className="text-sm text-gray-400">
+                MV: {formatCurrency(Number(deal.marketValue))}
+              </div>
+            )}
+          </div>
+
+          {/* Right: Key Metrics */}
+          <div className="flex items-center gap-6 min-w-[200px]">
+            {deal.dealScore !== null && (
+              <div className="text-center">
+                <div className="text-xs text-gray-400">Score</div>
+                <div
+                  className={`font-bold ${deal.dealScore >= 70 ? "text-success" : "text-gray-400"}`}
+                >
+                  {deal.dealScore}/100
+                </div>
+              </div>
+            )}
+            {deal.bmvPercentage !== null && (
+              <div className="text-center">
+                <div className="text-xs text-gray-400">BMV</div>
+                <div className="font-bold text-success">
+                  {Number(deal.bmvPercentage).toFixed(1)}%
+                </div>
+              </div>
+            )}
+            {deal.grossYield !== null && (
+              <div className="text-center">
+                <div className="text-xs text-gray-400">Yield</div>
+                <div className="font-bold">
+                  {Number(deal.grossYield).toFixed(1)}%
+                </div>
+              </div>
+            )}
+            {deal.roi !== null && (
+              <div className="text-center">
+                <div className="text-xs text-gray-400">ROI</div>
+                <div className="font-bold text-[#2563EB]">
+                  {Number(deal.roi).toFixed(1)}%
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Investor badge + Actions — stopPropagation so card click doesn't fire */}
+          <div
+            className="flex items-center gap-2 shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <InvestorMatchBadge matches={matches} />
+            <DealActions dealId={deal.id} dealAddress={deal.address} />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Table View ────────────────────────────────────────────────────────────────
+
+function TableView({
+  deals,
+  matchesByDealId,
+}: {
+  deals: DealWithRelations[]
+  matchesByDealId: Map<string, MatchResult[]>
+}) {
+  const router = useRouter()
   return (
     <div className="ds-card overflow-hidden">
       <div className="overflow-x-auto">
@@ -468,18 +543,19 @@ function TableView({ deals }: DealListProps) {
               <th className="table-header text-center">ROI</th>
               <th className="table-header">Assigned To</th>
               <th className="table-header">Created</th>
+              <th className="table-header text-center">Investors</th>
+              <th className="table-header text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {deals.map((deal) => (
-              <tr key={deal.id} className="table-row cursor-pointer">
+              <tr
+                key={deal.id}
+                className="table-row cursor-pointer"
+                onClick={() => router.push(`/dashboard/deals/${deal.id}`)}
+              >
                 <td className="table-cell">
-                  <Link
-                    href={`/dashboard/deals/${deal.id}`}
-                    className="font-medium hover:underline"
-                  >
-                    {deal.address}
-                  </Link>
+                  <div className="font-medium">{deal.address}</div>
                   {deal.postcode && (
                     <div className="text-sm text-gray-400">{deal.postcode}</div>
                   )}
@@ -547,6 +623,18 @@ function TableView({ deals }: DealListProps) {
                     year: "numeric",
                   })}
                 </td>
+                <td
+                  className="table-cell text-center"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <InvestorMatchBadge matches={matchesByDealId.get(deal.id) ?? []} />
+                </td>
+                <td
+                  className="table-cell text-right"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <DealActions dealId={deal.id} dealAddress={deal.address} />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -556,8 +644,16 @@ function TableView({ deals }: DealListProps) {
   )
 }
 
-// Reusable Deal Card Component (for Card View)
-function DealCard({ deal }: { deal: DealWithRelations }) {
+// ── Deal Card ─────────────────────────────────────────────────────────────────
+
+function DealCard({
+  deal,
+  matches,
+}: {
+  deal: DealWithRelations
+  matches: MatchResult[]
+}) {
+  const router = useRouter()
   const calculatedMetrics = calculateAllMetrics({
     askingPrice: Number(deal.askingPrice),
     marketValue: deal.marketValue ? Number(deal.marketValue) : null,
@@ -575,7 +671,6 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
     postcode: deal.postcode || undefined,
   })
 
-  // Build map URL
   let mapUrl = ""
   if (deal.latitude && deal.longitude) {
     mapUrl = `https://www.google.com/maps?q=${Number(deal.latitude)},${Number(deal.longitude)}&output=embed`
@@ -587,16 +682,20 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
   }
 
   return (
-    <Link href={`/dashboard/deals/${deal.id}`}>
-      <div className="ds-card ds-card-hover cursor-pointer overflow-hidden">
-        <div className="px-5 pt-4 pb-3">
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-semibold text-gray-900 truncate">{deal.address}</h3>
-              {deal.postcode && (
-                <p className="text-sm text-gray-400">{deal.postcode}</p>
-              )}
-            </div>
+    <div
+      className="ds-card ds-card-hover cursor-pointer overflow-hidden flex flex-col"
+      onClick={() => router.push(`/dashboard/deals/${deal.id}`)}
+    >
+      <div className="px-5 pt-4 pb-3">
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-semibold text-gray-900 truncate">{deal.address}</h3>
+            {deal.postcode && (
+              <p className="text-sm text-gray-400">{deal.postcode}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <InvestorMatchBadge matches={matches} />
             <span
               className={`rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${getStatusColor(deal.status)}`}
             >
@@ -604,243 +703,407 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
             </span>
           </div>
         </div>
-        <div className="px-5 pb-4 pt-0">
-          <div className="space-y-3">
-            {/* Data Section */}
-            <div className="space-y-2">
-              {/* Pricing Information */}
-              <div className="space-y-1.5">
+      </div>
+
+      <div className="px-5 pb-4 pt-0 flex-1">
+        <div className="space-y-3">
+          <div className="space-y-2">
+            {/* Pricing Information */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] text-gray-400">Asking Price</span>
+                <span className="font-bold text-base">
+                  {formatCurrency(Number(deal.askingPrice))}
+                </span>
+              </div>
+              {deal.marketValue && (
                 <div className="flex justify-between items-center">
-                  <span className="text-[11px] text-gray-400">
-                    Asking Price
-                  </span>
-                  <span className="font-bold text-base">
-                    {formatCurrency(Number(deal.askingPrice))}
+                  <span className="text-[11px] text-gray-400">Market Value</span>
+                  <span className="font-semibold text-sm">
+                    {formatCurrency(Number(deal.marketValue))}
                   </span>
                 </div>
-                {deal.marketValue && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-[11px] text-gray-400">
-                      Market Value
-                    </span>
-                    <span className="font-semibold text-sm">
-                      {formatCurrency(Number(deal.marketValue))}
+              )}
+              {deal.estimatedMonthlyRent && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] text-gray-400">Monthly Rent</span>
+                  <span className="font-semibold text-sm">
+                    {formatCurrency(Number(deal.estimatedMonthlyRent))}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Property Details */}
+            <div className="pt-2 border-t">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                {deal.bedrooms && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-gray-400">Beds:</span>
+                    <span className="font-medium">{deal.bedrooms}</span>
+                  </div>
+                )}
+                {deal.bathrooms && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-gray-400">Baths:</span>
+                    <span className="font-medium">{deal.bathrooms}</span>
+                  </div>
+                )}
+                {deal.propertyType && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-gray-400">Type:</span>
+                    <span className="font-medium capitalize">
+                      {deal.propertyType}
                     </span>
                   </div>
                 )}
-                {deal.estimatedMonthlyRent && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-[11px] text-gray-400">
-                      Monthly Rent
-                    </span>
-                    <span className="font-semibold text-sm">
-                      {formatCurrency(Number(deal.estimatedMonthlyRent))}
+                {deal.squareFeet && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-gray-400">Sqft:</span>
+                    <span className="font-medium">
+                      {deal.squareFeet.toLocaleString("en-GB")}
                     </span>
                   </div>
                 )}
               </div>
+            </div>
 
-              {/* Property Details */}
-              <div className="pt-2 border-t">
-                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
-                  {deal.bedrooms && (
-                    <div className="flex items-center gap-1">
-                      <span className="text-gray-400">Beds:</span>
-                      <span className="font-medium">{deal.bedrooms}</span>
-                    </div>
-                  )}
-                  {deal.bathrooms && (
-                    <div className="flex items-center gap-1">
-                      <span className="text-gray-400">Baths:</span>
-                      <span className="font-medium">{deal.bathrooms}</span>
-                    </div>
-                  )}
-                  {deal.propertyType && (
-                    <div className="flex items-center gap-1">
-                      <span className="text-gray-400">Type:</span>
-                      <span className="font-medium capitalize">
-                        {deal.propertyType}
-                      </span>
-                    </div>
-                  )}
-                  {deal.squareFeet && (
-                    <div className="flex items-center gap-1">
-                      <span className="text-gray-400">Sqft:</span>
-                      <span className="font-medium">
-                        {deal.squareFeet.toLocaleString("en-GB")}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Toggle Section */}
-              <DealCardSections
-                dealId={deal.id}
-                sections={{
-                  metrics: (
-                    <div className="pt-2 border-t space-y-2">
-                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
-                  Investment Metrics
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <p className="text-[10px] text-gray-400 mb-0.5">
-                      Score
+            {/* Toggle Section */}
+            <DealCardSections
+              dealId={deal.id}
+              sections={{
+                metrics: (
+                  <div className="pt-2 border-t space-y-2">
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                      Investment Metrics
                     </p>
-                    <p
-                      className={`text-sm font-bold ${
-                        deal.dealScore && deal.dealScore >= 70
-                          ? "text-success"
-                          : "text-gray-400"
-                      }`}
-                    >
-                      {deal.dealScore ? `${deal.dealScore}/100` : "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-gray-400 mb-0.5">
-                      BMV
-                    </p>
-                    <p
-                      className={`text-sm font-bold ${
-                        deal.bmvPercentage ? "text-success" : "text-gray-400"
-                      }`}
-                    >
-                      {deal.bmvPercentage
-                        ? `${Number(deal.bmvPercentage).toFixed(1)}%`
-                        : "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-gray-400 mb-0.5">
-                      Gross Yield
-                    </p>
-                    <p
-                      className={`text-sm font-bold ${
-                        deal.grossYield ? "" : "text-gray-400"
-                      }`}
-                    >
-                      {deal.grossYield
-                        ? `${Number(deal.grossYield).toFixed(1)}%`
-                        : "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-gray-400 mb-0.5">
-                      Net Yield
-                    </p>
-                    <p
-                      className={`text-sm font-bold ${
-                        deal.netYield ? "" : "text-gray-400"
-                      }`}
-                    >
-                      {deal.netYield
-                        ? `${Number(deal.netYield).toFixed(1)}%`
-                        : "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-gray-400 mb-0.5">
-                      ROI
-                    </p>
-                    <p
-                      className={`text-sm font-bold ${
-                        deal.roi ? "text-[#2563EB]" : "text-gray-400"
-                      }`}
-                    >
-                      {deal.roi ? `${Number(deal.roi).toFixed(1)}%` : "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-gray-400 mb-0.5">
-                      ROCE
-                    </p>
-                    <p
-                      className={`text-sm font-bold ${
-                        deal.roce ? "text-[#2563EB]" : "text-gray-400"
-                      }`}
-                    >
-                      {deal.roce ? `${Number(deal.roce).toFixed(1)}%` : "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-gray-400 mb-0.5">
-                      Cap Rate
-                    </p>
-                    <p
-                      className={`text-sm font-bold ${
-                        calculatedMetrics.capRate
-                          ? ""
-                          : "text-gray-400"
-                      }`}
-                    >
-                      {calculatedMetrics.capRate
-                        ? `${calculatedMetrics.capRate.toFixed(2)}%`
-                        : "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-gray-400 mb-0.5">
-                      GRM
-                    </p>
-                    <p
-                      className={`text-sm font-bold ${
-                        calculatedMetrics.grm ? "" : "text-gray-400"
-                      }`}
-                    >
-                      {calculatedMetrics.grm
-                        ? calculatedMetrics.grm.toFixed(2)
-                        : "—"}
-                    </p>
-                  </div>
-                </div>
-                    </div>
-                  ),
-                  map: (
-                    <div className="pt-2 border-t">
-                      <div className="w-full h-[200px] rounded-lg overflow-hidden border">
-                        <iframe
-                          src={mapUrl}
-                          width="100%"
-                          height="100%"
-                          style={{ border: 0 }}
-                          allowFullScreen
-                          loading="lazy"
-                          referrerPolicy="no-referrer-when-downgrade"
-                          className="w-full h-full"
-                        />
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <p className="text-[10px] text-gray-400 mb-0.5">Score</p>
+                        <p
+                          className={`text-sm font-bold ${
+                            deal.dealScore && deal.dealScore >= 70
+                              ? "text-success"
+                              : "text-gray-400"
+                          }`}
+                        >
+                          {deal.dealScore ? `${deal.dealScore}/100` : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 mb-0.5">BMV</p>
+                        <p
+                          className={`text-sm font-bold ${
+                            deal.bmvPercentage ? "text-success" : "text-gray-400"
+                          }`}
+                        >
+                          {deal.bmvPercentage
+                            ? `${Number(deal.bmvPercentage).toFixed(1)}%`
+                            : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 mb-0.5">
+                          Gross Yield
+                        </p>
+                        <p
+                          className={`text-sm font-bold ${
+                            deal.grossYield ? "" : "text-gray-400"
+                          }`}
+                        >
+                          {deal.grossYield
+                            ? `${Number(deal.grossYield).toFixed(1)}%`
+                            : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 mb-0.5">Net Yield</p>
+                        <p
+                          className={`text-sm font-bold ${
+                            deal.netYield ? "" : "text-gray-400"
+                          }`}
+                        >
+                          {deal.netYield
+                            ? `${Number(deal.netYield).toFixed(1)}%`
+                            : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 mb-0.5">ROI</p>
+                        <p
+                          className={`text-sm font-bold ${
+                            deal.roi ? "text-[#2563EB]" : "text-gray-400"
+                          }`}
+                        >
+                          {deal.roi ? `${Number(deal.roi).toFixed(1)}%` : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 mb-0.5">ROCE</p>
+                        <p
+                          className={`text-sm font-bold ${
+                            deal.roce ? "text-[#2563EB]" : "text-gray-400"
+                          }`}
+                        >
+                          {deal.roce ? `${Number(deal.roce).toFixed(1)}%` : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 mb-0.5">Cap Rate</p>
+                        <p
+                          className={`text-sm font-bold ${
+                            calculatedMetrics.capRate ? "" : "text-gray-400"
+                          }`}
+                        >
+                          {calculatedMetrics.capRate
+                            ? `${calculatedMetrics.capRate.toFixed(2)}%`
+                            : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 mb-0.5">GRM</p>
+                        <p
+                          className={`text-sm font-bold ${
+                            calculatedMetrics.grm ? "" : "text-gray-400"
+                          }`}
+                        >
+                          {calculatedMetrics.grm
+                            ? calculatedMetrics.grm.toFixed(2)
+                            : "—"}
+                        </p>
                       </div>
                     </div>
-                  ),
-                }}
-              />
-
-              {/* Team & Metadata */}
-              <div className="pt-2 border-t space-y-1">
-                {deal.assignedTo && (
-                  <div className="flex justify-between text-[10px]">
-                    <span className="text-gray-400">Assigned:</span>
-                    <span className="truncate ml-2 font-medium">
-                      {deal.assignedTo.firstName} {deal.assignedTo.lastName}
-                    </span>
                   </div>
-                )}
+                ),
+                map: (
+                  <div className="pt-2 border-t">
+                    <div className="w-full h-[200px] rounded-lg overflow-hidden border">
+                      <iframe
+                        src={mapUrl}
+                        width="100%"
+                        height="100%"
+                        style={{ border: 0 }}
+                        allowFullScreen
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        className="w-full h-full"
+                      />
+                    </div>
+                  </div>
+                ),
+              }}
+            />
+
+            {/* Team & Metadata */}
+            <div className="pt-2 border-t space-y-1">
+              {deal.assignedTo && (
                 <div className="flex justify-between text-[10px]">
-                  <span className="text-gray-400">Created:</span>
-                  <span className="font-medium">
-                    {new Date(deal.createdAt).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "short",
-                    })}
+                  <span className="text-gray-400">Assigned:</span>
+                  <span className="truncate ml-2 font-medium">
+                    {deal.assignedTo.firstName} {deal.assignedTo.lastName}
                   </span>
                 </div>
+              )}
+              <div className="flex justify-between text-[10px]">
+                <span className="text-gray-400">Created:</span>
+                <span className="font-medium">
+                  {new Date(deal.createdAt).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                  })}
+                </span>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </Link>
+
+      {/* Actions footer — isolated from card click */}
+      <div
+        className="border-t border-[var(--ds-border)] flex items-center justify-end px-4 py-2"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <DealActions dealId={deal.id} dealAddress={deal.address} />
+      </div>
+    </div>
   )
 }
 
+// ── Investor match badge ───────────────────────────────────────────────────────
+
+function InvestorMatchBadge({ matches }: { matches: MatchResult[] }) {
+  if (matches.length === 0) return null
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex cursor-default items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+            <Users className="h-3 w-3" />
+            {matches.length}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent className="w-48 p-3">
+          <p className="mb-1.5 text-xs font-semibold text-gray-900">
+            Matching investors
+          </p>
+          <div className="space-y-1">
+            {matches.slice(0, 3).map((m) => {
+              const pct = Math.round(m.score * 100)
+              return (
+                <div
+                  key={m.investorId}
+                  className="flex items-center justify-between gap-2"
+                >
+                  <span className="truncate text-xs">{m.name}</span>
+                  <span
+                    className={`shrink-0 text-xs font-bold ${
+                      pct >= 80
+                        ? "text-green-600"
+                        : pct >= 50
+                        ? "text-amber-500"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {pct}%
+                  </span>
+                </div>
+              )
+            })}
+            {matches.length > 3 && (
+              <p className="text-[10px] text-gray-400">
+                +{matches.length - 3} more
+              </p>
+            )}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+// ── Deal action buttons ────────────────────────────────────────────────────────
+
+function DealActions({
+  dealId,
+  dealAddress,
+}: {
+  dealId: string
+  dealAddress: string
+}) {
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  return (
+    <>
+      <TooltipProvider>
+        <div className="flex items-center gap-0.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href={`/dashboard/deals/${dealId}`}
+                className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>View</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href={`/dashboard/deals/${dealId}/edit`}
+                className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>Edit</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setDeleteOpen(true)
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Delete</TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
+      <DeleteConfirmDialog
+        dealId={dealId}
+        dealAddress={dealAddress}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+      />
+    </>
+  )
+}
+
+function DeleteConfirmDialog({
+  dealId,
+  dealAddress,
+  open,
+  onOpenChange,
+}: {
+  dealId: string
+  dealAddress: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const router = useRouter()
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`/api/deals/${dealId}`, { method: "DELETE" })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to delete deal")
+      }
+      router.refresh()
+    } catch (err) {
+      console.error("Error deleting deal:", err)
+      alert(err instanceof Error ? err.message : "Failed to delete deal")
+      setIsDeleting(false)
+      onOpenChange(false)
+    }
+  }
+
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete deal?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete <strong>{dealAddress}</strong> and all
+            associated data including photos and history.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="bg-red-500 text-white hover:bg-red-600"
+          >
+            {isDeleting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              "Delete"
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
