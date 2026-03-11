@@ -48,13 +48,6 @@ interface InvestorStats {
     qualifiedToPurchased: number
     viewingToReserved: number
   }
-  recentActivities: Array<{
-    id: string
-    activityType: string
-    description: string | null
-    createdAt: Date
-    investor: { user: { firstName: string | null; lastName: string | null; email: string } }
-  }>
   topInvestors: Array<{
     id: string
     totalSpent: number
@@ -118,17 +111,18 @@ function pct(v: number) { return `${(v * 100).toFixed(1)}%` }
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export function InvestorManagementDashboard() {
+export function InvestorManagementDashboard({ from }: { from?: string | null } = {}) {
   const [stats, setStats] = useState<InvestorStats | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch("/api/investors/stats", { cache: "no-store" })
+    setLoading(true)
+    fetch(from ? `/api/investors/stats?from=${from}` : "/api/investors/stats", { cache: "no-store" })
       .then((r) => r.json())
       .then(setStats)
       .catch(() => toast.error("Failed to load statistics"))
       .finally(() => setLoading(false))
-  }, [])
+  }, [from])
 
   if (loading) return <div className="flex items-center justify-center p-12 text-gray-400">Loading statistics…</div>
   if (!stats)  return <div className="text-center p-12 text-gray-400">No data available</div>
@@ -321,36 +315,6 @@ export function InvestorManagementDashboard() {
                 ))}
               </TableBody>
             </Table>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Section 7: Recent activity ─────────────────────────────────────── */}
-      <section className="space-y-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Recent Activity</h3>
-        <div className="ds-card overflow-hidden">
-          <div className="p-5 pt-4">            {stats.recentActivities.length === 0 ? (
-              <p className="text-center text-gray-400 py-6">No recent activities</p>
-            ) : (
-              <div className="divide-y">
-                {stats.recentActivities.map((a) => (
-                  <div key={a.id} className="flex items-start justify-between gap-4 py-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">
-                        {a.investor.user.firstName} {a.investor.user.lastName || ""}
-                      </p>
-                      <p className="text-sm text-gray-400 truncate">
-                        {a.description || a.activityType}
-                      </p>
-                      <p suppressHydrationWarning className="text-xs text-gray-400 mt-0.5">
-                        {new Date(a.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="shrink-0 text-xs">{a.activityType}</Badge>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </section>

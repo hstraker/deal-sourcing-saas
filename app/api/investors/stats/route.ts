@@ -1,12 +1,24 @@
+// app/api/investors/stats/route.ts
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 
+function parseFromDate(url: string): Date | undefined {
+  const { searchParams } = new URL(url)
+  const from = searchParams.get("from")
+  if (!from) return undefined
+  const d = new Date(from)
+  return isNaN(d.getTime()) ? undefined : d
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+    const fromDate = parseFromDate(request.url)
+    const df = fromDate ? { createdAt: { gte: fromDate } } : {}
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
@@ -21,14 +33,13 @@ export async function GET(request: NextRequest) {
       totalPacksSent,
       packsViewed,
       packsDownloaded,
-      recentActivities,
       topInvestors,
     ] = await Promise.all([
-      prisma.investor.count(),
+      prisma.investor.count({ where: { ...df } }),
       prisma.investor.count({ where: { lastActivityAt: { gte: thirtyDaysAgo } } }),
-      prisma.investor.groupBy({ by: ["pipelineStage"], _count: true }),
-      prisma.investor.aggregate({ _sum: { dealsPurchased: true } }),
-      prisma.investor.aggregate({ _sum: { totalSpent: true } }),
+      prisma.investor.groupBy({ by: ["pipelineStage"], _count: true, where: { ...df } }),
+      prisma.investor.aggregate({ _sum: { dealsPurchased: true }, where: { ...df } }),
+      prisma.investor.aggregate({ _sum: { totalSpent: true }, where: { ...df } }),
       prisma.investorReservation.findMany({
         select: {
           status: true,
@@ -37,27 +48,20 @@ export async function GET(request: NextRequest) {
           proofOfFundsVerified: true,
           lockOutAgreementSigned: true,
         },
+        where: { ...df },
       }),
-      prisma.investorPackDelivery.count(),
-      prisma.investorPackDelivery.count({ where: { viewedAt: { not: null } } }),
-      prisma.investorPackDelivery.count({ where: { downloadedAt: { not: null } } }),
-      prisma.investorActivity.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 10,
-        include: {
-          investor: {
-            include: { user: { select: { firstName: true, lastName: true, email: true } } },
-          },
-        },
-      }),
+      prisma.investorPackDelivery.count({ where: { ...df } }),
+      prisma.investorPackDelivery.count({ where: { viewedAt: { not: null }, ...df } }),
+      prisma.investorPackDelivery.count({ where: { downloadedAt: { not: null }, ...df } }),
       prisma.investor.findMany({
         orderBy: { totalSpent: "desc" },
         take: 10,
         include: { user: { select: { firstName: true, lastName: true, email: true } } },
+        where: { ...df },
       }),
     ])
 
-    // ── Derive reservation stats in-memory (single pass each) ─────────────────
+    // ── Derive reservation stats in-memory ────────────────────────────────────
     const stageStats = byStage.reduce((acc, item) => {
       acc[item.pipelineStage] = item._count
       return acc
@@ -75,7 +79,6 @@ export async function GET(request: NextRequest) {
     const pofVerified = allReservations.filter((r) => r.proofOfFundsVerified).length
     const lockOutSigned = allReservations.filter((r) => r.lockOutAgreementSigned).length
 
-    // Count per reservation status — single reduce pass
     const ALL_STATUSES = [
       "pending", "pack_sent", "fee_pending", "fee_paid",
       "proof_of_funds_pending", "pof_received", "verified",
@@ -90,8 +93,14 @@ export async function GET(request: NextRequest) {
     // ── Conversion rates ───────────────────────────────────────────────────────
     const conversionRates = {
       leadToQualified: totalInvestors > 0 ? (stageStats.QUALIFIED || 0) / totalInvestors : 0,
-      qualifiedToPurchased: (stageStats.QUALIFIED || 0) > 0 ? (stageStats.PURCHASED || 0) / stageStats.QUALIFIED : 0,
-      viewingToReserved: (stageStats.VIEWING_DEALS || 0) > 0 ? activeRes.length / stageStats.VIEWING_DEALS : 0,
+      qualifiedToPurchased:
+        (stageStats.QUALIFIED || 0) > 0
+          ? (stageStats.PURCHASED || 0) / stageStats.QUALIFIED
+          : 0,
+      viewingToReserved:
+        (stageStats.VIEWING_DEALS || 0) > 0
+          ? activeRes.length / stageStats.VIEWING_DEALS
+          : 0,
     }
 
     return NextResponse.json({
@@ -123,10 +132,9 @@ export async function GET(request: NextRequest) {
         downloadRate: totalPacksSent > 0 ? (packsDownloaded / totalPacksSent) * 100 : 0,
       },
       conversionRates,
-      recentActivities,
       topInvestors,
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error fetching investor stats:", error)
     return NextResponse.json({ error: "Failed to fetch investor stats" }, { status: 500 })
   }
