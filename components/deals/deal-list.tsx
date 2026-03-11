@@ -7,6 +7,7 @@ import {
   LayoutGrid,
   List,
   Table as TableIcon,
+  BookmarkPlus,
   Eye,
   Pencil,
   Trash2,
@@ -230,6 +231,10 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
           aValue = a.status
           bValue = b.status
           break
+        case "investorMatches":
+          aValue = matchesByDealId.get(a.id)?.length ?? 0
+          bValue = matchesByDealId.get(b.id)?.length ?? 0
+          break
         default:
           return 0
       }
@@ -239,7 +244,7 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
       return 0
     })
     return sorted
-  }, [filteredDeals, sortConfig])
+  }, [filteredDeals, sortConfig, matchesByDealId])
 
   // Apply pagination
   const totalPages = Math.ceil(sortedDeals.length / ITEMS_PER_PAGE)
@@ -384,7 +389,11 @@ function CardView({
         <DealCard
           key={deal.id}
           deal={deal}
-          matches={matchesByDealId.get(deal.id) ?? []}
+          matches={
+            deal.status === "archived" || deal.status === "sold"
+              ? []
+              : (matchesByDealId.get(deal.id) ?? [])
+          }
         />
       ))}
     </div>
@@ -406,7 +415,11 @@ function ListView({
         <ListItem
           key={deal.id}
           deal={deal}
-          matches={matchesByDealId.get(deal.id) ?? []}
+          matches={
+            deal.status === "archived" || deal.status === "sold"
+              ? []
+              : (matchesByDealId.get(deal.id) ?? [])
+          }
         />
       ))}
     </div>
@@ -627,7 +640,13 @@ function TableView({
                   className="table-cell text-center"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <InvestorMatchBadge matches={matchesByDealId.get(deal.id) ?? []} />
+                  <InvestorMatchBadge
+                    matches={
+                      deal.status === "archived" || deal.status === "sold"
+                        ? []
+                        : (matchesByDealId.get(deal.id) ?? [])
+                    }
+                  />
                 </td>
                 <td
                   className="table-cell text-right"
@@ -1018,6 +1037,18 @@ function DealActions({
               </Link>
             </TooltipTrigger>
             <TooltipContent>Edit</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href={`/dashboard/reservations?dealId=${dealId}`}
+                className="rounded p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <BookmarkPlus className="h-3.5 w-3.5" />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>Reserve</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>

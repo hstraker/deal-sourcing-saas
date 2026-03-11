@@ -72,6 +72,10 @@ export default async function DealPipelinePage() {
         dealScore: deal.dealScore,
         packTier: deal.packTier,
         packPrice: deal.packPrice ? Number(deal.packPrice) : null,
+        askingPrice: Number(deal.askingPrice),
+        bmvPercentage: deal.bmvPercentage ? Number(deal.bmvPercentage) : null,
+        grossYield: deal.grossYield ? Number(deal.grossYield) : null,
+        recommendedStrategy: deal.recommendedStrategy ?? null,
         statusUpdatedAt: deal.statusUpdatedAt?.toISOString() ?? deal.updatedAt.toISOString(),
         assignedTo: deal.assignedTo
           ? {

@@ -20,6 +20,7 @@ export type SortField =
   | "grossYield"
   | "address"
   | "status"
+  | "investorMatches"
 
 export type SortDirection = "asc" | "desc"
 
@@ -43,6 +44,7 @@ const SORT_OPTIONS: Array<{ value: SortField; label: string }> = [
   { value: "grossYield", label: "Gross Yield" },
   { value: "address", label: "Address" },
   { value: "status", label: "Status" },
+  { value: "investorMatches", label: "Investors Matched" },
 ]
 
 export function DealSorting({ sortConfig, onSortChange }: DealSortingProps) {

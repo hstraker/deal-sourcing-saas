@@ -14,10 +14,21 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { type DealStatusValue } from "@/lib/deal-scoring"
 import { cn } from "@/lib/utils"
-import { Clock, Plus, Sparkles } from "lucide-react"
+import { Clock, Plus, Sparkles, Users } from "lucide-react"
 import { PipelinePhotoViewer } from "./pipeline-photo-viewer"
 import { PhotoGallery } from "./photo-gallery"
 import { useRouter } from "next/navigation"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
+  matchInvestors,
+  type InvestorCriteria,
+  type MatchResult,
+} from "@/lib/deals/investor-matcher"
 
 type PipelinePhoto = {
   id: string
@@ -34,6 +45,10 @@ type PipelineDeal = {
   dealScore: number | null
   packTier: string | null
   packPrice: number | null
+  askingPrice: number | null
+  bmvPercentage: number | null
+  grossYield: number | null
+  recommendedStrategy: string | null
   statusUpdatedAt: string | null
   photos: PipelinePhoto[]
   assignedTo: {
@@ -105,10 +120,55 @@ const mapDealFromApi = (deal: any): PipelineDeal => ({
   dealScore: deal.dealScore ?? null,
   packTier: deal.packTier ?? null,
   packPrice: deal.packPrice ?? null,
+  askingPrice: deal.askingPrice ? Number(deal.askingPrice) : null,
+  bmvPercentage: deal.bmvPercentage ? Number(deal.bmvPercentage) : null,
+  grossYield: deal.grossYield ? Number(deal.grossYield) : null,
+  recommendedStrategy: deal.recommendedStrategy ?? null,
   statusUpdatedAt: deal.statusUpdatedAt ?? deal.updatedAt ?? null,
   photos: deal.photos?.map((p: any) => ({ id: p.id, s3Url: p.s3Url, caption: p.caption, isCover: p.isCover })) ?? [],
   assignedTo: deal.assignedTo ? { id: deal.assignedTo.id, firstName: deal.assignedTo.firstName, lastName: deal.assignedTo.lastName } : null,
 })
+
+// ── Investor match badge (pipeline) ──────────────────────────────────────────
+
+function PipelineInvestorBadge({ matches }: { matches: MatchResult[] }) {
+  if (matches.length === 0) return null
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex cursor-default items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 font-semibold text-blue-700">
+            <Users className="h-3 w-3" />
+            {matches.length}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent className="w-48 p-3">
+          <p className="mb-1.5 text-xs font-semibold text-gray-900">Matching investors</p>
+          <div className="space-y-1">
+            {matches.slice(0, 3).map((m) => {
+              const pct = Math.round(m.score * 100)
+              return (
+                <div key={m.investorId} className="flex items-center justify-between gap-2">
+                  <span className="truncate text-xs">{m.name}</span>
+                  <span
+                    className={`shrink-0 text-xs font-bold ${
+                      pct >= 80 ? "text-green-600" : pct >= 50 ? "text-amber-500" : "text-gray-400"
+                    }`}
+                  >
+                    {pct}%
+                  </span>
+                </div>
+              )
+            })}
+            {matches.length > 3 && (
+              <p className="text-[10px] text-gray-400">+{matches.length - 3} more</p>
+            )}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
 
 export interface DealPipelineBoardProps {
   deals: PipelineDeal[]
@@ -138,12 +198,23 @@ export function DealPipelineBoard({ deals, currentUserId }: DealPipelineBoardPro
   const [galleryOpen, setGalleryOpen] = useState<{ dealId: string; photoIndex: number } | null>(null)
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [assigningDealId, setAssigningDealId] = useState<string | null>(null)
+  const [investorCriteria, setInvestorCriteria] = useState<InvestorCriteria[]>([])
 
   useEffect(() => {
     fetch("/api/users/team")
       .then((r) => r.ok ? r.json() : [])
       .then(setTeamMembers)
       .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    fetch("/api/investors/criteria")
+      .then((r) => {
+        if (!r.ok) throw new Error(`API error: ${r.status}`)
+        return r.json()
+      })
+      .then(setInvestorCriteria)
+      .catch((err) => { console.error("Failed to fetch investor criteria:", err) })
   }, [])
 
   const assigneeOptions = useMemo(() => {
@@ -156,6 +227,25 @@ export function DealPipelineBoard({ deals, currentUserId }: DealPipelineBoardPro
     })
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }))
   }, [deals, teamMembers])
+
+  const matchesByDealId = useMemo(() => {
+    const map = new Map<string, MatchResult[]>()
+    if (!investorCriteria.length) return map
+    const allDeals = Object.values(columns).flat()
+    for (const deal of allDeals) {
+      map.set(
+        deal.id,
+        matchInvestors(investorCriteria, {
+          postcode: deal.postcode ?? null,
+          askingPrice: deal.askingPrice ?? 0,
+          bmvPercentage: deal.bmvPercentage,
+          grossYield: deal.grossYield,
+          recommendedStrategy: deal.recommendedStrategy,
+        })
+      )
+    }
+    return map
+  }, [columns, investorCriteria])
 
   const filteredColumns = useMemo(() => {
     const next = {} as Record<DealStatusValue, PipelineDeal[]>
@@ -417,6 +507,9 @@ export function DealPipelineBoard({ deals, currentUserId }: DealPipelineBoardPro
                                     <span suppressHydrationWarning className="rounded-full bg-gray-100 text-gray-600 px-2 py-0.5 font-semibold">
                                       £{Number(deal.packPrice).toLocaleString()}
                                     </span>
+                                  )}
+                                  {deal.status !== "archived" && deal.status !== "sold" && (
+                                    <PipelineInvestorBadge matches={matchesByDealId.get(deal.id) ?? []} />
                                   )}
                                 </div>
 
