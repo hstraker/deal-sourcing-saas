@@ -21,7 +21,6 @@ import {
   DocumentDuplicateIcon,
   ChartPieIcon,
   BookmarkSquareIcon,
-  GlobeAltIcon,
   ArrowTrendingUpIcon,
   ClockIcon,
   PresentationChartLineIcon,
@@ -153,10 +152,9 @@ export const NAV_SECTIONS = [
       {
         label: "Development",
         items: [
-          { label: "AI Tests",   href: "/dashboard/analytics",           icon: BeakerIcon },          // TODO: dedicated AI tests route
-          { label: "FB Test",    href: "/admin/facebook-ad-simulator",   icon: GlobeAltIcon },
-          { label: "Utilities",  href: "/dashboard/settings",            icon: WrenchScrewdriverIcon }, // TODO: dedicated utilities route
-          { label: "Email Test", href: "/dashboard/settings",            icon: EnvelopeIcon },          // TODO: dedicated email test route
+          { label: "Lead Simulator", href: "/dashboard/admin/lead-test", icon: BeakerIcon },
+          { label: "Utilities",      href: "/dashboard/settings",         icon: WrenchScrewdriverIcon }, // TODO: dedicated utilities route
+          { label: "Email Test",     href: "/dashboard/settings",         icon: EnvelopeIcon },          // TODO: dedicated email test route
         ],
       },
     ],
