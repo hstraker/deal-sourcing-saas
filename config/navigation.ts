@@ -38,19 +38,26 @@ export const NAV_SECTIONS = [
     title: "Invest",
     groups: [
       {
-        label: "Property Sourcing",
+        label: "Property Pipeline",
         items: [
-          { label: "Vendor Leads", href: "/dashboard/vendors", icon: FunnelIcon },
-          { label: "Scrappers",    href: "/dashboard/scraper", icon: MagnifyingGlassCircleIcon },
+          { label: "Vendor Leads",  href: "/dashboard/vendors",               icon: FunnelIcon },
+          { label: "Board",         href: "/dashboard/vendors/board",          icon: Squares2X2Icon },
+          { label: "Portal Check",  href: "/dashboard/vendors/portal-check",   icon: ShieldCheckIcon },
         ],
       },
       {
         label: "Property Analysis",
         items: [
-          { label: "Deal Analysis",  href: "/dashboard/deals",             icon: ChartBarIcon },
-          { label: "Offer Analysis", href: "/dashboard/offer-analysis",    icon: CalculatorIcon },
-          { label: "Comparables",    href: "/dashboard/comparables",       icon: DocumentDuplicateIcon },
-          { label: "Validation",     href: "/dashboard/validation",        icon: ClipboardDocumentCheckIcon },
+          { label: "Deal Analysis",  href: "/dashboard/deals",          icon: ChartBarIcon },
+          { label: "Offer Analysis", href: "/dashboard/offer-analysis", icon: CalculatorIcon },
+          { label: "Comparables",    href: "/dashboard/comparables",    icon: DocumentDuplicateIcon },
+          { label: "Validation",     href: "/dashboard/validation",     icon: ClipboardDocumentCheckIcon },
+        ],
+      },
+      {
+        label: "Sourcing",
+        items: [
+          { label: "Scraper", href: "/dashboard/scraper", icon: MagnifyingGlassCircleIcon },
         ],
       },
     ],
@@ -77,14 +84,6 @@ export const NAV_SECTIONS = [
         label: "Client Management",
         items: [
           { label: "Contacts", href: "/dashboard/contacts", icon: UserGroupIcon },
-        ],
-      },
-      {
-        label: "Vendors",
-        items: [
-          { label: "Leads",        href: "/dashboard/vendors",           icon: FunnelIcon },
-          { label: "Board",        href: "/dashboard/vendors/board",     icon: Squares2X2Icon },
-          { label: "Portal Check", href: "/dashboard/vendors/portal-check", icon: ShieldCheckIcon },
         ],
       },
       {
