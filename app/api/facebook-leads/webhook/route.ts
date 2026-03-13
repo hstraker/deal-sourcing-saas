@@ -60,13 +60,25 @@ export async function POST(request: NextRequest) {
     const email = getFieldValue(leadData.field_data, "email")
     const urgency = getFieldValue(leadData.field_data, "urgency")
     const sellingReason = getFieldValue(leadData.field_data, "selling_reason")
+    const propertyType = getFieldValue(leadData.field_data, "property_type") || null
+    const askingPriceRaw = getFieldValue(leadData.field_data, "asking_price")
+    const askingPrice = askingPriceRaw ? parseFloat(askingPriceRaw) : null
+    const bedroomsRaw = getFieldValue(leadData.field_data, "bedrooms")
+    const bedrooms = bedroomsRaw && bedroomsRaw !== "6+" ? parseInt(bedroomsRaw, 10) : bedroomsRaw === "6+" ? 6 : null
+    const garden = getFieldValue(leadData.field_data, "garden") || null
+    const garage = getFieldValue(leadData.field_data, "garage") || null
 
     console.log("📋 [Facebook Webhook] Extracted data:", {
       fullName,
       phoneNumber,
       propertyAddress,
       propertyPostcode,
-      urgency
+      urgency,
+      propertyType,
+      askingPrice,
+      bedrooms,
+      garden,
+      garage,
     })
 
     // Validate required fields
@@ -123,16 +135,21 @@ export async function POST(request: NextRequest) {
         // Property details
         propertyAddress: propertyAddress,
         propertyPostcode: propertyPostcode || null,
+        propertyType: propertyType,
+        askingPrice: askingPrice !== null && !isNaN(askingPrice) ? askingPrice : null,
+        bedrooms: bedrooms !== null && !isNaN(bedrooms as number) ? bedrooms : null,
 
         // Workflow status
         pipelineStage: "NEW_LEAD" as PipelineStage,
         urgencyLevel: mapUrgency(urgency),
 
-        // Additional metadata
+        // Additional metadata (includes garden/garage — no dedicated columns)
         conversationState: {
           source: isTest ? "simulator" : "facebook_lead_ad",
           urgency: urgency || "not_specified",
           sellingReason: sellingReason || "not_specified",
+          garden: garden,
+          garage: garage,
           submittedAt: leadData.created_time || new Date().toISOString()
         }
       }

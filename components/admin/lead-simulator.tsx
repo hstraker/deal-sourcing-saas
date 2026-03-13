@@ -53,6 +53,11 @@ interface LeadFormData {
   email: string
   urgency: string
   reason: string
+  propertyType: string
+  askingPrice: string
+  bedrooms: string
+  garden: string
+  garage: string
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -75,6 +80,11 @@ const RANDOM_DATA = {
   ],
   urgencies: ["urgent", "soon", "flexible"] as const,
   reasons: ["relocation", "financial", "inherited", "downsizing", "other"] as const,
+  propertyTypes: ["detached", "semi-detached", "terraced", "flat", "bungalow"] as const,
+  bedrooms: ["1", "2", "3", "4", "5"] as const,
+  yesNo: ["yes", "no"] as const,
+  // Realistic asking prices by property type (approximate UK regional ranges)
+  askingPrices: [85000, 95000, 110000, 125000, 140000, 165000, 185000, 210000, 240000, 275000] as const,
 }
 
 function pick<T>(arr: readonly T[]): T {
@@ -84,6 +94,13 @@ function pick<T>(arr: readonly T[]): T {
 function generateRandomLead(): LeadFormData {
   const name = pick(RANDOM_DATA.names)
   const houseNo = Math.floor(Math.random() * 200) + 1
+  const propType = pick(RANDOM_DATA.propertyTypes)
+  // Flats/terraced tend to be cheaper; detached more expensive
+  const priceIndex = propType === "detached"
+    ? Math.floor(Math.random() * 3) + 7
+    : propType === "flat"
+    ? Math.floor(Math.random() * 3)
+    : Math.floor(Math.random() * 5) + 2
   return {
     fullName: name,
     phoneNumber: `+447${Math.floor(Math.random() * 900000000) + 100000000}`,
@@ -92,6 +109,11 @@ function generateRandomLead(): LeadFormData {
     email: name.toLowerCase().replace(" ", ".") + "@example.com",
     urgency: pick(RANDOM_DATA.urgencies),
     reason: pick(RANDOM_DATA.reasons),
+    propertyType: propType,
+    askingPrice: String(RANDOM_DATA.askingPrices[priceIndex]),
+    bedrooms: pick(RANDOM_DATA.bedrooms),
+    garden: propType === "flat" ? "no" : pick(RANDOM_DATA.yesNo),
+    garage: pick(RANDOM_DATA.yesNo),
   }
 }
 
@@ -128,6 +150,7 @@ export default function LeadSimulator({ recentTestRuns }: Props) {
   const [formData, setFormData] = useState<LeadFormData>({
     fullName: "", phoneNumber: "", propertyAddress: "",
     propertyPostcode: "", email: "", urgency: "", reason: "",
+    propertyType: "", askingPrice: "", bedrooms: "", garden: "", garage: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitResult, setSubmitResult] = useState<{
@@ -168,6 +191,11 @@ export default function LeadSimulator({ recentTestRuns }: Props) {
             { name: "email",              values: [formData.email] },
             { name: "urgency",            values: [formData.urgency] },
             { name: "selling_reason",     values: [formData.reason] },
+            { name: "property_type",      values: [formData.propertyType] },
+            { name: "asking_price",       values: [formData.askingPrice] },
+            { name: "bedrooms",           values: [formData.bedrooms] },
+            { name: "garden",             values: [formData.garden] },
+            { name: "garage",             values: [formData.garage] },
           ],
         }),
       })
@@ -195,7 +223,7 @@ export default function LeadSimulator({ recentTestRuns }: Props) {
         toast.success("Success!", {
           description: "Lead created and added to vendor pipeline. AI conversation will start automatically.",
         })
-        setFormData({ fullName: "", phoneNumber: "", propertyAddress: "", propertyPostcode: "", email: "", urgency: "", reason: "" })
+        setFormData({ fullName: "", phoneNumber: "", propertyAddress: "", propertyPostcode: "", email: "", urgency: "", reason: "", propertyType: "", askingPrice: "", bedrooms: "", garden: "", garage: "" })
       } else {
         throw new Error(result.message || "Failed to submit lead")
       }
@@ -342,6 +370,74 @@ export default function LeadSimulator({ recentTestRuns }: Props) {
                   id="email" type="email" value={formData.email} placeholder="john.smith@example.com"
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 />
+              </div>
+
+              {/* Property Type + Asking Price */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Property Type</Label>
+                  <Select value={formData.propertyType} onValueChange={(v) => setFormData({ ...formData, propertyType: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select type..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="detached">Detached</SelectItem>
+                      <SelectItem value="semi-detached">Semi-Detached</SelectItem>
+                      <SelectItem value="terraced">Terraced</SelectItem>
+                      <SelectItem value="flat">Flat / Apartment</SelectItem>
+                      <SelectItem value="bungalow">Bungalow</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="askingPrice">Asking Price (£)</Label>
+                  <Input
+                    id="askingPrice"
+                    type="number"
+                    min="0"
+                    step="1000"
+                    value={formData.askingPrice}
+                    placeholder="e.g. 125000"
+                    onChange={(e) => setFormData({ ...formData, askingPrice: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Bedrooms + Garden + Garage */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Bedrooms</Label>
+                  <Select value={formData.bedrooms} onValueChange={(v) => setFormData({ ...formData, bedrooms: v })}>
+                    <SelectTrigger><SelectValue placeholder="Beds..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1</SelectItem>
+                      <SelectItem value="2">2</SelectItem>
+                      <SelectItem value="3">3</SelectItem>
+                      <SelectItem value="4">4</SelectItem>
+                      <SelectItem value="5">5</SelectItem>
+                      <SelectItem value="6+">6+</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Garden?</Label>
+                  <Select value={formData.garden} onValueChange={(v) => setFormData({ ...formData, garden: v })}>
+                    <SelectTrigger><SelectValue placeholder="Yes / No" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="yes">Yes</SelectItem>
+                      <SelectItem value="no">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Garage?</Label>
+                  <Select value={formData.garage} onValueChange={(v) => setFormData({ ...formData, garage: v })}>
+                    <SelectTrigger><SelectValue placeholder="Yes / No" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="yes">Yes</SelectItem>
+                      <SelectItem value="no">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* Urgency */}
