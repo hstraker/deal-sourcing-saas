@@ -9,44 +9,22 @@ export default async function LeadTestPage() {
   if (!session) redirect("/login")
   if (session.user.role !== "admin") redirect("/dashboard")
 
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-
-  const [totalLeads, newThisWeek, advancedLeads, newLeads, testLeads] = await Promise.all([
-    prisma.vendorLead.count({ where: { isTest: false } }),
-    prisma.vendorLead.count({ where: { isTest: false, createdAt: { gte: weekAgo } } }),
-    // Leads that have moved past NEW_LEAD / AI_CONVERSATION (i.e. validated)
-    prisma.vendorLead.count({
-      where: {
-        isTest: false,
-        pipelineStage: {
-          in: ["DEAL_VALIDATION", "OFFER_MADE", "OFFER_ACCEPTED", "PAPERWORK_SENT", "READY_FOR_INVESTORS"],
-        },
-      },
-    }),
-    prisma.vendorLead.count({ where: { isTest: false, pipelineStage: { in: ["NEW_LEAD", "AI_CONVERSATION"] } } }),
-    prisma.vendorLead.findMany({
-      where: { isTest: true },
-      select: {
-        id: true,
-        vendorName: true,
-        propertyAddress: true,
-        pipelineStage: true,
-        latestCheckRisk: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-    }),
-  ])
-
-  const conversionRate =
-    advancedLeads + newLeads > 0
-      ? Math.round((advancedLeads / (advancedLeads + newLeads)) * 100)
-      : 0
+  const testLeads = await prisma.vendorLead.findMany({
+    where: { isTest: true },
+    select: {
+      id: true,
+      vendorName: true,
+      propertyAddress: true,
+      pipelineStage: true,
+      latestCheckRisk: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 10,
+  })
 
   return (
     <LeadSimulator
-      stats={{ totalVendors: totalLeads, newThisWeek, conversionRate }}
       recentTestRuns={testLeads.map((v) => ({
         id: v.id,
         vendorName: v.vendorName,
