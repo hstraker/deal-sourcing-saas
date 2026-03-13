@@ -149,6 +149,57 @@ export async function sendPasswordResetEmail(email: string, resetToken: string):
   }
 }
 
+// ─── Staff invite email ───────────────────────────────────────────────────────
+
+export async function sendInviteEmail(
+  to: string,
+  displayName: string,
+  inviteUrl: string
+): Promise<{ success: boolean; noSmtp?: boolean }> {
+  const transporter = getTransporter()
+  if (!transporter) {
+    console.warn("[email] SMTP not configured — invite email not sent")
+    console.log(`[email] Invite URL for ${to}: ${inviteUrl}`)
+    return { success: false, noSmtp: true }
+  }
+
+  const fromName = process.env.SMTP_FROM_NAME || "DealStack"
+
+  try {
+    await transporter.sendMail({
+      from: fromAddress(),
+      to,
+      subject: `You've been invited to ${fromName}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+        <body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+          <div style="background:#f4f4f4;padding:28px;border-radius:8px;">
+            <h2 style="color:#F5A623;margin-top:0;">You've been invited!</h2>
+            <p>Hi ${displayName || to},</p>
+            <p>You've been invited to join <strong>${fromName}</strong>. Click the button below to set your password and access your account.</p>
+            <div style="text-align:center;margin:32px 0;">
+              <a href="${inviteUrl}" style="background:#F5A623;color:#1A1A1F;padding:13px 32px;text-decoration:none;border-radius:6px;font-weight:bold;display:inline-block;">
+                Set Your Password
+              </a>
+            </div>
+            <p style="font-size:12px;color:#666;">Or copy this link: <span style="word-break:break-all;">${inviteUrl}</span></p>
+            <p style="font-size:12px;color:#999;margin-top:24px;">This link expires in 48 hours. If you weren't expecting this invitation, you can safely ignore it.</p>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `You've been invited to ${fromName}.\n\nSet your password: ${inviteUrl}\n\nExpires in 48 hours.`,
+    })
+    console.log(`[email] Invite sent to ${to}`)
+    return { success: true }
+  } catch (err: any) {
+    console.error("[email] Invite email failed:", err)
+    return { success: false }
+  }
+}
+
 // ─── Investor pack email ──────────────────────────────────────────────────────
 
 function formatPropertyType(type?: string): string {

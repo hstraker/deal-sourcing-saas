@@ -109,11 +109,19 @@ function UserName() {
 
 export default function DualSidebar() {
   const pathname = usePathname()
+  const { data: session } = useSession()
   const { activeSectionId, setActiveSectionId, secondaryOpen, setSecondaryOpen } =
     useSidebar()
 
+  // Filter nav sections based on user permissions
+  const isAdmin = session?.user?.role === "admin"
+  const userPermissions: string[] = (session?.user as any)?.permissions ?? []
+  const visibleSections = NAV_SECTIONS.filter(
+    (s) => isAdmin || userPermissions.includes(s.id)
+  )
+
   const activeSection =
-    NAV_SECTIONS.find((s) => s.id === activeSectionId) ?? NAV_SECTIONS[0]
+    visibleSections.find((s) => s.id === activeSectionId) ?? visibleSections[0] ?? NAV_SECTIONS[0]
 
   // Find the single most-specific matching item (longest href) so that
   // ancestor paths like /dashboard and /dashboard/vendors don't also
@@ -193,7 +201,7 @@ export default function DualSidebar() {
 
         {/* NAV1 section buttons */}
         <div className="flex flex-col gap-0.5 px-2 flex-1">
-          {NAV_SECTIONS.map((section) => {
+          {visibleSections.map((section) => {
             const isActive = section.id === activeSectionId
             return (
               <button
@@ -338,11 +346,19 @@ export default function DualSidebar() {
                           : item.href === "/dashboard/deals"
                           ? dealsCount
                           : 0
-                      return count > 0 ? (
-                        <span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                      if (count === 0) return null
+                      const tip =
+                        item.href === "/dashboard/deals"
+                          ? `${count} deal${count !== 1 ? "s" : ""} in progress without an investor reservation`
+                          : `${count} vendor lead${count !== 1 ? "s" : ""} ready for investor matching`
+                      return (
+                        <span
+                          className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white cursor-help"
+                          title={tip}
+                        >
                           {count}
                         </span>
-                      ) : null
+                      )
                     })()}
                   </Link>
                 )

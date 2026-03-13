@@ -21,6 +21,7 @@ export const authOptions: NextAuthOptions = {
           include: {
             investor: true,
           },
+          // permissions is a scalar array, included automatically
         })
 
         if (!user || !user.passwordHash) {
@@ -51,6 +52,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           role: user.role,
           name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
+          permissions: (user as any).permissions ?? [],
         }
       },
     }),
@@ -67,6 +69,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id
         token.role = (user as any).role
+        token.permissions = (user as any).permissions ?? []
       }
       return token
     },
@@ -74,6 +77,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id as string
         session.user.role = token.role as string
+        session.user.permissions = (token.permissions as string[]) ?? []
       }
       return session
     },

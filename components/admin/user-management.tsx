@@ -2,7 +2,21 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { UserPlus, Pencil, Trash2, Loader2, ShieldCheck, User, TrendingUp } from "lucide-react"
+import {
+  UserPlus,
+  Pencil,
+  Trash2,
+  Loader2,
+  ShieldCheck,
+  TrendingUp,
+  Mail,
+  Copy,
+  Check,
+  LayoutDashboard,
+  DollarSign,
+  Settings,
+  Telescope,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,6 +33,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog"
 import {
   AlertDialog,
@@ -37,16 +52,17 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Switch } from "@/components/ui/switch"
+import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type UserRole = "admin" | "sourcer" | "investor"
+type StaffRole = "admin" | "sourcer"
 
-interface TeamUser {
+interface StaffUser {
   id: string
   email: string
-  role: UserRole
+  role: StaffRole
   firstName: string | null
   lastName: string | null
   phone: string | null
@@ -54,100 +70,258 @@ interface TeamUser {
   createdAt: string
   lastLogin: string | null
   isActive: boolean
+  isPending: boolean
+  permissions: string[]
   _count: { dealsCreated: number; dealsAssigned: number }
 }
 
+// ── Section permissions config ────────────────────────────────────────────────
+
+const SECTIONS = [
+  {
+    id: "invest",
+    label: "Invest",
+    description: "Vendor leads, deal analysis, scrapers",
+    Icon: Telescope,
+  },
+  {
+    id: "manage",
+    label: "Manage",
+    description: "Contacts, investors, reservations",
+    Icon: LayoutDashboard,
+  },
+  {
+    id: "finance",
+    label: "Finance",
+    description: "Cashflow, payments",
+    Icon: DollarSign,
+  },
+  {
+    id: "admin",
+    label: "Admin",
+    description: "Settings, user management, schedules",
+    Icon: Settings,
+  },
+]
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const ROLE_LABELS: Record<UserRole, string> = {
-  admin: "Admin",
-  sourcer: "Sourcer",
-  investor: "Investor",
-}
-
-const ROLE_COLORS: Record<UserRole, string> = {
+const ROLE_COLORS: Record<StaffRole, string> = {
   admin: "bg-rose-100 text-rose-700",
   sourcer: "bg-blue-100 text-blue-700",
-  investor: "bg-emerald-100 text-emerald-700",
 }
 
-const ROLE_ICONS: Record<UserRole, React.ElementType> = {
+const ROLE_ICONS: Record<StaffRole, React.ElementType> = {
   admin: ShieldCheck,
   sourcer: TrendingUp,
-  investor: User,
 }
 
-function RoleBadge({ role }: { role: UserRole }) {
+function RoleBadge({ role }: { role: StaffRole }) {
   const Icon = ROLE_ICONS[role]
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${ROLE_COLORS[role]}`}
     >
       <Icon className="h-3 w-3" />
-      {ROLE_LABELS[role]}
+      {role === "admin" ? "Admin" : "Sourcer"}
     </span>
   )
 }
 
-function Avatar({ user }: { user: TeamUser }) {
-  const initials = [user.firstName, user.lastName]
-    .filter(Boolean)
-    .map((n) => n![0].toUpperCase())
-    .join("") || user.email[0].toUpperCase()
+function PermissionChips({ permissions }: { permissions: string[] }) {
+  if (permissions.length === 0) return <span className="text-gray-400 text-xs">None</span>
+  return (
+    <div className="flex flex-wrap gap-1">
+      {SECTIONS.filter((s) => permissions.includes(s.id)).map((s) => (
+        <span
+          key={s.id}
+          className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200"
+        >
+          {s.label}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function StatusBadge({ user }: { user: StaffUser }) {
+  if (user.isPending) {
+    return (
+      <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+        Pending invite
+      </span>
+    )
+  }
+  return (
+    <span
+      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+        user.isActive ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
+      }`}
+    >
+      {user.isActive ? "Active" : "Inactive"}
+    </span>
+  )
+}
+
+function Avatar({ user }: { user: StaffUser }) {
+  const initials =
+    [user.firstName, user.lastName]
+      .filter(Boolean)
+      .map((n) => n![0].toUpperCase())
+      .join("") || user.email[0].toUpperCase()
 
   const colors = [
-    "bg-blue-500",
-    "bg-purple-500",
-    "bg-rose-500",
-    "bg-amber-500",
-    "bg-emerald-500",
-    "bg-teal-500",
+    "bg-blue-500", "bg-purple-500", "bg-rose-500",
+    "bg-amber-500", "bg-emerald-500", "bg-teal-500",
   ]
   const color = colors[user.email.charCodeAt(0) % colors.length]
 
   return (
-    <div
-      className={`w-9 h-9 rounded-full ${color} flex items-center justify-center flex-shrink-0`}
-    >
+    <div className={`w-9 h-9 rounded-full ${color} flex items-center justify-center flex-shrink-0`}>
       <span className="text-white text-sm font-semibold">{initials}</span>
     </div>
   )
 }
 
-// ── Create/Edit Dialog ────────────────────────────────────────────────────────
+// ── Permissions checkboxes ────────────────────────────────────────────────────
 
-interface UserFormData {
+function PermissionsField({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string[]
+  onChange: (v: string[]) => void
+  disabled: boolean
+}) {
+  const toggle = (id: string) => {
+    onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id])
+  }
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm">Access sections</Label>
+      <div className="rounded-lg border border-gray-200 divide-y divide-gray-100">
+        {SECTIONS.map((s) => {
+          const Icon = s.Icon
+          const checked = value.includes(s.id)
+          return (
+            <div
+              key={s.id}
+              className={`flex items-center gap-3 px-4 py-2.5 ${disabled ? "opacity-50" : "cursor-pointer hover:bg-gray-50"}`}
+              onClick={() => !disabled && toggle(s.id)}
+            >
+              <Checkbox
+                checked={checked}
+                onCheckedChange={() => !disabled && toggle(s.id)}
+                disabled={disabled}
+                className="pointer-events-none"
+              />
+              <Icon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">{s.label}</p>
+                <p className="text-xs text-gray-400">{s.description}</p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {disabled && (
+        <p className="text-xs text-gray-400">Admin role always has access to all sections.</p>
+      )}
+    </div>
+  )
+}
+
+// ── Invite link copy dialog ───────────────────────────────────────────────────
+
+function InviteLinkDialog({
+  open,
+  onOpenChange,
+  inviteUrl,
+  email,
+}: {
+  open: boolean
+  onOpenChange: (o: boolean) => void
+  inviteUrl: string
   email: string
-  password: string
-  role: UserRole
+}) {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    await navigator.clipboard.writeText(inviteUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle>User invited</DialogTitle>
+          <DialogDescription>
+            SMTP isn't configured — copy the link below and share it with{" "}
+            <strong>{email}</strong> directly.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+          <span className="flex-1 text-xs text-gray-600 break-all font-mono">{inviteUrl}</span>
+          <button
+            onClick={copy}
+            className="rounded p-1.5 text-gray-400 hover:bg-gray-200 transition-colors flex-shrink-0"
+          >
+            {copied ? (
+              <Check className="h-4 w-4 text-emerald-500" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+        <p className="text-xs text-gray-400">Link expires in 48 hours.</p>
+        <DialogFooter>
+          <Button onClick={() => onOpenChange(false)}>Done</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Create/Edit dialog ────────────────────────────────────────────────────────
+
+interface FormData {
+  email: string
+  role: StaffRole
   firstName: string
   lastName: string
   phone: string
   isActive: boolean
+  permissions: string[]
 }
 
-const EMPTY_FORM: UserFormData = {
+const DEFAULT_PERMISSIONS = ["invest", "manage"]
+const ADMIN_PERMISSIONS = ["invest", "manage", "finance", "admin"]
+
+const EMPTY_FORM: FormData = {
   email: "",
-  password: "",
   role: "sourcer",
   firstName: "",
   lastName: "",
   phone: "",
   isActive: true,
+  permissions: DEFAULT_PERMISSIONS,
 }
 
 function UserFormDialog({
   open,
   onOpenChange,
   editUser,
+  onCreated,
   onSaved,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  editUser: TeamUser | null
+  editUser: StaffUser | null
+  onCreated: (inviteUrl: string, emailSent: boolean, email: string) => void
   onSaved: () => void
 }) {
-  const [form, setForm] = useState<UserFormData>(EMPTY_FORM)
+  const [form, setForm] = useState<FormData>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const isEdit = editUser !== null
 
@@ -156,12 +330,12 @@ function UserFormDialog({
       if (editUser) {
         setForm({
           email: editUser.email,
-          password: "",
           role: editUser.role,
           firstName: editUser.firstName ?? "",
           lastName: editUser.lastName ?? "",
           phone: editUser.phone ?? "",
           isActive: editUser.isActive,
+          permissions: editUser.permissions,
         })
       } else {
         setForm(EMPTY_FORM)
@@ -169,17 +343,20 @@ function UserFormDialog({
     }
   }, [open, editUser])
 
+  const isAdminRole = form.role === "admin"
+  const effectivePermissions = isAdminRole ? ADMIN_PERMISSIONS : form.permissions
+
+  const handleRoleChange = (role: StaffRole) => {
+    setForm((prev) => ({
+      ...prev,
+      role,
+      permissions: role === "admin" ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS,
+    }))
+  }
+
   const handleSave = async () => {
     if (!form.email) {
       toast.error("Email is required")
-      return
-    }
-    if (!isEdit && form.password.length < 8) {
-      toast.error("Password must be at least 8 characters")
-      return
-    }
-    if (isEdit && form.password && form.password.length < 8) {
-      toast.error("New password must be at least 8 characters")
       return
     }
 
@@ -191,27 +368,41 @@ function UserFormDialog({
         firstName: form.firstName || undefined,
         lastName: form.lastName || undefined,
         phone: form.phone || undefined,
-        isActive: form.isActive,
-      }
-      if (form.password) body.password = form.password
-
-      const url = isEdit ? `/api/users/${editUser!.id}` : "/api/users"
-      const method = isEdit ? "PUT" : "POST"
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      })
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || "Failed to save user")
+        permissions: effectivePermissions,
       }
 
-      toast.success(isEdit ? "User updated" : "User created")
-      onSaved()
-      onOpenChange(false)
+      if (isEdit) {
+        body.isActive = form.isActive
+        const res = await fetch(`/api/users/${editUser!.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data.error || "Failed to save user")
+        }
+        toast.success("User updated")
+        onSaved()
+        onOpenChange(false)
+      } else {
+        const res = await fetch("/api/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data.error || "Failed to create user")
+        }
+        const data = await res.json()
+        onCreated(data.inviteUrl, data.emailSent, form.email)
+        onSaved()
+        onOpenChange(false)
+        if (data.emailSent) {
+          toast.success(`Invite sent to ${form.email}`)
+        }
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save user")
     } finally {
@@ -221,13 +412,18 @@ function UserFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit User" : "Create User"}</DialogTitle>
+          <DialogTitle>{isEdit ? "Edit Staff Member" : "Invite Staff Member"}</DialogTitle>
+          {!isEdit && (
+            <DialogDescription>
+              An email invite will be sent so they can set their own password.
+            </DialogDescription>
+          )}
         </DialogHeader>
 
         <div className="grid gap-4 py-2">
-          {/* Name row */}
+          {/* Name */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="firstName">First name</Label>
@@ -259,46 +455,31 @@ function UserFormDialog({
               type="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="jane@example.com"
-            />
-          </div>
-
-          {/* Password */}
-          <div className="space-y-1.5">
-            <Label htmlFor="password">
-              Password{" "}
-              {isEdit ? (
-                <span className="text-gray-400 font-normal">(leave blank to keep current)</span>
-              ) : (
-                <span className="text-red-500">*</span>
-              )}
-            </Label>
-            <Input
-              id="password"
-              type="password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder={isEdit ? "New password" : "Min 8 characters"}
+              placeholder="jane@company.com"
+              disabled={isEdit}
             />
           </div>
 
           {/* Role */}
           <div className="space-y-1.5">
             <Label htmlFor="role">Role</Label>
-            <Select
-              value={form.role}
-              onValueChange={(val) => setForm({ ...form, role: val as UserRole })}
-            >
+            <Select value={form.role} onValueChange={(v) => handleRoleChange(v as StaffRole)}>
               <SelectTrigger id="role">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="admin">Admin — full access</SelectItem>
-                <SelectItem value="sourcer">Sourcer — deal sourcing</SelectItem>
-                <SelectItem value="investor">Investor — investor portal</SelectItem>
+                <SelectItem value="admin">Admin — full access to everything</SelectItem>
+                <SelectItem value="sourcer">Sourcer — property sourcing & deals</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
+          {/* Section permissions */}
+          <PermissionsField
+            value={effectivePermissions}
+            onChange={(v) => setForm({ ...form, permissions: v })}
+            disabled={isAdminRole}
+          />
 
           {/* Phone */}
           <div className="space-y-1.5">
@@ -312,17 +493,19 @@ function UserFormDialog({
             />
           </div>
 
-          {/* Active toggle */}
-          <div className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3">
-            <div>
-              <p className="text-sm font-medium">Active</p>
-              <p className="text-xs text-gray-400">Inactive users cannot log in</p>
+          {/* Active toggle — edit only */}
+          {isEdit && (
+            <div className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3">
+              <div>
+                <p className="text-sm font-medium">Active</p>
+                <p className="text-xs text-gray-400">Inactive users cannot log in</p>
+              </div>
+              <Switch
+                checked={form.isActive}
+                onCheckedChange={(checked) => setForm({ ...form, isActive: checked })}
+              />
             </div>
-            <Switch
-              checked={form.isActive}
-              onCheckedChange={(checked) => setForm({ ...form, isActive: checked })}
-            />
-          </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -331,7 +514,7 @@ function UserFormDialog({
           </Button>
           <Button onClick={handleSave} disabled={saving}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isEdit ? "Save Changes" : "Create User"}
+            {isEdit ? "Save Changes" : "Send Invite"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -343,12 +526,17 @@ function UserFormDialog({
 
 export function UserManagement({ currentUserId }: { currentUserId: string }) {
   const router = useRouter()
-  const [users, setUsers] = useState<TeamUser[]>([])
+  const [users, setUsers] = useState<StaffUser[]>([])
   const [loading, setLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
-  const [editUser, setEditUser] = useState<TeamUser | null>(null)
-  const [deleteUser, setDeleteUser] = useState<TeamUser | null>(null)
+  const [editUser, setEditUser] = useState<StaffUser | null>(null)
+  const [deleteUser, setDeleteUser] = useState<StaffUser | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [inviteLinkData, setInviteLinkData] = useState<{
+    url: string
+    email: string
+  } | null>(null)
+  const [resendingId, setResendingId] = useState<string | null>(null)
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -356,7 +544,7 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
       if (!res.ok) throw new Error("Failed to fetch users")
       const data = await res.json()
       setUsers(data)
-    } catch (err) {
+    } catch {
       toast.error("Failed to load users")
     } finally {
       setLoading(false)
@@ -367,14 +555,42 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
     fetchUsers()
   }, [fetchUsers])
 
-  const handleEdit = (user: TeamUser) => {
+  const handleCreate = () => {
+    setEditUser(null)
+    setFormOpen(true)
+  }
+
+  const handleEdit = (user: StaffUser) => {
     setEditUser(user)
     setFormOpen(true)
   }
 
-  const handleCreate = () => {
-    setEditUser(null)
-    setFormOpen(true)
+  const handleCreated = (inviteUrl: string, emailSent: boolean, email: string) => {
+    if (!emailSent) {
+      setInviteLinkData({ url: inviteUrl, email })
+    }
+    fetchUsers()
+  }
+
+  const handleResendInvite = async (user: StaffUser) => {
+    setResendingId(user.id)
+    try {
+      const res = await fetch(`/api/users/${user.id}/resend-invite`, { method: "POST" })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to resend invite")
+      }
+      const data = await res.json()
+      if (data.emailSent) {
+        toast.success(`Invite resent to ${user.email}`)
+      } else {
+        setInviteLinkData({ url: data.inviteUrl, email: user.email })
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to resend invite")
+    } finally {
+      setResendingId(null)
+    }
   }
 
   const handleDelete = async () => {
@@ -386,7 +602,7 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
         const data = await res.json().catch(() => ({}))
         throw new Error(data.error || "Failed to delete user")
       }
-      toast.success("User deleted")
+      toast.success("User removed")
       setDeleteUser(null)
       await fetchUsers()
       router.refresh()
@@ -405,33 +621,41 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
     )
   }
 
+  const pendingCount = users.filter((u) => u.isPending).length
+
   return (
     <TooltipProvider>
       <div className="space-y-4">
-        {/* Header row */}
+        {/* Header */}
         <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-500">
-            {users.length} team member{users.length !== 1 ? "s" : ""}
-          </p>
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-gray-500">
+              {users.length} staff member{users.length !== 1 ? "s" : ""}
+            </p>
+            {pendingCount > 0 && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                {pendingCount} pending
+              </span>
+            )}
+          </div>
           <Button onClick={handleCreate} className="btn-primary h-9 text-sm">
             <UserPlus className="mr-2 h-4 w-4" />
-            Add User
+            Invite Staff Member
           </Button>
         </div>
 
-        {/* Users table */}
+        {/* Table */}
         <div className="ds-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr>
-                  <th className="table-header">User</th>
-                  <th className="table-header">Email</th>
+                  <th className="table-header">Member</th>
                   <th className="table-header">Role</th>
+                  <th className="table-header">Access</th>
                   <th className="table-header text-center">Status</th>
                   <th className="table-header text-center">Deals</th>
                   <th className="table-header">Last Login</th>
-                  <th className="table-header">Joined</th>
                   <th className="table-header text-right">Actions</th>
                 </tr>
               </thead>
@@ -439,11 +663,10 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
                 {users.map((user) => {
                   const isSelf = user.id === currentUserId
                   const displayName =
-                    [user.firstName, user.lastName].filter(Boolean).join(" ") ||
-                    user.email
+                    [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email
                   return (
                     <tr key={user.id} className="table-row">
-                      {/* User */}
+                      {/* Member */}
                       <td className="table-cell">
                         <div className="flex items-center gap-3">
                           <Avatar user={user} />
@@ -456,29 +679,24 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
                                 </span>
                               )}
                             </div>
+                            <div className="text-xs text-gray-400">{user.email}</div>
                           </div>
                         </div>
                       </td>
-
-                      {/* Email */}
-                      <td className="table-cell text-sm text-gray-500">{user.email}</td>
 
                       {/* Role */}
                       <td className="table-cell">
                         <RoleBadge role={user.role} />
                       </td>
 
+                      {/* Access */}
+                      <td className="table-cell">
+                        <PermissionChips permissions={user.permissions} />
+                      </td>
+
                       {/* Status */}
                       <td className="table-cell text-center">
-                        <span
-                          className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                            user.isActive
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-gray-100 text-gray-500"
-                          }`}
-                        >
-                          {user.isActive ? "Active" : "Inactive"}
-                        </span>
+                        <StatusBadge user={user} />
                       </td>
 
                       {/* Deals */}
@@ -498,7 +716,9 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
 
                       {/* Last Login */}
                       <td className="table-cell text-sm text-gray-500">
-                        {user.lastLogin
+                        {user.isPending
+                          ? "—"
+                          : user.lastLogin
                           ? new Date(user.lastLogin).toLocaleDateString("en-GB", {
                               day: "numeric",
                               month: "short",
@@ -507,18 +727,29 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
                           : "Never"}
                       </td>
 
-                      {/* Joined */}
-                      <td className="table-cell text-sm text-gray-500">
-                        {new Date(user.createdAt).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </td>
-
                       {/* Actions */}
                       <td className="table-cell text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {/* Resend invite — only for pending users */}
+                          {user.isPending && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  className="rounded p-1.5 text-amber-500 hover:bg-amber-50 hover:text-amber-600 transition-colors"
+                                  onClick={() => handleResendInvite(user)}
+                                  disabled={resendingId === user.id}
+                                >
+                                  {resendingId === user.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Mail className="h-3.5 w-3.5" />
+                                  )}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>Resend invite</TooltipContent>
+                            </Tooltip>
+                          )}
+
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <button
@@ -542,7 +773,7 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
                               </button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              {isSelf ? "Cannot delete your own account" : "Delete"}
+                              {isSelf ? "Cannot remove yourself" : "Remove"}
                             </TooltipContent>
                           </Tooltip>
                         </div>
@@ -556,21 +787,32 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
         </div>
       </div>
 
-      {/* Create / Edit dialog */}
+      {/* Invite dialog */}
       <UserFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
         editUser={editUser}
+        onCreated={handleCreated}
         onSaved={fetchUsers}
       />
+
+      {/* Invite link copy fallback */}
+      {inviteLinkData && (
+        <InviteLinkDialog
+          open={!!inviteLinkData}
+          onOpenChange={(o) => !o && setInviteLinkData(null)}
+          inviteUrl={inviteLinkData.url}
+          email={inviteLinkData.email}
+        />
+      )}
 
       {/* Delete confirm */}
       <AlertDialog open={!!deleteUser} onOpenChange={(o) => !o && setDeleteUser(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete user?</AlertDialogTitle>
+            <AlertDialogTitle>Remove staff member?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete{" "}
+              This will permanently remove{" "}
               <strong>
                 {[deleteUser?.firstName, deleteUser?.lastName].filter(Boolean).join(" ") ||
                   deleteUser?.email}
@@ -588,10 +830,10 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
               {isDeleting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
+                  Removing...
                 </>
               ) : (
-                "Delete"
+                "Remove"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

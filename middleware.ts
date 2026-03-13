@@ -6,15 +6,33 @@ export default withAuth(
     const token = req.nextauth.token
     const path = req.nextUrl.pathname
 
-    // Protect dashboard routes - only admin and sourcer in Phase 1
     if (path.startsWith("/dashboard")) {
       if (!token) {
         return NextResponse.redirect(new URL("/login", req.url))
       }
-      
+
       if (token.role === "investor") {
-        // Investors don't have access to dashboard in Phase 1
         return NextResponse.redirect(new URL("/", req.url))
+      }
+
+      const isAdmin = token.role === "admin"
+      const permissions: string[] = (token.permissions as string[]) ?? []
+
+      // Admin and settings routes require "admin" permission
+      if (
+        path.startsWith("/dashboard/admin") ||
+        path.startsWith("/dashboard/settings")
+      ) {
+        if (!isAdmin && !permissions.includes("admin")) {
+          return NextResponse.redirect(new URL("/dashboard", req.url))
+        }
+      }
+
+      // Finance routes require "finance" permission
+      if (path.startsWith("/dashboard/analytics")) {
+        if (!isAdmin && !permissions.includes("finance")) {
+          return NextResponse.redirect(new URL("/dashboard", req.url))
+        }
       }
     }
 
@@ -23,7 +41,6 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ token, req }) => {
-        // Allow access to dashboard only for admin and sourcer
         if (req.nextUrl.pathname.startsWith("/dashboard")) {
           return !!token && (token.role === "admin" || token.role === "sourcer")
         }
@@ -36,4 +53,3 @@ export default withAuth(
 export const config = {
   matcher: ["/dashboard/:path*"],
 }
-

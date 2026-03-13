@@ -237,6 +237,7 @@ model User {
   isActive                  Boolean   @default(true) @map("is_active")
   resetPasswordToken        String?   @map("reset_password_token")
   resetPasswordTokenExpires DateTime? @map("reset_password_token_expires")
+  permissions               String[]  @default([]) @map("permissions")
 
   // Relations
   dealsCreated        Deal[]             @relation("DealCreator")

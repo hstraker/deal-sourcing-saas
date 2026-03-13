@@ -14,6 +14,7 @@ const updateUserSchema = z.object({
   lastName: z.string().optional(),
   phone: z.string().optional(),
   isActive: z.boolean().optional(),
+  permissions: z.array(z.string()).optional(),
 })
 
 // GET /api/users/[id] - Get a single user
@@ -122,6 +123,14 @@ export async function PUT(
       isActive: validatedData.isActive,
     }
 
+    // Update permissions — admins always get all sections
+    if (validatedData.permissions !== undefined) {
+      updateData.permissions =
+        validatedData.role === "admin" || existingUser.role === "admin"
+          ? ["invest", "manage", "finance", "admin"]
+          : validatedData.permissions
+    }
+
     // Only update password if provided
     if (validatedData.password) {
       updateData.passwordHash = await bcrypt.hash(validatedData.password, 10)
@@ -142,6 +151,7 @@ export async function PUT(
         createdAt: true,
         lastLogin: true,
         isActive: true,
+        permissions: true,
       },
     })
 

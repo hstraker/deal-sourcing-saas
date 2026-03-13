@@ -34,13 +34,15 @@ export async function POST(request: NextRequest) {
     // Hash new password
     const passwordHash = await bcrypt.hash(validatedData.password, 10)
 
-    // Update user password and clear reset token
+    // Update user password, clear reset token, and activate account
+    // (covers the invite flow where the user starts with isActive: false)
     await prisma.user.update({
       where: { id: user.id },
       data: {
         passwordHash,
         resetPasswordToken: null,
         resetPasswordTokenExpires: null,
+        isActive: true,
       },
     })
 
