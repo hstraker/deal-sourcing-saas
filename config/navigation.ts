@@ -40,9 +40,8 @@ export const NAV_SECTIONS = [
       {
         label: "Property Sourcing",
         items: [
-          { label: "Vendor Leads",    href: "/dashboard/vendors",  icon: FunnelIcon },
-          { label: "Sourcing Alerts", href: "/dashboard/sourcing-alerts",  icon: BellAlertIcon },
-          { label: "Scrappers",       href: "/dashboard/scraper",  icon: MagnifyingGlassCircleIcon },
+          { label: "Vendor Leads", href: "/dashboard/vendors", icon: FunnelIcon },
+          { label: "Scrappers",    href: "/dashboard/scraper", icon: MagnifyingGlassCircleIcon },
         ],
       },
       {
@@ -130,8 +129,9 @@ export const NAV_SECTIONS = [
       {
         label: "Admin",
         items: [
-          { label: "Schedules", href: "/dashboard/admin/schedules", icon: CalendarDaysIcon },
-          { label: "Users",     href: "/dashboard/admin/users",     icon: UsersIcon },
+          { label: "Schedules",       href: "/dashboard/admin/schedules",    icon: CalendarDaysIcon },
+          { label: "Users",           href: "/dashboard/admin/users",        icon: UsersIcon },
+          { label: "Sourcing Alerts", href: "/dashboard/sourcing-alerts",    icon: BellAlertIcon },
         ],
       },
       {
