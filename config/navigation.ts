@@ -131,8 +131,8 @@ export const NAV_SECTIONS = [
       {
         label: "Admin",
         items: [
-          { label: "Schedules", href: "/dashboard/settings",  icon: CalendarDaysIcon },  // TODO: dedicated schedules route
-          { label: "Users",     href: "/dashboard/settings",  icon: UsersIcon },          // TODO: dedicated users route
+          { label: "Schedules", href: "/dashboard/admin/schedules", icon: CalendarDaysIcon },
+          { label: "Users",     href: "/dashboard/admin/users",     icon: UsersIcon },
         ],
       },
       {
