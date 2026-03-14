@@ -11,6 +11,7 @@ import { prisma } from "@/lib/db"
 import { z } from "zod"
 import { PipelineStage } from "@prisma/client"
 import { estimateRentalIncome, estimateSquareFeet, calculateRentPerSqFt } from "@/lib/rental-estimator"
+import { runVendorLeadAutoTriggers } from "@/lib/services/vendorLeadAutoTrigger"
 
 const createVendorLeadSchema = z.object({
   facebookLeadId: z.string().optional(),
@@ -219,6 +220,11 @@ export async function POST(request: NextRequest) {
     const lead = await prisma.vendorLead.create({
       data: createData,
     })
+
+    // Fire-and-forget: normalise address, run portal check + BMV screening
+    runVendorLeadAutoTriggers(lead.id).catch((err) =>
+      console.error("[AutoTrigger] Failed for lead:", lead.id, err?.message)
+    )
 
     return NextResponse.json(lead, { status: 201 })
   } catch (error: any) {

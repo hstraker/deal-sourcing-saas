@@ -142,6 +142,13 @@ enum PipelineStage {
   DEAD_LEAD
 }
 
+enum ProcessingStatus {
+  PENDING
+  RUNNING
+  COMPLETE
+  FAILED
+}
+
 enum SMSDirection {
   inbound
   outbound
@@ -1012,6 +1019,13 @@ model VendorLead {
   // Portal Check Cache — latest check summary for quick display on Kanban / list views
   latestCheckRisk  String?   @map("latest_check_risk")   // "clear" | "caution" | "red_flag"
   latestCheckedAt  DateTime? @map("latest_checked_at")
+
+  // Processing pipeline status
+  processingStatus  ProcessingStatus @default(PENDING) @map("processing_status")
+  postcodeOriginal  String?          @map("postcode_original")
+  bmvValidatedAt    DateTime?        @map("bmv_validated_at")
+  portalCheckedAt   DateTime?        @map("portal_checked_at")
+  archivedAt        DateTime?        @map("archived_at")
 
   // Timestamps
   createdAt             DateTime  @default(now()) @map("created_at")
