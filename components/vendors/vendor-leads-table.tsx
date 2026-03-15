@@ -32,6 +32,10 @@ import {
   TrendingUp,
   Users,
   Zap,
+  ShieldCheck,
+  Calculator,
+  GitCompare,
+  Send,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -109,6 +113,7 @@ interface VendorLead {
   createdAt: string
   isTest: boolean
   lockoutAgreementSent: boolean
+  validationPassed: boolean | null
   latestPortalCheck: LatestPortalCheck | null
   offerRetries: OfferRetry[]
 }
@@ -425,30 +430,43 @@ function VendorNameCell({ lead }: { lead: VendorLead }) {
   )
 }
 
+interface CheckAction {
+  icon: React.ElementType
+  title: string
+  onClick: () => void
+  loading?: boolean
+}
+
 /** Sticky-right actions cell */
 function ActionsCell({
   lead,
   onView,
   onArchive,
   onDelete,
+  checkAction,
 }: {
   lead: VendorLead
   onView: () => void
   onArchive: () => void
   onDelete: () => void
+  checkAction?: CheckAction
 }) {
   return (
     <td className="sticky right-0 z-10 bg-white px-4 py-[11px] group-hover:bg-[#f3f4f6]">
       <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        {checkAction && (
+          <ActionBtn
+            icon={checkAction.loading ? Loader2 : checkAction.icon}
+            title={checkAction.title}
+            onClick={checkAction.onClick}
+            primary
+            spinning={checkAction.loading}
+          />
+        )}
         <ActionBtn icon={Eye} title="View" onClick={onView} />
         <ActionBtn icon={Pencil} title="Edit" onClick={() => {}} />
         <ActionBtn icon={Archive} title="Archive" onClick={onArchive} />
-        <ActionBtn
-          icon={Trash2}
-          title="Delete"
-          onClick={onDelete}
-          danger
-        />
+        <ActionBtn icon={Trash2} title="Delete" onClick={onDelete} danger />
       </div>
     </td>
   )
@@ -459,22 +477,28 @@ function ActionBtn({
   title,
   onClick,
   danger,
+  primary,
+  spinning,
 }: {
   icon: React.ElementType
   title: string
   onClick: () => void
   danger?: boolean
+  primary?: boolean
+  spinning?: boolean
 }) {
   return (
     <button
       title={title}
       onClick={(e) => { e.stopPropagation(); onClick() }}
+      disabled={spinning}
       className={cn(
-        "flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 transition-colors hover:border-gray-300 hover:text-gray-700",
-        danger && "hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+        "flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 transition-colors hover:border-gray-300 hover:text-gray-700 disabled:cursor-wait disabled:opacity-60",
+        danger && "hover:border-red-300 hover:bg-red-50 hover:text-red-600",
+        primary && "border-blue-200 bg-blue-50 text-blue-600 hover:border-blue-300 hover:bg-blue-100 hover:text-blue-700"
       )}
     >
-      <Icon className="h-3.5 w-3.5" />
+      <Icon className={cn("h-3.5 w-3.5", spinning && "animate-spin")} />
     </button>
   )
 }
@@ -572,7 +596,7 @@ function PropertyDetailsRow({ lead, onRowClick, onView, onArchive, onDelete }: R
   )
 }
 
-function PortalCheckRow({ lead, onRowClick, onView, onArchive, onDelete }: RowRendererProps) {
+function PortalCheckRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck, isChecking }: RowRendererProps) {
   const raw = lead.latestPortalCheck?.portalCheckRaw as any
   const ownership = raw?.ownershipCheckRaw
   return (
@@ -596,43 +620,19 @@ function PortalCheckRow({ lead, onRowClick, onView, onArchive, onDelete }: RowRe
       <Td className="max-w-[120px]">
         <p className="truncate text-xs">{ownership?.companyName ?? "—"}</p>
       </Td>
-      <ActionsCell lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete} />
+      <ActionsCell
+        lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete}
+        checkAction={onCheck ? { icon: ShieldCheck, title: "Run Portal Check", onClick: onCheck, loading: isChecking } : undefined}
+      />
     </tr>
   )
 }
 
-function ValidationRow({ lead, onRowClick, onView, onArchive, onDelete }: RowRendererProps) {
-  // Gross monthly cashflow ≈ rent - 20% expenses
+function ValidationRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck, isChecking }: RowRendererProps) {
+  // Gross monthly cashflow ≈ rent - 20% expenses (rough estimate)
   const rentNum = toNum(lead.estimatedMonthlyRent)
   const cashflow = rentNum ? rentNum * 0.8 : null
-
-  return (
-    <tr className="group border-b border-[#f3f4f6] transition-colors hover:bg-[#f3f4f6]">
-      <VendorNameCell lead={lead} />
-      <Td className="max-w-[200px]"><p className="truncate">{lead.propertyAddress ?? "—"}</p></Td>
-      <Td><StageBadge stage={lead.pipelineStage} /></Td>
-      <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
-      <Td>{lead.propertyType ?? "—"}</Td>
-      <Td><span className="font-mono text-xs">{fmtCurrency(lead.localAverageRent)}/mo</span></Td>
-      <Td><span className="font-mono text-xs">{fmtCurrency(lead.askingPrice)}</span></Td>
-      <Td><span className="font-mono text-xs">{fmtCurrency(lead.avgComparablePrice)}</span></Td>
-      <Td>
-        <span className="font-mono text-xs">
-          {lead.estimatedAnnualRent && lead.askingPrice
-            ? fmtPercent((toNum(lead.estimatedAnnualRent)! / toNum(lead.askingPrice)!) * 100)
-            : "—"}
-        </span>
-      </Td>
-      <Td><span className="font-mono text-xs">{lead.comparablesCount ?? "—"}</span></Td>
-      <Td><span className="font-mono text-xs">{cashflow ? fmtCurrency(cashflow) : "—"}</span></Td>
-      <Td className="text-xs text-gray-400">—</Td>
-      <Td><span className="font-mono text-xs">{fmtCurrency(lead.estimatedMonthlyRent)}/mo</span></Td>
-      <ActionsCell lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete} />
-    </tr>
-  )
-}
-
-function ComparableRow({ lead, onRowClick, onView, onArchive, onDelete }: RowRendererProps) {
+  // Rental yield from annual rent / asking price
   const annualRent = toNum(lead.estimatedAnnualRent)
   const price = toNum(lead.askingPrice)
   const yieldPct = annualRent && price ? (annualRent / price) * 100 : null
@@ -641,27 +641,87 @@ function ComparableRow({ lead, onRowClick, onView, onArchive, onDelete }: RowRen
     <tr className="group border-b border-[#f3f4f6] transition-colors hover:bg-[#f3f4f6]">
       <VendorNameCell lead={lead} />
       <Td className="max-w-[200px]"><p className="truncate">{lead.propertyAddress ?? "—"}</p></Td>
-      <Td><StageBadge stage={lead.pipelineStage} /></Td>
+      <Td>
+        <div className="flex items-center gap-1.5">
+          <StageBadge stage={lead.pipelineStage} />
+          {lead.validationPassed === true && (
+            <span className="inline-block rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700">Passed</span>
+          )}
+          {lead.validationPassed === false && (
+            <span className="inline-block rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700">Failed</span>
+          )}
+        </div>
+      </Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
       <Td>{lead.propertyType ?? "—"}</Td>
-      <Td><span className="font-mono text-xs">{lead.comparablesCount ?? "—"}</span></Td>
-      <Td><span className="font-mono text-xs">{fmtCurrency(lead.localAverageRent)}/mo</span></Td>
-      <Td><span className="font-mono text-xs">{yieldPct ? fmtPercent(yieldPct) : "—"}</span></Td>
+      <Td><span className="font-mono text-xs">{lead.localAverageRent ? `${fmtCurrency(lead.localAverageRent)}/mo` : "—"}</span></Td>
+      <Td><span className="font-mono text-xs">{fmtCurrency(lead.askingPrice)}</span></Td>
       <Td><span className="font-mono text-xs">{fmtCurrency(lead.avgComparablePrice)}</span></Td>
+      <Td><span className="font-mono text-xs">{yieldPct ? fmtPercent(yieldPct) : "—"}</span></Td>
+      <Td><span className="font-mono text-xs">{lead.comparablesCount ?? "—"}</span></Td>
+      <Td><span className="font-mono text-xs">{cashflow ? `${fmtCurrency(cashflow)}/mo` : "—"}</span></Td>
       <Td className="text-xs text-gray-400">—</Td>
-      <Td><BmvCell value={lead.bmvScore} /></Td>
-      <ActionsCell lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete} />
+      <Td><span className="font-mono text-xs">{lead.estimatedMonthlyRent ? `${fmtCurrency(lead.estimatedMonthlyRent)}/mo` : "—"}</span></Td>
+      <ActionsCell
+        lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete}
+        checkAction={onCheck ? { icon: Calculator, title: "Calculate BMV & Validation", onClick: onCheck, loading: isChecking } : undefined}
+      />
     </tr>
   )
 }
 
-function OfferAnalysisRow({ lead, onRowClick, onView, onArchive, onDelete }: RowRendererProps) {
-  // Derive initial / next / final from offerRetries + offerAmount
+function ComparableRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck, isChecking }: RowRendererProps) {
+  const annualRent = toNum(lead.estimatedAnnualRent)
+  const price = toNum(lead.askingPrice)
+  const avgPrice = toNum(lead.avgComparablePrice)
+  const yieldPct = annualRent && price ? (annualRent / price) * 100 : null
+  // Price range: show "—" until comparables are fetched (no min/max on lead model)
+  const hasComps = (lead.comparablesCount ?? 0) > 0
+
+  return (
+    <tr className="group border-b border-[#f3f4f6] transition-colors hover:bg-[#f3f4f6]">
+      <VendorNameCell lead={lead} />
+      <Td className="max-w-[200px]"><p className="truncate">{lead.propertyAddress ?? "—"}</p></Td>
+      <Td><StageBadge stage={lead.pipelineStage} /></Td>
+      <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
+      <Td>{lead.propertyType ?? "—"}</Td>
+      <Td>
+        <span className={cn("font-mono text-xs", hasComps ? "text-gray-900" : "text-gray-400")}>
+          {lead.comparablesCount ?? "—"}
+        </span>
+      </Td>
+      <Td><span className="font-mono text-xs">{lead.localAverageRent ? `${fmtCurrency(lead.localAverageRent)}/mo` : "—"}</span></Td>
+      <Td><span className="font-mono text-xs">{yieldPct ? fmtPercent(yieldPct) : "—"}</span></Td>
+      <Td><span className="font-mono text-xs">{fmtCurrency(lead.avgComparablePrice)}</span></Td>
+      <Td className="text-xs text-gray-400">
+        {hasComps && avgPrice && price
+          ? <span className="font-mono">{fmtPercent(((avgPrice - price) / avgPrice) * 100)}</span>
+          : "—"}
+      </Td>
+      <Td><BmvCell value={lead.bmvScore} /></Td>
+      <ActionsCell
+        lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete}
+        checkAction={onCheck ? { icon: GitCompare, title: "Fetch Comparables", onClick: onCheck, loading: isChecking } : undefined}
+      />
+    </tr>
+  )
+}
+
+function OfferAnalysisRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck, isChecking }: RowRendererProps) {
+  // Build offer chain: initial offer → retries → current offer
   const retries = lead.offerRetries ?? []
-  const initialOffer = retries.length > 0 ? retries[0].originalOfferAmount : lead.offerAmount
-  const nextOffer = retries.length > 1 ? (retries[1].adjustedOfferAmount ?? retries[1].originalOfferAmount) : null
-  const finalOffer = retries.length > 0 ? (retries[retries.length - 1].adjustedOfferAmount ?? lead.offerAmount) : lead.offerAmount
-  const numOffers = (lead.retryCount ?? 0) + (lead.offerAmount ? 1 : 0)
+  const initialOffer = lead.offerAmount && retries.length === 0
+    ? lead.offerAmount
+    : retries.length > 0 ? retries[0].originalOfferAmount : null
+  const nextOffer = retries.length > 1
+    ? (retries[1].adjustedOfferAmount ?? retries[1].originalOfferAmount)
+    : retries.length === 1 ? (retries[0].adjustedOfferAmount ?? null) : null
+  const finalOffer = retries.length > 0
+    ? (retries[retries.length - 1].adjustedOfferAmount ?? lead.offerAmount)
+    : lead.offerAmount
+  const numOffers = lead.offerAmount
+    ? (lead.retryCount ?? 0) + 1
+    : 0
   const emailSent = lead.offerSentAt !== null || lead.lockoutAgreementSent
 
   return (
@@ -674,14 +734,21 @@ function OfferAnalysisRow({ lead, onRowClick, onView, onArchive, onDelete }: Row
       <Td><span className="font-mono text-xs">{fmtCurrency(lead.askingPrice)}</span></Td>
       <Td><span className="font-mono text-xs">{fmtCurrency(initialOffer)}</span></Td>
       <Td><span className="font-mono text-xs">{fmtCurrency(nextOffer)}</span></Td>
-      <Td><span className="font-mono text-xs">{fmtCurrency(finalOffer)}</span></Td>
-      <Td><span className="font-mono text-xs">{numOffers || "—"}</span></Td>
+      <Td><span className="font-mono text-xs font-semibold">{fmtCurrency(finalOffer)}</span></Td>
+      <Td>
+        <span className={cn("font-mono text-xs", numOffers > 0 ? "text-gray-900" : "text-gray-400")}>
+          {numOffers || "—"}
+        </span>
+      </Td>
       <Td>
         {emailSent
           ? <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Sent</span>
           : <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">Pending</span>}
       </Td>
-      <ActionsCell lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete} />
+      <ActionsCell
+        lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete}
+        checkAction={onCheck ? { icon: Send, title: "Send Vendor Offer", onClick: onCheck, loading: isChecking } : undefined}
+      />
     </tr>
   )
 }
@@ -696,6 +763,8 @@ interface RowRendererProps {
   onView: () => void
   onArchive: () => void
   onDelete: () => void
+  onCheck?: () => void
+  isChecking?: boolean
 }
 
 function TableHeaders({ tab }: { tab: TabId }) {
@@ -770,6 +839,7 @@ export function VendorLeadsTable() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabId>("map-view")
   const [mapLead, setMapLead] = useState<VendorLead | null>(null)
+  const [checkingIds, setCheckingIds] = useState<Set<string>>(new Set())
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
@@ -788,6 +858,28 @@ export function VendorLeadsTable() {
 
   useEffect(() => {
     fetchLeads()
+  }, [fetchLeads])
+
+  // ── Tab-specific check action ─────────────────────────────────────────────
+  const handleCheck = useCallback(async (leadId: string, endpoint: string, successMsg: string) => {
+    setCheckingIds((prev) => new Set(prev).add(leadId))
+    try {
+      const res = await fetch(endpoint, { method: "POST" })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || `Request failed (${res.status})`)
+      }
+      toast.success(successMsg)
+      await fetchLeads()
+    } catch (err: any) {
+      toast.error(err.message || "Action failed")
+    } finally {
+      setCheckingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(leadId)
+        return next
+      })
+    }
   }, [fetchLeads])
 
   // ── Poll RUNNING leads every 3 seconds ────────────────────────────────────
@@ -923,6 +1015,15 @@ export function VendorLeadsTable() {
               )}
 
               {visibleLeads.map((lead) => {
+                // Build the tab-specific check action
+                const checkEndpoints: Partial<Record<TabId, { endpoint: string; msg: string }>> = {
+                  "portal-check":   { endpoint: `/api/vendor-pipeline/leads/${lead.id}/run-check`,         msg: "Portal check started" },
+                  "validation":     { endpoint: `/api/vendor-leads/${lead.id}/calculate-bmv`,              msg: "BMV calculation complete" },
+                  "comparable":     { endpoint: `/api/vendor-leads/${lead.id}/fetch-comparables`,          msg: "Comparables fetched" },
+                  "offer-analysis": { endpoint: `/api/vendor-pipeline/leads/${lead.id}/send-vendor-offer`, msg: "Offer sent to vendor" },
+                }
+                const checkCfg = checkEndpoints[activeTab]
+
                 const rowProps: RowRendererProps = {
                   lead,
                   onRowClick: () => {
@@ -931,6 +1032,10 @@ export function VendorLeadsTable() {
                   onView: () => router.push(`/dashboard/vendors/${lead.id}`),
                   onArchive: () => handleArchive(lead.id),
                   onDelete: () => handleDelete(lead.id),
+                  onCheck: checkCfg
+                    ? () => handleCheck(lead.id, checkCfg.endpoint, checkCfg.msg)
+                    : undefined,
+                  isChecking: checkingIds.has(lead.id),
                 }
 
                 switch (activeTab) {
