@@ -11,7 +11,7 @@ import { prisma } from "@/lib/db"
 import { z } from "zod"
 import { PipelineStage } from "@prisma/client"
 import { estimateRentalIncome, estimateSquareFeet, calculateRentPerSqFt } from "@/lib/rental-estimator"
-import { runVendorLeadAutoTriggers } from "@/lib/services/vendorLeadAutoTrigger"
+import { runVendorLeadAutoTriggers } from "@/lib/services/vendorLeadAutoTriggers"
 
 const createVendorLeadSchema = z.object({
   facebookLeadId: z.string().optional(),
@@ -63,6 +63,25 @@ export async function GET(request: NextRequest) {
           smsMessages: {
             orderBy: { createdAt: "desc" },
             take: 5,
+          },
+          portalChecks: {
+            orderBy: { triggeredAt: "desc" },
+            take: 1,
+            select: {
+              overallRisk: true,
+              summaryFlags: true,
+              portalCheckRaw: true,
+              checkStatus: true,
+            },
+          },
+          offerRetries: {
+            orderBy: { retryNumber: "asc" },
+            select: {
+              retryNumber: true,
+              originalOfferAmount: true,
+              adjustedOfferAmount: true,
+              sentAt: true,
+            },
           },
           _count: {
             select: {
@@ -134,6 +153,8 @@ export async function GET(request: NextRequest) {
       reservedByInvestor: lead.reservedByInvestorId
         ? (investorById.get(lead.reservedByInvestorId) ?? null)
         : null,
+      // Flatten latest portal check for easy table consumption
+      latestPortalCheck: lead.portalChecks?.[0] ?? null,
     }))
 
     return NextResponse.json({

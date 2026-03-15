@@ -23,6 +23,8 @@ export async function GET(
       where: { id: params.id },
       select: {
         processingStatus: true,
+        propertyPostcodeFixed: true,
+        postcodeOriginal: true,
         bmvValidatedAt: true,
         portalCheckedAt: true,
         latestCheckRisk: true,
@@ -34,7 +36,15 @@ export async function GET(
       return NextResponse.json({ error: "Lead not found" }, { status: 404 })
     }
 
-    return NextResponse.json(lead)
+    return NextResponse.json({
+      processingStatus: lead.processingStatus,
+      postcodeFixed: lead.propertyPostcodeFixed,
+      postcodeOriginal: lead.postcodeOriginal,
+      bmvValidatedAt: lead.bmvValidatedAt,
+      portalCheckedAt: lead.portalCheckedAt,
+      latestCheckRisk: lead.latestCheckRisk,
+      latestCheckedAt: lead.latestCheckedAt,
+    })
   } catch (error: any) {
     console.error("[ProcessingStatus] Error:", error)
     return NextResponse.json(
