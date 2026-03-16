@@ -39,6 +39,13 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { PortalCheckDetailPanel } from "./portal-check-detail-panel"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -72,6 +79,7 @@ interface LatestPortalCheck {
   overallRisk: string
   summaryFlags: unknown[]
   portalCheckRaw: Record<string, unknown> | null
+  ownershipCheckRaw: Record<string, unknown> | null
   checkStatus: string
 }
 
@@ -149,22 +157,35 @@ function fmtDate(iso: string | null | undefined): string {
   return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })
 }
 
-/** Parse per-portal status from the portalCheckRaw JSON */
-function getPortalStatus(lead: VendorLead, portal: PortalSource): "listed" | "clear" | "blocked" | null {
+type LiveResultItem = {
+  source: PortalSource
+  status: string
+  matchedListings?: unknown[]
+}
+
+function getLiveResult(lead: VendorLead, portal: PortalSource): LiveResultItem | null {
   const raw = lead.latestPortalCheck?.portalCheckRaw
   if (!raw) return null
-  const liveResults = (raw as any).livePortalResults as Array<{
-    source: PortalSource
-    status: string
-    matchedListings?: unknown[]
-  }> | undefined
-  if (!liveResults) return null
-  const r = liveResults.find((x) => x.source === portal)
+  const liveResults = (raw as any).liveResults as LiveResultItem[] | undefined
+  return liveResults?.find((x) => x.source === portal) ?? null
+}
+
+/** Parse per-portal status from the portalCheckRaw JSON */
+function getPortalStatus(lead: VendorLead, portal: PortalSource): "listed" | "clear" | "blocked" | null {
+  const r = getLiveResult(lead, portal)
   if (!r) return null
-  if (r.status === "success" && Array.isArray(r.matchedListings) && r.matchedListings.length > 0) return "listed"
-  if (r.status === "no_listings") return "clear"
   if (r.status === "blocked") return "blocked"
+  if (r.status === "error") return null
+  if (r.status === "no_listings") return "clear"
+  if (r.status === "success") {
+    return Array.isArray(r.matchedListings) && r.matchedListings.length > 0 ? "listed" : "clear"
+  }
   return null
+}
+
+function getPortalMatchCount(lead: VendorLead, portal: PortalSource): number {
+  const r = getLiveResult(lead, portal)
+  return r?.matchedListings?.length ?? 0
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -203,32 +224,100 @@ const STAGE_STYLE: Record<PipelineStage, string> = {
   DEAD_LEAD: "bg-gray-100 text-gray-500",
 }
 
+const STAGE_DESC: Record<PipelineStage, string> = {
+  NEW_LEAD:             "Just added — not yet processed",
+  AI_CONVERSATION:      "AI is actively engaging the vendor",
+  DEAL_VALIDATION:      "Running BMV & market value checks",
+  OFFER_MADE:           "Offer calculated and ready to send",
+  OFFER_ACCEPTED:       "Vendor accepted the offer",
+  OFFER_REJECTED:       "Vendor rejected the offer",
+  VIDEO_SENT:           "Educational video sent to vendor",
+  RETRY_1:              "First follow-up offer sent",
+  RETRY_2:              "Second follow-up offer sent",
+  RETRY_3:              "Third follow-up offer sent",
+  PAPERWORK_SENT:       "Legal paperwork sent to vendor",
+  READY_FOR_INVESTORS:  "Validated deal ready to show investors",
+  DEAD_LEAD:            "Lead closed — not proceeding",
+}
+
 function StageBadge({ stage }: { stage: PipelineStage }) {
   return (
-    <span className={cn("inline-block rounded-full px-2 py-0.5 text-xs font-medium", STAGE_STYLE[stage])}>
-      {STAGE_LABEL[stage]}
-    </span>
+    <Tip text={STAGE_DESC[stage]}>
+      <span className={cn("inline-block rounded-full px-2 py-0.5 text-xs font-medium", STAGE_STYLE[stage])}>
+        {STAGE_LABEL[stage]}
+      </span>
+    </Tip>
   )
 }
 
-function PortalPill({ status }: { status: "listed" | "clear" | "blocked" | null }) {
+const PORTAL_PILL_DESC: Record<"listed" | "clear" | "blocked" | "none", string> = {
+  listed:  "Property found on this portal — vendor may be testing the market",
+  clear:   "No active listings found — property not currently for sale publicly",
+  blocked: "Portal blocked our check — manual verification may be needed",
+  none:    "Portal check not yet run for this lead",
+}
+
+function PortalPill({ status, matchCount }: { status: "listed" | "clear" | "blocked" | null; matchCount?: number }) {
+  const desc = PORTAL_PILL_DESC[status ?? "none"]
   if (status === "listed")
-    return <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">Listed</span>
+    return (
+      <Tip text={desc}>
+        <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 cursor-default">
+          Listed{matchCount && matchCount > 0 ? ` (${matchCount})` : ""}
+        </span>
+      </Tip>
+    )
   if (status === "clear")
-    return <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Clear</span>
+    return (
+      <Tip text={desc}>
+        <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 cursor-default">Clear</span>
+      </Tip>
+    )
   if (status === "blocked")
-    return <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Blocked</span>
-  return <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-400">—</span>
+    return (
+      <Tip text={desc}>
+        <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 cursor-default">Blocked</span>
+      </Tip>
+    )
+  return (
+    <Tip text={desc}>
+      <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-400 cursor-default">—</span>
+    </Tip>
+  )
+}
+
+const RISK_DESC: Record<string, string> = {
+  clear:     "No portals found this property listed — safe to proceed",
+  caution:   "Property found on some portals — review carefully before offering",
+  red_flag:  "Property actively listed on portals — vendor may have other agents",
+  pending:   "Portal check not yet run for this lead",
 }
 
 function RiskBadge({ risk }: { risk: string | null }) {
+  const desc = RISK_DESC[risk ?? "pending"] ?? "Unknown status"
   if (risk === "clear")
-    return <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Not Listed</span>
+    return (
+      <Tip text={desc}>
+        <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 cursor-default">Not Listed</span>
+      </Tip>
+    )
   if (risk === "caution")
-    return <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Partial</span>
+    return (
+      <Tip text={desc}>
+        <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 cursor-default">Partial</span>
+      </Tip>
+    )
   if (risk === "red_flag")
-    return <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">Listed</span>
-  return <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-400">Pending</span>
+    return (
+      <Tip text={desc}>
+        <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 cursor-default">Listed</span>
+      </Tip>
+    )
+  return (
+    <Tip text={desc}>
+      <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-400 cursor-default">Pending</span>
+    </Tip>
+  )
 }
 
 function BmvCell({ value }: { value: string | number | null | undefined }) {
@@ -242,17 +331,23 @@ function BmvCell({ value }: { value: string | number | null | undefined }) {
   return <span className={cn("font-mono text-xs", cls)}>{n.toFixed(1)}%</span>
 }
 
+const PROCESSING_DESC: Record<ProcessingStatus, string> = {
+  RUNNING:  "AI checks in progress — table auto-refreshes every 3 s",
+  COMPLETE: "All processing steps completed successfully",
+  FAILED:   "Processing failed — retry or check manually",
+  PENDING:  "Awaiting processing",
+}
+
 function ProcessingIcon({ status }: { status: ProcessingStatus }) {
-  switch (status) {
-    case "RUNNING":
-      return <Loader2 className="inline h-3.5 w-3.5 animate-spin text-blue-500" />
-    case "COMPLETE":
-      return <CheckCircle2 className="inline h-3.5 w-3.5 text-green-500" />
-    case "FAILED":
-      return <XCircle className="inline h-3.5 w-3.5 text-red-500" />
-    default:
-      return <Minus className="inline h-3.5 w-3.5 text-gray-300" />
-  }
+  const icon = (() => {
+    switch (status) {
+      case "RUNNING":  return <Loader2 className="inline h-3.5 w-3.5 animate-spin text-blue-500" />
+      case "COMPLETE": return <CheckCircle2 className="inline h-3.5 w-3.5 text-green-500" />
+      case "FAILED":   return <XCircle className="inline h-3.5 w-3.5 text-red-500" />
+      default:         return <Minus className="inline h-3.5 w-3.5 text-gray-300" />
+    }
+  })()
+  return <Tip text={PROCESSING_DESC[status]}>{icon}</Tip>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -415,7 +510,7 @@ function Td({ children, className }: { children: React.ReactNode; className?: st
 /** Sticky-left vendor name cell (with pin icon + processing indicator) */
 function VendorNameCell({ lead }: { lead: VendorLead }) {
   return (
-    <td className="sticky left-0 z-10 bg-white px-4 py-[11px] group-hover:bg-[#f3f4f6]">
+    <td className="sticky left-0 z-10 w-[180px] bg-white px-4 py-[11px] group-hover:bg-[#f3f4f6]">
       <div className="flex items-center gap-2">
         <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-gray-300" />
         <div className="min-w-0">
@@ -426,6 +521,15 @@ function VendorNameCell({ lead }: { lead: VendorLead }) {
           <p className="truncate text-xs text-gray-400">{lead.vendorPhone}</p>
         </div>
       </div>
+    </td>
+  )
+}
+
+/** Sticky second-left address cell */
+function AddressCell({ address }: { address: string | null }) {
+  return (
+    <td className="sticky left-[180px] z-10 max-w-[200px] border-r border-gray-200 bg-white px-4 py-[11px] group-hover:bg-[#f3f4f6]">
+      <p className="truncate text-sm text-gray-700">{address ?? <span className="text-gray-400">—</span>}</p>
     </td>
   )
 }
@@ -504,6 +608,21 @@ function ActionBtn({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Tooltip helper
+// ─────────────────────────────────────────────────────────────────────────────
+
+function Tip({ text, children }: { text: string; children: React.ReactNode }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent className="max-w-[220px] text-center text-[11px] leading-snug">
+        {text}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Map Modal
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -551,6 +670,47 @@ function MapModal({ lead, onClose }: { lead: VendorLead; onClose: () => void }) 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Portal Check Modal
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PortalCheckModal({ lead, onClose }: { lead: VendorLead; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative mx-4 flex w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+        style={{ maxHeight: "90vh" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex flex-shrink-0 items-start justify-between border-b border-gray-200 px-5 py-4">
+          <div>
+            <h3 className="font-semibold text-gray-900">{lead.vendorName}</h3>
+            <p className="mt-0.5 text-sm text-gray-500">{lead.propertyAddress ?? "No address"}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto p-5">
+          <PortalCheckDetailPanel
+            leadId={lead.id}
+            latestCheckRisk={lead.latestCheckRisk}
+            latestCheckedAt={lead.latestCheckedAt}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Per-tab Row renderers
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -561,9 +721,7 @@ function MapViewRow({ lead, onRowClick, onView, onArchive, onDelete }: RowRender
       onClick={onRowClick}
     >
       <VendorNameCell lead={lead} />
-      <Td className="max-w-[220px]">
-        <p className="truncate">{lead.propertyAddress ?? <span className="text-gray-400">—</span>}</p>
-      </Td>
+      <AddressCell address={lead.propertyAddress} />
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
       <Td>{lead.propertyType ?? "—"}</Td>
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
@@ -577,7 +735,7 @@ function PropertyDetailsRow({ lead, onRowClick, onView, onArchive, onDelete }: R
   return (
     <tr className="group border-b border-[#f3f4f6] transition-colors hover:bg-[#f3f4f6]">
       <VendorNameCell lead={lead} />
-      <Td className="max-w-[200px]"><p className="truncate">{lead.propertyAddress ?? "—"}</p></Td>
+      <AddressCell address={lead.propertyAddress} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
       <Td>{lead.propertyType ?? "—"}</Td>
@@ -597,26 +755,30 @@ function PropertyDetailsRow({ lead, onRowClick, onView, onArchive, onDelete }: R
 }
 
 function PortalCheckRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck, isChecking }: RowRendererProps) {
-  const raw = lead.latestPortalCheck?.portalCheckRaw as any
-  const ownership = raw?.ownershipCheckRaw
+  const ownership = lead.latestPortalCheck?.ownershipCheckRaw as any
+  const ownerType = ownership?.isCorporateOwned
+    ? ownership?.isOverseasOwned ? "Overseas Corp" : "Corporate"
+    : ownership ? "Private" : null
   return (
     <tr className="group border-b border-[#f3f4f6] transition-colors hover:bg-[#f3f4f6]">
       <VendorNameCell lead={lead} />
-      <Td className="max-w-[200px]"><p className="truncate">{lead.propertyAddress ?? "—"}</p></Td>
+      <AddressCell address={lead.propertyAddress} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
       <Td>{lead.propertyType ?? "—"}</Td>
-      <Td><PortalPill status={getPortalStatus(lead, "RIGHTMOVE")} /></Td>
-      <Td><PortalPill status={getPortalStatus(lead, "ZOOPLA")} /></Td>
-      <Td><PortalPill status={getPortalStatus(lead, "ONTHEMARKET")} /></Td>
-      <Td><PortalPill status={getPortalStatus(lead, "PRIMELOCATION")} /></Td>
+      <Td><PortalPill status={getPortalStatus(lead, "RIGHTMOVE")} matchCount={getPortalMatchCount(lead, "RIGHTMOVE")} /></Td>
+      <Td><PortalPill status={getPortalStatus(lead, "ZOOPLA")} matchCount={getPortalMatchCount(lead, "ZOOPLA")} /></Td>
+      <Td><PortalPill status={getPortalStatus(lead, "ONTHEMARKET")} matchCount={getPortalMatchCount(lead, "ONTHEMARKET")} /></Td>
+      <Td><PortalPill status={getPortalStatus(lead, "PRIMELOCATION")} matchCount={getPortalMatchCount(lead, "PRIMELOCATION")} /></Td>
       <Td>
-        {ownership?.ownerName
-          ? <span className="text-xs text-gray-700">{ownership.ownerName}</span>
-          : <span className="text-xs text-gray-400">—</span>}
+        {ownership?.companyName
+          ? <span className="text-xs text-gray-700">{ownership.companyName}</span>
+          : ownership
+            ? <span className="text-xs text-gray-500">Private</span>
+            : <span className="text-xs text-gray-400">—</span>}
       </Td>
-      <Td>{lead.tenureType ?? "—"}</Td>
-      <Td>{ownership?.ownerType ?? "—"}</Td>
+      <Td>{ownership?.tenure ?? lead.tenureType ?? "—"}</Td>
+      <Td>{ownerType ?? "—"}</Td>
       <Td className="max-w-[120px]">
         <p className="truncate text-xs">{ownership?.companyName ?? "—"}</p>
       </Td>
@@ -640,15 +802,19 @@ function ValidationRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
   return (
     <tr className="group border-b border-[#f3f4f6] transition-colors hover:bg-[#f3f4f6]">
       <VendorNameCell lead={lead} />
-      <Td className="max-w-[200px]"><p className="truncate">{lead.propertyAddress ?? "—"}</p></Td>
+      <AddressCell address={lead.propertyAddress} />
       <Td>
         <div className="flex items-center gap-1.5">
           <StageBadge stage={lead.pipelineStage} />
           {lead.validationPassed === true && (
-            <span className="inline-block rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700">Passed</span>
+            <Tip text="Deal passed BMV and profit validation criteria">
+              <span className="inline-block rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700 cursor-default">Passed</span>
+            </Tip>
           )}
           {lead.validationPassed === false && (
-            <span className="inline-block rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700">Failed</span>
+            <Tip text="Deal did not meet minimum BMV or profit thresholds">
+              <span className="inline-block rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 cursor-default">Failed</span>
+            </Tip>
           )}
         </div>
       </Td>
@@ -681,7 +847,7 @@ function ComparableRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
   return (
     <tr className="group border-b border-[#f3f4f6] transition-colors hover:bg-[#f3f4f6]">
       <VendorNameCell lead={lead} />
-      <Td className="max-w-[200px]"><p className="truncate">{lead.propertyAddress ?? "—"}</p></Td>
+      <AddressCell address={lead.propertyAddress} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
       <Td>{lead.propertyType ?? "—"}</Td>
@@ -727,7 +893,7 @@ function OfferAnalysisRow({ lead, onRowClick, onView, onArchive, onDelete, onChe
   return (
     <tr className="group border-b border-[#f3f4f6] transition-colors hover:bg-[#f3f4f6]">
       <VendorNameCell lead={lead} />
-      <Td className="max-w-[200px]"><p className="truncate">{lead.propertyAddress ?? "—"}</p></Td>
+      <AddressCell address={lead.propertyAddress} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
       <Td>{lead.propertyType ?? "—"}</Td>
@@ -742,12 +908,20 @@ function OfferAnalysisRow({ lead, onRowClick, onView, onArchive, onDelete, onChe
       </Td>
       <Td>
         {emailSent
-          ? <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Sent</span>
-          : <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">Pending</span>}
+          ? (
+            <Tip text="Offer email or lockout agreement sent to vendor">
+              <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 cursor-default">Sent</span>
+            </Tip>
+          )
+          : (
+            <Tip text="No offer communication sent yet">
+              <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500 cursor-default">Pending</span>
+            </Tip>
+          )}
       </Td>
       <ActionsCell
         lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete}
-        checkAction={onCheck ? { icon: Send, title: "Send Vendor Offer", onClick: onCheck, loading: isChecking } : undefined}
+        checkAction={onCheck ? { icon: Calculator, title: "Calculate Offer", onClick: onCheck, loading: isChecking } : undefined}
       />
     </tr>
   )
@@ -768,21 +942,24 @@ interface RowRendererProps {
 }
 
 function TableHeaders({ tab }: { tab: TabId }) {
-  const stickyLeft = <Th className="sticky left-0 z-10 bg-[#f9fafb]">Vendor Name</Th>
+  const stickyLeft = <Th className="sticky left-0 z-10 w-[180px] bg-[#f9fafb]">Vendor Name</Th>
+  const addressHeader = <Th className="sticky left-[180px] z-10 border-r border-gray-200 bg-[#f9fafb]">Address</Th>
   const stickyRight = <Th className="sticky right-0 z-10 bg-[#f9fafb]">Actions</Th>
 
   switch (tab) {
     case "map-view":
       return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
         {stickyLeft}
-        <Th>Address</Th><Th>Postcode</Th><Th>Type</Th><Th>Status</Th><Th>BMV %</Th>
+        {addressHeader}
+        <Th>Postcode</Th><Th>Type</Th><Th>Status</Th><Th>BMV %</Th>
         {stickyRight}
       </tr>
 
     case "property-details":
       return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
         {stickyLeft}
-        <Th>Address</Th><Th>Status</Th><Th>Postcode</Th><Th>Type</Th><Th>Tenure</Th>
+        {addressHeader}
+        <Th>Status</Th><Th>Postcode</Th><Th>Type</Th><Th>Tenure</Th>
         <Th>Asking Price</Th><Th>Market Value</Th><Th>Rental</Th><Th>BMV %</Th>
         <Th>Bed/Bath</Th><Th>Finish</Th>
         {stickyRight}
@@ -791,7 +968,8 @@ function TableHeaders({ tab }: { tab: TabId }) {
     case "portal-check":
       return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
         {stickyLeft}
-        <Th>Address</Th><Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
+        {addressHeader}
+        <Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
         <Th>Rightmove</Th><Th>Zoopla</Th><Th>OnTheMarket</Th><Th>Primelocation</Th>
         <Th>Ownership</Th><Th>Tenure</Th><Th>Owner Type</Th><Th>Company</Th>
         {stickyRight}
@@ -800,7 +978,8 @@ function TableHeaders({ tab }: { tab: TabId }) {
     case "validation":
       return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
         {stickyLeft}
-        <Th>Address</Th><Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
+        {addressHeader}
+        <Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
         <Th>AVG Rental</Th><Th>Asking Price</Th><Th>AVG Sale Price</Th><Th>AVG Yield</Th>
         <Th>Comparables</Th><Th>Gross Cashflow</Th><Th>EPC Due</Th><Th>EST Rental</Th>
         {stickyRight}
@@ -809,7 +988,8 @@ function TableHeaders({ tab }: { tab: TabId }) {
     case "comparable":
       return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
         {stickyLeft}
-        <Th>Address</Th><Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
+        {addressHeader}
+        <Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
         <Th>No. Comps</Th><Th>AVG Rental</Th><Th>AVG Yield</Th><Th>AVG Sale Price</Th>
         <Th>Range</Th><Th>BMV %</Th>
         {stickyRight}
@@ -818,7 +998,8 @@ function TableHeaders({ tab }: { tab: TabId }) {
     case "offer-analysis":
       return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
         {stickyLeft}
-        <Th>Address</Th><Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
+        {addressHeader}
+        <Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
         <Th>Asking Price</Th><Th>Initial Offer</Th><Th>Next Offer</Th><Th>Final Offer</Th>
         <Th>No. Offers</Th><Th>Email Sent</Th>
         {stickyRight}
@@ -840,6 +1021,7 @@ export function VendorLeadsTable() {
   const [activeTab, setActiveTab] = useState<TabId>("map-view")
   const [mapLead, setMapLead] = useState<VendorLead | null>(null)
   const [checkingIds, setCheckingIds] = useState<Set<string>>(new Set())
+  const [portalCheckModalLead, setPortalCheckModalLead] = useState<VendorLead | null>(null)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
@@ -957,6 +1139,7 @@ export function VendorLeadsTable() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
+    <TooltipProvider>
     <div className="flex flex-col gap-0">
       {/* KPI Bar */}
       <div className="mb-4">
@@ -1020,7 +1203,7 @@ export function VendorLeadsTable() {
                   "portal-check":   { endpoint: `/api/vendor-pipeline/leads/${lead.id}/run-check`,         msg: "Portal check started" },
                   "validation":     { endpoint: `/api/vendor-leads/${lead.id}/calculate-bmv`,              msg: "BMV calculation complete" },
                   "comparable":     { endpoint: `/api/vendor-leads/${lead.id}/fetch-comparables`,          msg: "Comparables fetched" },
-                  "offer-analysis": { endpoint: `/api/vendor-pipeline/leads/${lead.id}/send-vendor-offer`, msg: "Offer sent to vendor" },
+                  "offer-analysis": { endpoint: `/api/vendor-leads/${lead.id}/calculate-bmv`, msg: "Offer calculated" },
                 }
                 const checkCfg = checkEndpoints[activeTab]
 
@@ -1029,7 +1212,13 @@ export function VendorLeadsTable() {
                   onRowClick: () => {
                     if (activeTab === "map-view") setMapLead(lead)
                   },
-                  onView: () => router.push(`/dashboard/vendors/${lead.id}`),
+                  onView: () => {
+                    if (activeTab === "portal-check") {
+                      setPortalCheckModalLead(lead)
+                    } else {
+                      router.push(`/dashboard/vendors/${lead.id}`)
+                    }
+                  },
                   onArchive: () => handleArchive(lead.id),
                   onDelete: () => handleDelete(lead.id),
                   onCheck: checkCfg
@@ -1063,6 +1252,12 @@ export function VendorLeadsTable() {
 
       {/* Map Modal */}
       {mapLead && <MapModal lead={mapLead} onClose={() => setMapLead(null)} />}
+
+      {/* Portal Check Modal */}
+      {portalCheckModalLead && (
+        <PortalCheckModal lead={portalCheckModalLead} onClose={() => setPortalCheckModalLead(null)} />
+      )}
     </div>
+    </TooltipProvider>
   )
 }
