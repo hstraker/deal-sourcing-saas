@@ -35,7 +35,6 @@ import {
   ShieldCheck,
   Calculator,
   GitCompare,
-  Send,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -186,6 +185,21 @@ function getPortalStatus(lead: VendorLead, portal: PortalSource): "listed" | "cl
 function getPortalMatchCount(lead: VendorLead, portal: PortalSource): number {
   const r = getLiveResult(lead, portal)
   return r?.matchedListings?.length ?? 0
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tooltip helper
+// ─────────────────────────────────────────────────────────────────────────────
+
+function Tip({ text, children }: { text: string; children: React.ReactNode }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent className="max-w-[220px] text-center text-[11px] leading-snug">
+        {text}
+      </TooltipContent>
+    </Tooltip>
+  )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -604,21 +618,6 @@ function ActionBtn({
     >
       <Icon className={cn("h-3.5 w-3.5", spinning && "animate-spin")} />
     </button>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Tooltip helper
-// ─────────────────────────────────────────────────────────────────────────────
-
-function Tip({ text, children }: { text: string; children: React.ReactNode }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent className="max-w-[220px] text-center text-[11px] leading-snug">
-        {text}
-      </TooltipContent>
-    </Tooltip>
   )
 }
 
@@ -1140,7 +1139,7 @@ export function VendorLeadsTable() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <TooltipProvider>
-    <div className="flex flex-col gap-0">
+      <div className="flex flex-col gap-0">
       {/* KPI Bar */}
       <div className="mb-4">
         <KpiBar kpis={kpis} />
@@ -1257,7 +1256,7 @@ export function VendorLeadsTable() {
       {portalCheckModalLead && (
         <PortalCheckModal lead={portalCheckModalLead} onClose={() => setPortalCheckModalLead(null)} />
       )}
-    </div>
+      </div>
     </TooltipProvider>
   )
 }
