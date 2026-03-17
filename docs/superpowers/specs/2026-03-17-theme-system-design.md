@@ -182,7 +182,19 @@ Add new CSS variables for typography and spacing tokens that Sub-project 2 will 
 --table-row-height: 52px;
 ```
 
-Also add `font-size: var(--font-size-base)` to the `body` selector so `--font-size-base` cascades to the whole app.
+Also add to `globals.css`:
+
+```css
+body {
+  font-size: var(--font-size-base);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: var(--font-weight-heading);
+}
+```
+
+This wires both `--font-size-base` and `--font-weight-heading` to actual elements so theme picker changes have visible effect.
 
 The existing `--font-display` variable does not need to be added (font family is controlled via the `font-display` Tailwind utility class already defined).
 
@@ -379,5 +391,7 @@ app/dashboard/settings/
 
 lib/theme/
   defaults.ts                            CREATE — full default token values (for reset + preview)
-  types.ts                               CREATE — ThemeTokens interface
+  types.ts                               CREATE — ThemeTokens type:
+                                           `export type ThemeTokens = Record<string, string>`
+                                           Used by API routes, defaults.ts, and the appearance page.
 ```
