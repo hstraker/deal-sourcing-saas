@@ -13,6 +13,8 @@ import {
   fetchRentalData,
   filterComparables,
   calculateAverageComparablePrice,
+  fetchEpcData,
+  matchEpcRecord,
   SoldProperty,
 } from "@/lib/propertydata"
 import { findOwnershipByPostcode, resolvePostcodeFromAddress } from "@/lib/land-registry"
@@ -231,6 +233,11 @@ export async function POST(
       }
     }
 
+    // ── EPC data ─────────────────────────────────────────────────────────────────
+    let epcRating: string | null = null
+    let epcScore: number | null = null
+    let epcInspectionDate: Date | null = null
+
     // ── Land Registry ownership lookup ──────────────────────────────────────
     // Check if land registry data has been imported before querying
     let landRegistryOwnership: Awaited<ReturnType<typeof findOwnershipByPostcode>> = null
@@ -258,6 +265,25 @@ export async function POST(
       }
     }
     // ────────────────────────────────────────────────────────────────────────
+
+    // ── EPC fetch ─────────────────────────────────────────────────────────────────
+    if (effectivePostcode && !isOutcodeOnly) {
+      try {
+        const epcRecords = await fetchEpcData(effectivePostcode)
+        if (epcRecords && epcRecords.length > 0) {
+          const best = matchEpcRecord(epcRecords, lead.propertyAddress ?? null)
+          if (best) {
+            epcRating = best.rating
+            epcScore = best.score
+            epcInspectionDate = best.inspectionDate
+            console.log(`[BMV Calculator] EPC: ${best.rating} (${best.score}/100) inspected ${best.inspectionDate.toLocaleDateString("en-GB")}`)
+          }
+        }
+      } catch (err) {
+        console.warn("[BMV Calculator] EPC fetch failed:", err)
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────────
 
     // Calculate final market value using weighted sources
     if (comparableAverage && comparableAverage > 0) {
@@ -827,6 +853,13 @@ export async function POST(
         ...(rentalDataSource === "propertydata_api" && {
           estimatedMonthlyRent: monthlyRent,
           estimatedAnnualRent: annualRent,
+          localAverageRent: monthlyRent,   // area average from PropertyData
+        }),
+        // EPC data (if fetched)
+        ...(epcRating !== null && {
+          epcRating,
+          epcScore,
+          epcInspectionDate,
         }),
       },
     })
