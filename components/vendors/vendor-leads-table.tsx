@@ -121,6 +121,9 @@ interface VendorLead {
   isTest: boolean
   lockoutAgreementSent: boolean
   validationPassed: boolean | null
+  epcRating: string | null
+  epcScore: number | null
+  epcInspectionDate: string | null   // ISO string from API
   latestPortalCheck: LatestPortalCheck | null
   offerRetries: OfferRetry[]
 }
@@ -332,6 +335,81 @@ function RiskBadge({ risk }: { risk: string | null }) {
       <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-400 cursor-default">Pending</span>
     </Tip>
   )
+}
+
+// EPC rating colour map — UK convention: A/B=green, C=lime, D=yellow, E=amber, F/G=red
+const EPC_COLOUR: Record<string, string> = {
+  A: "bg-green-700 text-white",
+  B: "bg-green-500 text-white",
+  C: "bg-lime-500 text-white",
+  D: "bg-yellow-400 text-gray-900",
+  E: "bg-amber-500 text-white",
+  F: "bg-orange-600 text-white",
+  G: "bg-red-700 text-white",
+}
+
+function EpcRatingBadge({ rating, score, inspectionDate }: {
+  rating: string | null
+  score: number | null
+  inspectionDate: string | null
+}) {
+  if (!rating) {
+    return (
+      <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-400 cursor-default">
+        —
+      </span>
+    )
+  }
+
+  const colourCls = EPC_COLOUR[rating.toUpperCase()] ?? "bg-gray-200 text-gray-700"
+  const expiryDate = inspectionDate
+    ? new Date(new Date(inspectionDate).getTime() + 10 * 365.25 * 24 * 60 * 60 * 1000)
+    : null
+  const tooltipText = [
+    score !== null ? `Score: ${score}/100` : null,
+    inspectionDate ? `Inspected: ${fmtDate(inspectionDate)}` : null,
+    expiryDate ? `Expires: ${fmtDate(expiryDate.toISOString())}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ")
+
+  const badge = (
+    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold cursor-default ${colourCls}`}>
+      {rating.toUpperCase()}
+    </span>
+  )
+
+  return tooltipText ? <Tip text={tooltipText}>{badge}</Tip> : badge
+}
+
+/** Returns the expiry date string (inspection + 10 years) with a tooltip, or "—" */
+function EpcDueCell({ rating, score, inspectionDate }: {
+  rating: string | null
+  score: number | null
+  inspectionDate: string | null
+}) {
+  if (!inspectionDate) {
+    return <span className="font-mono text-xs text-gray-400">—</span>
+  }
+
+  const expiry = new Date(new Date(inspectionDate).getTime() + 10 * 365.25 * 24 * 60 * 60 * 1000)
+  const isExpired = expiry < new Date()
+  const tooltipText = [
+    score !== null ? `Score: ${score}/100` : null,
+    rating ? `Rating: ${rating.toUpperCase()}` : null,
+    `Inspected: ${fmtDate(inspectionDate)}`,
+  ]
+    .filter(Boolean)
+    .join(" · ")
+
+  const label = (
+    <span className={`font-mono text-xs ${isExpired ? "text-red-600 font-semibold" : "text-gray-700"}`}>
+      {fmtDate(expiry.toISOString())}
+      {isExpired && " ⚠"}
+    </span>
+  )
+
+  return <Tip text={tooltipText}>{label}</Tip>
 }
 
 function BmvCell({ value }: { value: string | number | null | undefined }) {
@@ -825,7 +903,8 @@ function ValidationRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
       <Td><span className="font-mono text-xs">{yieldPct ? fmtPercent(yieldPct) : "—"}</span></Td>
       <Td><span className="font-mono text-xs">{lead.comparablesCount ?? "—"}</span></Td>
       <Td><span className="font-mono text-xs">{cashflow ? `${fmtCurrency(cashflow)}/mo` : "—"}</span></Td>
-      <Td className="text-xs text-gray-400">—</Td>
+      <Td><EpcRatingBadge rating={lead.epcRating} score={lead.epcScore} inspectionDate={lead.epcInspectionDate} /></Td>
+      <Td><EpcDueCell rating={lead.epcRating} score={lead.epcScore} inspectionDate={lead.epcInspectionDate} /></Td>
       <Td><span className="font-mono text-xs">{lead.estimatedMonthlyRent ? `${fmtCurrency(lead.estimatedMonthlyRent)}/mo` : "—"}</span></Td>
       <ActionsCell
         lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete}
@@ -980,7 +1059,7 @@ function TableHeaders({ tab }: { tab: TabId }) {
         {addressHeader}
         <Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
         <Th>AVG Rental</Th><Th>Asking Price</Th><Th>AVG Sale Price</Th><Th>AVG Yield</Th>
-        <Th>Comparables</Th><Th>Gross Cashflow</Th><Th>EPC Due</Th><Th>EST Rental</Th>
+        <Th>Comparables</Th><Th>Gross Cashflow</Th><Th>EPC</Th><Th>EPC Due</Th><Th>EST Rental</Th>
         {stickyRight}
       </tr>
 
