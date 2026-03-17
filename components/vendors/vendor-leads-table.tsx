@@ -1293,8 +1293,14 @@ export function VendorLeadsTable() {
                   onView: () => {
                     if (activeTab === "portal-check") {
                       setPortalCheckModalLead(lead)
+                    } else if (activeTab === "validation") {
+                      router.push(`/dashboard/vendors/${lead.id}/validation`)
+                    } else if (activeTab === "comparable") {
+                      router.push(`/dashboard/vendors/${lead.id}/comparables`)
+                    } else if (activeTab === "offer-analysis") {
+                      router.push(`/dashboard/vendors/${lead.id}/offer-analysis`)
                     } else {
-                      router.push(`/dashboard/vendors/${lead.id}`)
+                      router.push(`/dashboard/vendors/${lead.id}/contact`)
                     }
                   },
                   onArchive: () => handleArchive(lead.id),
