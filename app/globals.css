@@ -72,6 +72,7 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    font-size: var(--font-size-base);
   }
 
   /* ── Design system CSS custom properties ──────────────────────────────── */
@@ -133,6 +134,17 @@
     --page-padding: 32px;
     --card-padding: 24px;
     --section-gap: 20px;
+
+    /* Typography tokens — controlled by theme picker */
+    --font-size-base: 14px;
+    --font-weight-heading: 700;
+
+    /* Table density */
+    --table-row-height: 52px;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: var(--font-weight-heading);
   }
 
   *:focus-visible {
@@ -188,4 +200,3 @@
     animation: fade-in 200ms ease-out both;
   }
 }
-
