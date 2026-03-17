@@ -1615,8 +1615,8 @@ export async function fetchEpcData(postcode: string): Promise<EpcRecord[] | null
     })
 
     const records: EpcRecord[] = allParsed
-      .filter((r) => r._valid)
-      .map(({ _valid, ...r }) => r)
+      .filter((r: ParsedEpc) => r._valid)
+      .map(({ _valid, ...r }: ParsedEpc) => r)
 
     // Sort newest inspection first
     records.sort((a, b) => b.inspectionDate.getTime() - a.inspectionDate.getTime())
