@@ -57,8 +57,8 @@ function LogoMark() {
   }
 
   return (
-    <div className="w-8 h-8 rounded-lg bg-[#F5A623] flex items-center justify-center flex-shrink-0">
-      <span className="text-[#1A1A1F] font-bold text-sm">{initials}</span>
+    <div className="w-8 h-8 rounded-lg bg-[var(--sidebar-active-bg)] flex items-center justify-center flex-shrink-0">
+      <span className="text-[var(--sidebar-bg)] font-bold text-sm">{initials}</span>
     </div>
   )
 }
@@ -174,7 +174,7 @@ export default function DualSidebar() {
       <aside
         className={`
           fixed left-0 top-0 h-screen z-50
-          bg-[#1A1A1F] border-r border-[#2D2D38]
+          bg-[var(--sidebar-bg)] border-r border-[var(--sidebar-border)]
           flex flex-col py-3
           w-14 hover:w-[200px]
           transition-all duration-200 ease-in-out
@@ -197,7 +197,7 @@ export default function DualSidebar() {
         </div>
 
         {/* Divider */}
-        <div className="mx-3 h-px bg-[#2D2D38] mb-2 flex-shrink-0" />
+        <div className="mx-3 h-px bg-[var(--sidebar-border)] mb-2 flex-shrink-0" />
 
         {/* NAV1 section buttons */}
         <div className="flex flex-col gap-0.5 px-2 flex-1">
@@ -212,8 +212,8 @@ export default function DualSidebar() {
                   transition-all duration-150 text-left min-w-[176px]
                   ${
                     isActive
-                      ? "bg-[#F5A623] text-[#1A1A1F] font-semibold shadow-sm"
-                      : "text-gray-400 hover:bg-[#2A2A32] hover:text-white"
+                      ? "bg-[var(--sidebar-active-bg)] text-[var(--sidebar-bg)] font-semibold shadow-sm"
+                      : "text-gray-400 hover:bg-[var(--sidebar-hover)] hover:text-white"
                   }
                 `}
               >
@@ -233,11 +233,11 @@ export default function DualSidebar() {
         </div>
 
         {/* Sign out + user row */}
-        <div className="border-t border-[#2D2D38] mt-2 pt-2 px-2 space-y-0.5 min-w-[200px]">
+        <div className="border-t border-[var(--sidebar-border)] mt-2 pt-2 px-2 space-y-0.5 min-w-[200px]">
           <button
             type="button"
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="flex items-center gap-3 w-full px-2 py-2 rounded-xl text-gray-400 hover:bg-[#2A2A32] hover:text-white transition-all duration-150"
+            className="flex items-center gap-3 w-full px-2 py-2 rounded-xl text-gray-400 hover:bg-[var(--sidebar-hover)] hover:text-white transition-all duration-150"
           >
             <ArrowRightStartOnRectangleIcon className="w-5 h-5 flex-shrink-0" />
             <span
