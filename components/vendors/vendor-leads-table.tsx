@@ -39,6 +39,8 @@ import {
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { PortalCheckDetailPanel } from "./portal-check-detail-panel"
+import { VendorComparablesTab } from "./vendor-comparables-tab"
+import { OfferAnalysisPanel } from "../deals/offer-analysis-panel"
 import {
   Tooltip,
   TooltipContent,
@@ -121,6 +123,10 @@ interface VendorLead {
   isTest: boolean
   lockoutAgreementSent: boolean
   validationPassed: boolean | null
+  validationNotes: string | null
+  profitPotential: string | number | null
+  estimatedRefurbCost: string | number | null
+  dealId: string | null
   epcRating: string | null
   epcScore: number | null
   epcInspectionDate: string | null   // ISO string from API
@@ -788,6 +794,186 @@ function PortalCheckModal({ lead, onClose }: { lead: VendorLead; onClose: () => 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Validation Modal
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ValidationModal({ lead, onClose }: { lead: VendorLead; onClose: () => void }) {
+  const bmv = toNum(lead.bmvScore)
+  const profit = toNum(lead.profitPotential)
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative mx-4 flex w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+        style={{ maxHeight: "90vh" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex flex-shrink-0 items-start justify-between border-b border-gray-200 px-5 py-4">
+          <div>
+            <h3 className="font-semibold text-gray-900">{lead.vendorName}</h3>
+            <p className="mt-0.5 text-sm text-gray-500">{lead.propertyAddress ?? "No address"}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {/* Status */}
+          <div className="flex items-center gap-2">
+            {lead.validationPassed === true && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800">
+                <CheckCircle2 className="h-4 w-4" /> Passed
+              </span>
+            )}
+            {lead.validationPassed === false && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-sm font-medium text-red-800">
+                <XCircle className="h-4 w-4" /> Failed
+              </span>
+            )}
+            {lead.validationPassed === null && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-sm font-medium text-gray-600">
+                Not run yet
+              </span>
+            )}
+          </div>
+
+          {/* Key metrics */}
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg bg-gray-200 sm:grid-cols-4">
+            {[
+              { label: "Asking Price", value: fmtCurrency(lead.askingPrice) },
+              { label: "Market Value", value: fmtCurrency(lead.estimatedMarketValue) },
+              {
+                label: "BMV",
+                value: bmv != null ? `${bmv.toFixed(1)}%` : "—",
+                colour: bmv != null ? (bmv >= 15 ? "text-green-700" : bmv >= 10 ? "text-amber-600" : "text-red-600") : "text-gray-400",
+              },
+              { label: "Profit Potential", value: profit != null ? fmtCurrency(profit) : "—" },
+            ].map((m) => (
+              <div key={m.label} className="bg-white p-4">
+                <p className="mb-1 text-xs font-medium uppercase tracking-wider text-gray-400">{m.label}</p>
+                <p className={cn("text-xl font-bold", m.colour ?? "text-gray-900")}>{m.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Validation notes */}
+          {lead.validationNotes ? (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Validation Notes</p>
+              <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700">{lead.validationNotes}</pre>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-gray-200 p-8 text-center">
+              <TrendingUp className="mx-auto mb-2 h-8 w-8 text-gray-200" />
+              <p className="text-sm text-gray-400">No validation run yet. Use the Check button to calculate BMV.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Comparable Modal
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ComparableModal({ lead, onClose }: { lead: VendorLead; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative mx-4 flex w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+        style={{ maxHeight: "90vh" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex flex-shrink-0 items-start justify-between border-b border-gray-200 px-5 py-4">
+          <div>
+            <h3 className="font-semibold text-gray-900">{lead.vendorName}</h3>
+            <p className="mt-0.5 text-sm text-gray-500">{lead.propertyAddress ?? "No address"}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-5">
+          <VendorComparablesTab
+            vendorLeadId={lead.id}
+            askingPrice={toNum(lead.askingPrice) ?? undefined}
+            propertyPostcode={lead.propertyPostcode}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Offer Analysis Modal
+// ─────────────────────────────────────────────────────────────────────────────
+
+function OfferAnalysisModal({ lead, onClose }: { lead: VendorLead; onClose: () => void }) {
+  const askingPrice = toNum(lead.askingPrice) ?? 0
+  const gdv = toNum(lead.estimatedMarketValue)
+  const estimatedRent = toNum(lead.estimatedMonthlyRent)
+  const totalRefurb = toNum(lead.estimatedRefurbCost)
+  const missingHint = !gdv
+    ? "Run BMV calculation first to populate Market Value."
+    : undefined
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative mx-4 flex w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+        style={{ maxHeight: "90vh" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex flex-shrink-0 items-start justify-between border-b border-gray-200 px-5 py-4">
+          <div>
+            <h3 className="font-semibold text-gray-900">{lead.vendorName}</h3>
+            <p className="mt-0.5 text-sm text-gray-500">{lead.propertyAddress ?? "No address"}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-5">
+          <OfferAnalysisPanel
+            vendorLeadId={lead.id}
+            dealId={lead.dealId}
+            askingPrice={askingPrice}
+            gdv={gdv}
+            estimatedRent={estimatedRent}
+            totalRefurbishment={totalRefurb}
+            vendorName={lead.vendorName}
+            vendorEmail={lead.vendorEmail}
+            vendorPhone={lead.vendorPhone}
+            missingInputsHint={missingHint}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Per-tab Row renderers
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1100,6 +1286,9 @@ export function VendorLeadsTable() {
   const [mapLead, setMapLead] = useState<VendorLead | null>(null)
   const [checkingIds, setCheckingIds] = useState<Set<string>>(new Set())
   const [portalCheckModalLead, setPortalCheckModalLead] = useState<VendorLead | null>(null)
+  const [validationModalLead, setValidationModalLead] = useState<VendorLead | null>(null)
+  const [comparableModalLead, setComparableModalLead] = useState<VendorLead | null>(null)
+  const [offerModalLead, setOfferModalLead] = useState<VendorLead | null>(null)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
@@ -1294,11 +1483,11 @@ export function VendorLeadsTable() {
                     if (activeTab === "portal-check") {
                       setPortalCheckModalLead(lead)
                     } else if (activeTab === "validation") {
-                      router.push(`/dashboard/vendors/${lead.id}/validation`)
+                      setValidationModalLead(lead)
                     } else if (activeTab === "comparable") {
-                      router.push(`/dashboard/vendors/${lead.id}/comparables`)
+                      setComparableModalLead(lead)
                     } else if (activeTab === "offer-analysis") {
-                      router.push(`/dashboard/vendors/${lead.id}/offer-analysis`)
+                      setOfferModalLead(lead)
                     } else {
                       router.push(`/dashboard/vendors/${lead.id}/contact`)
                     }
@@ -1340,6 +1529,21 @@ export function VendorLeadsTable() {
       {/* Portal Check Modal */}
       {portalCheckModalLead && (
         <PortalCheckModal lead={portalCheckModalLead} onClose={() => setPortalCheckModalLead(null)} />
+      )}
+
+      {/* Validation Modal */}
+      {validationModalLead && (
+        <ValidationModal lead={validationModalLead} onClose={() => setValidationModalLead(null)} />
+      )}
+
+      {/* Comparable Modal */}
+      {comparableModalLead && (
+        <ComparableModal lead={comparableModalLead} onClose={() => setComparableModalLead(null)} />
+      )}
+
+      {/* Offer Analysis Modal */}
+      {offerModalLead && (
+        <OfferAnalysisModal lead={offerModalLead} onClose={() => setOfferModalLead(null)} />
       )}
       </div>
     </TooltipProvider>
