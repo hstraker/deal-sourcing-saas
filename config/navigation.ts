@@ -8,7 +8,6 @@ import {
   UserGroupIcon,
   UsersIcon,
   BuildingOffice2Icon,
-  ClipboardDocumentCheckIcon,
   ShieldCheckIcon,
   CurrencyPoundIcon,
   CreditCardIcon,
@@ -48,10 +47,7 @@ export const NAV_SECTIONS = [
       {
         label: "Property Analysis",
         items: [
-          { label: "Deal Analysis",  href: "/dashboard/deals",          icon: ChartBarIcon },
-          { label: "Offer Analysis", href: "/dashboard/offer-analysis", icon: CalculatorIcon },
-          { label: "Comparables",    href: "/dashboard/comparables",    icon: DocumentDuplicateIcon },
-          { label: "Validation",     href: "/dashboard/validation",     icon: ClipboardDocumentCheckIcon },
+          { label: "Deal Analysis", href: "/dashboard/deals", icon: ChartBarIcon },
         ],
       },
       {
