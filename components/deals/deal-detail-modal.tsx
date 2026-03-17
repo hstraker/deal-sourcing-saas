@@ -381,7 +381,7 @@ function MortgageScenarios({ deal }: { deal: DealWithRelations }) {
   if (marketValue === null) {
     return (
       <p className="text-sm text-gray-400 italic">
-        Market value required — run deal analysis first
+        Market value required
       </p>
     )
   }
