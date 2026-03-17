@@ -1555,3 +1555,94 @@ export async function fetchDetailedComparables(
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Energy Efficiency (EPC) API
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface EpcRecord {
+  address: string
+  rating: string        // "A" | "B" | "C" | "D" | "E" | "F" | "G"
+  score: number         // 0–100
+  inspectionDate: Date
+}
+
+/**
+ * Fetch EPC (Energy Performance Certificate) data for a postcode.
+ * Calls PropertyData /energy-efficiency endpoint.
+ * Returns records sorted newest-first, or null on error / no data.
+ *
+ * @see https://propertydata.co.uk/api/documentation/energy-efficiency
+ */
+export async function fetchEpcData(postcode: string): Promise<EpcRecord[] | null> {
+  if (!PROPERTYDATA_API_KEY) {
+    console.warn("[EPC] PROPERTYDATA_API_KEY not set — skipping EPC fetch")
+    return null
+  }
+
+  try {
+    const params = new URLSearchParams({
+      key: PROPERTYDATA_API_KEY,
+      postcode,
+    })
+
+    const url = `${PROPERTYDATA_API_URL}/energy-efficiency?${params.toString()}`
+    console.log(`[EPC] Fetching energy efficiency data for postcode: ${postcode}`)
+
+    const response = await fetch(url)
+
+    if (!response.ok) {
+      console.error(`[EPC] API error: ${response.status}`)
+      return null
+    }
+
+    const data = await response.json()
+
+    if (data.status !== "success" || !Array.isArray(data.energy_efficiency)) {
+      console.warn(`[EPC] Unexpected response shape for ${postcode}:`, data.status)
+      return null
+    }
+
+    const records: EpcRecord[] = data.energy_efficiency.map((item: any) => ({
+      address: item.address as string,
+      rating: item.rating as string,
+      score: Number(item.score),
+      inspectionDate: new Date(item.inspection_date),
+    }))
+
+    // Sort newest inspection first
+    records.sort((a, b) => b.inspectionDate.getTime() - a.inspectionDate.getTime())
+
+    console.log(`[EPC] Found ${records.length} EPC records for ${postcode}`)
+    return records
+  } catch (error) {
+    console.error("[EPC] Fetch error:", error)
+    return null
+  }
+}
+
+/**
+ * Find the best-matching EPC record for a given property address.
+ * Matches by house number extracted from the address string.
+ * Falls back to the most recent record if no house-number match found.
+ */
+export function matchEpcRecord(
+  records: EpcRecord[],
+  propertyAddress: string | null
+): EpcRecord | null {
+  if (records.length === 0) return null
+  if (!propertyAddress) return records[0] // most recent
+
+  // Extract leading house number (e.g. "26", "44", "34A")
+  const extractNumber = (addr: string): string | null => {
+    const m = addr.match(/\b(\d+[a-zA-Z]?)\b/)
+    return m ? m[1].toLowerCase() : null
+  }
+
+  const targetNum = extractNumber(propertyAddress)
+  if (!targetNum) return records[0] // no number in lead address → use most recent
+
+  const matched = records.find(
+    (r) => extractNumber(r.address) === targetNum
+  )
+  return matched ?? records[0] // fallback to most recent
+}
