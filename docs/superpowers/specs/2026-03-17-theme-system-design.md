@@ -12,7 +12,7 @@ Introduce a per-user theme system that gives full control over colours, typograp
 
 Styling is currently scattered across the codebase with no single source of truth:
 
-- **6 independent badge/status colour lookup maps** — one per component (`deal-list.tsx`, `vendor-leads-table.tsx`, `investor-list.tsx`, `contact-card.tsx`, `deal-detail-modal.tsx`, `vendor-analytics-panel.tsx`). None reference the `--status-*` CSS variables defined in `globals.css`.
+- **6 independent badge/status colour lookup maps** — one per component (`deal-list.tsx`, `vendor-leads-table.tsx`, `investor-list.tsx`, `contact-card.tsx`, `deal-detail-modal.tsx`, `components/dashboard/vendor-analytics-panel.tsx`). None reference the `--status-*` CSS variables defined in `globals.css`.
 - **2 duplicate KPI bar implementations** — `DealKpiBar` in `deal-list.tsx` and `KpiBar` in `vendor-leads-table.tsx` are structurally identical (~150 lines each) and both use inline `style={{ color: "#16a34a" }}` hex strings instead of the `.kpi-value-positive` / `.kpi-value-highlight` utility classes defined in `globals.css`.
 - **Sidebar hardcoded hex** — `DualSidebar.tsx` uses `bg-[#1A1A1F]`, `bg-[#F5A623]` etc. instead of referencing the `--sidebar-bg`, `--sidebar-active-bg` CSS variables already defined in `globals.css`.
 - **14 orphaned `--status-*` CSS variables** — defined in `globals.css` but referenced by no component.
@@ -49,8 +49,11 @@ Each function returns a Tailwind class string (e.g. `"bg-blue-100 text-blue-700"
 | `reserved` | `bg-orange-100` | `text-orange-800` |
 | `sold` | `bg-green-200` | `text-green-800` |
 | `archived` | `bg-gray-200` | `text-gray-600` |
+| (fallback) | `bg-gray-100` | `text-gray-800` |
 
 **Pipeline stage colour mapping (for `getPipelineStageStyle`):**
+
+Uses the exact `PipelineStage` enum values from `prisma/schema.prisma`:
 
 | Stage | Background | Text |
 |---|---|---|
@@ -58,21 +61,29 @@ Each function returns a Tailwind class string (e.g. `"bg-blue-100 text-blue-700"
 | `AI_CONVERSATION` | `bg-violet-100` | `text-violet-700` |
 | `DEAL_VALIDATION` | `bg-amber-100` | `text-amber-700` |
 | `OFFER_MADE` | `bg-emerald-100` | `text-emerald-700` |
-| `NEGOTIATION` | `bg-orange-100` | `text-orange-700` |
-| `SOLICITORS` | `bg-indigo-100` | `text-indigo-700` |
-| `COMPLETED` | `bg-green-100` | `text-green-700` |
-| `DEAD` | `bg-red-100` | `text-red-700` |
+| `OFFER_ACCEPTED` | `bg-green-100` | `text-green-700` |
+| `OFFER_REJECTED` | `bg-red-100` | `text-red-700` |
+| `VIDEO_SENT` | `bg-cyan-100` | `text-cyan-700` |
+| `RETRY_1` | `bg-orange-100` | `text-orange-700` |
+| `RETRY_2` | `bg-orange-100` | `text-orange-700` |
+| `RETRY_3` | `bg-orange-100` | `text-orange-700` |
+| `PAPERWORK_SENT` | `bg-indigo-100` | `text-indigo-700` |
+| `READY_FOR_INVESTORS` | `bg-purple-100` | `text-purple-700` |
+| `DEAD_LEAD` | `bg-red-200` | `text-red-800` |
 | (fallback) | `bg-gray-100` | `text-gray-700` |
 
 **Contact type mapping (for `getContactTypeStyle`):**
+
+Uses the exact `ContactType` enum values from `prisma/schema.prisma`:
 
 | Type | Background | Text |
 |---|---|---|
 | `SOLICITOR` | `bg-blue-100` | `text-blue-700` |
 | `INVESTOR_CONTACT` | `bg-purple-100` | `text-purple-700` |
+| `VENDOR_CONTACT` | `bg-teal-100` | `text-teal-700` |
 | `ESTATE_AGENT` | `bg-green-100` | `text-green-700` |
-| `MORTGAGE_BROKER` | `bg-amber-100` | `text-amber-700` |
-| `ACCOUNTANT` | `bg-gray-100` | `text-gray-700` |
+| `CONTRACTOR` | `bg-amber-100` | `text-amber-700` |
+| `OTHER` | `bg-gray-100` | `text-gray-700` |
 | (fallback) | `bg-gray-100` | `text-gray-700` |
 
 #### New file: `components/ui/status-badge.tsx`
@@ -82,19 +93,31 @@ Single shared badge component used everywhere instead of the repeated inline `ro
 ```tsx
 interface StatusBadgeProps {
   label: string
-  className?: string  // Tailwind colour classes e.g. "bg-blue-100 text-blue-700"
+  className?: string   // Tailwind colour classes e.g. "bg-blue-100 text-blue-700"
+  tooltip?: string     // Optional tooltip text (shown via Radix Tooltip)
 }
 
-export function StatusBadge({ label, className }: StatusBadgeProps) {
-  return (
+export function StatusBadge({ label, className, tooltip }: StatusBadgeProps) {
+  const badge = (
     <span className={cn("inline-block rounded-full px-2 py-0.5 text-xs font-medium", className)}>
       {label}
     </span>
+  )
+  if (!tooltip) return badge
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>{badge}</TooltipTrigger>
+        <TooltipContent>{tooltip}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
 ```
 
 Usage: `<StatusBadge label={formatStatus(deal.status)} className={getDealStatusStyle(deal.status)} />`
+
+For pipeline stages that currently show a tooltip (e.g. in `vendor-leads-table.tsx`), pass `tooltip={stageDescription}`.
 
 #### New file: `components/ui/kpi-bar.tsx`
 
@@ -103,10 +126,11 @@ Shared KPI bar replacing the two duplicate implementations:
 ```tsx
 interface KpiTile {
   label: string
-  value: string           // pre-formatted display value
+  value: string             // pre-formatted display value
   icon: React.ReactNode
-  iconBgClass: string     // e.g. "bg-blue-50"
+  iconBgClass: string       // e.g. "bg-blue-50"
   valueColorClass?: string  // e.g. "text-green-600" — defaults to "text-gray-900"
+  tooltip?: string          // optional tooltip on the tile value
 }
 
 interface KpiBarProps {
@@ -120,19 +144,17 @@ Tile layout: `flex items-stretch divide-x divide-gray-200 rounded-xl border bord
 
 #### Modified file: `components/layout/DualSidebar.tsx`
 
-Replace all hardcoded hex with CSS variable references:
+Replace all hardcoded hex with CSS variable references. The following CSS variables already exist in `globals.css` with exactly these names — do not add duplicates:
 
-| Before | After |
-|---|---|
-| `bg-[#1A1A1F]` | `bg-[var(--sidebar-bg)]` |
-| `border-[#2D2D38]` | `border-[var(--sidebar-border)]` |
-| `bg-[#F5A623]` (active) | `bg-[var(--sidebar-active-bg)]` |
-| `hover:bg-[#2A2A32]` | `hover:bg-[var(--sidebar-hover-bg)]` |
-| `bg-[#F5A623]` (logo mark) | `bg-[var(--sidebar-active-bg)]` |
+| Before | After | CSS variable (already in globals.css) |
+|---|---|---|
+| `bg-[#1A1A1F]` | `bg-[var(--sidebar-bg)]` | `--sidebar-bg` |
+| `border-[#2D2D38]` | `border-[var(--sidebar-border)]` | `--sidebar-border` |
+| `bg-[#F5A623]` (active) | `bg-[var(--sidebar-active-bg)]` | `--sidebar-active-bg` |
+| `hover:bg-[#2A2A32]` | `hover:bg-[var(--sidebar-hover)]` | `--sidebar-hover` |
+| `bg-[#F5A623]` (logo mark) | `bg-[var(--sidebar-active-bg)]` | `--sidebar-active-bg` |
 
-Add to `globals.css` `--sidebar-*` group:
-- `--sidebar-border: #2D2D38`
-- `--sidebar-hover-bg: #2A2A32`
+**No new variables need to be added to `globals.css`** — all required sidebar variables already exist. The `app/globals.css` modification listed in the File Structure section below refers only to Sub-project 2 additions (typography/spacing tokens).
 
 #### Modified files: `components/deals/deal-list.tsx`, `components/vendors/vendor-leads-table.tsx`
 
@@ -140,12 +162,29 @@ Add to `globals.css` `--sidebar-*` group:
 - Import and use the new shared `<KpiBar>` component
 - Remove inline `style={{ color: "#16a34a" }}` etc. — pass `valueColorClass="text-green-600"` via the tile config instead
 - Replace local `getStatusColor()` / `STAGE_STYLE` maps with imports from `lib/theme/status-colors.ts`
-- Replace inline badge JSX with `<StatusBadge>`
+- Replace inline badge JSX with `<StatusBadge>` (pass `tooltip` prop for pipeline stages that currently show tooltips)
 
-#### Modified files: `components/deals/deal-detail-modal.tsx`, `components/investors/investor-list.tsx`, `components/contacts/contact-card.tsx`
+#### Modified files: `components/deals/deal-detail-modal.tsx`, `components/investors/investor-list.tsx`, `components/contacts/contact-card.tsx`, `components/dashboard/vendor-analytics-panel.tsx`
 
 - Replace local colour lookup maps with imports from `lib/theme/status-colors.ts`
 - Replace inline badge JSX with `<StatusBadge>`
+
+#### Modified file: `app/globals.css`
+
+Add new CSS variables for typography and spacing tokens that Sub-project 2 will control. Add to the `:root` block:
+
+```css
+/* Typography tokens */
+--font-size-base: 14px;
+--font-weight-heading: 700;
+
+/* Table density */
+--table-row-height: 52px;
+```
+
+Also add `font-size: var(--font-size-base)` to the `body` selector so `--font-size-base` cascades to the whole app.
+
+The existing `--font-display` variable does not need to be added (font family is controlled via the `font-display` Tailwind utility class already defined).
 
 ---
 
@@ -161,6 +200,7 @@ model UserTheme {
   userId    String   @unique
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   tokens    Json     @default("{}")
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("user_themes")
@@ -183,75 +223,68 @@ Unset tokens fall back to the values in `globals.css`. The `User` model gains a 
 
 **File: `app/dashboard/layout.tsx`**
 
-The dashboard layout server component fetches the user's `UserTheme` and injects tokens as an inline style on the outermost `<div>`:
+Currently this file returns `<DashboardLayout>{children}</DashboardLayout>` where `DashboardLayout` is a Client Component. The server layout wraps it in a `<div>` that carries the CSS variable overrides as an inline style:
 
 ```tsx
-const userTheme = await prisma.userTheme.findUnique({ where: { userId: session.user.id } })
-const themeStyle = userTheme?.tokens
-  ? Object.entries(userTheme.tokens as Record<string, string>)
-      .map(([k, v]) => `${k}:${v}`)
-      .join(";")
-  : ""
+// app/dashboard/layout.tsx (Server Component)
+const session = await getServerSession(authOptions)
+const userTheme = session?.user?.id
+  ? await prisma.userTheme.findUnique({ where: { userId: session.user.id } })
+  : null
 
-return <div style={themeStyle ? { [themeStyle]: "" } as any : undefined}>...</div>
+const themeTokens = (userTheme?.tokens ?? {}) as Record<string, string>
+
+return (
+  <div style={themeTokens as React.CSSProperties}>
+    <DashboardLayout>{children}</DashboardLayout>
+  </div>
+)
 ```
 
-Actually, the correct approach is to set the style as a CSS string on the element. In Next.js this is done via:
-
-```tsx
-<div style={themeStyle ? Object.fromEntries(
-  Object.entries(userTheme.tokens as Record<string, string>)
-) : {}}>
-```
-
-CSS variables cascade from this element to all descendants. No client-side hydration required. SSR-safe.
+`React.CSSProperties` is cast because TypeScript doesn't natively type CSS custom property keys, but React supports them at runtime. CSS variables cascade from this `<div>` to all descendants. This is SSR-safe and has no client-side hydration flash.
 
 ### API Routes
 
 **`app/api/user/theme/route.ts`**
 
 ```
-GET  /api/user/theme     → returns { tokens: Record<string, string> }
-PUT  /api/user/theme     → body: { tokens: Record<string, string> }, merges with existing
-DELETE /api/user/theme   → clears all overrides (reset to defaults)
+GET    /api/user/theme   → { tokens: Record<string, string> }
+PUT    /api/user/theme   → body: { tokens: Record<string, string> }, merges with existing
+DELETE /api/user/theme   → clears all overrides (resets to globals.css defaults)
 ```
 
-All routes check `getServerSession(authOptions)` and scope to the current user's `userId`.
+All routes check `getServerSession(authOptions)` and scope to the current user's `userId`. `PUT` merges the incoming tokens with the existing `tokens` JSON (so sending `{ "--ds-primary": "#7C3AED" }` only changes that one token, leaving others intact). `DELETE` sets `tokens` to `{}`.
 
 ### Theme Picker UI
 
 **File: `app/dashboard/settings/appearance/page.tsx`**
 
-Page layout: two-column on desktop, stacked on mobile.
+Client component (`"use client"`). Page layout: two-column on desktop (controls left, sticky preview right), stacked on mobile.
 
-- **Left column** — tabbed control panel (6 tabs)
-- **Right column** — sticky live preview panel
-
-**Left column tabs:**
+**Left column — tabbed control panel (6 tabs using shadcn `<Tabs>`):**
 
 | Tab | Controls |
 |---|---|
 | Brand | Primary colour (`--ds-primary`), Accent colour (`--ds-accent`), Positive value colour (`--value-positive`), Negative value colour (`--value-negative`), Highlight colour (`--value-highlight`) |
-| Sidebar | Background (`--sidebar-bg`), Active item (`--sidebar-active-bg`), Hover (`--sidebar-hover-bg`), Border (`--sidebar-border`) |
-| Status Badges | Colour pair (bg + text) for each: 8 deal statuses, up to 9 pipeline stages, 6 contact types — stored as `--status-{entity}-{status}-bg` and `--status-{entity}-{status}-text` |
-| Typography | Base font size (12 / 14 / 16px → `--font-size-base`), Heading font (Plus Jakarta Sans / Inter / System → `--font-display`), Font weight: normal/medium/bold scale (`--font-weight-heading`) |
-| Spacing | Page padding Compact/Normal/Spacious (`--page-padding`), Card padding (`--card-padding`), Section gap (`--section-gap`), Table row height (`--table-row-height`) |
-| KPI Colours | Per-tile value colour for each KPI category (positive/negative/highlight/neutral) |
+| Sidebar | Background (`--sidebar-bg`), Active item (`--sidebar-active-bg`), Hover (`--sidebar-hover`), Border (`--sidebar-border`) |
+| Status Badges | Colour pair (bg + text) for each: 8 deal statuses, 13 pipeline stages, 6 contact types — stored as `--status-deal-{status}-bg` / `--status-deal-{status}-text` etc. |
+| Typography | Base font size (12 / 14 / 16px → `--font-size-base`), Font weight scale Normal/Medium/Bold (`--font-weight-heading`) |
+| Spacing | Page padding Compact/Normal/Spacious (`--page-padding`), Card padding (`--card-padding`), Section gap (`--section-gap`), Table row height Compact/Normal/Comfortable (`--table-row-height`) |
+| KPI Colours | Positive (`--value-positive`), Negative (`--value-negative`), Highlight (`--value-highlight`), Neutral colour |
 
 **Controls used:**
 - Colour tokens → `<input type="color">` wrapped in a styled swatch button showing the hex value
-- Discrete options (font size, spacing density) → segmented button group (3 options)
-- Font family → `<select>` dropdown
+- Discrete options (font size, spacing density) → shadcn segmented button group (3 options)
 
 **Live preview panel (right column):**
 
-A miniature render using real Tailwind classes applied to the preview container's inline style. Contains:
-- A sidebar strip (showing background, active item colours)
-- A KPI tile row (2–3 tiles showing value colour tokens)
-- A table row with 3 status badges
-- A `ds-card` with a heading and body text (showing typography tokens)
+A `<div>` with inline CSS variable overrides applied immediately on every control change (client-side). Contains static JSX representing:
+- A sidebar strip (showing `--sidebar-bg`, `--sidebar-active-bg`)
+- Two KPI tiles (showing `--value-positive`, `--value-highlight`)
+- A table row with 3 `<StatusBadge>` instances
+- A `ds-card` with a heading (showing `--font-weight-heading`) and body text (showing `--font-size-base`)
 
-Changes are applied to the preview container immediately (client-side CSS variable injection) without saving. "Save Appearance" calls `PUT /api/user/theme`. "Reset to Defaults" calls `DELETE /api/user/theme` and reloads defaults.
+Changes update the preview container's inline style immediately. "Save Appearance" calls `PUT /api/user/theme` with the full current tokens diff. "Reset to Defaults" calls `DELETE /api/user/theme` and resets local state to the defaults from `lib/theme/defaults.ts`.
 
 **Settings page navigation** (`app/dashboard/settings/page.tsx`): Add an "Appearance" card linking to `/dashboard/settings/appearance`.
 
@@ -266,21 +299,20 @@ Changes are applied to the preview container immediately (client-side CSS variab
 | Brand | `--value-highlight` | `#2563EB` |
 | Sidebar | `--sidebar-bg` | `#1A1A1F` |
 | Sidebar | `--sidebar-active-bg` | `#F5A623` |
-| Sidebar | `--sidebar-hover-bg` | `#2A2A32` |
+| Sidebar | `--sidebar-hover` | `#2A2A32` |
 | Sidebar | `--sidebar-border` | `#2D2D38` |
 | Typography | `--font-size-base` | `14px` |
-| Typography | `--font-display` | `'Plus Jakarta Sans'` |
 | Typography | `--font-weight-heading` | `700` |
 | Spacing | `--page-padding` | `32px` |
 | Spacing | `--card-padding` | `24px` |
 | Spacing | `--section-gap` | `20px` |
 | Spacing | `--table-row-height` | `52px` |
-| Status (deal) | `--status-deal-{status}-bg` | (per mapping above) |
-| Status (deal) | `--status-deal-{status}-text` | (per mapping above) |
-| Status (pipeline) | `--status-pipeline-{stage}-bg` | (per mapping above) |
-| Status (pipeline) | `--status-pipeline-{stage}-text` | (per mapping above) |
-| Status (contact) | `--status-contact-{type}-bg` | (per mapping above) |
-| Status (contact) | `--status-contact-{type}-text` | (per mapping above) |
+| Status (deal) | `--status-deal-{status}-bg` | (per deal status mapping) |
+| Status (deal) | `--status-deal-{status}-text` | (per deal status mapping) |
+| Status (pipeline) | `--status-pipeline-{stage}-bg` | (per pipeline stage mapping) |
+| Status (pipeline) | `--status-pipeline-{stage}-text` | (per pipeline stage mapping) |
+| Status (contact) | `--status-contact-{type}-bg` | (per contact type mapping) |
+| Status (contact) | `--status-contact-{type}-text` | (per contact type mapping) |
 
 ---
 
@@ -300,48 +332,52 @@ Changes are applied to the preview container immediately (client-side CSS variab
 
 ```
 lib/theme/
-  status-colors.ts          CREATE — centralised badge colour maps
+  status-colors.ts                       CREATE — centralised badge colour maps
 
 components/ui/
-  status-badge.tsx          CREATE — shared badge component
-  kpi-bar.tsx               CREATE — shared KPI bar component
+  status-badge.tsx                       CREATE — shared badge component (with optional tooltip)
+  kpi-bar.tsx                            CREATE — shared KPI bar component
 
 components/layout/
-  DualSidebar.tsx           MODIFY — swap hardcoded hex for CSS vars
+  DualSidebar.tsx                        MODIFY — swap hardcoded hex for CSS vars (vars already in globals.css)
 
 components/deals/
-  deal-list.tsx             MODIFY — remove DealKpiBar, use shared KpiBar + StatusBadge
-  deal-detail-modal.tsx     MODIFY — replace local colour map with status-colors.ts
+  deal-list.tsx                          MODIFY — remove DealKpiBar, use shared KpiBar + StatusBadge
+  deal-detail-modal.tsx                  MODIFY — replace local colour map with status-colors.ts
 
 components/vendors/
-  vendor-leads-table.tsx    MODIFY — remove KpiBar, use shared KpiBar + StatusBadge
+  vendor-leads-table.tsx                 MODIFY — remove KpiBar, use shared KpiBar + StatusBadge
 
 components/investors/
-  investor-list.tsx         MODIFY — replace local colour maps with status-colors.ts
+  investor-list.tsx                      MODIFY — replace local colour maps with status-colors.ts
 
 components/contacts/
-  contact-card.tsx          MODIFY — replace local colour map with status-colors.ts
+  contact-card.tsx                       MODIFY — replace local colour map with status-colors.ts
 
-app/globals.css             MODIFY — add --sidebar-border, --sidebar-hover-bg variables
+components/dashboard/
+  vendor-analytics-panel.tsx             MODIFY — replace local colour map with status-colors.ts
+
+app/globals.css                          MODIFY — add --font-size-base, --font-weight-heading,
+                                                   --table-row-height; wire body font-size
 ```
 
 ### Sub-project 2 (Theme Picker)
 
 ```
-prisma/schema.prisma        MODIFY — add UserTheme model
+prisma/schema.prisma                     MODIFY — add UserTheme model + User relation
 
 app/api/user/theme/
-  route.ts                  CREATE — GET / PUT / DELETE theme tokens
+  route.ts                               CREATE — GET / PUT / DELETE theme tokens
 
 app/dashboard/
-  layout.tsx                MODIFY — inject UserTheme tokens as CSS variables
+  layout.tsx                             MODIFY — wrap DashboardLayout in theme <div>
 
 app/dashboard/settings/
-  page.tsx                  MODIFY — add Appearance card
+  page.tsx                               MODIFY — add Appearance card
   appearance/
-    page.tsx                CREATE — theme picker client page
+    page.tsx                             CREATE — theme picker client page
 
 lib/theme/
-  defaults.ts               CREATE — full default token values (used for reset + preview)
-  types.ts                  CREATE — ThemeTokens interface
+  defaults.ts                            CREATE — full default token values (for reset + preview)
+  types.ts                               CREATE — ThemeTokens interface
 ```
