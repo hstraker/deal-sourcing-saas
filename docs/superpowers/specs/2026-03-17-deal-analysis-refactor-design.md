@@ -22,7 +22,7 @@ A sticky bar at the top of the list (above the table, below the page header) sho
 
 | Stat | Calculation |
 |---|---|
-| Active Deals | count where `status` is NOT `archived` or `sold` |
+| Active Deals | count where `status !== 'archived' && status !== 'sold'` (both `archived` and `sold` are excluded — they are terminal states) |
 | Avg BMV % | mean of non-null `bmvPercentage` values; shows "—" if all null |
 | Avg Gross Yield | mean of non-null `grossYield` values; shows "—" if all null |
 | Total Pipeline Value | sum of non-null `marketValue` values |
@@ -128,7 +128,11 @@ Each card is a compact cost-to-return waterfall derived entirely from existing D
 - Buy + Refurb (`askingPrice + estimatedRefurbCost` or "—")
 - ARV (`afterRefurbValue` or "—")  ← uses `afterRefurbValue`, not `marketValue`
 - Refinance at 75% (`afterRefurbValue × 0.75` or "—")
-- **Cash Left In** (highlighted) — `(askingPrice + estimatedRefurbCost) − (afterRefurbValue × 0.75)`; target £0; show "—" if any input null. If result is positive (i.e., refinance doesn't fully recycle capital), display in amber with label "Capital remaining". If result is negative (over-refinanced), display in green with label "Equity released".
+- **Capital Position** (highlighted) — calculated as `refi = afterRefurbValue × 0.75` vs `costs = askingPrice + estimatedRefurbCost`. Display as absolute difference with directional label:
+  - If `costs > refi` (under-refinanced, capital still in deal): show `£(costs − refi)` in amber, label "Capital remaining"
+  - If `costs < refi` (over-refinanced, equity pulled out): show `£(refi − costs)` in green, label "Equity released"
+  - If `costs === refi`: show `£0` in green, label "Fully recycled"
+  - Show "—" if any input null
 - Post-Refi Yield — `(estimatedMonthlyRent × 12) / afterRefurbValue × 100`; show "—" if null
 
 ---
@@ -174,7 +178,9 @@ If `estimatedMonthlyRent` is null: cash flow and net yield rows show "—".
 
 #### Section D: Offer Analysis
 
-Renders the existing `OfferAnalysisPanel` component. The component internally calls `/api/deals/${dealId}/calculate-offer` when `dealId` is provided, using cached server-side results. `vendorName`, `vendorEmail`, and `vendorPhone` are not applicable for deals — passed as `undefined`. The panel handles these gracefully (vendor contact section is not rendered).
+Renders the existing `OfferAnalysisPanel` component. The component internally calls `/api/deals/${dealId}/calculate-offer` when `dealId` is provided, using cached server-side results.
+
+`vendorLeadId` is an optional prop used only to power the "Send Offer" email dialog in the negotiation ladder. The Deal model has no direct vendor lead relation (the VendorLead→Deal FK is one-way on VendorLead). Pass `vendorLeadId={undefined}` — the send-offer dialog is disabled by the panel when absent. `vendorName`, `vendorEmail`, and `vendorPhone` are likewise `undefined`.
 
 `missingInputsHint` is passed only when `marketValue` is null (the minimum required for offer calculation). Other missing optional fields (`estimatedRent`, `totalRefurbishment`) are handled gracefully by the panel itself with partial results.
 
@@ -185,6 +191,7 @@ Renders the existing `OfferAnalysisPanel` component. The component internally ca
   gdv={deal.marketValue ? Number(deal.marketValue) : undefined}
   estimatedRent={deal.estimatedMonthlyRent ? Number(deal.estimatedMonthlyRent) : undefined}
   totalRefurbishment={deal.estimatedRefurbCost ? Number(deal.estimatedRefurbCost) : undefined}
+  vendorLeadId={undefined}                            // no vendor lead relation on Deal model
   vendorName={undefined}
   vendorEmail={undefined}
   vendorPhone={undefined}
