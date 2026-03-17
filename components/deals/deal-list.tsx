@@ -4,9 +4,6 @@ import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
-  LayoutGrid,
-  List,
-  Table as TableIcon,
   BookmarkPlus,
   Eye,
   Pencil,
@@ -14,6 +11,11 @@ import {
   Users,
   Loader2,
   Zap,
+  TrendingUp,
+  BarChart2,
+  Target,
+  DollarSign,
+  Star,
 } from "lucide-react"
 import type { ActionItem } from "@/app/api/action-counts/route"
 import { Button } from "@/components/ui/button"
@@ -33,9 +35,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { calculateAllMetrics } from "@/lib/calculations/deal-metrics"
 import { DealSearch } from "@/components/deals/deal-search"
-import { DealCardSections } from "@/components/deals/deal-card-sections"
 import {
   DealFiltersComponent,
   type DealFilters,
@@ -45,6 +45,7 @@ import {
   DealSorting,
   type SortConfig,
 } from "@/components/deals/deal-sorting"
+import { DealDetailModal } from "@/components/deals/deal-detail-modal"
 import type { DealWithRelations } from "@/types/deal"
 import { formatCurrency } from "@/lib/format"
 import {
@@ -52,8 +53,6 @@ import {
   type InvestorCriteria,
   type MatchResult,
 } from "@/lib/deals/investor-matcher"
-
-type ViewMode = "cards" | "list" | "table"
 
 interface DealListProps {
   deals: DealWithRelations[]
@@ -87,8 +86,125 @@ const formatStatus = (status: string) => {
     .join(" ")
 }
 
+// ── KPI Bar ────────────────────────────────────────────────────────────────────
+
+interface DealKpis {
+  activeDeals: number
+  avgBmv: number | null
+  avgGrossYield: number | null
+  totalPipelineValue: number
+  avgDealScore: number | null
+}
+
+function computeKpis(deals: DealWithRelations[]): DealKpis {
+  const activeDeals = deals.filter(
+    (d) => d.status !== "archived" && d.status !== "sold"
+  ).length
+
+  const bmvValues = deals
+    .map((d) => ((d as any).bmvPercentage != null ? Number((d as any).bmvPercentage) : null))
+    .filter((v): v is number => v !== null)
+  const avgBmv = bmvValues.length > 0
+    ? bmvValues.reduce((a, b) => a + b, 0) / bmvValues.length
+    : null
+
+  const yieldValues = deals
+    .map((d) => ((d as any).grossYield != null ? Number((d as any).grossYield) : null))
+    .filter((v): v is number => v !== null)
+  const avgGrossYield = yieldValues.length > 0
+    ? yieldValues.reduce((a, b) => a + b, 0) / yieldValues.length
+    : null
+
+  const totalPipelineValue = deals
+    .reduce((sum, d) => {
+      const mv = (d as any).marketValue != null ? Number((d as any).marketValue) : 0
+      return sum + mv
+    }, 0)
+
+  const scoreValues = deals
+    .map((d) => d.dealScore)
+    .filter((v): v is number => v !== null)
+  const avgDealScore = scoreValues.length > 0
+    ? scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length
+    : null
+
+  return { activeDeals, avgBmv, avgGrossYield, totalPipelineValue, avgDealScore }
+}
+
+function DealKpiBar({ deals }: { deals: DealWithRelations[] }) {
+  const kpis = useMemo(() => computeKpis(deals), [deals])
+
+  return (
+    <div className="flex items-stretch divide-x divide-gray-200 rounded-xl border border-gray-200 bg-white shadow-sm">
+      {/* Active Deals */}
+      <div className="flex flex-1 items-center gap-3 px-5 py-4">
+        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-50">
+          <Target className="h-4 w-4 text-blue-600" />
+        </div>
+        <div>
+          <p className="font-mono text-xl font-bold text-gray-900">{kpis.activeDeals}</p>
+          <p className="text-xs text-gray-500">Active Deals</p>
+        </div>
+      </div>
+
+      {/* Avg BMV % */}
+      <div className="flex flex-1 items-center gap-3 px-5 py-4">
+        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-green-50">
+          <TrendingUp className="h-4 w-4 text-green-600" />
+        </div>
+        <div>
+          <p className="font-mono text-xl font-bold" style={{ color: "#16a34a" }}>
+            {kpis.avgBmv !== null ? `${kpis.avgBmv.toFixed(1)}%` : "—"}
+          </p>
+          <p className="text-xs text-gray-500">Avg BMV %</p>
+        </div>
+      </div>
+
+      {/* Avg Gross Yield */}
+      <div className="flex flex-1 items-center gap-3 px-5 py-4">
+        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-50">
+          <BarChart2 className="h-4 w-4 text-blue-600" />
+        </div>
+        <div>
+          <p className="font-mono text-xl font-bold" style={{ color: "#2563eb" }}>
+            {kpis.avgGrossYield !== null ? `${kpis.avgGrossYield.toFixed(1)}%` : "—"}
+          </p>
+          <p className="text-xs text-gray-500">Avg Gross Yield</p>
+        </div>
+      </div>
+
+      {/* Total Pipeline Value */}
+      <div className="flex flex-1 items-center gap-3 px-5 py-4">
+        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-purple-50">
+          <DollarSign className="h-4 w-4 text-purple-600" />
+        </div>
+        <div>
+          <p className="font-mono text-xl font-bold text-purple-600">
+            {formatCurrency(kpis.totalPipelineValue)}
+          </p>
+          <p className="text-xs text-gray-500">Pipeline Value</p>
+        </div>
+      </div>
+
+      {/* Avg Deal Score */}
+      <div className="flex flex-1 items-center gap-3 px-5 py-4">
+        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-amber-50">
+          <Star className="h-4 w-4 text-amber-600" />
+        </div>
+        <div>
+          <p className="font-mono text-xl font-bold" style={{ color: "#d97706" }}>
+            {kpis.avgDealScore !== null ? `${kpis.avgDealScore.toFixed(0)}/100` : "—"}
+          </p>
+          <p className="text-xs text-gray-500">Avg Deal Score</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main DealList ──────────────────────────────────────────────────────────────
+
 export function DealList({ deals, teamMembers = [] }: DealListProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>("cards")
   const [searchQuery, setSearchQuery] = useState("")
   const [filters, setFilters] = useState<DealFilters>({
     status: null,
@@ -108,14 +224,7 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [investorCriteria, setInvestorCriteria] = useState<InvestorCriteria[]>([])
-
-  // Load view preference from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem("deal-view-mode") as ViewMode | null
-    if (saved && ["cards", "list", "table"].includes(saved)) {
-      setViewMode(saved)
-    }
-  }, [])
+  const [selectedDeal, setSelectedDeal] = useState<DealWithRelations | null>(null)
 
   // Fetch investor criteria once for match badges
   useEffect(() => {
@@ -273,11 +382,6 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
     return sortedDeals.slice(startIndex, startIndex + ITEMS_PER_PAGE)
   }, [sortedDeals, currentPage])
 
-  const handleViewChange = (mode: ViewMode) => {
-    setViewMode(mode)
-    localStorage.setItem("deal-view-mode", mode)
-  }
-
   const handleSearchChange = (query: string) => {
     setSearchQuery(query)
   }
@@ -295,8 +399,9 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
 
   return (
     <div className="space-y-4">
-      {/* Search, Filters, Sorting, and View Toggle */}
+      {/* KPI Bar + Search, Filters, Sorting */}
       <div className="space-y-4">
+        <DealKpiBar deals={deals} />
         <div className="flex items-center gap-4">
           <div className="flex-1">
             <DealSearch
@@ -305,34 +410,7 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
               onSearchQueryChange={handleSearchChange}
             />
           </div>
-          <div className="flex items-center gap-1 rounded-lg border border-[var(--ds-border)] p-1">
-            <Button
-              variant={viewMode === "cards" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => handleViewChange("cards")}
-              className="h-8 w-8 p-0"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => handleViewChange("list")}
-              className="h-8 w-8 p-0"
-            >
-              <List className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "table" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => handleViewChange("table")}
-              className="h-8 w-8 p-0"
-            >
-              <TableIcon className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
-
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <DealFiltersComponent
             deals={deals}
@@ -362,23 +440,19 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
         )}
       </div>
 
-      {/* Render based on view mode */}
+      {/* Table or empty state */}
       {paginatedDeals.length === 0 ? (
         <div className="ds-card py-12 text-center">
           <p className="text-gray-400">No deals match your search or filters</p>
         </div>
       ) : (
         <>
-          {viewMode === "cards" && (
-            <CardView deals={paginatedDeals} matchesByDealId={matchesByDealId} actionDealIds={actionDealIds} />
-          )}
-          {viewMode === "list" && (
-            <ListView deals={paginatedDeals} matchesByDealId={matchesByDealId} actionDealIds={actionDealIds} />
-          )}
-          {viewMode === "table" && (
-            <TableView deals={paginatedDeals} matchesByDealId={matchesByDealId} actionDealIds={actionDealIds} />
-          )}
-
+          <TableView
+            deals={paginatedDeals}
+            matchesByDealId={matchesByDealId}
+            actionDealIds={actionDealIds}
+            onViewDeal={setSelectedDeal}
+          />
           {totalPages > 1 && (
             <DealPagination
               currentPage={currentPage}
@@ -390,180 +464,13 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
           )}
         </>
       )}
-    </div>
-  )
-}
 
-// ── Card View ─────────────────────────────────────────────────────────────────
-
-function CardView({
-  deals,
-  matchesByDealId,
-  actionDealIds,
-}: {
-  deals: DealWithRelations[]
-  matchesByDealId: Map<string, MatchResult[]>
-  actionDealIds: Set<string>
-}) {
-  return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {deals.map((deal) => (
-        <DealCard
-          key={deal.id}
-          deal={deal}
-          matches={
-            deal.status === "archived" || deal.status === "sold"
-              ? []
-              : (matchesByDealId.get(deal.id) ?? [])
-          }
-          needsAction={actionDealIds.has(deal.id)}
+      {selectedDeal && (
+        <DealDetailModal
+          deal={selectedDeal}
+          onClose={() => setSelectedDeal(null)}
         />
-      ))}
-    </div>
-  )
-}
-
-// ── List View ─────────────────────────────────────────────────────────────────
-
-function ListView({
-  deals,
-  matchesByDealId,
-  actionDealIds,
-}: {
-  deals: DealWithRelations[]
-  matchesByDealId: Map<string, MatchResult[]>
-  actionDealIds: Set<string>
-}) {
-  return (
-    <div className="space-y-2">
-      {deals.map((deal) => (
-        <ListItem
-          key={deal.id}
-          deal={deal}
-          matches={
-            deal.status === "archived" || deal.status === "sold"
-              ? []
-              : (matchesByDealId.get(deal.id) ?? [])
-          }
-          needsAction={actionDealIds.has(deal.id)}
-        />
-      ))}
-    </div>
-  )
-}
-
-function ListItem({
-  deal,
-  matches,
-  needsAction,
-}: {
-  deal: DealWithRelations
-  matches: MatchResult[]
-  needsAction: boolean
-}) {
-  const router = useRouter()
-  return (
-    <div
-      className={`ds-card ds-card-hover cursor-pointer overflow-hidden ${needsAction ? "ring-1 ring-amber-300" : ""}`}
-      onClick={() => router.push(`/dashboard/deals/${deal.id}`)}
-    >
-      <div className="p-4">
-        <div className="flex items-center gap-4">
-          {/* Left: Address & Status */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-semibold truncate">{deal.address}</h3>
-              {deal.postcode && (
-                <span className="text-sm text-gray-400">{deal.postcode}</span>
-              )}
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${getStatusColor(deal.status)}`}
-              >
-                {formatStatus(deal.status)}
-              </span>
-              {needsAction && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Zap className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                    </TooltipTrigger>
-                    <TooltipContent>Needs investor reservation</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </div>
-            <div className="flex items-center gap-4 text-sm text-gray-400">
-              {deal.bedrooms && <span>{deal.bedrooms} beds</span>}
-              {deal.bathrooms && <span>{deal.bathrooms} baths</span>}
-              {deal.propertyType && (
-                <span className="capitalize">{deal.propertyType}</span>
-              )}
-              {deal.assignedTo && (
-                <span>
-                  {deal.assignedTo.firstName} {deal.assignedTo.lastName}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Center: Pricing */}
-          <div className="text-right min-w-[140px]">
-            <div className="font-bold">{formatCurrency(Number(deal.askingPrice))}</div>
-            {deal.marketValue && (
-              <div className="text-sm text-gray-400">
-                MV: {formatCurrency(Number(deal.marketValue))}
-              </div>
-            )}
-          </div>
-
-          {/* Right: Key Metrics */}
-          <div className="flex items-center gap-6 min-w-[200px]">
-            {deal.dealScore !== null && (
-              <div className="text-center">
-                <div className="text-xs text-gray-400">Score</div>
-                <div
-                  className={`font-bold ${deal.dealScore >= 70 ? "text-success" : "text-gray-400"}`}
-                >
-                  {deal.dealScore}/100
-                </div>
-              </div>
-            )}
-            {deal.bmvPercentage !== null && (
-              <div className="text-center">
-                <div className="text-xs text-gray-400">BMV</div>
-                <div className="font-bold text-success">
-                  {Number(deal.bmvPercentage).toFixed(1)}%
-                </div>
-              </div>
-            )}
-            {deal.grossYield !== null && (
-              <div className="text-center">
-                <div className="text-xs text-gray-400">Yield</div>
-                <div className="font-bold">
-                  {Number(deal.grossYield).toFixed(1)}%
-                </div>
-              </div>
-            )}
-            {deal.roi !== null && (
-              <div className="text-center">
-                <div className="text-xs text-gray-400">ROI</div>
-                <div className="font-bold text-[#2563EB]">
-                  {Number(deal.roi).toFixed(1)}%
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Investor badge + Actions — stopPropagation so card click doesn't fire */}
-          <div
-            className="flex items-center gap-2 shrink-0"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <InvestorMatchBadge matches={matches} />
-            <DealActions dealId={deal.id} dealAddress={deal.address} />
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   )
 }
@@ -574,12 +481,13 @@ function TableView({
   deals,
   matchesByDealId,
   actionDealIds,
+  onViewDeal,
 }: {
   deals: DealWithRelations[]
   matchesByDealId: Map<string, MatchResult[]>
   actionDealIds: Set<string>
+  onViewDeal: (deal: DealWithRelations) => void
 }) {
-  const router = useRouter()
   return (
     <div className="ds-card overflow-hidden">
       <div className="overflow-x-auto">
@@ -588,31 +496,27 @@ function TableView({
             <tr>
               <th className="table-header">Address</th>
               <th className="table-header">Status</th>
+              <th className="table-header">Type</th>
               <th className="table-header text-right">Asking Price</th>
               <th className="table-header text-right">Market Value</th>
+              <th className="table-header text-center">BMV %</th>
+              <th className="table-header text-center">Gross Yield</th>
               <th className="table-header text-center">Score</th>
-              <th className="table-header text-center">BMV%</th>
-              <th className="table-header text-center">Yield</th>
-              <th className="table-header text-center">ROI</th>
-              <th className="table-header">Assigned To</th>
-              <th className="table-header">Created</th>
+              <th className="table-header">Assigned</th>
               <th className="table-header text-center">Investors</th>
               <th className="table-header text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {deals.map((deal) => (
-              <tr
-                key={deal.id}
-                className="table-row cursor-pointer"
-                onClick={() => router.push(`/dashboard/deals/${deal.id}`)}
-              >
+              <tr key={deal.id} className="table-row">
+                {/* Address */}
                 <td className="table-cell">
                   <div className="flex items-center gap-1.5">
                     <div>
                       <div className="font-medium">{deal.address}</div>
                       {deal.postcode && (
-                        <div className="text-sm text-gray-400">{deal.postcode}</div>
+                        <div className="text-xs text-gray-400">{deal.postcode}</div>
                       )}
                     </div>
                     {actionDealIds.has(deal.id) && (
@@ -627,6 +531,8 @@ function TableView({
                     )}
                   </div>
                 </td>
+
+                {/* Status */}
                 <td className="table-cell">
                   <span
                     className={`inline-block rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(deal.status)}`}
@@ -634,62 +540,70 @@ function TableView({
                     {formatStatus(deal.status)}
                   </span>
                 </td>
+
+                {/* Type */}
+                <td className="table-cell">
+                  {deal.propertyType ? (
+                    <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 capitalize">
+                      {deal.propertyType}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">—</span>
+                  )}
+                </td>
+
+                {/* Asking Price */}
                 <td className="table-cell text-right font-medium">
                   {formatCurrency(Number(deal.askingPrice))}
                 </td>
+
+                {/* Market Value */}
                 <td className="table-cell text-right">
-                  {formatCurrency(Number(deal.marketValue))}
+                  {(deal as any).marketValue != null
+                    ? formatCurrency(Number((deal as any).marketValue))
+                    : <span className="text-gray-400">—</span>
+                  }
                 </td>
+
+                {/* BMV % */}
                 <td className="table-cell text-center">
-                  {deal.dealScore !== null ? (
-                    <span
-                      className={`font-bold ${deal.dealScore >= 70 ? "text-success" : "text-gray-400"}`}
-                    >
-                      {deal.dealScore}/100
-                    </span>
-                  ) : (
-                    <span className="text-gray-400">—</span>
-                  )}
+                  {(deal as any).bmvPercentage != null ? (() => {
+                    const v = Number((deal as any).bmvPercentage)
+                    const cls = v >= 15 ? "text-green-500" : v >= 5 ? "text-amber-500" : "text-red-500"
+                    return <span className={`font-semibold ${cls}`}>{v.toFixed(1)}%</span>
+                  })() : <span className="text-gray-400">—</span>}
                 </td>
+
+                {/* Gross Yield */}
                 <td className="table-cell text-center">
-                  {deal.bmvPercentage !== null ? (
-                    <span className="font-bold text-success">
-                      {Number(deal.bmvPercentage).toFixed(1)}%
-                    </span>
-                  ) : (
-                    <span className="text-gray-400">—</span>
-                  )}
+                  {(deal as any).grossYield != null ? (() => {
+                    const v = Number((deal as any).grossYield)
+                    const cls = v >= 6 ? "text-green-500" : v >= 4 ? "text-amber-500" : "text-red-500"
+                    return <span className={`font-semibold ${cls}`}>{v.toFixed(1)}%</span>
+                  })() : <span className="text-gray-400">—</span>}
                 </td>
+
+                {/* Deal Score */}
                 <td className="table-cell text-center">
-                  {deal.grossYield !== null ? (
-                    <span className="font-medium">
-                      {Number(deal.grossYield).toFixed(1)}%
-                    </span>
-                  ) : (
-                    <span className="text-gray-400">—</span>
-                  )}
+                  {deal.dealScore != null ? (() => {
+                    const s = deal.dealScore
+                    const cls =
+                      s >= 80 ? "text-green-500" :
+                      s >= 60 ? "text-blue-400" :
+                      s >= 40 ? "text-amber-500" : "text-red-500"
+                    return <span className={`font-bold ${cls}`}>{s}/100</span>
+                  })() : <span className="text-gray-400">—</span>}
                 </td>
-                <td className="table-cell text-center">
-                  {deal.roi !== null ? (
-                    <span className="font-medium text-[#2563EB]">
-                      {Number(deal.roi).toFixed(1)}%
-                    </span>
-                  ) : (
-                    <span className="text-gray-400">—</span>
-                  )}
-                </td>
+
+                {/* Assigned */}
                 <td className="table-cell text-sm">
                   {deal.assignedTo
-                    ? `${deal.assignedTo.firstName} ${deal.assignedTo.lastName}`
-                    : "—"}
+                    ? `${deal.assignedTo.firstName ?? ""} ${(deal.assignedTo.lastName ?? "").charAt(0)}.`.trim()
+                    : <span className="text-gray-400">—</span>
+                  }
                 </td>
-                <td className="table-cell text-sm text-gray-400">
-                  {new Date(deal.createdAt).toLocaleDateString("en-GB", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </td>
+
+                {/* Investors */}
                 <td
                   className="table-cell text-center"
                   onClick={(e) => e.stopPropagation()}
@@ -702,315 +616,22 @@ function TableView({
                     }
                   />
                 </td>
+
+                {/* Actions */}
                 <td
                   className="table-cell text-right"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <DealActions dealId={deal.id} dealAddress={deal.address} />
+                  <DealActions
+                    dealId={deal.id}
+                    dealAddress={deal.address}
+                    onView={() => onViewDeal(deal)}
+                  />
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
-    </div>
-  )
-}
-
-// ── Deal Card ─────────────────────────────────────────────────────────────────
-
-function DealCard({
-  deal,
-  matches,
-  needsAction,
-}: {
-  deal: DealWithRelations
-  matches: MatchResult[]
-  needsAction: boolean
-}) {
-  const router = useRouter()
-  const calculatedMetrics = calculateAllMetrics({
-    askingPrice: Number(deal.askingPrice),
-    marketValue: deal.marketValue ? Number(deal.marketValue) : null,
-    estimatedRefurbCost: deal.estimatedRefurbCost
-      ? Number(deal.estimatedRefurbCost)
-      : null,
-    afterRefurbValue: deal.afterRefurbValue
-      ? Number(deal.afterRefurbValue)
-      : null,
-    estimatedMonthlyRent: deal.estimatedMonthlyRent
-      ? Number(deal.estimatedMonthlyRent)
-      : null,
-    bedrooms: deal.bedrooms,
-    propertyType: deal.propertyType,
-    postcode: deal.postcode || undefined,
-  })
-
-  let mapUrl = ""
-  if (deal.latitude && deal.longitude) {
-    mapUrl = `https://www.google.com/maps?q=${Number(deal.latitude)},${Number(deal.longitude)}&output=embed`
-  } else {
-    const addressQuery = encodeURIComponent(
-      `${deal.address}${deal.postcode ? `, ${deal.postcode}` : ""}, UK`
-    )
-    mapUrl = `https://www.google.com/maps?q=${addressQuery}&output=embed`
-  }
-
-  return (
-    <div
-      className={`ds-card ds-card-hover cursor-pointer overflow-hidden flex flex-col ${needsAction ? "ring-1 ring-amber-300" : ""}`}
-      onClick={() => router.push(`/dashboard/deals/${deal.id}`)}
-    >
-      <div className="px-5 pt-4 pb-3">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <h3 className="text-lg font-semibold text-gray-900 truncate">{deal.address}</h3>
-              {needsAction && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Zap className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                    </TooltipTrigger>
-                    <TooltipContent>Needs investor reservation</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </div>
-            {deal.postcode && (
-              <p className="text-sm text-gray-400">{deal.postcode}</p>
-            )}
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <InvestorMatchBadge matches={matches} />
-            <span
-              className={`rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${getStatusColor(deal.status)}`}
-            >
-              {formatStatus(deal.status)}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-5 pb-4 pt-0 flex-1">
-        <div className="space-y-3">
-          <div className="space-y-2">
-            {/* Pricing Information */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center">
-                <span className="text-[11px] text-gray-400">Asking Price</span>
-                <span className="font-bold text-base">
-                  {formatCurrency(Number(deal.askingPrice))}
-                </span>
-              </div>
-              {deal.marketValue && (
-                <div className="flex justify-between items-center">
-                  <span className="text-[11px] text-gray-400">Market Value</span>
-                  <span className="font-semibold text-sm">
-                    {formatCurrency(Number(deal.marketValue))}
-                  </span>
-                </div>
-              )}
-              {deal.estimatedMonthlyRent && (
-                <div className="flex justify-between items-center">
-                  <span className="text-[11px] text-gray-400">Monthly Rent</span>
-                  <span className="font-semibold text-sm">
-                    {formatCurrency(Number(deal.estimatedMonthlyRent))}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Property Details */}
-            <div className="pt-2 border-t">
-              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
-                {deal.bedrooms && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-gray-400">Beds:</span>
-                    <span className="font-medium">{deal.bedrooms}</span>
-                  </div>
-                )}
-                {deal.bathrooms && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-gray-400">Baths:</span>
-                    <span className="font-medium">{deal.bathrooms}</span>
-                  </div>
-                )}
-                {deal.propertyType && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-gray-400">Type:</span>
-                    <span className="font-medium capitalize">
-                      {deal.propertyType}
-                    </span>
-                  </div>
-                )}
-                {deal.squareFeet && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-gray-400">Sqft:</span>
-                    <span className="font-medium">
-                      {deal.squareFeet.toLocaleString("en-GB")}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Toggle Section */}
-            <DealCardSections
-              dealId={deal.id}
-              sections={{
-                metrics: (
-                  <div className="pt-2 border-t space-y-2">
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
-                      Investment Metrics
-                    </p>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <p className="text-[10px] text-gray-400 mb-0.5">Score</p>
-                        <p
-                          className={`text-sm font-bold ${
-                            deal.dealScore && deal.dealScore >= 70
-                              ? "text-success"
-                              : "text-gray-400"
-                          }`}
-                        >
-                          {deal.dealScore ? `${deal.dealScore}/100` : "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-gray-400 mb-0.5">BMV</p>
-                        <p
-                          className={`text-sm font-bold ${
-                            deal.bmvPercentage ? "text-success" : "text-gray-400"
-                          }`}
-                        >
-                          {deal.bmvPercentage
-                            ? `${Number(deal.bmvPercentage).toFixed(1)}%`
-                            : "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-gray-400 mb-0.5">
-                          Gross Yield
-                        </p>
-                        <p
-                          className={`text-sm font-bold ${
-                            deal.grossYield ? "" : "text-gray-400"
-                          }`}
-                        >
-                          {deal.grossYield
-                            ? `${Number(deal.grossYield).toFixed(1)}%`
-                            : "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-gray-400 mb-0.5">Net Yield</p>
-                        <p
-                          className={`text-sm font-bold ${
-                            deal.netYield ? "" : "text-gray-400"
-                          }`}
-                        >
-                          {deal.netYield
-                            ? `${Number(deal.netYield).toFixed(1)}%`
-                            : "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-gray-400 mb-0.5">ROI</p>
-                        <p
-                          className={`text-sm font-bold ${
-                            deal.roi ? "text-[#2563EB]" : "text-gray-400"
-                          }`}
-                        >
-                          {deal.roi ? `${Number(deal.roi).toFixed(1)}%` : "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-gray-400 mb-0.5">ROCE</p>
-                        <p
-                          className={`text-sm font-bold ${
-                            deal.roce ? "text-[#2563EB]" : "text-gray-400"
-                          }`}
-                        >
-                          {deal.roce ? `${Number(deal.roce).toFixed(1)}%` : "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-gray-400 mb-0.5">Cap Rate</p>
-                        <p
-                          className={`text-sm font-bold ${
-                            calculatedMetrics.capRate ? "" : "text-gray-400"
-                          }`}
-                        >
-                          {calculatedMetrics.capRate
-                            ? `${calculatedMetrics.capRate.toFixed(2)}%`
-                            : "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-gray-400 mb-0.5">GRM</p>
-                        <p
-                          className={`text-sm font-bold ${
-                            calculatedMetrics.grm ? "" : "text-gray-400"
-                          }`}
-                        >
-                          {calculatedMetrics.grm
-                            ? calculatedMetrics.grm.toFixed(2)
-                            : "—"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ),
-                map: (
-                  <div className="pt-2 border-t">
-                    <div className="w-full h-[200px] rounded-lg overflow-hidden border">
-                      <iframe
-                        src={mapUrl}
-                        width="100%"
-                        height="100%"
-                        style={{ border: 0 }}
-                        allowFullScreen
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        className="w-full h-full"
-                      />
-                    </div>
-                  </div>
-                ),
-              }}
-            />
-
-            {/* Team & Metadata */}
-            <div className="pt-2 border-t space-y-1">
-              {deal.assignedTo && (
-                <div className="flex justify-between text-[10px]">
-                  <span className="text-gray-400">Assigned:</span>
-                  <span className="truncate ml-2 font-medium">
-                    {deal.assignedTo.firstName} {deal.assignedTo.lastName}
-                  </span>
-                </div>
-              )}
-              <div className="flex justify-between text-[10px]">
-                <span className="text-gray-400">Created:</span>
-                <span className="font-medium">
-                  {new Date(deal.createdAt).toLocaleDateString("en-GB", {
-                    day: "numeric",
-                    month: "short",
-                  })}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Actions footer — isolated from card click */}
-      <div
-        className="border-t border-[var(--ds-border)] flex items-center justify-end px-4 py-2"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <DealActions dealId={deal.id} dealAddress={deal.address} />
       </div>
     </div>
   )
@@ -1073,27 +694,33 @@ function InvestorMatchBadge({ matches }: { matches: MatchResult[] }) {
 function DealActions({
   dealId,
   dealAddress,
+  onView,
 }: {
   dealId: string
   dealAddress: string
+  onView?: () => void
 }) {
   const [deleteOpen, setDeleteOpen] = useState(false)
   return (
     <>
       <TooltipProvider>
         <div className="flex items-center gap-0.5">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link
-                href={`/dashboard/deals/${dealId}`}
-                className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Eye className="h-3.5 w-3.5" />
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent>View</TooltipContent>
-          </Tooltip>
+          {onView && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onView()
+                  }}
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>View</TooltipContent>
+            </Tooltip>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <Link
