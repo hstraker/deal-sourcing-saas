@@ -14,7 +14,7 @@ export function getDealStatusStyle(status: string): string {
     sold:        "bg-green-200 text-green-800",
     archived:    "bg-gray-200 text-gray-600",
   }
-  return map[status] ?? "bg-gray-100 text-gray-800"
+  return map[status] ?? "bg-gray-100 text-gray-700"
 }
 
 /** Pipeline stage badges — exact PipelineStage enum values */
