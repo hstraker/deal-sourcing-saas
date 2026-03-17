@@ -35,6 +35,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { KpiBar, type KpiTile } from "@/components/ui/kpi-bar"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { getDealStatusStyle } from "@/lib/theme/status-colors"
 import { DealSearch } from "@/components/deals/deal-search"
 import {
   DealFiltersComponent,
@@ -64,20 +67,6 @@ interface DealListProps {
 }
 
 const ITEMS_PER_PAGE = 12
-
-const getStatusColor = (status: string) => {
-  const colors: Record<string, string> = {
-    new: "bg-gray-100 text-gray-800",
-    review: "bg-yellow-100 text-yellow-800",
-    in_progress: "bg-blue-100 text-blue-800",
-    ready: "bg-purple-100 text-purple-800",
-    listed: "bg-green-100 text-green-800",
-    reserved: "bg-orange-100 text-orange-800",
-    sold: "bg-success/20 text-success",
-    archived: "bg-gray-200 text-gray-600",
-  }
-  return colors[status] || "bg-gray-100 text-gray-800"
-}
 
 const formatStatus = (status: string) => {
   return status
@@ -134,72 +123,45 @@ function computeKpis(deals: DealWithRelations[]): DealKpis {
 function DealKpiBar({ deals }: { deals: DealWithRelations[] }) {
   const kpis = useMemo(() => computeKpis(deals), [deals])
 
-  return (
-    <div className="flex items-stretch divide-x divide-gray-200 rounded-xl border border-gray-200 bg-white shadow-sm">
-      {/* Active Deals */}
-      <div className="flex flex-1 items-center gap-3 px-5 py-4">
-        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-50">
-          <Target className="h-4 w-4 text-blue-600" />
-        </div>
-        <div>
-          <p className="font-mono text-xl font-bold text-gray-900">{kpis.activeDeals}</p>
-          <p className="text-xs text-gray-500">Active Deals</p>
-        </div>
-      </div>
+  const tiles: KpiTile[] = [
+    {
+      label: "Active Deals",
+      value: String(kpis.activeDeals),
+      icon: <Target className="h-4 w-4 text-blue-600" />,
+      iconBgClass: "bg-blue-50",
+      valueColorClass: "text-gray-900",
+    },
+    {
+      label: "Avg BMV %",
+      value: kpis.avgBmv !== null ? `${kpis.avgBmv.toFixed(1)}%` : "—",
+      icon: <TrendingUp className="h-4 w-4 text-green-600" />,
+      iconBgClass: "bg-green-50",
+      valueColorClass: "text-green-600",
+    },
+    {
+      label: "Avg Gross Yield",
+      value: kpis.avgGrossYield !== null ? `${kpis.avgGrossYield.toFixed(1)}%` : "—",
+      icon: <BarChart2 className="h-4 w-4 text-blue-600" />,
+      iconBgClass: "bg-blue-50",
+      valueColorClass: "text-blue-600",
+    },
+    {
+      label: "Pipeline Value",
+      value: formatCurrency(kpis.totalPipelineValue),
+      icon: <DollarSign className="h-4 w-4 text-purple-600" />,
+      iconBgClass: "bg-purple-50",
+      valueColorClass: "text-purple-600",
+    },
+    {
+      label: "Avg Deal Score",
+      value: kpis.avgDealScore !== null ? `${kpis.avgDealScore.toFixed(0)}/100` : "—",
+      icon: <Star className="h-4 w-4 text-amber-600" />,
+      iconBgClass: "bg-amber-50",
+      valueColorClass: "text-amber-600",
+    },
+  ]
 
-      {/* Avg BMV % */}
-      <div className="flex flex-1 items-center gap-3 px-5 py-4">
-        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-green-50">
-          <TrendingUp className="h-4 w-4 text-green-600" />
-        </div>
-        <div>
-          <p className="font-mono text-xl font-bold" style={{ color: "#16a34a" }}>
-            {kpis.avgBmv !== null ? `${kpis.avgBmv.toFixed(1)}%` : "—"}
-          </p>
-          <p className="text-xs text-gray-500">Avg BMV %</p>
-        </div>
-      </div>
-
-      {/* Avg Gross Yield */}
-      <div className="flex flex-1 items-center gap-3 px-5 py-4">
-        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-50">
-          <BarChart2 className="h-4 w-4 text-blue-600" />
-        </div>
-        <div>
-          <p className="font-mono text-xl font-bold" style={{ color: "#2563eb" }}>
-            {kpis.avgGrossYield !== null ? `${kpis.avgGrossYield.toFixed(1)}%` : "—"}
-          </p>
-          <p className="text-xs text-gray-500">Avg Gross Yield</p>
-        </div>
-      </div>
-
-      {/* Total Pipeline Value */}
-      <div className="flex flex-1 items-center gap-3 px-5 py-4">
-        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-purple-50">
-          <DollarSign className="h-4 w-4 text-purple-600" />
-        </div>
-        <div>
-          <p className="font-mono text-xl font-bold text-purple-600">
-            {formatCurrency(kpis.totalPipelineValue)}
-          </p>
-          <p className="text-xs text-gray-500">Pipeline Value</p>
-        </div>
-      </div>
-
-      {/* Avg Deal Score */}
-      <div className="flex flex-1 items-center gap-3 px-5 py-4">
-        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-amber-50">
-          <Star className="h-4 w-4 text-amber-600" />
-        </div>
-        <div>
-          <p className="font-mono text-xl font-bold" style={{ color: "#d97706" }}>
-            {kpis.avgDealScore !== null ? `${kpis.avgDealScore.toFixed(0)}/100` : "—"}
-          </p>
-          <p className="text-xs text-gray-500">Avg Deal Score</p>
-        </div>
-      </div>
-    </div>
-  )
+  return <KpiBar tiles={tiles} />
 }
 
 // ── Main DealList ──────────────────────────────────────────────────────────────
@@ -534,11 +496,10 @@ function TableView({
 
                 {/* Status */}
                 <td className="table-cell">
-                  <span
-                    className={`inline-block rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(deal.status)}`}
-                  >
-                    {formatStatus(deal.status)}
-                  </span>
+                  <StatusBadge
+                    label={formatStatus(deal.status)}
+                    className={getDealStatusStyle(deal.status)}
+                  />
                 </td>
 
                 {/* Type */}
