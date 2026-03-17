@@ -1602,12 +1602,21 @@ export async function fetchEpcData(postcode: string): Promise<EpcRecord[] | null
       return null
     }
 
-    const records: EpcRecord[] = data.energy_efficiency.map((item: any) => ({
-      address: item.address as string,
-      rating: item.rating as string,
-      score: Number(item.score),
-      inspectionDate: new Date(item.inspection_date),
-    }))
+    type ParsedEpc = EpcRecord & { _valid: boolean }
+    const allParsed: ParsedEpc[] = data.energy_efficiency.map((item: any) => {
+      const d = new Date(item.inspection_date)
+      return {
+        address: item.address as string,
+        rating: item.rating as string,
+        score: Number(item.score),
+        inspectionDate: d,
+        _valid: !isNaN(d.getTime()),
+      }
+    })
+
+    const records: EpcRecord[] = allParsed
+      .filter((r) => r._valid)
+      .map(({ _valid, ...r }) => r)
 
     // Sort newest inspection first
     records.sort((a, b) => b.inspectionDate.getTime() - a.inspectionDate.getTime())

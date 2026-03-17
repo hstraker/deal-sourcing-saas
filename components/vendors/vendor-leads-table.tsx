@@ -374,7 +374,7 @@ function EpcRatingBadge({ rating, score, inspectionDate }: {
     .join(" · ")
 
   const badge = (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold cursor-default ${colourCls}`}>
+    <span className={cn("inline-block rounded-full px-2 py-0.5 text-xs font-bold cursor-default", colourCls)}>
       {rating.toUpperCase()}
     </span>
   )

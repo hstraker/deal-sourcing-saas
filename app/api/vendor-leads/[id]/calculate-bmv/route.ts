@@ -855,9 +855,9 @@ export async function POST(
           estimatedAnnualRent: annualRent,
           localAverageRent: monthlyRent,   // area average from PropertyData
         }),
-        // EPC data (if fetched)
-        ...(epcRating !== null && {
-          epcRating,
+        // EPC data (if fetched and rating is valid A–G)
+        ...(epcRating !== null && /^[A-Ga-g]$/.test(epcRating) && {
+          epcRating: epcRating.toUpperCase(),
           epcScore,
           epcInspectionDate,
         }),
