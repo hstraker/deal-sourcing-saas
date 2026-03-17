@@ -8,23 +8,10 @@ import { DealScoreRing } from "./deal-score-ring"
 import { OfferAnalysisPanel } from "./offer-analysis-panel"
 import { formatCurrency } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { getDealStatusStyle } from "@/lib/theme/status-colors"
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-
-const STATUS_COLORS: Record<string, string> = {
-  new: "bg-gray-100 text-gray-800",
-  review: "bg-yellow-100 text-yellow-800",
-  in_progress: "bg-blue-100 text-blue-800",
-  ready: "bg-purple-100 text-purple-800",
-  listed: "bg-green-100 text-green-800",
-  reserved: "bg-orange-100 text-orange-800",
-  sold: "bg-green-200 text-green-800",
-  archived: "bg-gray-200 text-gray-600",
-}
-
-function statusColor(status: string) {
-  return STATUS_COLORS[status] ?? "bg-gray-100 text-gray-800"
-}
 
 function formatStatus(status: string) {
   return status
@@ -503,14 +490,10 @@ export function DealDetailModal({ deal, onClose }: DealDetailModalProps) {
                   {deal.propertyType}
                 </span>
               )}
-              <span
-                className={cn(
-                  "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                  statusColor(deal.status)
-                )}
-              >
-                {formatStatus(deal.status)}
-              </span>
+              <StatusBadge
+                label={formatStatus(deal.status)}
+                className={getDealStatusStyle(deal.status)}
+              />
             </div>
           </div>
 
