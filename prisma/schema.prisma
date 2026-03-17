@@ -932,6 +932,11 @@ model VendorLead {
   localAverageRent      Decimal?           @map("local_average_rent") @db.Decimal(10, 2)
   rentConfidence        String?            @map("rent_confidence") // 'HIGH', 'MEDIUM', 'LOW'
 
+  // EPC Data (from PropertyData energy-efficiency API)
+  epcRating         String?   @map("epc_rating")           // A | B | C | D | E | F | G
+  epcScore          Int?      @map("epc_score")             // 0–100
+  epcInspectionDate DateTime? @map("epc_inspection_date")  // Date of last EPC inspection
+
   // Workflow Status
   pipelineStage     PipelineStage @default(NEW_LEAD) @map("pipeline_stage")
   conversationState Json?         @default("{}") @map("conversation_state")
