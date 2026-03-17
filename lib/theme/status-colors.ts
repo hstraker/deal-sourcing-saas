@@ -95,8 +95,11 @@ export function getReservationStatusStyle(status: string): string {
     fee_paid:               "bg-emerald-100 text-emerald-700 border-emerald-200",
     proof_of_funds_pending: "bg-orange-100 text-orange-700 border-orange-200",
     pof_received:           "bg-sky-100 text-sky-700 border-sky-200",
+    verified:               "bg-teal-100 text-teal-700 border-teal-200",
     lock_out_sent:          "bg-purple-100 text-purple-700 border-purple-200",
     locked_out:             "bg-violet-100 text-violet-700 border-violet-200",
+    completed:              "bg-green-200 text-green-800 border-green-300",
+    cancelled:              "bg-red-100 text-red-700 border-red-200",
   }
   return map[status] ?? "bg-gray-100 text-gray-700 border-gray-200"
 }
