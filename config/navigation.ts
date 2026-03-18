@@ -23,6 +23,7 @@ import {
   ArrowTrendingUpIcon,
   ClockIcon,
   PresentationChartLineIcon,
+  SwatchIcon,
 } from "@heroicons/react/24/outline"
 
 export const NAV_SECTIONS = [
@@ -142,6 +143,7 @@ export const NAV_SECTIONS = [
           { label: "Scraper Settings",        href: "/dashboard/settings/scraper",            icon: MagnifyingGlassCircleIcon },
           { label: "Investor Pack Templates", href: "/dashboard/settings/investor-packs",     icon: DocumentDuplicateIcon },
           { label: "Company Profile",         href: "/dashboard/settings/company-profile",    icon: BuildingOffice2Icon },
+          { label: "Appearance",              href: "/dashboard/admin/appearance",            icon: SwatchIcon },
         ],
       },
       {
