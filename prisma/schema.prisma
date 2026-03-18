@@ -257,6 +257,7 @@ model User {
   sourcingAlerts      SourcingAlert[]
   notificationPrefs   NotificationPreference?
   watchlist           WatchlistProperty[]
+  theme               UserTheme?
 
   @@index([email])
   @@index([role])
@@ -1909,3 +1910,14 @@ model WatchlistProperty {
   @@map("watchlist_properties")
 }
 
+
+model UserTheme {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokens    Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("user_themes")
+}
