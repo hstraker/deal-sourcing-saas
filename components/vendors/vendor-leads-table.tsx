@@ -49,7 +49,7 @@ import {
 } from "@/components/ui/tooltip"
 import { KpiBar, type KpiTile } from "@/components/ui/kpi-bar"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { getPipelineStageStyle } from "@/lib/theme/status-colors"
+import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -254,7 +254,7 @@ function StageBadge({ stage }: { stage: PipelineStage }) {
   return (
     <StatusBadge
       label={STAGE_LABEL[stage]}
-      className={getPipelineStageStyle(stage)}
+      cssKey={getPipelineStageVarKey(stage)}
       tooltip={STAGE_DESC[stage]}
     />
   )

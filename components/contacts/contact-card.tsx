@@ -5,7 +5,7 @@ import { Mail, Phone, Building2, Star, Pencil, Copy, Check, Users, FileText, Lin
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { ContactSRABadge } from "./contact-sra-badge"
-import { getContactTypeStyle } from "@/lib/theme/status-colors"
+import { getContactTypeVarKey } from "@/lib/theme/status-colors"
 import type { ContactWithCounts } from "@/types/contacts"
 import type { ContactType } from "@prisma/client"
 import { toast } from "sonner"
@@ -69,7 +69,7 @@ export function ContactCard({ contact, onEdit, onUpdated, href }: ContactCardPro
         <div className="flex items-center gap-1 shrink-0">
           <StatusBadge
             label={TYPE_LABELS[contact.type]}
-            className={getContactTypeStyle(contact.type)}
+            cssKey={getContactTypeVarKey(contact.type)}
           />
         </div>
       </div>

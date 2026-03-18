@@ -9,7 +9,7 @@ import { OfferAnalysisPanel } from "./offer-analysis-panel"
 import { formatCurrency } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { getDealStatusStyle } from "@/lib/theme/status-colors"
+import { getDealStatusVarKey } from "@/lib/theme/status-colors"
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -492,7 +492,7 @@ export function DealDetailModal({ deal, onClose }: DealDetailModalProps) {
               )}
               <StatusBadge
                 label={formatStatus(deal.status)}
-                className={getDealStatusStyle(deal.status)}
+                cssKey={getDealStatusVarKey(deal.status)}
               />
             </div>
           </div>

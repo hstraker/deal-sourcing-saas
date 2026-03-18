@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/tooltip"
 import { KpiBar, type KpiTile } from "@/components/ui/kpi-bar"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { getDealStatusStyle } from "@/lib/theme/status-colors"
+import { getDealStatusVarKey } from "@/lib/theme/status-colors"
 import { DealSearch } from "@/components/deals/deal-search"
 import {
   DealFiltersComponent,
@@ -498,7 +498,7 @@ function TableView({
                 <td className="table-cell">
                   <StatusBadge
                     label={formatStatus(deal.status)}
-                    className={getDealStatusStyle(deal.status)}
+                    cssKey={getDealStatusVarKey(deal.status)}
                   />
                 </td>
 
