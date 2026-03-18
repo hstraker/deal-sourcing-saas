@@ -29,6 +29,12 @@ import { ReservationModal } from "./reservation-modal"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SolicitorSelector, type Solicitor as SolicitorType } from "@/components/solicitors/solicitor-selector"
 import { toast } from "sonner"
+import {
+  getInvestorStrategyStyle,
+  getInvestorExperienceStyle,
+  getInvestorPipelineStageStyle,
+  getReservationStatusStyle,
+} from "@/lib/theme/status-colors"
 
 interface Investor {
   id: string
@@ -61,17 +67,7 @@ interface InvestorListProps {
   initialInvestors?: Investor[]
 }
 
-const experienceColors: Record<string, string> = {
-  beginner:     "bg-blue-100 text-blue-800 border-blue-200",
-  intermediate: "bg-green-100 text-green-800 border-green-200",
-  advanced:     "bg-purple-100 text-purple-800 border-purple-200",
-}
 
-const strategyColors: Record<string, string> = {
-  BRRRR: "bg-pink-100 text-pink-800 border-pink-200",
-  BTL:   "bg-cyan-100 text-cyan-800 border-cyan-200",
-  Flip:  "bg-orange-100 text-orange-800 border-orange-200",
-}
 
 const pipelineStageLabels: Record<string, string> = {
   LEAD:          "Lead",
@@ -83,15 +79,6 @@ const pipelineStageLabels: Record<string, string> = {
   INACTIVE:      "Inactive",
 }
 
-const pipelineStageColors: Record<string, string> = {
-  LEAD:          "bg-gray-100 text-gray-700 border-gray-200",
-  CONTACTED:     "bg-blue-100 text-blue-700 border-blue-200",
-  QUALIFIED:     "bg-green-100 text-green-700 border-green-200",
-  VIEWING_DEALS: "bg-purple-100 text-purple-700 border-purple-200",
-  RESERVED:      "bg-yellow-100 text-yellow-700 border-yellow-200",
-  PURCHASED:     "bg-emerald-100 text-emerald-700 border-emerald-200",
-  INACTIVE:      "bg-red-100 text-red-700 border-red-200",
-}
 
 const pipelineStageIcons: Record<string, React.ReactNode> = {
   LEAD:          <UserRound     className="h-3.5 w-3.5" />,
@@ -114,16 +101,6 @@ const reservationStatusLabels: Record<string, string> = {
   locked_out:             "Lock-out Signed",
 }
 
-const reservationStatusColors: Record<string, string> = {
-  pending:                "bg-gray-100 text-gray-700 border-gray-200",
-  pack_sent:              "bg-blue-100 text-blue-700 border-blue-200",
-  fee_pending:            "bg-yellow-100 text-yellow-700 border-yellow-200",
-  fee_paid:               "bg-emerald-100 text-emerald-700 border-emerald-200",
-  proof_of_funds_pending: "bg-orange-100 text-orange-700 border-orange-200",
-  pof_received:           "bg-sky-100 text-sky-700 border-sky-200",
-  lock_out_sent:          "bg-purple-100 text-purple-700 border-purple-200",
-  locked_out:             "bg-violet-100 text-violet-700 border-violet-200",
-}
 
 export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
   const [investors, setInvestors] = useState<Investor[]>(initialInvestors)
@@ -275,7 +252,7 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
                           <div className="flex items-center gap-1.5">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <div className={`h-6 w-6 rounded flex items-center justify-center border cursor-default shrink-0 ${pipelineStageColors[stage] || "bg-gray-100 text-gray-700 border-gray-200"}`}>
+                                <div className={`h-6 w-6 rounded flex items-center justify-center border cursor-default shrink-0 ${getInvestorPipelineStageStyle(stage)}`}>
                                   {pipelineStageIcons[stage] ?? <UserRound className="h-3.5 w-3.5" />}
                                 </div>
                               </TooltipTrigger>
@@ -302,7 +279,7 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
                                         <span className="text-gray-400 leading-tight truncate max-w-[140px]">
                                           {res.deal?.address ?? "—"}
                                         </span>
-                                        <span className={`shrink-0 px-1 py-px rounded text-[10px] font-medium ${reservationStatusColors[res.status]}`}>
+                                        <span className={`shrink-0 px-1 py-px rounded text-[10px] font-medium ${getReservationStatusStyle(res.status)}`}>
                                           {reservationStatusLabels[res.status]}
                                         </span>
                                       </div>
@@ -333,7 +310,7 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
                     <div className="flex flex-wrap gap-1">
                       {investor.strategy && investor.strategy.length > 0 ? (
                         investor.strategy.slice(0, 2).map((s) => (
-                          <Badge key={s} variant="outline" className={`text-xs ${strategyColors[s] || "bg-gray-100 text-gray-800 border-gray-200"}`}>
+                          <Badge key={s} variant="outline" className={`text-xs ${getInvestorStrategyStyle(s)}`}>
                             {s}
                           </Badge>
                         ))
@@ -408,7 +385,7 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
                     <p className="text-xs text-gray-400 truncate">{editingInvestor.user.email}</p>
                   </div>
                   <div className="flex flex-wrap gap-2 shrink-0">
-                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${pipelineStageColors[stage] ?? "bg-gray-100 text-gray-700 border-gray-200"}`}>
+                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${getInvestorPipelineStageStyle(stage)}`}>
                       {pipelineStageIcons[stage]}
                       {pipelineStageLabels[stage] ?? stage}
                     </span>
