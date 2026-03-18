@@ -41,6 +41,7 @@ import { toast } from "sonner"
 import { PortalCheckDetailPanel } from "./portal-check-detail-panel"
 import { VendorComparablesTab } from "./vendor-comparables-tab"
 import { OfferAnalysisPanel } from "../deals/offer-analysis-panel"
+import { PropertyDetailsModal } from "./property-details-modal"
 import {
   Tooltip,
   TooltipContent,
@@ -1258,6 +1259,7 @@ export function VendorLeadsTable() {
   const [activeTab, setActiveTab] = useState<TabId>("map-view")
   const [mapLead, setMapLead] = useState<VendorLead | null>(null)
   const [checkingIds, setCheckingIds] = useState<Set<string>>(new Set())
+  const [propertyDetailsModalLead, setPropertyDetailsModalLead] = useState<VendorLead | null>(null)
   const [portalCheckModalLead, setPortalCheckModalLead] = useState<VendorLead | null>(null)
   const [validationModalLead, setValidationModalLead] = useState<VendorLead | null>(null)
   const [comparableModalLead, setComparableModalLead] = useState<VendorLead | null>(null)
@@ -1453,7 +1455,9 @@ export function VendorLeadsTable() {
                     if (activeTab === "map-view") setMapLead(lead)
                   },
                   onView: () => {
-                    if (activeTab === "portal-check") {
+                    if (activeTab === "property-details") {
+                      setPropertyDetailsModalLead(lead)
+                    } else if (activeTab === "portal-check") {
                       setPortalCheckModalLead(lead)
                     } else if (activeTab === "validation") {
                       setValidationModalLead(lead)
@@ -1495,6 +1499,14 @@ export function VendorLeadsTable() {
           </div>
         )}
       </div>
+
+      {/* Property Details Modal */}
+      {propertyDetailsModalLead && (
+        <PropertyDetailsModal
+          lead={propertyDetailsModalLead}
+          onClose={() => setPropertyDetailsModalLead(null)}
+        />
+      )}
 
       {/* Map Modal */}
       {mapLead && <MapModal lead={mapLead} onClose={() => setMapLead(null)} />}
