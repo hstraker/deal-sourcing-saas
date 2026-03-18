@@ -72,6 +72,9 @@ type PipelineStage =
   | "READY_FOR_INVESTORS"
   | "DEAD_LEAD"
 
+type UrgencyLevel = "urgent" | "quick" | "moderate" | "flexible"
+type ReasonForSale = "relocation" | "financial" | "divorce" | "inheritance" | "downsize" | "other"
+
 interface OfferRetry {
   retryNumber: number
   originalOfferAmount: string | number | null
@@ -87,7 +90,7 @@ interface LatestPortalCheck {
   checkStatus: string
 }
 
-interface VendorLead {
+export interface VendorLead {
   id: string
   vendorName: string
   vendorPhone: string
@@ -135,6 +138,11 @@ interface VendorLead {
   epcInspectionDate: string | null   // ISO string from API
   latestPortalCheck: LatestPortalCheck | null
   offerRetries: OfferRetry[]
+  motivationScore: number | null
+  urgencyLevel: UrgencyLevel | null
+  reasonForSelling: ReasonForSale | null
+  competingOffers: boolean
+  timelineDays: number | null
 }
 
 type TabId = "map-view" | "property-details" | "portal-check" | "validation" | "comparable" | "offer-analysis"
