@@ -38,6 +38,7 @@ import {
   Mail,
   AlertTriangle,
   FlaskConical,
+  Palette,
 } from "lucide-react"
 import { MOCK_SCENARIOS, MOCK_SCENARIO_IDS } from "@/lib/vendor-checks/test-mode/mock-scenarios"
 import type { MockScenarioId } from "@/lib/vendor-checks/test-mode/mock-scenarios"
@@ -309,6 +310,28 @@ export default function SettingsPage() {
       />
 
       {/* ── Navigation Cards ── */}
+
+      {/* Appearance */}
+      <div className="ds-card p-5 flex items-center gap-4">
+        <div className="shrink-0 p-2 rounded-lg bg-pink-50">
+          <Palette className="h-5 w-5 text-pink-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-gray-900">Appearance</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Customise brand colours, sidebar theme, badge colours, typography, and spacing
+          </p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Changes apply instantly across the dashboard for your account only
+          </p>
+        </div>
+        <Link href="/dashboard/settings/appearance" className="shrink-0">
+          <Button className="btn-primary h-9">
+            <Palette className="h-4 w-4 mr-2" />
+            Customise Theme
+          </Button>
+        </Link>
+      </div>
 
       {/* Company Profile */}
       <div className="ds-card p-5 flex items-center gap-4">
