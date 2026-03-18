@@ -118,3 +118,23 @@ export function getAnalyticsFunnelStageStyle(stage: string): string {
   }
   return map[stage] ?? "bg-gray-100 text-gray-800 border-gray-200"
 }
+
+// ── CSS variable key helpers (Sub-project 2) ──────────────────────────────
+// These return the CSS variable prefix that StatusBadge's cssKey prop expects.
+// The actual color values come from --{key}-bg and --{key}-text CSS variables
+// injected by app/dashboard/layout.tsx.
+
+/** Returns CSS variable key for a deal status, e.g. "status-deal-new" */
+export function getDealStatusVarKey(status: string): string {
+  return `status-deal-${status.toLowerCase()}`
+}
+
+/** Returns CSS variable key for a pipeline stage, e.g. "status-pipeline-new_lead" */
+export function getPipelineStageVarKey(stage: string): string {
+  return `status-pipeline-${stage.toLowerCase()}`
+}
+
+/** Returns CSS variable key for a contact type, e.g. "status-contact-solicitor" */
+export function getContactTypeVarKey(type: string): string {
+  return `status-contact-${type.toLowerCase()}`
+}
