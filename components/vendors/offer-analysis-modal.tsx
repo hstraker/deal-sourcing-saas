@@ -1,0 +1,139 @@
+"use client"
+
+import { X } from "lucide-react"
+import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { ModalShell } from "./modal-shell"
+import { OfferAnalysisPanel } from "../deals/offer-analysis-panel"
+import type { VendorLead } from "./vendor-leads-table"
+
+function toNum(v: string | number | null | undefined): number | null {
+  if (v === null || v === undefined || v === "") return null
+  const n = typeof v === "number" ? v : parseFloat(String(v))
+  return isNaN(n) ? null : n
+}
+
+function fmtCurrency(v: string | number | null | undefined): string {
+  const n = toNum(v)
+  if (n === null) return "—"
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: "GBP",
+    maximumFractionDigits: 0,
+  }).format(n)
+}
+
+export function OfferAnalysisModal({
+  lead,
+  onClose,
+}: {
+  lead: VendorLead
+  onClose: () => void
+}) {
+  const bmv = toNum(lead.bmvScore)
+  const profit = toNum(lead.profitPotential)
+  const askingPrice = toNum(lead.askingPrice) ?? 0
+  const gdv = toNum(lead.estimatedMarketValue)
+  const estimatedRent = toNum(lead.estimatedMonthlyRent)
+  const totalRefurb = toNum(lead.estimatedRefurbCost)
+
+  const leftPanel = (
+    <div className="flex flex-col gap-5 p-5 h-full">
+      {/* Address */}
+      <div>
+        <p className="text-sm font-bold leading-snug text-slate-100">{lead.vendorName}</p>
+        <p className="mt-0.5 text-xs text-slate-400">{lead.propertyAddress ?? "No address"}</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {lead.bedrooms != null && (
+            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-slate-200">
+              {lead.bedrooms} bed
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="h-px bg-white/10" />
+
+      {/* Deal inputs */}
+      <div className="space-y-2">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+          Deal Inputs
+        </p>
+        <div className="flex justify-between text-xs">
+          <span className="text-slate-400">Asking Price</span>
+          <span className="font-bold text-slate-100">{fmtCurrency(lead.askingPrice)}</span>
+        </div>
+        <div className="flex justify-between text-xs">
+          <span className="text-slate-400">Market Value</span>
+          <span className="font-bold text-slate-100">{fmtCurrency(lead.estimatedMarketValue)}</span>
+        </div>
+        <div className="flex justify-between text-xs">
+          <span className="text-slate-400">Monthly Rent</span>
+          <span className="font-bold text-slate-100">{fmtCurrency(lead.estimatedMonthlyRent)}</span>
+        </div>
+        <div className="flex justify-between text-xs">
+          <span className="text-slate-400">Refurb Est.</span>
+          <span className="font-bold text-slate-100">{fmtCurrency(lead.estimatedRefurbCost)}</span>
+        </div>
+        {(bmv !== null || profit !== null) && (
+          <div className="mt-1 space-y-1.5 rounded-lg border border-green-500/30 bg-green-500/10 p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-green-300">BMV Discount</span>
+              <span className="text-xl font-extrabold text-green-400">
+                {bmv !== null ? `${bmv.toFixed(1)}%` : "—"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-green-300">Profit Potential</span>
+              <span className="text-sm font-bold text-green-400">{fmtCurrency(profit)}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Pipeline stage — pinned to bottom */}
+      <div className="mt-auto border-t border-white/10 pt-3">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] text-slate-500">Pipeline Stage</span>
+          <StatusBadge
+            label={lead.pipelineStage
+              .replace(/_/g, " ")
+              .toLowerCase()
+              .replace(/\b\w/g, (c) => c.toUpperCase())}
+            cssKey={getPipelineStageVarKey(lead.pipelineStage)}
+          />
+        </div>
+      </div>
+    </div>
+  )
+
+  return (
+    <ModalShell onClose={onClose} leftPanel={leftPanel} maxWidth="4xl">
+      {/* Close button */}
+      <div className="-mr-1 -mt-1 flex justify-end p-4 pb-0">
+        <button
+          onClick={onClose}
+          className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+          aria-label="Close"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 pt-2">
+        <OfferAnalysisPanel
+          vendorLeadId={lead.id}
+          dealId={lead.dealId}
+          askingPrice={askingPrice}
+          gdv={gdv}
+          estimatedRent={estimatedRent}
+          totalRefurbishment={totalRefurb}
+          vendorName={lead.vendorName}
+          vendorEmail={lead.vendorEmail}
+          vendorPhone={lead.vendorPhone}
+          missingInputsHint={!gdv ? "Run BMV calculation first to populate Market Value." : undefined}
+        />
+      </div>
+    </ModalShell>
+  )
+}
