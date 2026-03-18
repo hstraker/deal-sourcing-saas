@@ -1913,7 +1913,7 @@ model WatchlistProperty {
 
 model UserTheme {
   id        String   @id @default(cuid())
-  userId    String   @unique
+  userId    String   @unique @map("user_id")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   tokens    Json     @default("{}")
   createdAt DateTime @default(now()) @map("created_at")
