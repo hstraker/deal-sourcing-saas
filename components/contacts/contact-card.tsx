@@ -3,8 +3,9 @@
 import { useState } from "react"
 import { Mail, Phone, Building2, Star, Pencil, Copy, Check, Users, FileText, Link2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { ContactSRABadge } from "./contact-sra-badge"
+import { getContactTypeStyle } from "@/lib/theme/status-colors"
 import type { ContactWithCounts } from "@/types/contacts"
 import type { ContactType } from "@prisma/client"
 import { toast } from "sonner"
@@ -16,15 +17,6 @@ const TYPE_LABELS: Record<ContactType, string> = {
   ESTATE_AGENT: "Estate Agent",
   CONTRACTOR: "Contractor",
   OTHER: "Other",
-}
-
-const TYPE_COLORS: Record<ContactType, string> = {
-  SOLICITOR: "bg-blue-100 text-blue-700",
-  INVESTOR_CONTACT: "bg-purple-100 text-purple-700",
-  VENDOR_CONTACT: "bg-orange-100 text-orange-700",
-  ESTATE_AGENT: "bg-green-100 text-green-700",
-  CONTRACTOR: "bg-yellow-100 text-yellow-700",
-  OTHER: "bg-gray-100 text-gray-700",
 }
 
 interface ContactCardProps {
@@ -75,9 +67,10 @@ export function ContactCard({ contact, onEdit, onUpdated, href }: ContactCardPro
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_COLORS[contact.type]}`}>
-            {TYPE_LABELS[contact.type]}
-          </span>
+          <StatusBadge
+            label={TYPE_LABELS[contact.type]}
+            className={getContactTypeStyle(contact.type)}
+          />
         </div>
       </div>
 
