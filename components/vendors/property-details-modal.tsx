@@ -90,16 +90,16 @@ function Chip({
 function MetricCell({
   label,
   value,
-  colour,
+  className,
 }: {
   label: string
   value: string
-  colour: string
+  className: string
 }) {
   return (
     <div>
       <p className="text-[10px] text-gray-500">{label}</p>
-      <p className={cn("text-sm font-bold", colour)}>{value}</p>
+      <p className={cn("text-sm font-bold", className)}>{value}</p>
     </div>
   )
 }
@@ -148,9 +148,12 @@ export function PropertyDetailsModal({
   const annualRent = toNum(lead.estimatedAnnualRent)
   const motivation = toNum(lead.motivationScore)
 
+  /** Rough net-yield factor: assumes ~20% of gross rent goes to expenses (mgmt, voids, maintenance) */
+  const NET_YIELD_FACTOR = 0.8
+
   const grossYield =
     asking && asking > 0 && annualRent ? (annualRent / asking) * 100 : null
-  const netYield = grossYield !== null ? grossYield * 0.8 : null
+  const netYield = grossYield !== null ? grossYield * NET_YIELD_FACTOR : null
 
   // Strategy fit
   const btlFit = monthlyRent !== null && grossYield !== null && grossYield >= 5
@@ -175,7 +178,7 @@ export function PropertyDetailsModal({
       ? "amber"
       : lead.latestCheckRisk === "red_flag"
       ? "red"
-      : ("grey" as const)
+      : "grey"
   const portalLabel =
     lead.latestCheckRisk === "clear"
       ? "Portal check clear"
@@ -197,8 +200,7 @@ export function PropertyDetailsModal({
       onClick={onClose}
     >
       <div
-        className="flex w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl"
-        style={{ maxHeight: "90vh" }}
+        className="flex w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ═══════════════════════════════════════════════
@@ -386,22 +388,22 @@ export function PropertyDetailsModal({
                 <MetricCell
                   label="Monthly Rent"
                   value={fmtCurrency(monthlyRent)}
-                  colour="text-gray-900"
+                  className="text-gray-900"
                 />
                 <MetricCell
                   label="Annual Rent"
                   value={fmtCurrency(annualRent)}
-                  colour="text-gray-900"
+                  className="text-gray-900"
                 />
                 <MetricCell
                   label="Gross Yield"
                   value={grossYield !== null ? `${grossYield.toFixed(1)}%` : "—"}
-                  colour="text-green-700"
+                  className="text-green-700"
                 />
                 <MetricCell
                   label="Net Yield ~"
                   value={netYield !== null ? `${netYield.toFixed(1)}%` : "—"}
-                  colour="text-green-700"
+                  className="text-green-700"
                 />
               </div>
             </div>
@@ -436,7 +438,7 @@ export function PropertyDetailsModal({
                 name="BRR"
                 reason={brrFit ? "Refurb + refi potential" : "Insufficient refurb/BMV data"}
               />
-              <StrategyCard fit={false} name="SA" reason="Insufficient data" />
+              <StrategyCard fit={false} name="SA" reason="Not assessed" />
             </div>
           </div>
 
@@ -451,7 +453,7 @@ export function PropertyDetailsModal({
                   <MetricCell
                     label="Urgency"
                     value={lead.urgencyLevel.toUpperCase()}
-                    colour={
+                    className={
                       lead.urgencyLevel === "urgent" ? "text-red-600" : "text-gray-700"
                     }
                   />
@@ -460,21 +462,21 @@ export function PropertyDetailsModal({
                   <MetricCell
                     label="Timeline"
                     value={`${lead.timelineDays} days`}
-                    colour="text-gray-900"
+                    className="text-gray-900"
                   />
                 )}
                 {lead.reasonForSelling && (
                   <MetricCell
                     label="Reason"
                     value={lead.reasonForSelling}
-                    colour="text-gray-700"
+                    className="text-gray-700"
                   />
                 )}
                 {motivation !== null && (
                   <MetricCell
                     label="Motivation"
                     value={`${motivation} / 10${motivation >= 8 ? " 🔥" : ""}`}
-                    colour="text-gray-900"
+                    className="text-gray-900"
                   />
                 )}
               </div>
