@@ -10,7 +10,6 @@ export interface KpiTile {
   icon: React.ReactNode
   iconBgClass: string      // e.g. "bg-blue-50"
   valueColorClass?: string // e.g. "text-green-600" — defaults to "text-gray-900"
-  tooltip?: string         // optional tooltip on the value
 }
 
 interface KpiBarProps {

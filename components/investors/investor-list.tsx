@@ -31,7 +31,7 @@ import { SolicitorSelector, type Solicitor as SolicitorType } from "@/components
 import { toast } from "sonner"
 import {
   getInvestorStrategyStyle,
-  getInvestorExperienceStyle,
+  getInvestorExperienceStyle, // imported for completeness; no JSX call site yet
   getInvestorPipelineStageStyle,
   getReservationStatusStyle,
 } from "@/lib/theme/status-colors"

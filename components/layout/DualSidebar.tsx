@@ -327,7 +327,7 @@ export default function DualSidebar() {
                       text-sm transition-all duration-100 mb-0.5 whitespace-nowrap
                       ${
                         active
-                          ? "bg-[#FEF3C7] text-gray-900 font-semibold"
+                          ? "bg-[var(--sidebar-nav2-active-bg)] text-gray-900 font-semibold"
                           : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                       }
                     `}
@@ -335,7 +335,7 @@ export default function DualSidebar() {
                     <item.icon
                       className={`
                         w-4 h-4 flex-shrink-0 transition-colors
-                        ${active ? "text-[#D97706]" : "text-gray-400"}
+                        ${active ? "text-[var(--sidebar-nav2-active-icon)]" : "text-gray-400"}
                       `}
                     />
                     <span>{item.label}</span>
