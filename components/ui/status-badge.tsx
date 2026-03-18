@@ -11,17 +11,28 @@ import {
 
 interface StatusBadgeProps {
   label: string
-  className?: string  // Tailwind colour classes e.g. "bg-blue-100 text-blue-700"
-  tooltip?: string    // Optional tooltip text shown on hover
+  /** CSS variable key prefix, e.g. "status-deal-new" → reads --status-deal-new-bg + --status-deal-new-text */
+  cssKey?: string
+  /** Tailwind colour classes — used when cssKey is not provided */
+  className?: string
+  tooltip?: string
 }
 
-export function StatusBadge({ label, className, tooltip }: StatusBadgeProps) {
+export function StatusBadge({ label, cssKey, className, tooltip }: StatusBadgeProps) {
   const badge = (
     <span
       className={cn(
         "inline-block rounded-full px-2 py-0.5 text-xs font-medium",
-        className
+        !cssKey && className
       )}
+      style={
+        cssKey
+          ? {
+              backgroundColor: `var(--${cssKey}-bg)`,
+              color: `var(--${cssKey}-text)`,
+            }
+          : undefined
+      }
     >
       {label}
     </span>
