@@ -47,6 +47,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { KpiBar, type KpiTile } from "@/components/ui/kpi-bar"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { getPipelineStageStyle } from "@/lib/theme/status-colors"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -231,22 +234,6 @@ const STAGE_LABEL: Record<PipelineStage, string> = {
   DEAD_LEAD: "Dead",
 }
 
-const STAGE_STYLE: Record<PipelineStage, string> = {
-  NEW_LEAD: "bg-blue-100 text-blue-700",
-  AI_CONVERSATION: "bg-violet-100 text-violet-700",
-  DEAL_VALIDATION: "bg-amber-100 text-amber-700",
-  OFFER_MADE: "bg-emerald-100 text-emerald-700",
-  OFFER_ACCEPTED: "bg-green-100 text-green-700",
-  OFFER_REJECTED: "bg-red-100 text-red-700",
-  VIDEO_SENT: "bg-sky-100 text-sky-700",
-  RETRY_1: "bg-orange-100 text-orange-700",
-  RETRY_2: "bg-orange-100 text-orange-700",
-  RETRY_3: "bg-orange-100 text-orange-700",
-  PAPERWORK_SENT: "bg-teal-100 text-teal-700",
-  READY_FOR_INVESTORS: "bg-green-100 text-green-700",
-  DEAD_LEAD: "bg-gray-100 text-gray-500",
-}
-
 const STAGE_DESC: Record<PipelineStage, string> = {
   NEW_LEAD:             "Just added — not yet processed",
   AI_CONVERSATION:      "AI is actively engaging the vendor",
@@ -265,11 +252,11 @@ const STAGE_DESC: Record<PipelineStage, string> = {
 
 function StageBadge({ stage }: { stage: PipelineStage }) {
   return (
-    <Tip text={STAGE_DESC[stage]}>
-      <span className={cn("inline-block rounded-full px-2 py-0.5 text-xs font-medium", STAGE_STYLE[stage])}>
-        {STAGE_LABEL[stage]}
-      </span>
-    </Tip>
+    <StatusBadge
+      label={STAGE_LABEL[stage]}
+      className={getPipelineStageStyle(stage)}
+      tooltip={STAGE_DESC[stage]}
+    />
   )
 }
 
@@ -479,60 +466,38 @@ function computeKpis(leads: VendorLead[]): Kpis {
   }
 }
 
-function KpiBar({ kpis }: { kpis: Kpis }) {
-  return (
-    <div className="flex items-stretch divide-x divide-gray-200 rounded-xl border border-gray-200 bg-white shadow-sm">
-      {/* Total Leads */}
-      <div className="flex flex-1 items-center gap-3 px-5 py-4">
-        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-50">
-          <Users className="h-4 w-4 text-blue-600" />
-        </div>
-        <div>
-          <p className="font-mono text-xl font-bold text-gray-900">{kpis.total}</p>
-          <p className="text-xs text-gray-500">Total Leads</p>
-        </div>
-      </div>
-
-      {/* Avg BMV % */}
-      <div className="flex flex-1 items-center gap-3 px-5 py-4">
-        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-green-50">
-          <TrendingUp className="h-4 w-4 text-green-600" />
-        </div>
-        <div>
-          <p className="font-mono text-xl font-bold" style={{ color: "#16a34a" }}>
-            {kpis.avgBmv !== null ? `${kpis.avgBmv.toFixed(1)}%` : "—"}
-          </p>
-          <p className="text-xs text-gray-500">Avg BMV %</p>
-        </div>
-      </div>
-
-      {/* Portal Pass Rate */}
-      <div className="flex flex-1 items-center gap-3 px-5 py-4">
-        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-50">
-          <BarChart2 className="h-4 w-4 text-blue-600" />
-        </div>
-        <div>
-          <p className="font-mono text-xl font-bold" style={{ color: "#2563eb" }}>
-            {kpis.portalPassRate !== null ? `${kpis.portalPassRate.toFixed(0)}%` : "—"}
-          </p>
-          <p className="text-xs text-gray-500">Portal Pass Rate</p>
-        </div>
-      </div>
-
-      {/* Processing */}
-      <div className="flex flex-1 items-center gap-3 px-5 py-4">
-        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-amber-50">
-          <Zap className="h-4 w-4 text-amber-600" />
-        </div>
-        <div>
-          <p className="font-mono text-xl font-bold" style={{ color: "#d97706" }}>
-            {kpis.processing}
-          </p>
-          <p className="text-xs text-gray-500">Processing</p>
-        </div>
-      </div>
-    </div>
-  )
+function VendorLeadsKpiBar({ kpis }: { kpis: Kpis }) {
+  const tiles: KpiTile[] = [
+    {
+      label: "Total Leads",
+      value: String(kpis.total),
+      icon: <Users className="h-4 w-4 text-blue-600" />,
+      iconBgClass: "bg-blue-50",
+      valueColorClass: "text-gray-900",
+    },
+    {
+      label: "Avg BMV %",
+      value: kpis.avgBmv !== null ? `${kpis.avgBmv.toFixed(1)}%` : "—",
+      icon: <TrendingUp className="h-4 w-4 text-green-600" />,
+      iconBgClass: "bg-green-50",
+      valueColorClass: "text-green-600",
+    },
+    {
+      label: "Portal Pass Rate",
+      value: kpis.portalPassRate !== null ? `${kpis.portalPassRate.toFixed(0)}%` : "—",
+      icon: <BarChart2 className="h-4 w-4 text-blue-600" />,
+      iconBgClass: "bg-blue-50",
+      valueColorClass: "text-blue-600",
+    },
+    {
+      label: "Processing",
+      value: String(kpis.processing),
+      icon: <Zap className="h-4 w-4 text-amber-600" />,
+      iconBgClass: "bg-amber-50",
+      valueColorClass: "text-amber-600",
+    },
+  ]
+  return <KpiBar tiles={tiles} />
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1410,7 +1375,7 @@ export function VendorLeadsTable() {
       <div className="flex flex-col gap-0">
       {/* KPI Bar */}
       <div className="mb-4">
-        <KpiBar kpis={kpis} />
+        <VendorLeadsKpiBar kpis={kpis} />
       </div>
 
       {/* Tab bar + table card */}
