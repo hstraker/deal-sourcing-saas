@@ -1118,7 +1118,7 @@ export function VendorLeadsTable() {
   const handleBulkCheck = useCallback(async () => {
     const ids = Array.from(selectedIds)
     const cfg = BULK_CHECK_ENDPOINTS[activeTab]
-    if (!cfg || ids.length === 0) return
+    if (bulkRunning || !cfg || ids.length === 0) return
 
     const CONCURRENCY = 3
     let done = 0
@@ -1159,7 +1159,7 @@ export function VendorLeadsTable() {
     } else {
       toast.warning(`${done}/${ids.length} complete — ${failed} failed`)
     }
-  }, [selectedIds, activeTab, fetchLeads])
+  }, [selectedIds, activeTab, fetchLeads, bulkRunning])
 
   // ── Poll RUNNING leads every 3 seconds ────────────────────────────────────
   useEffect(() => {
