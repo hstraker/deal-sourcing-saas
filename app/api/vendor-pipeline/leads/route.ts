@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
               overallRisk: true,
               summaryFlags: true,
               portalCheckRaw: true,
+              ownershipCheckRaw: true,
               checkStatus: true,
             },
           },
