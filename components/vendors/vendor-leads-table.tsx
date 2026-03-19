@@ -1065,6 +1065,9 @@ export function VendorLeadsTable() {
   const [comparableModalLead, setComparableModalLead] = useState<VendorLead | null>(null)
   const [offerModalLead, setOfferModalLead] = useState<VendorLead | null>(null)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkRunning, setBulkRunning] = useState(false)
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null)
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchLeads = useCallback(async () => {
@@ -1110,6 +1113,53 @@ export function VendorLeadsTable() {
       })
     }
   }, [fetchLeads])
+
+  // ── Bulk tab-specific check action ───────────────────────────────────────
+  const handleBulkCheck = useCallback(async () => {
+    const ids = Array.from(selectedIds)
+    const cfg = BULK_CHECK_ENDPOINTS[activeTab]
+    if (!cfg || ids.length === 0) return
+
+    const CONCURRENCY = 3
+    let done = 0
+    let failed = 0
+    setBulkRunning(true)
+    setBulkProgress({ done: 0, total: ids.length })
+
+    for (let i = 0; i < ids.length; i += CONCURRENCY) {
+      const batch = ids.slice(i, i + CONCURRENCY)
+      await Promise.allSettled(
+        batch.map(async (id) => {
+          setCheckingIds((prev) => new Set(prev).add(id))
+          try {
+            const res = await fetch(cfg.endpoint(id), { method: "POST" })
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}))
+              throw new Error(err.error || `Failed (${res.status})`)
+            }
+            done++
+          } catch (err: any) {
+            failed++
+            toast.error(`${id.slice(0, 6)}… — ${err.message}`)
+          } finally {
+            setCheckingIds((prev) => { const n = new Set(prev); n.delete(id); return n })
+            setBulkProgress({ done: done + failed, total: ids.length })
+          }
+        })
+      )
+    }
+
+    await fetchLeads()
+    setBulkRunning(false)
+    setBulkProgress(null)
+    setSelectedIds(new Set())
+
+    if (failed === 0) {
+      toast.success(`${done}/${ids.length} ${cfg.successMsg}`)
+    } else {
+      toast.warning(`${done}/${ids.length} complete — ${failed} failed`)
+    }
+  }, [selectedIds, activeTab, fetchLeads])
 
   // ── Poll RUNNING leads every 3 seconds ────────────────────────────────────
   useEffect(() => {
