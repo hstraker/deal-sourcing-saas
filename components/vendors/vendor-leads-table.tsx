@@ -583,7 +583,7 @@ function Td({ children, className }: { children: React.ReactNode; className?: st
 /** Sticky-left vendor name cell (with pin icon + processing indicator) */
 function VendorNameCell({ lead }: { lead: VendorLead }) {
   return (
-    <td className="sticky left-0 z-10 w-[180px] bg-white px-4 py-[11px] group-hover:bg-[#f3f4f6]">
+    <td className="sticky left-[40px] z-10 w-[180px] bg-white px-4 py-[11px] group-hover:bg-[#f3f4f6]">
       <div className="flex items-center gap-2">
         <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-gray-300" />
         <div className="min-w-0">
@@ -601,7 +601,7 @@ function VendorNameCell({ lead }: { lead: VendorLead }) {
 /** Sticky second-left address cell */
 function AddressCell({ address }: { address: string | null }) {
   return (
-    <td className="sticky left-[180px] z-10 max-w-[200px] border-r border-gray-200 bg-white px-4 py-[11px] group-hover:bg-[#f3f4f6]">
+    <td className="sticky left-[220px] z-10 max-w-[200px] border-r border-gray-200 bg-white px-4 py-[11px] group-hover:bg-[#f3f4f6]">
       <p className="truncate text-sm text-gray-700">{address ?? <span className="text-gray-400">—</span>}</p>
     </td>
   )
@@ -912,14 +912,39 @@ interface RowRendererProps {
   isChecking?: boolean
 }
 
-function TableHeaders({ tab }: { tab: TabId }) {
-  const stickyLeft = <Th className="sticky left-0 z-10 w-[180px] bg-[#f9fafb]">Vendor Name</Th>
-  const addressHeader = <Th className="sticky left-[180px] z-10 border-r border-gray-200 bg-[#f9fafb]">Address</Th>
+function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
+  tab: TabId
+  allSelected: boolean
+  someSelected: boolean
+  onSelectAll: () => void
+}) {
+  const checkboxRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (checkboxRef.current) {
+      checkboxRef.current.indeterminate = someSelected && !allSelected
+    }
+  }, [someSelected, allSelected])
+
+  const selectAllTh = (
+    <th className="sticky left-0 z-10 w-10 bg-[#f9fafb] px-3 py-2.5">
+      <input
+        ref={checkboxRef}
+        type="checkbox"
+        checked={allSelected}
+        onChange={onSelectAll}
+        className="h-3.5 w-3.5 cursor-pointer accent-blue-600"
+      />
+    </th>
+  )
+  const stickyLeft = <Th className="sticky left-[40px] z-10 w-[180px] bg-[#f9fafb]">Vendor Name</Th>
+  const addressHeader = <Th className="sticky left-[220px] z-10 border-r border-gray-200 bg-[#f9fafb]">Address</Th>
   const stickyRight = <Th className="sticky right-0 z-10 bg-[#f9fafb]">Actions</Th>
 
   switch (tab) {
     case "map-view":
       return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
+        {selectAllTh}
         {stickyLeft}
         {addressHeader}
         <Th>Postcode</Th><Th>Type</Th><Th>Status</Th><Th>BMV %</Th>
@@ -928,6 +953,7 @@ function TableHeaders({ tab }: { tab: TabId }) {
 
     case "property-details":
       return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
+        {selectAllTh}
         {stickyLeft}
         {addressHeader}
         <Th>Status</Th><Th>Postcode</Th><Th>Type</Th><Th>Tenure</Th>
@@ -938,6 +964,7 @@ function TableHeaders({ tab }: { tab: TabId }) {
 
     case "portal-check":
       return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
+        {selectAllTh}
         {stickyLeft}
         {addressHeader}
         <Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
@@ -948,6 +975,7 @@ function TableHeaders({ tab }: { tab: TabId }) {
 
     case "validation":
       return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
+        {selectAllTh}
         {stickyLeft}
         {addressHeader}
         <Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
@@ -958,6 +986,7 @@ function TableHeaders({ tab }: { tab: TabId }) {
 
     case "comparable":
       return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
+        {selectAllTh}
         {stickyLeft}
         {addressHeader}
         <Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
@@ -968,6 +997,7 @@ function TableHeaders({ tab }: { tab: TabId }) {
 
     case "offer-analysis":
       return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
+        {selectAllTh}
         {stickyLeft}
         {addressHeader}
         <Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
