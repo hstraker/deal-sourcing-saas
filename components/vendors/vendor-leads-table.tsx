@@ -1005,7 +1005,12 @@ export function VendorLeadsTable() {
       const res = await fetch("/api/vendor-pipeline/leads?limit=200")
       if (!res.ok) throw new Error("Failed to fetch leads")
       const data = await res.json()
-      setLeads(data.leads ?? [])
+      const freshLeads: VendorLead[] = data.leads ?? []
+      setLeads(freshLeads)
+      // Sync any open modal lead so it reflects fresh data immediately
+      setValidationModalLead((prev) =>
+        prev ? (freshLeads.find((l) => l.id === prev.id) ?? prev) : null
+      )
     } catch {
       toast.error("Failed to load vendor leads")
     } finally {
