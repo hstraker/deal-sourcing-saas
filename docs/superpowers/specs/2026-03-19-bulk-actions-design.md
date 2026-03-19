@@ -64,11 +64,13 @@ Add a `w-10` checkbox column as the **first column** on every tab, before the ex
 
 **Implementation note:** The checkbox column must be added to every `TableHeaders` case and every tab's row renderer. The header checkbox uses `ref` with `indeterminate` property set imperatively (React does not support `indeterminate` as a prop).
 
+**Sticky offset adjustment:** The existing `VendorNameCell` uses `sticky left-0` and `AddressCell` uses `sticky left-[180px]`. Prepending the `w-10` (40px) checkbox column shifts both: update to `sticky left-[40px]` and `sticky left-[220px]` respectively.
+
 ---
 
 ### 3. Floating bottom bar
 
-A `BulkActionBar` component rendered **inside the table card div**, below the `<table>` element. Conditionally visible when `selectedIds.size > 0`.
+A `BulkActionBar` component rendered **inside the table card div**, below the `<table>` element, above any existing footer strip. Conditionally visible when `selectedIds.size > 0`. It renders in normal document flow (not `position: fixed/sticky`) — it sits at the bottom of the card and scrolls with the page. The "floating" appearance comes from the dark background contrasting with the white table above it, not from CSS positioning.
 
 ```tsx
 interface BulkActionBarProps {
