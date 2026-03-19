@@ -684,12 +684,15 @@ function ActionBtn({
 // Per-tab Row renderers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function MapViewRow({ lead, onRowClick, onView, onArchive, onDelete }: RowRendererProps) {
+function MapViewRow({ lead, onRowClick, onView, onArchive, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
   return (
     <tr
-      className="group cursor-pointer border-b border-[#f3f4f6] transition-colors hover:bg-[#f3f4f6]"
+      className={cn("group cursor-pointer border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}
       onClick={onRowClick}
     >
+      <td className="sticky left-0 z-10 w-10 bg-white px-3 py-[11px] group-hover:bg-[#f3f4f6]" onClick={(e) => e.stopPropagation()}>
+        <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
+      </td>
       <VendorNameCell lead={lead} />
       <AddressCell address={lead.propertyAddress} />
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
@@ -701,9 +704,12 @@ function MapViewRow({ lead, onRowClick, onView, onArchive, onDelete }: RowRender
   )
 }
 
-function PropertyDetailsRow({ lead, onRowClick, onView, onArchive, onDelete }: RowRendererProps) {
+function PropertyDetailsRow({ lead, onRowClick, onView, onArchive, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
   return (
-    <tr className="group border-b border-[#f3f4f6] transition-colors hover:bg-[#f3f4f6]">
+    <tr className={cn("group border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}>
+      <td className="sticky left-0 z-10 w-10 bg-white px-3 py-[11px] group-hover:bg-[#f3f4f6]" onClick={(e) => e.stopPropagation()}>
+        <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
+      </td>
       <VendorNameCell lead={lead} />
       <AddressCell address={lead.propertyAddress} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
@@ -724,13 +730,16 @@ function PropertyDetailsRow({ lead, onRowClick, onView, onArchive, onDelete }: R
   )
 }
 
-function PortalCheckRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck, isChecking }: RowRendererProps) {
+function PortalCheckRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect }: RowRendererProps) {
   const ownership = lead.latestPortalCheck?.ownershipCheckRaw as any
   const ownerType = ownership?.isCorporateOwned
     ? ownership?.isOverseasOwned ? "Overseas Corp" : "Corporate"
     : ownership ? "Private" : null
   return (
-    <tr className="group border-b border-[#f3f4f6] transition-colors hover:bg-[#f3f4f6]">
+    <tr className={cn("group border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}>
+      <td className="sticky left-0 z-10 w-10 bg-white px-3 py-[11px] group-hover:bg-[#f3f4f6]" onClick={(e) => e.stopPropagation()}>
+        <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
+      </td>
       <VendorNameCell lead={lead} />
       <AddressCell address={lead.propertyAddress} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
@@ -760,7 +769,7 @@ function PortalCheckRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck
   )
 }
 
-function ValidationRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck, isChecking }: RowRendererProps) {
+function ValidationRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect }: RowRendererProps) {
   // Gross monthly cashflow ≈ rent - 20% expenses (rough estimate)
   const rentNum = toNum(lead.estimatedMonthlyRent)
   const cashflow = rentNum ? rentNum * 0.8 : null
@@ -770,7 +779,10 @@ function ValidationRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
   const yieldPct = annualRent && price ? (annualRent / price) * 100 : null
 
   return (
-    <tr className="group border-b border-[#f3f4f6] transition-colors hover:bg-[#f3f4f6]">
+    <tr className={cn("group border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}>
+      <td className="sticky left-0 z-10 w-10 bg-white px-3 py-[11px] group-hover:bg-[#f3f4f6]" onClick={(e) => e.stopPropagation()}>
+        <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
+      </td>
       <VendorNameCell lead={lead} />
       <AddressCell address={lead.propertyAddress} />
       <Td>
@@ -807,7 +819,7 @@ function ValidationRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
   )
 }
 
-function ComparableRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck, isChecking }: RowRendererProps) {
+function ComparableRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect }: RowRendererProps) {
   const annualRent = toNum(lead.estimatedAnnualRent)
   const price = toNum(lead.askingPrice)
   const avgPrice = toNum(lead.avgComparablePrice)
@@ -816,7 +828,10 @@ function ComparableRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
   const hasComps = (lead.comparablesCount ?? 0) > 0
 
   return (
-    <tr className="group border-b border-[#f3f4f6] transition-colors hover:bg-[#f3f4f6]">
+    <tr className={cn("group border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}>
+      <td className="sticky left-0 z-10 w-10 bg-white px-3 py-[11px] group-hover:bg-[#f3f4f6]" onClick={(e) => e.stopPropagation()}>
+        <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
+      </td>
       <VendorNameCell lead={lead} />
       <AddressCell address={lead.propertyAddress} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
@@ -844,7 +859,7 @@ function ComparableRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
   )
 }
 
-function OfferAnalysisRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck, isChecking }: RowRendererProps) {
+function OfferAnalysisRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect }: RowRendererProps) {
   // Build offer chain: initial offer → retries → current offer
   const retries = lead.offerRetries ?? []
   const initialOffer = lead.offerAmount && retries.length === 0
@@ -862,7 +877,10 @@ function OfferAnalysisRow({ lead, onRowClick, onView, onArchive, onDelete, onChe
   const emailSent = lead.offerSentAt !== null || lead.lockoutAgreementSent
 
   return (
-    <tr className="group border-b border-[#f3f4f6] transition-colors hover:bg-[#f3f4f6]">
+    <tr className={cn("group border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}>
+      <td className="sticky left-0 z-10 w-10 bg-white px-3 py-[11px] group-hover:bg-[#f3f4f6]" onClick={(e) => e.stopPropagation()}>
+        <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
+      </td>
       <VendorNameCell lead={lead} />
       <AddressCell address={lead.propertyAddress} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
@@ -910,6 +928,8 @@ interface RowRendererProps {
   onDelete: () => void
   onCheck?: () => void
   isChecking?: boolean
+  isSelected?: boolean
+  onToggleSelect?: () => void
 }
 
 function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
