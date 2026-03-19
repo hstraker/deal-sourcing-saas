@@ -1251,7 +1251,15 @@ export function VendorLeadsTable() {
 
       {/* Validation Modal */}
       {validationModalLead && (
-        <ValidationModal lead={validationModalLead} onClose={() => setValidationModalLead(null)} />
+        <ValidationModal
+          lead={validationModalLead}
+          onClose={() => setValidationModalLead(null)}
+          onCheck={() => handleCheck(
+            validationModalLead.id,
+            `/api/vendor-leads/${validationModalLead.id}/calculate-bmv`,
+            "BMV calculation complete"
+          )}
+        />
       )}
 
       {/* Comparable Modal */}

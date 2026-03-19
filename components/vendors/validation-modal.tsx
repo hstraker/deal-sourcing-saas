@@ -1,6 +1,7 @@
 "use client"
 
-import { X, TrendingUp } from "lucide-react"
+import { useState } from "react"
+import { X, TrendingUp, Loader2, Calculator } from "lucide-react"
 import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { ModalShell } from "./modal-shell"
@@ -25,10 +26,13 @@ function fmtCurrency(v: string | number | null | undefined): string {
 export function ValidationModal({
   lead,
   onClose,
+  onCheck,
 }: {
   lead: VendorLead
   onClose: () => void
+  onCheck?: () => Promise<void>
 }) {
+  const [checking, setChecking] = useState(false)
   const bmv = toNum(lead.bmvScore)
   const profit = toNum(lead.profitPotential)
 
@@ -138,9 +142,30 @@ export function ValidationModal({
         ) : (
           <div className="rounded-lg border border-dashed border-gray-200 p-8 text-center">
             <TrendingUp className="mx-auto mb-2 h-8 w-8 text-gray-200" />
-            <p className="text-sm text-gray-400">
-              No validation run yet. Use the Check button to calculate BMV.
+            <p className="mb-4 text-sm text-gray-400">
+              No validation run yet. Calculate BMV to analyse this deal.
             </p>
+            {onCheck && (
+              <button
+                onClick={async () => {
+                  setChecking(true)
+                  try {
+                    await onCheck()
+                  } finally {
+                    setChecking(false)
+                  }
+                }}
+                disabled={checking}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+              >
+                {checking ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Calculator className="h-4 w-4" />
+                )}
+                {checking ? "Calculating…" : "Calculate BMV"}
+              </button>
+            )}
           </div>
         )}
       </div>
