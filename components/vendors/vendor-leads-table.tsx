@@ -690,7 +690,7 @@ function MapViewRow({ lead, onRowClick, onView, onArchive, onDelete, isSelected,
       className={cn("group cursor-pointer border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}
       onClick={onRowClick}
     >
-      <td className="sticky left-0 z-10 w-10 bg-white px-3 py-[11px] group-hover:bg-[#f3f4f6]" onClick={(e) => e.stopPropagation()}>
+      <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
       <VendorNameCell lead={lead} />
@@ -707,7 +707,7 @@ function MapViewRow({ lead, onRowClick, onView, onArchive, onDelete, isSelected,
 function PropertyDetailsRow({ lead, onRowClick, onView, onArchive, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
   return (
     <tr className={cn("group border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}>
-      <td className="sticky left-0 z-10 w-10 bg-white px-3 py-[11px] group-hover:bg-[#f3f4f6]" onClick={(e) => e.stopPropagation()}>
+      <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
       <VendorNameCell lead={lead} />
@@ -737,7 +737,7 @@ function PortalCheckRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck
     : ownership ? "Private" : null
   return (
     <tr className={cn("group border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}>
-      <td className="sticky left-0 z-10 w-10 bg-white px-3 py-[11px] group-hover:bg-[#f3f4f6]" onClick={(e) => e.stopPropagation()}>
+      <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
       <VendorNameCell lead={lead} />
@@ -780,7 +780,7 @@ function ValidationRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
 
   return (
     <tr className={cn("group border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}>
-      <td className="sticky left-0 z-10 w-10 bg-white px-3 py-[11px] group-hover:bg-[#f3f4f6]" onClick={(e) => e.stopPropagation()}>
+      <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
       <VendorNameCell lead={lead} />
@@ -829,7 +829,7 @@ function ComparableRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
 
   return (
     <tr className={cn("group border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}>
-      <td className="sticky left-0 z-10 w-10 bg-white px-3 py-[11px] group-hover:bg-[#f3f4f6]" onClick={(e) => e.stopPropagation()}>
+      <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
       <VendorNameCell lead={lead} />
@@ -878,7 +878,7 @@ function OfferAnalysisRow({ lead, onRowClick, onView, onArchive, onDelete, onChe
 
   return (
     <tr className={cn("group border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}>
-      <td className="sticky left-0 z-10 w-10 bg-white px-3 py-[11px] group-hover:bg-[#f3f4f6]" onClick={(e) => e.stopPropagation()}>
+      <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
       <VendorNameCell lead={lead} />
@@ -1283,6 +1283,22 @@ export function VendorLeadsTable() {
   // ── Derived data ──────────────────────────────────────────────────────────
   const kpis = computeKpis(leads)
   const visibleLeads = leads.filter((l) => !l.archivedAt)
+  const allVisibleSelected = visibleLeads.length > 0 && visibleLeads.every((l) => selectedIds.has(l.id))
+  const someVisibleSelected = visibleLeads.some((l) => selectedIds.has(l.id))
+  const handleSelectAll = () => {
+    if (allVisibleSelected) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(visibleLeads.map((l) => l.id)))
+    }
+  }
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) { next.delete(id) } else { next.add(id) }
+      return next
+    })
+  }
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -1325,7 +1341,12 @@ export function VendorLeadsTable() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-max border-collapse bg-white text-sm">
             <thead>
-              <TableHeaders tab={activeTab} />
+              <TableHeaders
+                tab={activeTab}
+                allSelected={allVisibleSelected}
+                someSelected={someVisibleSelected}
+                onSelectAll={handleSelectAll}
+              />
             </thead>
             <tbody>
               {loading && (
@@ -1380,6 +1401,8 @@ export function VendorLeadsTable() {
                     ? () => handleCheck(lead.id, checkCfg.endpoint, checkCfg.msg)
                     : undefined,
                   isChecking: checkingIds.has(lead.id),
+                  isSelected: selectedIds.has(lead.id),
+                  onToggleSelect: () => handleToggleSelect(lead.id),
                 }
 
                 switch (activeTab) {
@@ -1395,6 +1418,18 @@ export function VendorLeadsTable() {
             </tbody>
           </table>
         </div>
+
+        {/* Bulk Action Bar */}
+        {selectedIds.size > 0 && (
+          <BulkActionBar
+            selectedCount={selectedIds.size}
+            activeTab={activeTab}
+            isRunning={bulkRunning}
+            progress={bulkProgress}
+            onRun={handleBulkCheck}
+            onClear={() => setSelectedIds(new Set())}
+          />
+        )}
 
         {/* Footer */}
         {!loading && leads.some((l) => l.processingStatus === "RUNNING") && (
