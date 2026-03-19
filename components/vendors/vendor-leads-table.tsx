@@ -982,6 +982,73 @@ function TableHeaders({ tab }: { tab: TabId }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Bulk Action constants + BulkActionBar
+// ─────────────────────────────────────────────────────────────────────────────
+
+const BULK_CHECK_ENDPOINTS: Partial<Record<TabId, {
+  endpoint: (id: string) => string
+  successMsg: string
+}>> = {
+  "portal-check":   { endpoint: (id) => `/api/vendor-pipeline/leads/${id}/run-check`,  successMsg: "portal checks started" },
+  "validation":     { endpoint: (id) => `/api/vendor-leads/${id}/calculate-bmv`,        successMsg: "validations complete" },
+  "comparable":     { endpoint: (id) => `/api/vendor-leads/${id}/fetch-comparables`,    successMsg: "comparables fetched" },
+  "offer-analysis": { endpoint: (id) => `/api/vendor-leads/${id}/calculate-bmv`,        successMsg: "offer analyses complete" },
+}
+
+const BULK_ACTION_LABELS: Partial<Record<TabId, string>> = {
+  "portal-check":   "Run Portal Check",
+  "validation":     "Run Validation",
+  "comparable":     "Fetch Comparables",
+  "offer-analysis": "Run Offer Analysis",
+}
+
+interface BulkActionBarProps {
+  selectedCount: number
+  activeTab: TabId
+  isRunning: boolean
+  progress: { done: number; total: number } | null
+  onRun: () => void
+  onClear: () => void
+}
+
+function BulkActionBar({ selectedCount, activeTab, isRunning, progress, onRun, onClear }: BulkActionBarProps) {
+  const actionLabel = BULK_ACTION_LABELS[activeTab]
+  return (
+    <div className="flex items-center justify-between bg-[#1e293b] px-4 py-3">
+      <span className="text-sm font-medium text-slate-200">
+        {selectedCount} lead{selectedCount !== 1 ? "s" : ""} selected
+      </span>
+      <div className="flex items-center gap-4">
+        {actionLabel && (
+          <button
+            onClick={onRun}
+            disabled={isRunning}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+          >
+            {isRunning ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                {progress ? `Running… (${progress.done}/${progress.total})` : "Running…"}
+              </>
+            ) : (
+              <>
+                <Zap className="h-3.5 w-3.5" />
+                {`${actionLabel} on ${selectedCount}`}
+              </>
+            )}
+          </button>
+        )}
+        {!isRunning && (
+          <button onClick={onClear} className="text-sm text-slate-400 hover:text-slate-200">
+            ✕ Clear
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────────────────────────────────────
 
