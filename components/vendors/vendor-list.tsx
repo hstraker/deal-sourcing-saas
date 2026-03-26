@@ -44,6 +44,8 @@ import { PortalCheckBadge } from "./portal-check-badge"
 import { toast } from "sonner"
 import { formatCurrency } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import type { ConfirmVariant } from "@/components/ui/confirm-dialog"
 
 interface VendorLead {
   id: string
@@ -268,6 +270,14 @@ export function VendorList() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isCalculating, setIsCalculating] = useState(false)
   const [generatingPackId, setGeneratingPackId] = useState<string | null>(null)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    title: string
+    description: string
+    variant: ConfirmVariant
+    confirmLabel?: string
+    onConfirm: () => void
+  }>({ open: false, title: "", description: "", variant: "default", onConfirm: () => {} })
 
   const fetchVendors = async () => {
     try {
@@ -327,42 +337,58 @@ export function VendorList() {
     setSelectedIds(next)
   }
 
-  const handleDeleteSingle = async (vendor: VendorLead) => {
-    if (!confirm(`Delete ${vendor.vendorName}? This cannot be undone.`)) return
-    setIsDeleting(true)
-    try {
-      const res = await fetch(`/api/vendor-leads/${vendor.id}`, { method: "DELETE" })
-      if (!res.ok) throw new Error()
-      toast.success(`${vendor.vendorName} deleted successfully`)
-      fetchVendors()
-    } catch {
-      toast.error("Failed to delete vendor")
-    } finally {
-      setIsDeleting(false)
-    }
+  const handleDeleteSingle = (vendor: VendorLead) => {
+    setConfirmDialog({
+      open: true,
+      title: "Delete Vendor",
+      description: `Delete ${vendor.vendorName}? This cannot be undone.`,
+      variant: "destructive",
+      confirmLabel: "Delete",
+      onConfirm: async () => {
+        setIsDeleting(true)
+        try {
+          const res = await fetch(`/api/vendor-leads/${vendor.id}`, { method: "DELETE" })
+          if (!res.ok) throw new Error()
+          toast.success(`${vendor.vendorName} deleted successfully`)
+          fetchVendors()
+        } catch {
+          toast.error("Failed to delete vendor")
+        } finally {
+          setIsDeleting(false)
+        }
+      },
+    })
   }
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = () => {
     if (selectedIds.size === 0) return
-    if (!confirm(`Delete ${selectedIds.size} vendor${selectedIds.size > 1 ? "s" : ""}? This cannot be undone.`)) return
-    setIsDeleting(true)
-    try {
-      const results = await Promise.all(
-        Array.from(selectedIds).map((id) => fetch(`/api/vendor-leads/${id}`, { method: "DELETE" }))
-      )
-      const failedCount = results.filter((r) => !r.ok).length
-      if (failedCount > 0) {
-        toast.error(`Failed to delete ${failedCount} vendor${failedCount > 1 ? "s" : ""}`)
-      } else {
-        toast.success(`${selectedIds.size} vendor${selectedIds.size > 1 ? "s" : ""} deleted successfully`)
-      }
-      setSelectedIds(new Set())
-      fetchVendors()
-    } catch {
-      toast.error("Failed to delete vendors")
-    } finally {
-      setIsDeleting(false)
-    }
+    setConfirmDialog({
+      open: true,
+      title: "Delete Vendors",
+      description: `Delete ${selectedIds.size} vendor${selectedIds.size > 1 ? "s" : ""}? This cannot be undone.`,
+      variant: "destructive",
+      confirmLabel: "Delete",
+      onConfirm: async () => {
+        setIsDeleting(true)
+        try {
+          const results = await Promise.all(
+            Array.from(selectedIds).map((id) => fetch(`/api/vendor-leads/${id}`, { method: "DELETE" }))
+          )
+          const failedCount = results.filter((r) => !r.ok).length
+          if (failedCount > 0) {
+            toast.error(`Failed to delete ${failedCount} vendor${failedCount > 1 ? "s" : ""}`)
+          } else {
+            toast.success(`${selectedIds.size} vendor${selectedIds.size > 1 ? "s" : ""} deleted successfully`)
+          }
+          setSelectedIds(new Set())
+          fetchVendors()
+        } catch {
+          toast.error("Failed to delete vendors")
+        } finally {
+          setIsDeleting(false)
+        }
+      },
+    })
   }
 
   const handleBulkCalculateBMV = async () => {
@@ -924,6 +950,15 @@ export function VendorList() {
         )}
       </div>
 
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((p) => ({ ...p, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        variant={confirmDialog.variant}
+        confirmLabel={confirmDialog.confirmLabel}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </div>
   )
 }

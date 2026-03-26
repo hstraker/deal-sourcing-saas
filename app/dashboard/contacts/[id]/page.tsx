@@ -14,6 +14,7 @@ import { ContactSRABadge } from "@/components/contacts/contact-sra-badge"
 import type { ContactWithCounts } from "@/types/contacts"
 import type { ContactType } from "@prisma/client"
 import { toast } from "sonner"
+import { ConfirmDialog, type ConfirmVariant } from "@/components/ui/confirm-dialog"
 import Link from "next/link"
 
 const TYPE_LABELS: Record<ContactType, string> = {
@@ -43,6 +44,14 @@ export default function ContactDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    title: string
+    description: string
+    variant: ConfirmVariant
+    confirmLabel?: string
+    onConfirm: () => void
+  }>({ open: false, title: "", description: "", variant: "default", onConfirm: () => {} })
 
   useEffect(() => {
     fetch(`/api/contacts/${id}`)
@@ -57,22 +66,29 @@ export default function ContactDetailPage() {
     setIsFormOpen(false)
   }
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!contact) return
-    if (!confirm(`Delete ${contact.fullName}? This cannot be undone.`)) return
-
-    setIsDeleting(true)
-    try {
-      const res = await fetch(`/api/contacts/${id}`, { method: "DELETE" })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? "Failed to delete")
-      toast.success("Contact deleted")
-      router.push("/dashboard/contacts")
-    } catch (err: any) {
-      toast.error(err.message)
-    } finally {
-      setIsDeleting(false)
-    }
+    setConfirmDialog({
+      open: true,
+      title: "Delete Contact",
+      description: `Delete ${contact.fullName}? This cannot be undone.`,
+      variant: "destructive",
+      confirmLabel: "Delete",
+      onConfirm: async () => {
+        setIsDeleting(true)
+        try {
+          const res = await fetch(`/api/contacts/${id}`, { method: "DELETE" })
+          const data = await res.json()
+          if (!res.ok) throw new Error(data.error ?? "Failed to delete")
+          toast.success("Contact deleted")
+          router.push("/dashboard/contacts")
+        } catch (err: any) {
+          toast.error(err.message)
+        } finally {
+          setIsDeleting(false)
+        }
+      },
+    })
   }
 
   const handleVerified = (updated: ContactWithCounts) => {
@@ -289,6 +305,16 @@ export default function ContactDetailPage() {
         onOpenChange={setIsFormOpen}
         contact={contact}
         onSave={handleSave}
+      />
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((p) => ({ ...p, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        variant={confirmDialog.variant}
+        confirmLabel={confirmDialog.confirmLabel}
+        onConfirm={confirmDialog.onConfirm}
       />
     </div>
   )

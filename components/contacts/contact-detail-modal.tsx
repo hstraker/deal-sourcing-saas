@@ -21,6 +21,7 @@ import { ContactSRABadge } from "./contact-sra-badge"
 import type { ContactWithCounts } from "@/types/contacts"
 import type { ContactType } from "@prisma/client"
 import { toast } from "sonner"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { format } from "date-fns"
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -114,6 +115,12 @@ export function ContactDetailModal({
   const [isVerifying, setIsVerifying] = useState(false)
   const [activeTab, setActiveTab] = useState("details")
 
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean; title: string; description: string;
+    variant: "destructive" | "archive" | "warning" | "default";
+    confirmLabel: string; onConfirm: () => void;
+  }>({ open: false, title: "", description: "", variant: "default", confirmLabel: "Confirm", onConfirm: () => {} })
+
   // Sync when the parent re-passes a different contact
   useEffect(() => {
     setContact(initialContact)
@@ -127,27 +134,34 @@ export function ContactDetailModal({
     toast.success("Contact updated")
   }
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     const linked = contact._count.vendorLeads + contact._count.investors
     if (linked > 0) {
       toast.error(`Cannot delete: linked to ${linked} record(s). Unlink them first.`)
       return
     }
-    if (!confirm(`Delete ${contact.fullName}? This cannot be undone.`)) return
-
-    setIsDeleting(true)
-    try {
-      const res = await fetch(`/api/contacts/${contact.id}`, { method: "DELETE" })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? "Failed to delete")
-      toast.success(`${contact.fullName} deleted`)
-      onDeleted(contact.id)
-      onOpenChange(false)
-    } catch (err: any) {
-      toast.error(err.message)
-    } finally {
-      setIsDeleting(false)
-    }
+    setConfirmDialog({
+      open: true,
+      title: `Delete ${contact.fullName}?`,
+      description: "This contact and all associated records will be permanently removed. This cannot be undone.",
+      variant: "destructive",
+      confirmLabel: "Delete contact",
+      onConfirm: async () => {
+        setIsDeleting(true)
+        try {
+          const res = await fetch(`/api/contacts/${contact.id}`, { method: "DELETE" })
+          const data = await res.json()
+          if (!res.ok) throw new Error(data.error ?? "Failed to delete")
+          toast.success(`${contact.fullName} deleted`)
+          onDeleted(contact.id)
+          onOpenChange(false)
+        } catch (err: any) {
+          toast.error(err.message)
+        } finally {
+          setIsDeleting(false)
+        }
+      },
+    })
   }
 
   const handleVerifySRA = async () => {
@@ -515,6 +529,16 @@ export function ContactDetailModal({
         onOpenChange={setIsFormOpen}
         contact={contact}
         onSave={handleSaved}
+      />
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((d) => ({ ...d, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        variant={confirmDialog.variant}
+        confirmLabel={confirmDialog.confirmLabel}
+        onConfirm={confirmDialog.onConfirm}
       />
     </>
   )

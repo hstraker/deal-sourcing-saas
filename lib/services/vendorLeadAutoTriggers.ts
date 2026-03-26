@@ -13,6 +13,7 @@ import { ProcessingStatus } from "@prisma/client"
 import { normaliseAddress } from "@/lib/vendor-checks/address-normaliser"
 import { runVendorCheck } from "@/lib/vendor-checks/vendor-check-orchestrator"
 import { runBmvScreening } from "@/lib/engine/bmv/bmvCalculator"
+import { sendSourcerValidationPassedEmail } from "@/lib/email"
 
 export async function runVendorLeadAutoTriggers(leadId: string): Promise<void> {
   // ── 1. Fetch lead ────────────────────────────────────────────────────────
@@ -104,6 +105,54 @@ export async function runVendorLeadAutoTriggers(leadId: string): Promise<void> {
     })
 
     console.log(`[AutoTriggers] Lead ${leadId} → ${finalStatus}`)
+
+    // ── 6. Notify sourcers if validation passed ────────────────────────────
+    if (finalStatus === ProcessingStatus.COMPLETE) {
+      try {
+        const updatedLead = await prisma.vendorLead.findUnique({
+          where: { id: leadId },
+          select: {
+            id: true,
+            propertyAddress: true,
+            validationPassed: true,
+            bmvScore: true,
+            profitPotential: true,
+          },
+        })
+
+        if (updatedLead?.validationPassed) {
+          const sourcers = await prisma.user.findMany({
+            where: { role: { in: ["admin", "sourcer"] }, isActive: true },
+            select: { id: true, email: true, firstName: true },
+          })
+
+          await Promise.allSettled(
+            sourcers.map((u) =>
+              sendSourcerValidationPassedEmail({
+                to: u.email,
+                sourcerName: u.firstName ?? u.email,
+                propertyAddress: updatedLead.propertyAddress ?? "Unknown address",
+                bmvScore: updatedLead.bmvScore ? Number(updatedLead.bmvScore) : undefined,
+                profitPotential: updatedLead.profitPotential
+                  ? Number(updatedLead.profitPotential)
+                  : undefined,
+                leadId: updatedLead.id,
+              })
+            )
+          )
+
+          console.log(
+            `[AutoTriggers] Validation-passed emails sent for lead ${leadId} to ${sourcers.length} user(s)`
+          )
+        }
+      } catch (notifyErr: any) {
+        // Don't let notification failure propagate — auto-trigger already succeeded
+        console.error(
+          `[AutoTriggers] Failed to send validation-passed notifications for ${leadId}:`,
+          notifyErr?.message
+        )
+      }
+    }
   } catch (err: any) {
     console.error(`[AutoTriggers] Unhandled error for lead ${leadId}:`, err?.message)
     await prisma.vendorLead.update({

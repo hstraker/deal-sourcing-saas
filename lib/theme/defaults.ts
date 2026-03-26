@@ -29,8 +29,8 @@ export const DEFAULT_TOKENS: ThemeTokens = {
   "--table-row-height":  "52px",
 
   // Deal status badge colours (bg + text as hex)
-  "--status-deal-new-bg":         "#f3f4f6",
-  "--status-deal-new-text":       "#1f2937",
+  "--status-deal-new-bg":         "#dbeafe",   // was #f3f4f6
+  "--status-deal-new-text":       "#1e40af",   // was #1f2937
   "--status-deal-review-bg":      "#fef9c3",
   "--status-deal-review-text":    "#713f12",
   "--status-deal-in_progress-bg": "#dbeafe",
@@ -55,24 +55,24 @@ export const DEFAULT_TOKENS: ThemeTokens = {
   "--status-pipeline-deal_validation-text":    "#92400e",
   "--status-pipeline-offer_made-bg":           "#d1fae5",
   "--status-pipeline-offer_made-text":         "#065f46",
-  "--status-pipeline-offer_accepted-bg":       "#dcfce7",
-  "--status-pipeline-offer_accepted-text":     "#14532d",
-  "--status-pipeline-offer_rejected-bg":       "#fee2e2",
-  "--status-pipeline-offer_rejected-text":     "#991b1b",
+  "--status-pipeline-offer_accepted-bg":       "#86efac",  // green-300 (was #dcfce7)
+  "--status-pipeline-offer_accepted-text":     "#14532d",  // green-900 (unchanged)
+  "--status-pipeline-offer_rejected-bg":       "#fca5a5",  // red-300 (was #fee2e2)
+  "--status-pipeline-offer_rejected-text":     "#7f1d1d",  // red-900 (was #991b1b)
   "--status-pipeline-video_sent-bg":           "#cffafe",
   "--status-pipeline-video_sent-text":         "#164e63",
-  "--status-pipeline-retry_1-bg":              "#ffedd5",
-  "--status-pipeline-retry_1-text":            "#7c2d12",
-  "--status-pipeline-retry_2-bg":              "#ffedd5",
-  "--status-pipeline-retry_2-text":            "#7c2d12",
-  "--status-pipeline-retry_3-bg":              "#ffedd5",
-  "--status-pipeline-retry_3-text":            "#7c2d12",
+  "--status-pipeline-retry_1-bg":              "#ffedd5",  // light orange (unchanged)
+  "--status-pipeline-retry_1-text":            "#c2410c",  // orange-700 (was #7c2d12)
+  "--status-pipeline-retry_2-bg":              "#fed7aa",  // orange-200 (was #ffedd5)
+  "--status-pipeline-retry_2-text":            "#9a3412",  // orange-800
+  "--status-pipeline-retry_3-bg":              "#fca5a5",  // red-300 — urgent
+  "--status-pipeline-retry_3-text":            "#7f1d1d",  // red-900
   "--status-pipeline-paperwork_sent-bg":       "#e0e7ff",
   "--status-pipeline-paperwork_sent-text":     "#3730a3",
-  "--status-pipeline-ready_for_investors-bg":  "#ede9fe",
-  "--status-pipeline-ready_for_investors-text":"#4c1d95",
-  "--status-pipeline-dead_lead-bg":            "#fecaca",
-  "--status-pipeline-dead_lead-text":          "#7f1d1d",
+  "--status-pipeline-ready_for_investors-bg":  "#a78bfa",  // violet-400 (was #ede9fe)
+  "--status-pipeline-ready_for_investors-text":"#1e1b4b",  // violet-950
+  "--status-pipeline-dead_lead-bg":            "#dc2626",  // red-600 solid (was #fecaca)
+  "--status-pipeline-dead_lead-text":          "#ffffff",  // white text (was #7f1d1d)
 
   // Contact type badge colours
   "--status-contact-solicitor-bg":         "#dbeafe",

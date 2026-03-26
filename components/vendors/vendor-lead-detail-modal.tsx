@@ -70,6 +70,7 @@ import { formatCurrency } from "@/lib/format"
 import { ShieldCheck } from "lucide-react"
 import { SolicitorSelector, type Solicitor as SolicitorType } from "@/components/solicitors/solicitor-selector"
 import { PortalCheckDetailPanel } from "./portal-check-detail-panel"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 interface SMSMessage {
   id: string
@@ -379,6 +380,11 @@ export function VendorLeadDetailModal({
   const [isDeleting, setIsDeleting] = useState(false)
   const [isRemovingReservation, setIsRemovingReservation] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean; title: string; description: string;
+    variant: "destructive" | "archive" | "warning" | "default";
+    confirmLabel: string; onConfirm: () => void;
+  }>({ open: false, title: "", description: "", variant: "default", confirmLabel: "Confirm", onConfirm: () => {} })
   const [isCalculating, setIsCalculating] = useState(false)
   const [isGeneratingPack, setIsGeneratingPack] = useState(false)
   const [isFixingPostcode, setIsFixingPostcode] = useState(false)
@@ -666,57 +672,70 @@ export function VendorLeadDetailModal({
     }
   }
 
-  const handleDelete = async () => {
-    if (!confirm(`Delete ${currentLead.vendorName}? This cannot be undone.`)) {
-      return
-    }
+  const handleDelete = () => {
+    setConfirmDialog({
+      open: true,
+      title: `Delete ${currentLead.vendorName}?`,
+      description: "This cannot be undone. The vendor lead and all conversation history will be permanently removed.",
+      variant: "destructive",
+      confirmLabel: "Delete permanently",
+      onConfirm: async () => {
+        setIsDeleting(true)
+        try {
+          const response = await fetch(`/api/vendor-leads/${lead.id}`, {
+            method: "DELETE",
+          })
 
-    setIsDeleting(true)
-    try {
-      const response = await fetch(`/api/vendor-leads/${lead.id}`, {
-        method: "DELETE",
-      })
+          if (!response.ok) {
+            const error = await response.json()
+            throw new Error(error.error || "Failed to delete vendor lead")
+          }
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || "Failed to delete vendor lead")
-      }
+          toast.success(`${currentLead.vendorName} deleted successfully`)
 
-      toast.success(`${currentLead.vendorName} deleted successfully`)
+          if (onUpdate) {
+            onUpdate()
+          }
 
-      if (onUpdate) {
-        onUpdate()
-      }
-
-      onOpenChange(false)
-    } catch (error: any) {
-      console.error("Error deleting vendor lead:", error)
-      toast.error(error.message || "Failed to delete vendor")
-    } finally {
-      setIsDeleting(false)
-    }
+          onOpenChange(false)
+        } catch (error: any) {
+          console.error("Error deleting vendor lead:", error)
+          toast.error(error.message || "Failed to delete vendor")
+        } finally {
+          setIsDeleting(false)
+        }
+      },
+    })
   }
 
-  const handleRemoveReservation = async () => {
+  const handleRemoveReservation = () => {
     if (!currentLead.reservation) return
-    if (!confirm("Remove this investor reservation? This cannot be undone.")) return
-    setIsRemovingReservation(true)
-    try {
-      const res = await fetch(`/api/reservations/${currentLead.reservation.id}`, {
-        method: "DELETE",
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || "Failed to remove reservation")
-      }
-      setFullLead((prev) => prev ? { ...prev, reservation: null } : prev)
-      toast.success("Reservation removed")
-      if (onUpdate) onUpdate()
-    } catch (err: any) {
-      toast.error(err.message || "Failed to remove reservation")
-    } finally {
-      setIsRemovingReservation(false)
-    }
+    setConfirmDialog({
+      open: true,
+      title: "Remove investor reservation?",
+      description: "This cannot be undone. The reservation will be permanently removed.",
+      variant: "destructive",
+      confirmLabel: "Remove reservation",
+      onConfirm: async () => {
+        setIsRemovingReservation(true)
+        try {
+          const res = await fetch(`/api/reservations/${currentLead.reservation!.id}`, {
+            method: "DELETE",
+          })
+          if (!res.ok) {
+            const data = await res.json()
+            throw new Error(data.error || "Failed to remove reservation")
+          }
+          setFullLead((prev) => prev ? { ...prev, reservation: null } : prev)
+          toast.success("Reservation removed")
+          if (onUpdate) onUpdate()
+        } catch (err: any) {
+          toast.error(err.message || "Failed to remove reservation")
+        } finally {
+          setIsRemovingReservation(false)
+        }
+      },
+    })
   }
 
   const handleGenerateInvestorPack = async () => {
@@ -2013,6 +2032,15 @@ export function VendorLeadDetailModal({
       </DialogContent>
     </Dialog>
 
+    <ConfirmDialog
+      open={confirmDialog.open}
+      onOpenChange={(open) => setConfirmDialog((prev) => ({ ...prev, open }))}
+      title={confirmDialog.title}
+      description={confirmDialog.description}
+      variant={confirmDialog.variant}
+      confirmLabel={confirmDialog.confirmLabel}
+      onConfirm={confirmDialog.onConfirm}
+    />
   </>
   )
 }

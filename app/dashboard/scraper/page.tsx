@@ -2,9 +2,6 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { Prisma } from "@prisma/client"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Settings } from "lucide-react"
 import { ScraperOverview } from "@/components/scraper/scraper-overview"
 import { PageHeader } from "@/components/ui/page-header"
 import { toPropertyListingForClient } from "@/types/property-listing"
@@ -159,14 +156,6 @@ export default async function ScraperDashboardPage() {
       <PageHeader
         title="Property Scraper"
         subtitle="Scrape, review, and approve properties"
-        actions={
-          <Link href="/dashboard/settings/scraper">
-            <Button variant="outline" className="h-9 text-sm">
-              <Settings className="mr-2 h-4 w-4" />
-              Scraper Settings
-            </Button>
-          </Link>
-        }
       />
 
       <ScraperOverview

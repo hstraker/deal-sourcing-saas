@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { Camera, Crown, Loader2, Trash2, Upload } from "lucide-react"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import type { ConfirmVariant } from "@/components/ui/confirm-dialog"
 
 export interface DealPhoto {
   id: string
@@ -35,6 +37,14 @@ export function DealPhotoManager({ dealId, initialPhotos }: DealPhotoManagerProp
   } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    title: string
+    description: string
+    variant: ConfirmVariant
+    confirmLabel?: string
+    onConfirm: () => void
+  }>({ open: false, title: "", description: "", variant: "default", onConfirm: () => {} })
 
   const refreshPhotos = async () => {
     const response = await fetch(`/api/deals/${dealId}/photos`)
@@ -249,14 +259,22 @@ export function DealPhotoManager({ dealId, initialPhotos }: DealPhotoManagerProp
     }
   }
 
-  const handleDelete = async (photoId: string) => {
-    if (!confirm("Are you sure you want to delete this photo?")) return
-    const response = await fetch(`/api/deals/${dealId}/photos/${photoId}`, {
-      method: "DELETE",
+  const handleDelete = (photoId: string) => {
+    setConfirmDialog({
+      open: true,
+      title: "Delete Photo",
+      description: "Are you sure you want to delete this photo? This cannot be undone.",
+      variant: "destructive",
+      confirmLabel: "Delete",
+      onConfirm: async () => {
+        const response = await fetch(`/api/deals/${dealId}/photos/${photoId}`, {
+          method: "DELETE",
+        })
+        if (response.ok) {
+          setPhotos((prev) => prev.filter((photo) => photo.id !== photoId))
+        }
+      },
     })
-    if (response.ok) {
-      setPhotos((prev) => prev.filter((photo) => photo.id !== photoId))
-    }
   }
 
   const handleSetCover = async (photoId: string) => {
@@ -408,6 +426,16 @@ export function DealPhotoManager({ dealId, initialPhotos }: DealPhotoManagerProp
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((p) => ({ ...p, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        variant={confirmDialog.variant}
+        confirmLabel={confirmDialog.confirmLabel}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </div>
   )
 }

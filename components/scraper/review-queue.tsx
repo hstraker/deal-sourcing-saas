@@ -18,6 +18,7 @@ import { ReviewQueuePagination } from "./review-queue-pagination"
 import { PropertyReviewCard } from "./property-review-card"
 import { PropertyDetailModal } from "./property-detail-modal"
 import type { PropertyListingForClient, BmvIndicatorsData } from "@/types/property-listing"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 const ITEMS_PER_PAGE = 12
 
@@ -87,6 +88,11 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
   const [selectedDuplicates, setSelectedDuplicates] = useState<PropertyListingForClient[]>([])
   const [submittingIds, setSubmittingIds] = useState<Set<string>>(new Set())
   const [isBulkSubmitting, setIsBulkSubmitting] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean; title: string; description: string;
+    variant: "destructive" | "archive" | "warning" | "default";
+    confirmLabel: string; onConfirm: () => void;
+  }>({ open: false, title: "", description: "", variant: "default", confirmLabel: "Confirm", onConfirm: () => {} })
 
   // Sync listings when server re-renders after router.refresh()
   useEffect(() => {
@@ -309,46 +315,52 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
   }
 
   // Bulk review handler (applies to all currently filtered listings)
-  const handleBulkReview = async (action: "APPROVED" | "REJECTED") => {
+  const handleBulkReview = (action: "APPROVED" | "REJECTED") => {
     const ids = sortedListings.map((l) => l.id)
     if (ids.length === 0) return
 
-    const confirmed = window.confirm(
-      `Are you sure you want to ${action.toLowerCase()} ${ids.length} properties?`
-    )
-    if (!confirmed) return
+    setConfirmDialog({
+      open: true,
+      title: `${action === "APPROVED" ? "Approve" : "Reject"} ${ids.length} ${ids.length !== 1 ? "properties" : "property"}?`,
+      description: action === "APPROVED"
+        ? "The selected properties will be approved and moved to your deals pipeline."
+        : "The selected properties will be rejected and removed from the review queue.",
+      variant: action === "APPROVED" ? "default" : "destructive",
+      confirmLabel: action === "APPROVED" ? "Approve" : "Reject",
+      onConfirm: async () => {
+        setIsBulkSubmitting(true)
+        try {
+          const res = await fetch("/api/review-queue/bulk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action, ids }),
+          })
 
-    setIsBulkSubmitting(true)
-    try {
-      const res = await fetch("/api/review-queue/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, ids }),
-      })
+          if (!res.ok) {
+            const data = await res.json()
+            throw new Error(data.error || "Failed to bulk review")
+          }
 
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || "Failed to bulk review")
-      }
+          const data = await res.json()
+          setListings((prev) => prev.filter((l) => !ids.includes(l.id)))
 
-      const data = await res.json()
-      setListings((prev) => prev.filter((l) => !ids.includes(l.id)))
-
-      if (action === "APPROVED" && data.dealIds?.length) {
-        toast.success(`${data.updatedCount} added to Vendor pipeline`, {
-          action: {
-            label: "View Vendors",
-            onClick: () => router.push("/dashboard/vendors"),
-          },
-        })
-      } else {
-        toast.success(`${data.updatedCount} properties ${action.toLowerCase()}`)
-      }
-    } catch (error: any) {
-      toast.error(error.message)
-    } finally {
-      setIsBulkSubmitting(false)
-    }
+          if (action === "APPROVED" && data.dealIds?.length) {
+            toast.success(`${data.updatedCount} added to Vendor pipeline`, {
+              action: {
+                label: "View Vendors",
+                onClick: () => router.push("/dashboard/vendors"),
+              },
+            })
+          } else {
+            toast.success(`${data.updatedCount} properties ${action.toLowerCase()}`)
+          }
+        } catch (error: any) {
+          toast.error(error.message)
+        } finally {
+          setIsBulkSubmitting(false)
+        }
+      },
+    })
   }
 
   // How many postcode duplicates exist in the current filtered view
@@ -500,6 +512,16 @@ export function ReviewQueue({ listings: initialListings }: ReviewQueueProps) {
           handleReview(id, action, notes, selectedDuplicates.map((d) => d.id))
         }
         isSubmitting={selectedListing ? submittingIds.has(selectedListing.id) : false}
+      />
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((prev) => ({ ...prev, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        variant={confirmDialog.variant}
+        confirmLabel={confirmDialog.confirmLabel}
+        onConfirm={confirmDialog.onConfirm}
       />
     </div>
   )

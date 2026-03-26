@@ -1,6 +1,7 @@
 // components/ui/status-badge.tsx
 "use client"
 
+import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   Tooltip,
@@ -16,13 +17,15 @@ interface StatusBadgeProps {
   /** Tailwind colour classes — used when cssKey is not provided */
   className?: string
   tooltip?: string
+  /** Optional Lucide icon to display before the label */
+  icon?: LucideIcon
 }
 
-export function StatusBadge({ label, cssKey, className, tooltip }: StatusBadgeProps) {
+export function StatusBadge({ label, cssKey, className, tooltip, icon: Icon }: StatusBadgeProps) {
   const badge = (
     <span
       className={cn(
-        "inline-block rounded-full px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium",
         !cssKey && className
       )}
       style={
@@ -34,6 +37,7 @@ export function StatusBadge({ label, cssKey, className, tooltip }: StatusBadgePr
           : undefined
       }
     >
+      {Icon && <Icon className="h-3 w-3 shrink-0" />}
       {label}
     </span>
   )

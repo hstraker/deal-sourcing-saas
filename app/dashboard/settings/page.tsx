@@ -43,6 +43,7 @@ import { MOCK_SCENARIOS, MOCK_SCENARIO_IDS } from "@/lib/vendor-checks/test-mode
 import type { MockScenarioId } from "@/lib/vendor-checks/test-mode/mock-scenarios"
 import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ConfirmDialog, type ConfirmVariant } from "@/components/ui/confirm-dialog"
 
 type Currency = "GBP" | "USD" | "EUR" | "AUD" | "CAD"
 
@@ -133,6 +134,14 @@ export default function SettingsPage() {
   // Development mode state
   const [isTestRunning, setIsTestRunning] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    title: string
+    description: string
+    variant: ConfirmVariant
+    confirmLabel?: string
+    onConfirm: () => void
+  }>({ open: false, title: "", description: "", variant: "default", onConfirm: () => {} })
   const [testResult, setTestResult] = useState<any>(null)
   const [testForm, setTestForm] = useState({
     vendorName: "Test Vendor",
@@ -217,24 +226,32 @@ export default function SettingsPage() {
     }
   }
 
-  const clearTestData = async () => {
-    if (!confirm("Are you sure you want to delete all test vendor leads and associated data?")) return
-    setIsClearing(true)
-    try {
-      const response = await fetch("/api/dev/clear-test-data", { method: "DELETE" })
-      const data = await response.json()
-      if (data.success) {
-        toast.success("Test data cleared", {
-          description: `Deleted ${data.deletedCount.leads} test leads, ${data.deletedCount.messages} messages, and ${data.deletedCount.comparables} comparables.`,
-        })
-      } else {
-        throw new Error(data.error || "Failed to clear data")
-      }
-    } catch (error: any) {
-      toast.error("Failed to clear test data", { description: error.message })
-    } finally {
-      setIsClearing(false)
-    }
+  const clearTestData = () => {
+    setConfirmDialog({
+      open: true,
+      title: "Clear Test Data",
+      description: "This will permanently delete all test vendor leads and associated data.",
+      variant: "destructive",
+      confirmLabel: "Clear All",
+      onConfirm: async () => {
+        setIsClearing(true)
+        try {
+          const response = await fetch("/api/dev/clear-test-data", { method: "DELETE" })
+          const data = await response.json()
+          if (data.success) {
+            toast.success("Test data cleared", {
+              description: `Deleted ${data.deletedCount.leads} test leads, ${data.deletedCount.messages} messages, and ${data.deletedCount.comparables} comparables.`,
+            })
+          } else {
+            throw new Error(data.error || "Failed to clear data")
+          }
+        } catch (error: any) {
+          toast.error("Failed to clear test data", { description: error.message })
+        } finally {
+          setIsClearing(false)
+        }
+      },
+    })
   }
 
   const generateRandomFBLead = () => {
@@ -939,6 +956,16 @@ SMTP_FROM_NAME="Your Company Name"`}</pre>
           Some settings may require a page refresh to take full effect.
         </p>
       </div>
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((p) => ({ ...p, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        variant={confirmDialog.variant}
+        confirmLabel={confirmDialog.confirmLabel}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </div>
   )
 }

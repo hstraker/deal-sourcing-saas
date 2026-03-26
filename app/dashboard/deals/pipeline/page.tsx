@@ -18,7 +18,11 @@ export default async function DealPipelinePage() {
     redirect("/dashboard")
   }
 
-  const where: any = {}
+  // Always exclude archived deals — they belong on the Archive page
+  const where: any = {
+    status: { not: "archived" },
+    archivedAt: null,
+  }
 
   if (session.user.role === "sourcer") {
     where.OR = [

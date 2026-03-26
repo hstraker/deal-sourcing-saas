@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Upload, X, Loader2 } from "lucide-react"
 import Image from "next/image"
+import { toast } from "sonner"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 interface ProfilePictureUploadProps {
   userId: string
@@ -21,6 +23,7 @@ export function ProfilePictureUpload({
   const [isUploading, setIsUploading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null)
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Load current profile picture if it exists
@@ -46,13 +49,13 @@ export function ProfilePictureUpload({
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
-      alert("Please select an image file")
+      toast.error("Please select an image file")
       return
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert("Image size must be less than 5MB")
+      toast.error("Image size must be less than 5MB")
       return
     }
 
@@ -115,7 +118,7 @@ export function ProfilePictureUpload({
       onUploadComplete(s3Key)
     } catch (error) {
       console.error("Error uploading profile picture:", error)
-      alert(`Error uploading profile picture: ${error instanceof Error ? error.message : "Unknown error"}`)
+      toast.error("Upload failed", { description: error instanceof Error ? error.message : "Unknown error" })
       setPreviewUrl(null)
     } finally {
       setIsUploading(false)
@@ -125,11 +128,11 @@ export function ProfilePictureUpload({
     }
   }
 
-  const handleRemove = async () => {
-    if (!confirm("Are you sure you want to remove this profile picture?")) {
-      return
-    }
+  const handleRemove = () => {
+    setShowRemoveConfirm(true)
+  }
 
+  const handleRemoveConfirmed = async () => {
     try {
       const response = await fetch(`/api/users/${userId}/profile-picture`, {
         method: "DELETE",
@@ -143,7 +146,7 @@ export function ProfilePictureUpload({
       onRemove()
     } catch (error) {
       console.error("Error removing profile picture:", error)
-      alert(`Error removing profile picture: ${error instanceof Error ? error.message : "Unknown error"}`)
+      toast.error("Failed to remove profile picture", { description: error instanceof Error ? error.message : "Unknown error" })
     }
   }
 
@@ -203,6 +206,16 @@ export function ProfilePictureUpload({
         accept="image/*"
         onChange={handleFileSelect}
         className="hidden"
+      />
+
+      <ConfirmDialog
+        open={showRemoveConfirm}
+        onOpenChange={setShowRemoveConfirm}
+        variant="destructive"
+        title="Remove Profile Picture"
+        description="Are you sure you want to remove your profile picture?"
+        confirmLabel="Remove"
+        onConfirm={handleRemoveConfirmed}
       />
     </div>
   )

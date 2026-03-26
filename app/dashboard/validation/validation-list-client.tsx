@@ -37,20 +37,20 @@ interface Lead {
 function ValidationBadge({ passed }: { passed: boolean | null }) {
   if (passed === true) {
     return (
-      <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 border-emerald-200">
+      <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 border-emerald-200 whitespace-nowrap">
         Passed
       </span>
     )
   }
   if (passed === false) {
     return (
-      <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 border-red-200">
+      <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 border-red-200 whitespace-nowrap">
         Failed
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 border-gray-200">
+    <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 border-gray-200 whitespace-nowrap">
       Pending
     </span>
   )
@@ -200,15 +200,15 @@ export function ValidationListClient({ leads: initialLeads }: { leads: Lead[] })
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px]">
               <thead>
-                <tr className="table-header">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Vendor</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Property</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Asking Price</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Market Value</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">BMV</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Last Validated</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                <tr>
+                  <th className="table-header text-left">Vendor</th>
+                  <th className="table-header text-left">Property</th>
+                  <th className="table-header text-left whitespace-nowrap">Asking Price</th>
+                  <th className="table-header text-left whitespace-nowrap">Market Value</th>
+                  <th className="table-header text-left">BMV</th>
+                  <th className="table-header text-left">Status</th>
+                  <th className="table-header text-left whitespace-nowrap">Last Validated</th>
+                  <th className="table-header text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -234,21 +234,21 @@ export function ValidationListClient({ leads: initialLeads }: { leads: Lead[] })
                     </td>
 
                     {/* Asking Price */}
-                    <td className="table-cell">
-                      <span className="text-sm font-medium text-gray-900">
+                    <td className="table-cell whitespace-nowrap">
+                      <span className="text-sm font-semibold text-gray-900">
                         {lead.askingPrice ? formatCurrency(lead.askingPrice) : <span className="text-gray-400">—</span>}
                       </span>
                     </td>
 
                     {/* Market Value */}
-                    <td className="table-cell">
+                    <td className="table-cell whitespace-nowrap">
                       <span className="text-sm text-gray-700">
                         {lead.estimatedMarketValue ? formatCurrency(lead.estimatedMarketValue) : <span className="text-gray-400">—</span>}
                       </span>
                     </td>
 
                     {/* BMV */}
-                    <td className="table-cell">
+                    <td className="table-cell whitespace-nowrap">
                       <span className="text-sm text-gray-700">
                         {lead.bmvScore != null ? `${lead.bmvScore}%` : <span className="text-gray-400">—</span>}
                       </span>

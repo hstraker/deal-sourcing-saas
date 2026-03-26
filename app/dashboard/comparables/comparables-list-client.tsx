@@ -47,13 +47,13 @@ function ConfidenceBadge({ confidence }: { confidence: string | null }) {
   const cfg = confidence ? CONFIDENCE_CONFIG[confidence] : null
   if (!cfg) {
     return (
-      <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 border-gray-200">
+      <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 border-gray-200 whitespace-nowrap">
         Not Fetched
       </span>
     )
   }
   return (
-    <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium", cfg.cls)}>
+    <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap", cfg.cls)}>
       {cfg.label}
     </span>
   )
@@ -188,15 +188,15 @@ export function ComparablesListClient({ leads: initialLeads }: { leads: Lead[] }
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px]">
               <thead>
-                <tr className="table-header">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Vendor</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Property</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Asking Price</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Avg Price</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"># Comps</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Last Checked</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                <tr>
+                  <th className="table-header text-left">Vendor</th>
+                  <th className="table-header text-left">Property</th>
+                  <th className="table-header text-left">Asking Price</th>
+                  <th className="table-header text-left">Status</th>
+                  <th className="table-header text-left">Avg Price</th>
+                  <th className="table-header text-left"># Comps</th>
+                  <th className="table-header text-left">Last Checked</th>
+                  <th className="table-header text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -230,8 +230,8 @@ export function ComparablesListClient({ leads: initialLeads }: { leads: Lead[] }
                     </td>
 
                     {/* Asking Price */}
-                    <td className="table-cell">
-                      <span className="text-sm font-medium text-gray-900">
+                    <td className="table-cell whitespace-nowrap">
+                      <span className="text-sm font-semibold text-gray-900">
                         {lead.askingPrice ? formatCurrency(lead.askingPrice) : <span className="text-gray-400">—</span>}
                       </span>
                     </td>
@@ -242,14 +242,14 @@ export function ComparablesListClient({ leads: initialLeads }: { leads: Lead[] }
                     </td>
 
                     {/* Avg Price */}
-                    <td className="table-cell">
+                    <td className="table-cell whitespace-nowrap">
                       <span className="text-sm text-gray-700">
                         {lead.avgComparablePrice ? formatCurrency(lead.avgComparablePrice) : <span className="text-gray-400">—</span>}
                       </span>
                     </td>
 
                     {/* # Comps */}
-                    <td className="table-cell">
+                    <td className="table-cell whitespace-nowrap">
                       <span className="text-sm text-gray-700">
                         {lead.comparablesCount != null ? lead.comparablesCount : <span className="text-gray-400">—</span>}
                       </span>

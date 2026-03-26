@@ -25,6 +25,7 @@ import {
 import { format } from "date-fns"
 import Link from "next/link"
 import { toast } from "sonner"
+import { ConfirmDialog, ConfirmVariant } from "@/components/ui/confirm-dialog"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -270,6 +271,16 @@ export function ReservationOverview({ initialReservations = [] }: ReservationOve
   const [advancingId, setAdvancingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    title: string
+    description: string
+    variant: ConfirmVariant
+    confirmLabel?: string
+    cancelLabel?: string
+    onConfirm: () => void
+  }>({ open: false, title: "", description: "", variant: "default", onConfirm: () => {} })
+
   // showSpinner=true for initial load; false for background refresh after mutations
   const fetchReservations = async (showSpinner = false) => {
     if (showSpinner) setIsLoading(true)
@@ -334,52 +345,69 @@ export function ReservationOverview({ initialReservations = [] }: ReservationOve
     }
   }
 
-  const cancelReservation = async (reservationId: string) => {
-    if (!confirm("Cancel this reservation?")) return
-    setAdvancingId(reservationId)
-    // Optimistic update
-    setReservations((prev) =>
-      prev.map((r) => (r.id === reservationId ? { ...r, status: "cancelled" } : r))
-    )
-    try {
-      const response = await fetch(`/api/reservations/${reservationId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "cancelled" }),
-      })
-      if (response.ok) {
-        toast.success("Reservation cancelled")
-        window.dispatchEvent(new CustomEvent("reservationUpdated"))
-      } else {
-        const err = await response.json().catch(() => ({}))
-        toast.error(err.error || "Failed to cancel reservation")
-      }
-    } catch {
-      toast.error("Failed to cancel reservation")
-    } finally {
-      setAdvancingId(null)
-      fetchReservations() // background refresh, no spinner
-    }
+  const cancelReservation = (reservationId: string) => {
+    setConfirmDialog({
+      open: true,
+      title: "Cancel Reservation",
+      description: "Are you sure you want to cancel this reservation?",
+      variant: "warning",
+      confirmLabel: "Cancel Reservation",
+      cancelLabel: "Keep",
+      onConfirm: async () => {
+        setAdvancingId(reservationId)
+        // Optimistic update
+        setReservations((prev) =>
+          prev.map((r) => (r.id === reservationId ? { ...r, status: "cancelled" } : r))
+        )
+        try {
+          const response = await fetch(`/api/reservations/${reservationId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "cancelled" }),
+          })
+          if (response.ok) {
+            toast.success("Reservation cancelled")
+            window.dispatchEvent(new CustomEvent("reservationUpdated"))
+          } else {
+            const err = await response.json().catch(() => ({}))
+            toast.error(err.error || "Failed to cancel reservation")
+          }
+        } catch {
+          toast.error("Failed to cancel reservation")
+        } finally {
+          setAdvancingId(null)
+          fetchReservations() // background refresh, no spinner
+        }
+      },
+    })
   }
 
-  const deleteReservation = async (reservationId: string) => {
-    if (!confirm("Permanently delete this reservation? This cannot be undone.")) return
-    setDeletingId(reservationId)
-    try {
-      const response = await fetch(`/api/reservations/${reservationId}`, { method: "DELETE" })
-      if (response.ok) {
-        setReservations((prev) => prev.filter((r) => r.id !== reservationId))
-        toast.success("Reservation deleted")
-        window.dispatchEvent(new CustomEvent("reservationUpdated"))
-      } else {
-        const err = await response.json().catch(() => ({}))
-        toast.error(err.error || "Failed to delete reservation")
-      }
-    } catch {
-      toast.error("Failed to delete reservation")
-    } finally {
-      setDeletingId(null)
-    }
+  const deleteReservation = (reservationId: string) => {
+    setConfirmDialog({
+      open: true,
+      title: "Delete Reservation",
+      description: "Permanently delete this reservation? This cannot be undone.",
+      variant: "destructive",
+      confirmLabel: "Delete",
+      onConfirm: async () => {
+        setDeletingId(reservationId)
+        try {
+          const response = await fetch(`/api/reservations/${reservationId}`, { method: "DELETE" })
+          if (response.ok) {
+            setReservations((prev) => prev.filter((r) => r.id !== reservationId))
+            toast.success("Reservation deleted")
+            window.dispatchEvent(new CustomEvent("reservationUpdated"))
+          } else {
+            const err = await response.json().catch(() => ({}))
+            toast.error(err.error || "Failed to delete reservation")
+          }
+        } catch {
+          toast.error("Failed to delete reservation")
+        } finally {
+          setDeletingId(null)
+        }
+      },
+    })
   }
 
   const getInvestorName = (investor: Reservation["investor"]) => {
@@ -581,6 +609,17 @@ export function ReservationOverview({ initialReservations = [] }: ReservationOve
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((d) => ({ ...d, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        variant={confirmDialog.variant}
+        confirmLabel={confirmDialog.confirmLabel}
+        cancelLabel={confirmDialog.cancelLabel}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </div>
   )
 }

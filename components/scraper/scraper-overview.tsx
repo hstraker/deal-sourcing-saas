@@ -16,11 +16,11 @@ import {
   CheckCircle2,
   XCircle,
   Settings,
+  Clock,
 } from "lucide-react"
 import { toast } from "sonner"
 import { ReviewQueue } from "@/components/scraper/review-queue"
 import { PropertiesTable } from "@/components/scraper/properties-table"
-import { ScraperSourceCard } from "@/components/scraper/scraper-source-card"
 import { ScraperLiveProgress } from "@/components/scraper/scraper-live-progress"
 
 interface SourceCount {
@@ -109,6 +109,13 @@ const SOURCE_COLORS: Record<string, string> = {
   PRIMELOCATION: "bg-orange-100 text-orange-800",
 }
 
+const SOURCE_CHIP_CONFIG: Record<string, { text: string; dot: string; button: string }> = {
+  RIGHTMOVE:    { text: "text-blue-700",    dot: "bg-blue-400",    button: "border-blue-200 text-blue-600 hover:bg-blue-50" },
+  ZOOPLA:       { text: "text-purple-700",  dot: "bg-purple-400",  button: "border-purple-200 text-purple-600 hover:bg-purple-50" },
+  ONTHEMARKET:  { text: "text-emerald-700", dot: "bg-emerald-400", button: "border-emerald-200 text-emerald-600 hover:bg-emerald-50" },
+  PRIMELOCATION:{ text: "text-orange-700",  dot: "bg-orange-400",  button: "border-orange-200 text-orange-600 hover:bg-orange-50" },
+}
+
 const STATUS_COLORS: Record<string, string> = {
   QUEUED: "bg-gray-100 text-gray-800",
   RUNNING: "bg-blue-100 text-blue-800",
@@ -181,6 +188,26 @@ const SOURCES: { key: SourceKey; label: string; settingsKey: keyof ScraperSettin
   { key: "ONTHEMARKET", label: "OnTheMarket", settingsKey: "onthemarketEnabled" },
   { key: "PRIMELOCATION", label: "PrimeLocation", settingsKey: "primelocationEnabled" },
 ]
+
+function LastRunTime({ lastJobAt }: { lastJobAt: string | null }) {
+  const [display, setDisplay] = useState("")
+  useEffect(() => {
+    function fmt() {
+      if (!lastJobAt) return "Never"
+      const diff = Date.now() - new Date(lastJobAt).getTime()
+      const m = Math.floor(diff / 60000)
+      if (m < 1) return "Just now"
+      if (m < 60) return `${m}m ago`
+      const h = Math.floor(m / 60)
+      if (h < 24) return `${h}h ago`
+      return `${Math.floor(h / 24)}d ago`
+    }
+    setDisplay(fmt())
+    const id = setInterval(() => setDisplay(fmt()), 30_000)
+    return () => clearInterval(id)
+  }, [lastJobAt])
+  return <span suppressHydrationWarning>{display}</span>
+}
 
 export function ScraperOverview({
   stats,
@@ -370,91 +397,138 @@ export function ScraperOverview({
   return (
     <div className="space-y-5">
 
-      {/* ── 1. Source Cards + Stats ── */}
-      <div className="grid gap-4 grid-cols-2 sm:grid-cols-4 lg:grid-cols-6">
-        {SOURCES.map((s) => {
-          const lastJob = lastJobBySource[s.key]
-          const isEnabled = !!(settings?.[s.settingsKey])
-          return (
-            <div key={s.key} className="lg:col-span-1 col-span-1">
-              <ScraperSourceCard
-                source={s.key}
-                label={s.label}
-                enabled={isEnabled}
-                lastJobAt={lastJob?.completedAt ?? null}
-                lastJobCount={lastJob?.totalFound ?? null}
-                isRunning={!!isSourceRunning(s.key)}
-                progress={runningJobs[s.key]}
-                onTrigger={() => triggerScrape(s.key)}
-                hasCriteria={!!hasCriteria}
-              />
-            </div>
-          )
-        })}
+      {/* ── 1. Compact Control Bar ── */}
+      <div className="ds-card overflow-hidden">
+        <div className="flex items-center gap-0 divide-x divide-gray-100">
 
-        {/* Stats summary card (spans 2 cols on lg) */}
-        <div className="col-span-2 sm:col-span-4 lg:col-span-2">
-          <div className="ds-card overflow-hidden h-full">            <div className="p-5 p-4 space-y-3">              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold">Overview</span>
-                <div className="flex gap-2">
-                  <Link href="/dashboard/settings/scraper">
-                    <Button variant="ghost" size="sm" className="h-7 px-2">
-                      <Settings className="h-3.5 w-3.5" />
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                    disabled={!hasCriteria || activeJobs.length > 0}
-                    onClick={triggerAll}
-                  >
-                    <Play className="mr-1 h-3 w-3" />
-                    Run All
-                  </Button>
-                </div>
-              </div>
+          {/* Portal chips — one per source */}
+          <div className="flex items-center gap-0 divide-x divide-gray-100 flex-1 min-w-0">
+            {SOURCES.map((s) => {
+              const lastJob = lastJobBySource[s.key]
+              const isEnabled = !!(settings?.[s.settingsKey])
+              const running = runningJobs[s.key]
+              const isRunning = !!isSourceRunning(s.key)
+              const cfg = SOURCE_CHIP_CONFIG[s.key]
 
-              {/* Counts grid */}
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="rounded-md bg-gray-50 px-3 py-2">
-                  <div className="text-lg font-bold text-blue-700">
-                    {stats.totalListings}
-                  </div>
-                  <div className="text-[11px] text-gray-400">Total</div>
-                </div>
-                <div className="rounded-md bg-gray-50 px-3 py-2">
-                  <div className="text-lg font-bold text-amber-700">
-                    {stats.pendingReview}
-                  </div>
-                  <div className="text-[11px] text-gray-400">Pending</div>
-                </div>
-                <div className="rounded-md bg-gray-50 px-3 py-2">
-                  <div className="text-lg font-bold text-green-700">
-                    {stats.byReviewStatus.find((s) => s.status === "APPROVED")?.count || 0}
-                  </div>
-                  <div className="text-[11px] text-gray-400">Approved</div>
-                </div>
-                <div className="rounded-md bg-gray-50 px-3 py-2">
-                  <div className="text-lg font-bold text-red-700">
-                    {stats.ambiguousCount}
-                  </div>
-                  <div className="text-[11px] text-gray-400">Ambiguous</div>
-                </div>
-              </div>
+              const statusDot = (() => {
+                if (!isEnabled) return "bg-gray-300"
+                if (running?.status === "FAILED" || running?.status === "CANCELLED") return "bg-red-500"
+                if (isRunning) return `${cfg.dot} animate-pulse`
+                return "bg-green-500"
+              })()
 
-              {/* Source breakdown */}
-              <div className="flex flex-wrap gap-1.5 text-[11px]">
-                <span className="text-blue-600 font-medium">{getSourceCount("RIGHTMOVE")} RM</span>
-                <span className="text-gray-400">·</span>
-                <span className="text-purple-600 font-medium">{getSourceCount("ZOOPLA")} Z</span>
-                <span className="text-gray-400">·</span>
-                <span className="text-emerald-600 font-medium">{getSourceCount("ONTHEMARKET")} OTM</span>
-                <span className="text-gray-400">·</span>
-                <span className="text-orange-600 font-medium">{getSourceCount("PRIMELOCATION")} PL</span>
-              </div>
-            </div>
+              const statusLabel = (() => {
+                if (!isEnabled) return "Disabled"
+                if (running?.status === "QUEUED") return "Queued…"
+                if (running?.status === "RUNNING") return "Running"
+                if (running?.status === "FAILED") return "Failed"
+                if (running?.status === "CANCELLED") return "Cancelled"
+                if (running?.status === "COMPLETED") return "Done"
+                return "Idle"
+              })()
+
+              return (
+                <div key={s.key} className="flex flex-col gap-1 px-3 py-2.5 flex-1">
+                  {/* Row 1: dot + name + Run button — always same structure */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className={`h-2 w-2 rounded-full flex-shrink-0 ${statusDot}`} />
+                      <span className={`text-xs font-semibold truncate ${cfg.text}`}>{s.label}</span>
+                    </div>
+                    <button
+                      onClick={() => triggerScrape(s.key)}
+                      disabled={!isEnabled || isRunning || !hasCriteria}
+                      className={`flex-shrink-0 rounded-md border px-2 py-0.5 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 ${cfg.button}`}
+                    >
+                      {isRunning
+                        ? <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                        : <Play className="h-2.5 w-2.5" />
+                      }
+                      {isRunning ? "…" : "Run"}
+                    </button>
+                  </div>
+
+                  {/* Row 2: status · info — always same height */}
+                  <div className="text-xs flex items-center gap-1 h-3.5">
+                    {isRunning && running ? (
+                      <>
+                        <span className="text-gray-500">{running.totalFound} found</span>
+                        <span className="text-gray-300">·</span>
+                        <span className="text-green-600">{running.successful} saved</span>
+                        {running.failed > 0 && (
+                          <><span className="text-gray-300">·</span><span className="text-red-500">{running.failed} failed</span></>
+                        )}
+                      </>
+                    ) : running?.status === "COMPLETED" ? (
+                      <span className="text-green-600 flex items-center gap-0.5">
+                        <CheckCircle2 className="h-2.5 w-2.5" />
+                        {running.totalFound} found · {running.successful} saved
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 flex items-center gap-1">
+                        <span className="text-gray-400">{statusLabel}</span>
+                        <span className="text-gray-300">·</span>
+                        <Clock className="h-2.5 w-2.5" />
+                        <LastRunTime lastJobAt={lastJob?.completedAt ?? null} />
+                        {lastJob?.totalFound != null && lastJob.totalFound > 0 && (
+                          <span className={`font-medium ${cfg.text}`}>· {lastJob.totalFound}</span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
+
+          {/* Stats + actions */}
+          <div className="flex items-center gap-3 px-3 py-2.5 flex-shrink-0">
+            {/* Stat numbers */}
+            <div className="flex items-center gap-3 text-xs">
+              <div className="text-center">
+                <div className="font-bold text-blue-700 leading-none">{stats.totalListings}</div>
+                <div className="text-xs text-gray-400 mt-0.5">Total</div>
+              </div>
+              <div className="text-center">
+                <div className="font-bold text-amber-600 leading-none">{stats.pendingReview}</div>
+                <div className="text-xs text-gray-400 mt-0.5">Pending</div>
+              </div>
+              <div className="text-center">
+                <div className="font-bold text-green-600 leading-none">
+                  {stats.byReviewStatus.find((s) => s.status === "APPROVED")?.count || 0}
+                </div>
+                <div className="text-xs text-gray-400 mt-0.5">Approved</div>
+              </div>
+              <div className="text-center">
+                <div className="font-bold text-red-600 leading-none">{stats.ambiguousCount}</div>
+                <div className="text-xs text-gray-400 mt-0.5">Ambiguous</div>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="h-8 w-px bg-gray-100" />
+
+            {/* Run All button */}
+            <button
+              onClick={triggerAll}
+              disabled={!hasCriteria || activeJobs.length > 0}
+              className="flex items-center gap-1.5 rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {activeJobs.length > 0
+                ? <Loader2 className="h-3 w-3 animate-spin" />
+                : <Play className="h-3 w-3" />
+              }
+              Run All
+            </button>
+
+            {/* Settings */}
+            <Link href="/dashboard/settings/scraper">
+              <button className="rounded-md p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                <Settings className="h-3.5 w-3.5" />
+              </button>
+            </Link>
+          </div>
+
         </div>
       </div>
 
@@ -474,9 +548,6 @@ export function ScraperOverview({
         <div className="text-sm text-gray-400 bg-gray-100 rounded-md px-3 py-2 flex items-center gap-2">
           <span className="font-medium text-gray-900">Criteria:</span>
           <span>{formatCriteriaSummary(settings?.searchCriteria ?? null)}</span>
-          <Link href="/dashboard/settings/scraper" className="ml-auto text-xs text-[#2563EB] hover:underline flex-shrink-0">
-            Edit
-          </Link>
         </div>
       )}
 
@@ -573,7 +644,7 @@ export function ScraperOverview({
           <ReviewQueue listings={reviewListings} />
         ) : activeTab === "review" ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-lg font-medium text-gray-400">No properties to review</p>
+            <p className="text-sm font-semibold text-gray-500">No properties to review</p>
             <p className="text-sm text-gray-400 mt-1">
               Run a scraper job to populate the review queue
             </p>
@@ -587,7 +658,7 @@ export function ScraperOverview({
         {activeTab === "jobs" && (
           <div className="ds-card overflow-hidden">
             <div className="px-6 pt-4 pb-2">
-              <h3 className="text-lg font-semibold">Recent Scraper Jobs</h3>
+              <h3 className="text-sm font-semibold text-gray-700">Recent Scraper Jobs</h3>
             </div>
             <div className="p-5">
               {recentJobs.length === 0 ? (
@@ -599,27 +670,27 @@ export function ScraperOverview({
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left">
-                        <th className="pb-2 font-medium text-gray-400">Source</th>
-                        <th className="pb-2 font-medium text-gray-400">Status</th>
-                        <th className="pb-2 font-medium text-gray-400">Found</th>
-                        <th className="pb-2 font-medium text-gray-400">Saved</th>
-                        <th className="pb-2 font-medium text-gray-400">Failed</th>
-                        <th className="pb-2 font-medium text-gray-400">Date</th>
+                        <th className="table-header">Source</th>
+                        <th className="table-header">Status</th>
+                        <th className="table-header">Found</th>
+                        <th className="table-header">Saved</th>
+                        <th className="table-header">Failed</th>
+                        <th className="table-header">Date</th>
                       </tr>
                     </thead>
                     <tbody>
                       {recentJobs.map((job) => (
-                        <tr key={job.id} className="border-b last:border-0">
-                          <td className="py-2">
+                        <tr key={job.id} className="table-row border-b last:border-0">
+                          <td className="table-cell">
                             <Badge className={SOURCE_COLORS[job.source] || ""}>{job.source}</Badge>
                           </td>
-                          <td className="py-2">
+                          <td className="table-cell">
                             <Badge className={STATUS_COLORS[job.status] || ""}>{job.status}</Badge>
                           </td>
-                          <td className="py-2">{job.totalFound}</td>
-                          <td className="py-2 text-green-600">{job.successful}</td>
-                          <td className="py-2 text-red-600">{job.failed}</td>
-                          <td className="py-2 text-gray-400" suppressHydrationWarning>
+                          <td className="table-cell">{job.totalFound}</td>
+                          <td className="table-cell text-green-600">{job.successful}</td>
+                          <td className="table-cell text-red-600">{job.failed}</td>
+                          <td className="table-cell text-gray-400" suppressHydrationWarning>
                             {new Date(job.createdAt).toLocaleDateString()}{" "}
                             {formatTime12h(new Date(job.createdAt))}
                           </td>

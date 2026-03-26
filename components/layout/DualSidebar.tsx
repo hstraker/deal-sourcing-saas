@@ -4,7 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import {
   ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
@@ -12,6 +12,7 @@ import {
 } from "@heroicons/react/24/outline"
 import { NAV_SECTIONS } from "@/config/navigation"
 import { useSidebar } from "@/context/SidebarContext"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 // ── LogoMark: fetches real company profile ──────────────────────────────────
 
@@ -109,19 +110,24 @@ function UserName() {
 
 export default function DualSidebar() {
   const pathname = usePathname()
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const { activeSectionId, setActiveSectionId, secondaryOpen, setSecondaryOpen } =
     useSidebar()
 
-  // Filter nav sections based on user permissions
+  // Filter nav sections based on user permissions.
+  // While the session is still loading we show all sections so the sidebar
+  // never flashes empty — the correct subset is shown once auth resolves.
   const isAdmin = session?.user?.role === "admin"
   const userPermissions: string[] = (session?.user as any)?.permissions ?? []
-  const visibleSections = NAV_SECTIONS.filter(
-    (s) => isAdmin || userPermissions.includes(s.id)
-  )
+  const visibleSections =
+    status === "loading"
+      ? NAV_SECTIONS
+      : NAV_SECTIONS.filter((s) => isAdmin || userPermissions.includes(s.id))
 
   const activeSection =
-    visibleSections.find((s) => s.id === activeSectionId) ?? visibleSections[0] ?? NAV_SECTIONS[0]
+    visibleSections.find((s) => s.id === activeSectionId) ??
+    visibleSections[0] ??
+    NAV_SECTIONS[0]
 
   // Find the single most-specific matching item (longest href) so that
   // ancestor paths like /dashboard and /dashboard/vendors don't also
@@ -177,7 +183,7 @@ export default function DualSidebar() {
           bg-[var(--sidebar-bg)] border-r border-[var(--sidebar-border)]
           flex flex-col py-3
           w-14 hover:w-[200px]
-          transition-all duration-200 ease-in-out
+          transition-[width] duration-200 ease-in-out
           overflow-hidden
           group
         `}
@@ -209,7 +215,7 @@ export default function DualSidebar() {
                 onClick={() => handleSectionClick(section.id)}
                 className={`
                   flex items-center gap-3 w-full px-2 py-2.5 rounded-xl
-                  transition-all duration-150 text-left min-w-[176px]
+                  transition-colors duration-150 text-left min-w-[176px]
                   ${
                     isActive
                       ? "bg-[var(--sidebar-active-bg)] text-[var(--sidebar-bg)] font-semibold shadow-sm"
@@ -318,9 +324,8 @@ export default function DualSidebar() {
               {/* Nav items */}
               {group.items.map((item) => {
                 const active = isActiveItem(item.href)
-                return (
+                const linkEl = (
                   <Link
-                    key={`${group.label}-${item.label}`}
                     href={item.href}
                     className={`
                       flex items-center gap-2.5 px-3 py-[7px] rounded-lg
@@ -361,6 +366,17 @@ export default function DualSidebar() {
                       )
                     })()}
                   </Link>
+                )
+                if (!item.tooltip) return <React.Fragment key={`${group.label}-${item.label}`}>{linkEl}</React.Fragment>
+                return (
+                  <TooltipProvider key={`${group.label}-${item.label}`}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>{linkEl}</TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-[220px] text-xs">
+                        {item.tooltip}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )
               })}
             </div>

@@ -24,6 +24,7 @@ import {
 import { UserForm } from "./user-form"
 import { ProfilePictureUpload } from "./profile-picture-upload"
 import { Plus, Edit, Trash2, Mail, Phone, User as UserIcon } from "lucide-react"
+import { toast } from "sonner"
 import Image from "next/image"
 
 interface User {
@@ -115,7 +116,7 @@ export function UserList() {
       await fetchUsers()
     } catch (error) {
       console.error("Error deleting user:", error)
-      alert(`Error deleting user: ${error instanceof Error ? error.message : "Unknown error"}`)
+      toast.error("Failed to delete user", { description: error instanceof Error ? error.message : "Unknown error" })
     } finally {
       setDeletingUserId(null)
     }

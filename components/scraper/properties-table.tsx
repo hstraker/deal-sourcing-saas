@@ -346,7 +346,7 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
               >
                 <X className="h-3.5 w-3.5" />
                 Clear
-                <span className="rounded-full bg-gray-200 px-1.5 py-0 text-[10px] font-semibold text-gray-600">
+                <span className="rounded-full bg-gray-200 px-1.5 py-0 text-xs font-semibold text-gray-600">
                   {activeFilterCount}
                 </span>
               </button>
@@ -519,7 +519,7 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
                       {/* Property */}
                       <td className="table-cell max-w-[220px]">
                         <p className="font-medium text-xs text-gray-800 truncate">{listing.title}</p>
-                        <p className="text-gray-400 truncate text-[11px] mt-0.5">
+                        <p className="text-gray-400 truncate text-xs mt-0.5">
                           {address?.displayAddress}
                           {address?.postcode && ` · ${address.postcode}`}
                         </p>
@@ -527,7 +527,7 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
 
                       {/* Source */}
                       <td className="table-cell">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${SOURCE_COLORS[listing.source] || "bg-gray-100 text-gray-600"}`}>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${SOURCE_COLORS[listing.source] || "bg-gray-100 text-gray-600"}`}>
                           {SOURCE_LABELS[listing.source] || listing.source}
                         </span>
                       </td>
@@ -552,7 +552,7 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
                           )}
                         </div>
                         {listing.squareFeet && (
-                          <p suppressHydrationWarning className="text-[11px] text-gray-400 mt-0.5">
+                          <p suppressHydrationWarning className="text-xs text-gray-400 mt-0.5">
                             {listing.squareFeet.toLocaleString()} sq ft
                           </p>
                         )}
@@ -575,7 +575,7 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
 
                       {/* Status */}
                       <td className="table-cell">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_STYLES[listing.reviewStatus] || "bg-gray-100 text-gray-600"}`}>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_STYLES[listing.reviewStatus] || "bg-gray-100 text-gray-600"}`}>
                           {STATUS_LABELS[listing.reviewStatus] || listing.reviewStatus}
                         </span>
                       </td>
@@ -660,7 +660,7 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
           </div>
         ) : listings.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center text-gray-400">
-            <p className="text-base font-medium text-gray-500">No properties found</p>
+            <p className="text-sm font-medium text-gray-500">No properties found</p>
             <p className="text-sm mt-1">Try adjusting your filters</p>
           </div>
         ) : (

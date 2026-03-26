@@ -29,6 +29,7 @@ import { ReservationModal } from "./reservation-modal"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SolicitorSelector, type Solicitor as SolicitorType } from "@/components/solicitors/solicitor-selector"
 import { toast } from "sonner"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import {
   getInvestorStrategyStyle,
   getInvestorExperienceStyle, // imported for completeness; no JSX call site yet
@@ -118,6 +119,12 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
   const [activities, setActivities] = useState<Array<{ id: string; activityType: string; description: string | null; createdAt: string; dealId?: string | null }>>([])
   const [loadingActivities, setLoadingActivities] = useState(false)
 
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean; title: string; description: string;
+    variant: "destructive" | "archive" | "warning" | "default";
+    confirmLabel: string; onConfirm: () => void;
+  }>({ open: false, title: "", description: "", variant: "default", confirmLabel: "Confirm", onConfirm: () => {} })
+
   const fetchActivities = async (investorId: string) => {
     setLoadingActivities(true)
     try {
@@ -162,20 +169,28 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
   const getInvestorName = (investor: Investor) =>
     [investor.user.firstName, investor.user.lastName].filter(Boolean).join(" ") || investor.user.email
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this investor? This will also delete their user account.")) return
-    try {
-      const response = await fetch(`/api/investors/${id}`, { method: "DELETE" })
-      if (response.ok) {
-        fetchInvestors()
-      } else {
-        const errorData = await response.json()
-        alert(errorData.error || "Failed to delete investor")
-      }
-    } catch (error) {
-      console.error("Error deleting investor:", error)
-      alert("Failed to delete investor")
-    }
+  const handleDelete = (id: string) => {
+    setConfirmDialog({
+      open: true,
+      title: "Delete this investor?",
+      description: "This will also delete their user account and all associated data. This cannot be undone.",
+      variant: "destructive",
+      confirmLabel: "Delete investor",
+      onConfirm: async () => {
+        try {
+          const response = await fetch(`/api/investors/${id}`, { method: "DELETE" })
+          if (response.ok) {
+            fetchInvestors()
+          } else {
+            const errorData = await response.json()
+            toast.error(errorData.error || "Failed to delete investor")
+          }
+        } catch (error) {
+          console.error("Error deleting investor:", error)
+          toast.error("Failed to delete investor")
+        }
+      },
+    })
   }
 
   return (
@@ -521,6 +536,16 @@ export function InvestorList({ initialInvestors = [] }: InvestorListProps) {
         onOpenChange={(open) => { setIsReservationOpen(open); if (!open) setSelectedInvestorForReservation(null) }}
         investorId={selectedInvestorForReservation?.id}
         onSuccess={fetchInvestors}
+      />
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((d) => ({ ...d, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        variant={confirmDialog.variant}
+        confirmLabel={confirmDialog.confirmLabel}
+        onConfirm={confirmDialog.onConfirm}
       />
     </div>
   )

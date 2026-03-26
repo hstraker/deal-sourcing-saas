@@ -15,6 +15,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Trash2, Loader2 } from "lucide-react"
+import { toast } from "sonner"
 
 interface DeleteDealButtonProps {
   dealId: string
@@ -43,7 +44,7 @@ export function DeleteDealButton({ dealId, dealAddress }: DeleteDealButtonProps)
       router.refresh()
     } catch (error) {
       console.error("Error deleting deal:", error)
-      alert(error instanceof Error ? error.message : "Failed to delete deal")
+      toast.error(error instanceof Error ? error.message : "Failed to delete deal")
       setIsDeleting(false)
       setIsOpen(false)
     }

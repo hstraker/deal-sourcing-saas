@@ -10,7 +10,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { PipelineStage } from "@prisma/client"
 import { z } from "zod"
-import { sendVendorOfferMadeEmail, sendVendorOfferAcceptedEmail } from "@/lib/email"
+import { sendVendorOfferMadeEmail, sendVendorOfferAcceptedEmail, sendSourcerOfferAcceptedEmail, sendSourcerOfferRejectedEmail } from "@/lib/email"
 import { ensureDealForVendorLead } from "@/lib/vendor-pipeline/auto-deal"
 
 const updateStageSchema = z.object({
@@ -70,23 +70,67 @@ export async function PATCH(
     })
 
     // Send automated emails on key stage transitions
-    if (pipelineStage !== currentLead.pipelineStage && currentLead.vendorEmail) {
-      if (pipelineStage === "OFFER_MADE") {
-        sendVendorOfferMadeEmail({
-          to: currentLead.vendorEmail,
-          vendorName: currentLead.vendorName,
-          propertyAddress: currentLead.propertyAddress || "your property",
-          offerAmount: currentLead.offerAmount ? Number(currentLead.offerAmount) : null,
-          offerPercentage: currentLead.offerPercentage ? Number(currentLead.offerPercentage) : null,
-        }).catch((e) => console.error("[update-stage] offer-made email failed:", e))
-      } else if (pipelineStage === "OFFER_ACCEPTED") {
-        sendVendorOfferAcceptedEmail({
-          to: currentLead.vendorEmail,
-          vendorName: currentLead.vendorName,
-          propertyAddress: currentLead.propertyAddress || "your property",
-          offerAmount: currentLead.offerAmount ? Number(currentLead.offerAmount) : null,
-        }).catch((e) => console.error("[update-stage] offer-accepted email failed:", e))
-        ensureDealForVendorLead(params.id).catch((e) => console.error("[update-stage] auto-deal failed:", e))
+    if (pipelineStage !== currentLead.pipelineStage) {
+      // ── Vendor-facing emails (only when vendor has an email address) ───────
+      if (currentLead.vendorEmail) {
+        if (pipelineStage === "OFFER_MADE") {
+          sendVendorOfferMadeEmail({
+            to: currentLead.vendorEmail,
+            vendorName: currentLead.vendorName,
+            propertyAddress: currentLead.propertyAddress || "your property",
+            offerAmount: currentLead.offerAmount ? Number(currentLead.offerAmount) : null,
+            offerPercentage: currentLead.offerPercentage ? Number(currentLead.offerPercentage) : null,
+          }).catch((e) => console.error("[update-stage] offer-made email failed:", e))
+        } else if (pipelineStage === "OFFER_ACCEPTED") {
+          sendVendorOfferAcceptedEmail({
+            to: currentLead.vendorEmail,
+            vendorName: currentLead.vendorName,
+            propertyAddress: currentLead.propertyAddress || "your property",
+            offerAmount: currentLead.offerAmount ? Number(currentLead.offerAmount) : null,
+          }).catch((e) => console.error("[update-stage] offer-accepted email failed:", e))
+        }
+      }
+
+      // ── Sourcer-facing emails (always fire regardless of vendor email) ────
+      if (pipelineStage === "OFFER_ACCEPTED") {
+        // Auto-create deal then notify sourcer(s)
+        ensureDealForVendorLead(params.id)
+          .then((dealId) => {
+            prisma.user.findMany({
+              where: { role: { in: ["admin", "sourcer"] }, isActive: true },
+              select: { email: true, firstName: true, lastName: true },
+            }).then((users) => {
+              for (const u of users) {
+                sendSourcerOfferAcceptedEmail({
+                  to: u.email,
+                  sourcerName: u.firstName ?? u.email,
+                  vendorName: currentLead.vendorName,
+                  propertyAddress: currentLead.propertyAddress || "Unknown address",
+                  offerAmount: currentLead.offerAmount ? Number(currentLead.offerAmount) : null,
+                  dealId: dealId ?? null,
+                  leadId: params.id,
+                }).catch((e) => console.error("[update-stage] sourcer accepted email failed:", e))
+              }
+            }).catch(() => {})
+          })
+          .catch((e) => console.error("[update-stage] auto-deal failed:", e))
+      } else if (pipelineStage === "OFFER_REJECTED") {
+        prisma.user.findMany({
+          where: { role: { in: ["admin", "sourcer"] }, isActive: true },
+          select: { email: true, firstName: true, lastName: true },
+        }).then((users) => {
+          for (const u of users) {
+            sendSourcerOfferRejectedEmail({
+              to: u.email,
+              sourcerName: u.firstName ?? u.email,
+              vendorName: currentLead.vendorName,
+              propertyAddress: currentLead.propertyAddress || "Unknown address",
+              offerAmount: currentLead.offerAmount ? Number(currentLead.offerAmount) : null,
+              retryCount: currentLead.retryCount ?? 0,
+              leadId: params.id,
+            }).catch((e) => console.error("[update-stage] sourcer rejected email failed:", e))
+          }
+        }).catch(() => {})
       }
     }
 

@@ -50,22 +50,14 @@ export function PortalCheckList({ leads }: PortalCheckListProps) {
         </div>
       ) : (
         <div className="rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
+          <table className="w-full">
+            <thead>
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Address
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Stage
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Risk
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Last Checked
-                </th>
-                <th className="px-4 py-3" />
+                <th className="table-header">Address</th>
+                <th className="table-header">Stage</th>
+                <th className="table-header">Risk</th>
+                <th className="table-header">Last Checked</th>
+                <th className="table-header" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -74,26 +66,26 @@ export function PortalCheckList({ leads }: PortalCheckListProps) {
                   key={lead.id}
                   className="bg-white hover:bg-gray-50 transition-colors"
                 >
-                  <td className="px-4 py-3 font-medium text-gray-900 max-w-xs truncate">
+                  <td className="table-cell font-semibold truncate max-w-[200px]">
                     {lead.propertyAddress || "—"}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 capitalize">
+                  <td className="table-cell capitalize">
                     {lead.pipelineStage?.toLowerCase().replace(/_/g, " ") || "—"}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="table-cell">
                     <PortalCheckBadge
                       risk={lead.latestCheckRisk as any}
                       isMockData={lead.isTest}
                     />
                   </td>
-                  <td className="px-4 py-3 text-gray-500">
+                  <td className="table-cell whitespace-nowrap">
                     {lead.latestCheckedAt
                       ? formatDistanceToNow(new Date(lead.latestCheckedAt as any), {
                           addSuffix: true,
                         })
                       : "Never"}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="table-cell text-right">
                     <Button
                       size="sm"
                       variant="outline"

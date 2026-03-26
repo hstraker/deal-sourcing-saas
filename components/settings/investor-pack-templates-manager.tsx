@@ -16,6 +16,8 @@ import {
   Loader2,
 } from "lucide-react"
 import { toast } from "sonner"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import type { ConfirmVariant } from "@/components/ui/confirm-dialog"
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -213,6 +215,14 @@ export function InvestorPackTemplatesManager() {
   const [templates, setTemplates] = useState<Template[]>([])
   const [stats, setStats] = useState<TemplateStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    title: string
+    description: string
+    variant: ConfirmVariant
+    confirmLabel?: string
+    onConfirm: () => void
+  }>({ open: false, title: "", description: "", variant: "default", onConfirm: () => {} })
 
   useEffect(() => {
     fetchTemplates()
@@ -252,16 +262,24 @@ export function InvestorPackTemplatesManager() {
     }
   }
 
-  const handleDelete = async (template: Template) => {
-    if (!confirm(`Delete "${template.name}"? This cannot be undone.`)) return
-    try {
-      const res = await fetch(`/api/investor-pack-templates/${template.id}`, { method: "DELETE" })
-      if (!res.ok) throw new Error()
-      toast.success(`"${template.name}" deleted`)
-      fetchTemplates()
-    } catch {
-      toast.error("Failed to delete template")
-    }
+  const handleDelete = (template: Template) => {
+    setConfirmDialog({
+      open: true,
+      title: "Delete Template",
+      description: `Delete "${template.name}"? This cannot be undone.`,
+      variant: "destructive",
+      confirmLabel: "Delete",
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/investor-pack-templates/${template.id}`, { method: "DELETE" })
+          if (!res.ok) throw new Error()
+          toast.success(`"${template.name}" deleted`)
+          fetchTemplates()
+        } catch {
+          toast.error("Failed to delete template")
+        }
+      },
+    })
   }
 
   const handleSetDefault = async (template: Template) => {
@@ -344,6 +362,16 @@ export function InvestorPackTemplatesManager() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((p) => ({ ...p, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        variant={confirmDialog.variant}
+        confirmLabel={confirmDialog.confirmLabel}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </div>
   )
 }

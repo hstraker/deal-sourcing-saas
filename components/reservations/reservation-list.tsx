@@ -21,6 +21,8 @@ import { Badge } from "@/components/ui/badge"
 import { Loader2, Plus, Edit, Trash2, CheckCircle2, XCircle, FileText, Clock } from "lucide-react"
 import { ReservationForm } from "./reservation-form"
 import { format } from "date-fns"
+import { toast } from "sonner"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 interface Investor {
   id: string
@@ -106,6 +108,12 @@ export function ReservationList({ dealId, initialReservations = [] }: Reservatio
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingReservation, setEditingReservation] = useState<Reservation | null>(null)
 
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean; title: string; description: string;
+    variant: "destructive" | "archive" | "warning" | "default";
+    confirmLabel: string; onConfirm: () => void;
+  }>({ open: false, title: "", description: "", variant: "default", confirmLabel: "Confirm", onConfirm: () => {} })
+
   const fetchReservations = async () => {
     setIsLoading(true)
     try {
@@ -137,25 +145,30 @@ export function ReservationList({ dealId, initialReservations = [] }: Reservatio
     setIsFormOpen(true)
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this reservation?")) {
-      return
-    }
+  const handleDelete = (id: string) => {
+    setConfirmDialog({
+      open: true,
+      title: "Delete this reservation?",
+      description: "This cannot be undone. The reservation record will be permanently removed.",
+      variant: "destructive",
+      confirmLabel: "Delete reservation",
+      onConfirm: async () => {
+        try {
+          const response = await fetch(`/api/reservations/${id}`, {
+            method: "DELETE",
+          })
 
-    try {
-      const response = await fetch(`/api/reservations/${id}`, {
-        method: "DELETE",
-      })
-
-      if (response.ok) {
-        fetchReservations()
-      } else {
-        alert("Failed to delete reservation")
-      }
-    } catch (error) {
-      console.error("Error deleting reservation:", error)
-      alert("Failed to delete reservation")
-    }
+          if (response.ok) {
+            fetchReservations()
+          } else {
+            toast.error("Failed to delete reservation")
+          }
+        } catch (error) {
+          console.error("Error deleting reservation:", error)
+          toast.error("Failed to delete reservation")
+        }
+      },
+    })
   }
 
   const handleFormSuccess = () => {
@@ -341,6 +354,16 @@ export function ReservationList({ dealId, initialReservations = [] }: Reservatio
           />
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((d) => ({ ...d, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        variant={confirmDialog.variant}
+        confirmLabel={confirmDialog.confirmLabel}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </div>
   )
 }

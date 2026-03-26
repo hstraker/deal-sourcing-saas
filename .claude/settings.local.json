@@ -33,7 +33,8 @@
       "Bash(/tmp/fix-cards.pl:*)",
       "Bash(chmod:*)",
       "Bash(sort find /mnt/c/Users/henry/Projects/deal-sourcing-saas/components/vendors -type f)",
-      "Bash(sort find /mnt/c/Users/henry/Projects/deal-sourcing-saas/components/vendors -name *.tsx)"
+      "Bash(sort find /mnt/c/Users/henry/Projects/deal-sourcing-saas/components/vendors -name *.tsx)",
+      "Bash(git remote add:*)"
     ]
   }
 }

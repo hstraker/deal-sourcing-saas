@@ -627,7 +627,7 @@ function OwnershipSection({ data }: { data: CheckRecord["ownershipCheckRaw"] }) 
         <Building2 className="h-3.5 w-3.5" />
         Ownership
       </h4>
-      <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
         {data.tenure && (
           <>
             <span className="text-gray-400">Tenure</span>

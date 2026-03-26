@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Loader2 } from "lucide-react"
+import { toast } from "sonner"
 
 interface TeamMember {
   id: string
@@ -73,7 +74,7 @@ export function QuickAssignUser({
       router.refresh()
     } catch (error) {
       console.error("Error assigning user:", error)
-      alert(`Error assigning user: ${error instanceof Error ? error.message : "Unknown error"}`)
+      toast.error("Failed to assign user", { description: error instanceof Error ? error.message : "Unknown error" })
     } finally {
       setIsAssigning(false)
     }

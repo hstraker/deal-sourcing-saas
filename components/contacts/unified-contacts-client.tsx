@@ -266,13 +266,13 @@ export function UnifiedContactsClient({ initialContacts, vendorLeads }: Props) {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[700px] text-sm">
               <thead>
-                <tr className="table-header">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Type</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Contact</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Associated</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Stage</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Last Contact</th>
+                <tr>
+                  <th className="table-header text-left">Name</th>
+                  <th className="table-header text-left">Type</th>
+                  <th className="table-header text-left">Contact</th>
+                  <th className="table-header text-left">Associated</th>
+                  <th className="table-header text-left">Stage</th>
+                  <th className="table-header text-left">Last Contact</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">

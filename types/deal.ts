@@ -1,4 +1,4 @@
-import type { Deal, User, DealPhoto } from "@prisma/client"
+import type { Deal, User, DealPhoto, VendorLead } from "@prisma/client"
 
 export type DealWithRelations = Deal & {
   assignedTo: {
@@ -12,6 +12,14 @@ export type DealWithRelations = Deal & {
     lastName: string | null
   } | null
   photos: DealPhoto[]
+  vendorLead: {
+    id: string
+    vendorName: string
+    vendorPhone: string
+    pipelineStage: string
+    offerAmount: string | number | null
+    motivationScore: number | null
+  } | null
   _count: {
     photos: number
     favorites: number
@@ -27,4 +35,3 @@ export type DealWithRelationsFromQuery = Omit<DealWithRelations, "_count"> & {
     dealViews?: number
   }
 }
-

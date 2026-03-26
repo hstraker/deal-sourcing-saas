@@ -24,6 +24,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ConfirmDialog, ConfirmVariant } from "@/components/ui/confirm-dialog"
 
 interface ImportRecord {
   id: string
@@ -76,6 +77,16 @@ export function LandRegistrySettings() {
   const [importing, setImporting] = useState<string | null>(null) // "ccod" | "ocod" | "both"
   const [dryRunning, setDryRunning] = useState(false)
   const [fixing, setFixing] = useState(false)
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    title: string
+    description: string
+    variant: ConfirmVariant
+    confirmLabel?: string
+    cancelLabel?: string
+    onConfirm: () => void
+  }>({ open: false, title: "", description: "", variant: "default", onConfirm: () => {} })
 
   // PPD state
   const [ppdStats, setPpdStats] = useState<PpdStats | null>(null)
@@ -157,11 +168,21 @@ export function LandRegistrySettings() {
           ? "Both datasets already have data. Reimporting will skip duplicates but may take a long time. Continue?"
           : `${datasetType.toUpperCase()} already has ${datasetType === "ccod" ? stats?.ccodCount.toLocaleString() : stats?.ocodCount.toLocaleString()} records. Reimporting will skip duplicates but may take a long time. Continue?`
 
-      if (!confirm(confirmMessage)) {
-        return
-      }
+      setConfirmDialog({
+        open: true,
+        title: "Confirm Action",
+        description: confirmMessage,
+        variant: "warning",
+        confirmLabel: "Continue",
+        onConfirm: () => { doTriggerImport(datasetType) },
+      })
+      return
     }
 
+    doTriggerImport(datasetType)
+  }
+
+  const doTriggerImport = async (datasetType: "ccod" | "ocod" | "both") => {
     setImporting(datasetType)
     try {
       const res = await fetch("/api/admin/land-registry/import", {
@@ -227,10 +248,22 @@ export function LandRegistrySettings() {
     }
   }
 
-  const runPostcodeFix = async (dryRun: boolean) => {
-    if (!dryRun && !confirm("This will update postcode data for all property listings and vendor leads. Continue?")) {
+  const runPostcodeFix = (dryRun: boolean) => {
+    if (!dryRun) {
+      setConfirmDialog({
+        open: true,
+        title: "Update Postcode Data",
+        description: "This will update postcode data for all property listings and vendor leads.",
+        variant: "warning",
+        confirmLabel: "Update",
+        onConfirm: () => { doRunPostcodeFix(false) },
+      })
       return
     }
+    doRunPostcodeFix(true)
+  }
+
+  const doRunPostcodeFix = async (dryRun: boolean) => {
     if (dryRun) setDryRunning(true)
     else setFixing(true)
     setFixResult(null)
@@ -259,17 +292,23 @@ export function LandRegistrySettings() {
     }
   }
 
-  const triggerPpdImport = async () => {
+  const triggerPpdImport = () => {
     const year = parseInt(ppdYear, 10)
-    if (
-      ppdStats?.addressCount &&
-      ppdStats.addressCount > 0 &&
-      !confirm(
-        `Price Paid Data already has ${ppdStats.addressCount.toLocaleString()} records. Import will add new unique street→postcode pairs. Continue?`
-      )
-    ) {
+    if (ppdStats?.addressCount && ppdStats.addressCount > 0) {
+      setConfirmDialog({
+        open: true,
+        title: "Import Price Paid Data",
+        description: `Price Paid Data already has ${ppdStats.addressCount.toLocaleString()} records. Import will add new unique street→postcode pairs.`,
+        variant: "warning",
+        confirmLabel: "Continue",
+        onConfirm: () => { doTriggerPpdImport(year) },
+      })
       return
     }
+    doTriggerPpdImport(year)
+  }
+
+  const doTriggerPpdImport = async (year: number) => {
     setPpdImporting(true)
     try {
       const res = await fetch("/api/admin/price-paid/import", {
@@ -291,8 +330,19 @@ export function LandRegistrySettings() {
     }
   }
 
-  const cancelPpdImport = async (importId: string) => {
-    if (!confirm("Cancel this PPD import?")) return
+  const cancelPpdImport = (importId: string) => {
+    setConfirmDialog({
+      open: true,
+      title: "Cancel Import",
+      description: "Cancel this PPD import? Progress will be lost.",
+      variant: "warning",
+      confirmLabel: "Cancel Import",
+      cancelLabel: "Keep Running",
+      onConfirm: () => { doCancelPpdImport(importId) },
+    })
+  }
+
+  const doCancelPpdImport = async (importId: string) => {
     try {
       const res = await fetch(`/api/admin/price-paid/import/${importId}/cancel`, {
         method: "POST",
@@ -309,10 +359,18 @@ export function LandRegistrySettings() {
     }
   }
 
-  const cancelImport = async (importId: string) => {
-    if (!confirm("Are you sure you want to cancel this import? Progress will be lost.")) {
-      return
-    }
+  const cancelImport = (importId: string) => {
+    setConfirmDialog({
+      open: true,
+      title: "Cancel Import",
+      description: "Are you sure you want to cancel this import? Progress will be lost.",
+      variant: "warning",
+      confirmLabel: "Cancel Import",
+      onConfirm: () => { doCancelImport(importId) },
+    })
+  }
+
+  const doCancelImport = async (importId: string) => {
     try {
       const res = await fetch(`/api/admin/land-registry/import/${importId}/cancel`, {
         method: "POST",
@@ -676,6 +734,17 @@ export function LandRegistrySettings() {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((d) => ({ ...d, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        variant={confirmDialog.variant}
+        confirmLabel={confirmDialog.confirmLabel}
+        cancelLabel={confirmDialog.cancelLabel}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </div>
   )
 }
@@ -747,6 +816,8 @@ function ImportRow({ record }: { record: ImportRecord }) {
   const isRunning = record.status === "PENDING" || record.status === "RUNNING"
   const isPaused = record.status === "PAUSED"
   const canControl = isRunning || isPaused
+
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
 
   const progress =
     record.recordsTotal > 0
@@ -860,30 +931,33 @@ function ImportRow({ record }: { record: ImportRecord }) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => {
-                  if (
-                    confirm(
-                      "Are you sure you want to cancel this import? Progress will be lost."
-                    )
-                  ) {
-                    const cancelImport = async () => {
-                      try {
-                        const res = await fetch(
-                          `/api/admin/land-registry/import/${record.id}/cancel`,
-                          { method: "POST" }
-                        )
-                        if (res.ok) {
-                          window.location.reload()
-                        }
-                      } catch {}
-                    }
-                    cancelImport()
-                  }
-                }}
+                onClick={() => setCancelConfirmOpen(true)}
                 className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
               >
                 <X className="h-3 w-3" />
               </Button>
+              <ConfirmDialog
+                open={cancelConfirmOpen}
+                onOpenChange={setCancelConfirmOpen}
+                title="Cancel Import"
+                description="Are you sure you want to cancel this import? Progress will be lost."
+                variant="warning"
+                confirmLabel="Cancel Import"
+                onConfirm={() => {
+                  const doCancelImport = async () => {
+                    try {
+                      const res = await fetch(
+                        `/api/admin/land-registry/import/${record.id}/cancel`,
+                        { method: "POST" }
+                      )
+                      if (res.ok) {
+                        window.location.reload()
+                      }
+                    } catch {}
+                  }
+                  doCancelImport()
+                }}
+              />
             </>
           )}
           <span className="text-xs text-gray-400">

@@ -115,7 +115,7 @@ export function VendorContactsClient({ leads }: Props) {
     return sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
   }
 
-  const thCls = "px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-900 select-none"
+  const thCls = "table-header text-left cursor-pointer hover:text-gray-900 select-none"
 
   return (
     <div className="space-y-6">
@@ -160,8 +160,8 @@ export function VendorContactsClient({ leads }: Props) {
                 <th className={thCls} onClick={() => handleSort("vendorName")}>
                   <span className="flex items-center gap-1">Name <SortIcon field="vendorName" /></span>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Property</th>
+                <th className="table-header text-left">Contact</th>
+                <th className="table-header text-left">Property</th>
                 <th className={thCls} onClick={() => handleSort("askingPrice")}>
                   <span className="flex items-center gap-1">Asking Price <SortIcon field="askingPrice" /></span>
                 </th>
@@ -246,7 +246,7 @@ export function VendorContactsClient({ leads }: Props) {
                   {/* Stage */}
                   <td className="table-cell">
                     <span className={cn(
-                      "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+                      "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
                       STAGE_COLOURS[lead.pipelineStage] ?? "bg-gray-100 text-gray-600"
                     )}>
                       {STAGE_LABELS[lead.pipelineStage] ?? lead.pipelineStage}

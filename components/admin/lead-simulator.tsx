@@ -553,36 +553,36 @@ export default function LeadSimulator({ recentTestRuns }: Props) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50/50">
-                  <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-500 whitespace-nowrap">Name</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 whitespace-nowrap">Address</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 whitespace-nowrap">Pipeline Stage</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 whitespace-nowrap">Portal Check</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 whitespace-nowrap">Created</th>
-                  <th className="px-4 py-2.5" />
+                <tr>
+                  <th className="table-header text-left">Name</th>
+                  <th className="table-header text-left">Address</th>
+                  <th className="table-header text-left whitespace-nowrap">Pipeline Stage</th>
+                  <th className="table-header text-left whitespace-nowrap">Portal Check</th>
+                  <th className="table-header text-left">Created</th>
+                  <th className="table-header" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {runs.map((run) => {
                   const stage = STAGE_LABELS[run.pipelineStage] ?? { label: run.pipelineStage, colour: "bg-gray-100 text-gray-500" }
                   return (
-                    <tr key={run.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-5 py-3 font-medium text-gray-900 whitespace-nowrap">{run.vendorName}</td>
-                      <td className="px-4 py-3 text-gray-500 max-w-[200px] truncate">{run.propertyAddress}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${stage.colour}`}>
+                    <tr key={run.id} className="table-row">
+                      <td className="table-cell font-medium text-gray-900 whitespace-nowrap">{run.vendorName}</td>
+                      <td className="table-cell max-w-[200px] truncate">{run.propertyAddress}</td>
+                      <td className="table-cell whitespace-nowrap">
+                        <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${stage.colour}`}>
                           {stage.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="table-cell whitespace-nowrap">
                         <PortalBadge risk={run.latestCheckRisk} />
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-400 text-xs">
+                      <td className="table-cell whitespace-nowrap text-gray-400 text-xs">
                         {new Date(run.createdAt).toLocaleString("en-GB", {
                           day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
                         })}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="table-cell whitespace-nowrap">
                         <button
                           onClick={() => router.push(`/dashboard/vendors/${run.id}`)}
                           className="text-xs text-gray-400 hover:text-gray-700 flex items-center gap-1"

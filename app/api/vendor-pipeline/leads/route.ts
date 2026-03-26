@@ -45,10 +45,14 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const stage = searchParams.get("stage") as PipelineStage | null
     const motivationMin = searchParams.get("motivation_min")
+    const archived = searchParams.get("archived") === "true"
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "50")
 
-    const where: any = {}
+    const where: any = archived
+      ? { NOT: { archivedAt: null } }
+      : { archivedAt: null }
+
     if (stage) {
       where.pipelineStage = stage
     }

@@ -34,7 +34,23 @@ import {
   ShieldCheck,
   Calculator,
   GitCompare,
+  Kanban,
+  Table2,
+  Clock,
+  Sparkles,
+  MessageCircle,
+  ScanLine,
+  Send,
+  Video,
+  FileText,
+  Rocket,
+  Ban,
+  Lock,
+  ListChecks,
+  BadgeCheck,
 } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
+import { VendorPipelineKanbanBoard } from "./vendor-pipeline-kanban-board"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { PropertyDetailsModal } from "./property-details-modal"
@@ -52,6 +68,7 @@ import {
 import { KpiBar, type KpiTile } from "@/components/ui/kpi-bar"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -229,19 +246,35 @@ function Tip({ text, children }: { text: string; children: React.ReactNode }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const STAGE_LABEL: Record<PipelineStage, string> = {
-  NEW_LEAD: "New Lead",
-  AI_CONVERSATION: "Conversation",
-  DEAL_VALIDATION: "Validation",
-  OFFER_MADE: "Offer Made",
-  OFFER_ACCEPTED: "Accepted",
-  OFFER_REJECTED: "Rejected",
-  VIDEO_SENT: "Video Sent",
-  RETRY_1: "Retry 1",
-  RETRY_2: "Retry 2",
-  RETRY_3: "Retry 3",
-  PAPERWORK_SENT: "Paperwork",
-  READY_FOR_INVESTORS: "Ready",
-  DEAD_LEAD: "Dead",
+  NEW_LEAD:             "New Lead",
+  AI_CONVERSATION:      "In Conversation",
+  DEAL_VALIDATION:      "Validating",
+  OFFER_MADE:           "Offer Sent",
+  OFFER_ACCEPTED:       "Accepted",
+  OFFER_REJECTED:       "Rejected",
+  VIDEO_SENT:           "Video Sent",
+  RETRY_1:              "Retry 1",
+  RETRY_2:              "Retry 2",
+  RETRY_3:              "Retry 3",
+  PAPERWORK_SENT:       "Paperwork",
+  READY_FOR_INVESTORS:  "Ready to List",
+  DEAD_LEAD:            "Dead Lead",
+}
+
+const STAGE_ICON: Record<PipelineStage, LucideIcon> = {
+  NEW_LEAD:            Sparkles,
+  AI_CONVERSATION:     MessageCircle,
+  DEAL_VALIDATION:     ScanLine,
+  OFFER_MADE:          Send,
+  OFFER_ACCEPTED:      CheckCircle2,
+  OFFER_REJECTED:      XCircle,
+  VIDEO_SENT:          Video,
+  RETRY_1:             RefreshCw,
+  RETRY_2:             RefreshCw,
+  RETRY_3:             RefreshCw,
+  PAPERWORK_SENT:      FileText,
+  READY_FOR_INVESTORS: Rocket,
+  DEAD_LEAD:           Ban,
 }
 
 const STAGE_DESC: Record<PipelineStage, string> = {
@@ -266,6 +299,7 @@ function StageBadge({ stage }: { stage: PipelineStage }) {
       label={STAGE_LABEL[stage]}
       cssKey={getPipelineStageVarKey(stage)}
       tooltip={STAGE_DESC[stage]}
+      icon={STAGE_ICON[stage]}
     />
   )
 }
@@ -415,6 +449,140 @@ function EpcDueCell({ rating, score, inspectionDate }: {
   return <Tip text={tooltipText}>{label}</Tip>
 }
 
+function OverallRiskBadge({ risk }: { risk: string | null }) {
+  if (risk === "clear")
+    return (
+      <Tip text="No risk flags found — safe to proceed">
+        <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700 cursor-default">✓ Clear</span>
+      </Tip>
+    )
+  if (risk === "caution")
+    return (
+      <Tip text="Some caution flags raised — review before offering">
+        <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 cursor-default">! Caution</span>
+      </Tip>
+    )
+  if (risk === "red_flag")
+    return (
+      <Tip text="Red flags found — proceed with caution">
+        <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 cursor-default">✕ Red Flag</span>
+      </Tip>
+    )
+  return (
+    <Tip text="Portal check not yet run">
+      <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-400 cursor-default">Pending</span>
+    </Tip>
+  )
+}
+
+function ActiveListingBadge({ lead }: { lead: VendorLead }) {
+  const portals: PortalSource[] = ["RIGHTMOVE", "ZOOPLA", "ONTHEMARKET", "PRIMELOCATION"]
+  const statuses = portals.map((p) => getPortalStatus(lead, p))
+  const hasCheck = statuses.some((s) => s !== null)
+  if (!hasCheck)
+    return (
+      <Tip text="Portal check not yet run">
+        <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-400 cursor-default">Pending</span>
+      </Tip>
+    )
+  const anyListed = statuses.some((s) => s === "listed")
+  const anyBlocked = statuses.some((s) => s === "blocked")
+  if (anyListed)
+    return (
+      <Tip text="Property found on one or more portals — vendor may be marketing elsewhere">
+        <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 cursor-default">Listed</span>
+      </Tip>
+    )
+  if (anyBlocked)
+    return (
+      <Tip text="Some portals blocked — partial check only">
+        <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 cursor-default">Partial</span>
+      </Tip>
+    )
+  return (
+    <Tip text="Not found on any portal — property not publicly marketed">
+      <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 cursor-default">Not Listed</span>
+    </Tip>
+  )
+}
+
+function UrgencyBadge({ level }: { level: string | null }) {
+  if (level === "urgent")
+    return <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">Urgent</span>
+  if (level === "quick")
+    return <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Quick</span>
+  if (level === "moderate")
+    return <span className="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">Moderate</span>
+  if (level === "flexible")
+    return <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">Flexible</span>
+  return <span className="text-gray-400 text-xs">—</span>
+}
+
+function ValidationResultBadge({ passed }: { passed: boolean | null }) {
+  if (passed === true)
+    return (
+      <Tip text="Deal passed BMV and profit validation criteria">
+        <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700 cursor-default">✓ Pass</span>
+      </Tip>
+    )
+  if (passed === false)
+    return (
+      <Tip text="Deal did not meet minimum BMV or profit thresholds">
+        <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 cursor-default">✕ Fail</span>
+      </Tip>
+    )
+  return (
+    <Tip text="Validation not yet run">
+      <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-400 cursor-default">Pending</span>
+    </Tip>
+  )
+}
+
+function EpcCombinedCell({ rating, score, inspectionDate }: {
+  rating: string | null
+  score: number | null
+  inspectionDate: string | null
+}) {
+  if (!rating) return <span className="text-gray-400 text-xs">—</span>
+  const colourCls = EPC_COLOUR[rating.toUpperCase()] ?? "bg-gray-200 text-gray-700"
+  const expiry = inspectionDate
+    ? new Date(new Date(inspectionDate).getTime() + 10 * 365.25 * 24 * 60 * 60 * 1000)
+    : null
+  const isExpired = expiry ? expiry < new Date() : false
+  const expirySoon = expiry ? (expiry.getTime() - Date.now()) < 365 * 24 * 60 * 60 * 1000 : false
+  const expiryStr = expiry ? fmtDate(expiry.toISOString()) : null
+  const tooltipParts = [
+    score !== null ? `Score: ${score}/100` : null,
+    inspectionDate ? `Inspected: ${fmtDate(inspectionDate)}` : null,
+    expiryStr ? `Expires: ${expiryStr}` : null,
+  ].filter(Boolean).join(" · ")
+  const badge = (
+    <div className="flex items-center gap-1.5">
+      <span className={cn("inline-block rounded-full px-2 py-0.5 text-xs font-bold", colourCls)}>
+        {rating.toUpperCase()}
+      </span>
+      {expiryStr && (
+        <span className={cn("text-xs whitespace-nowrap", isExpired ? "text-red-600 font-medium" : expirySoon ? "text-amber-600" : "text-gray-400")}>
+          {isExpired ? "Expired" : expiryStr}
+        </span>
+      )}
+    </div>
+  )
+  return tooltipParts ? <Tip text={tooltipParts}>{badge}</Tip> : badge
+}
+
+function VendorResponseBadge({ stage }: { stage: PipelineStage }) {
+  if (stage === "OFFER_ACCEPTED")
+    return <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">Accepted</span>
+  if (stage === "OFFER_REJECTED")
+    return <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">Rejected</span>
+  if (stage === "RETRY_1" || stage === "RETRY_2" || stage === "RETRY_3")
+    return <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Negotiating</span>
+  if (stage === "OFFER_MADE")
+    return <span className="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">Awaiting</span>
+  return <span className="text-gray-400 text-xs">—</span>
+}
+
 function BmvCell({ value }: { value: string | number | null | undefined }) {
   const n = toNum(value)
   if (n === null)
@@ -423,7 +591,11 @@ function BmvCell({ value }: { value: string | number | null | undefined }) {
     n >= 15 ? "text-green-700 font-bold" :
     n >= 10 ? "text-amber-600 font-bold" :
                "text-red-600 font-bold"
-  return <span className={cn("font-mono text-xs", cls)}>{n.toFixed(1)}%</span>
+  return (
+    <Tip text="Below Market Value %. Green ≥15% = excellent, Amber 10-14% = good, Red <10% = weak">
+      <span className={cn("font-mono text-xs cursor-default", cls)}>{n.toFixed(1)}%</span>
+    </Tip>
+  )
 }
 
 const PROCESSING_DESC: Record<ProcessingStatus, string> = {
@@ -443,6 +615,126 @@ function ProcessingIcon({ status }: { status: ProcessingStatus }) {
     }
   })()
   return <Tip text={PROCESSING_DESC[status]}>{icon}</Tip>
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Needs-Action Banner
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface NeedsActionItem {
+  leadId: string
+  vendorName: string
+  address: string
+  reason: string
+  action: string
+  urgency: "high" | "medium" | "low"
+}
+
+function getNeedsActionItems(leads: VendorLead[]): NeedsActionItem[] {
+  const now = Date.now()
+  const items: NeedsActionItem[] = []
+  const fourteenDays = 14 * 24 * 60 * 60 * 1000
+
+  for (const lead of leads) {
+    if (lead.archivedAt) continue
+    const stage = lead.pipelineStage
+    const address = lead.propertyAddress ?? lead.vendorName
+
+    if (stage === "OFFER_ACCEPTED") {
+      items.push({ leadId: lead.id, vendorName: lead.vendorName, address, reason: "Offer accepted — complete deal setup now", action: "Complete Setup", urgency: "high" })
+    } else if (stage === "OFFER_REJECTED") {
+      items.push({ leadId: lead.id, vendorName: lead.vendorName, address, reason: "Offer rejected — retry, nurture, or close this lead", action: "Decide", urgency: "high" })
+    } else if (lead.validationPassed === true && !lead.offerAmount && (stage === "DEAL_VALIDATION" || stage === "AI_CONVERSATION")) {
+      items.push({ leadId: lead.id, vendorName: lead.vendorName, address, reason: `Validation passed${lead.bmvScore ? ` · ${Number(lead.bmvScore).toFixed(1)}% BMV` : ""} — ready to make an offer`, action: "Make Offer", urgency: "high" })
+    } else if (stage === "RETRY_1" || stage === "RETRY_2" || stage === "RETRY_3") {
+      items.push({ leadId: lead.id, vendorName: lead.vendorName, address, reason: `${stage.replace("_", " ")} — send revised offer`, action: "Send Offer", urgency: "medium" })
+    } else if (
+      (stage === "NEW_LEAD" || stage === "AI_CONVERSATION" || stage === "DEAL_VALIDATION" || stage === "OFFER_MADE" || stage === "PAPERWORK_SENT") &&
+      now - new Date(lead.createdAt).getTime() > fourteenDays
+    ) {
+      const days = Math.floor((now - new Date(lead.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+      items.push({ leadId: lead.id, vendorName: lead.vendorName, address, reason: `Stale ${days}d — no progression`, action: "Review", urgency: "low" })
+    }
+  }
+
+  // Sort: high → medium → low
+  return items.sort((a, b) => {
+    const order = { high: 0, medium: 1, low: 2 }
+    return order[a.urgency] - order[b.urgency]
+  })
+}
+
+function NeedsActionBanner({ leads, onNavigate }: { leads: VendorLead[]; onNavigate: (tab: TabId) => void }) {
+  const [collapsed, setCollapsed] = useState(false)
+  const items = getNeedsActionItems(leads)
+  if (items.length === 0) return null
+
+  const highCount = items.filter((i) => i.urgency === "high").length
+  const medCount = items.filter((i) => i.urgency === "medium").length
+
+  return (
+    <div className="mb-4 overflow-hidden rounded-xl border border-amber-200 bg-amber-50 shadow-sm">
+      {/* Header */}
+      <button
+        onClick={() => setCollapsed((c) => !c)}
+        className="flex w-full items-center justify-between px-4 py-3 text-left"
+      >
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-white">
+            {items.length}
+          </span>
+          <span className="text-sm font-semibold text-amber-900">
+            Needs Your Attention
+          </span>
+          <div className="flex items-center gap-1.5">
+            {highCount > 0 && (
+              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 whitespace-nowrap">
+                {highCount} urgent
+              </span>
+            )}
+            {medCount > 0 && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 whitespace-nowrap">
+                {medCount} pending
+              </span>
+            )}
+          </div>
+        </div>
+        <span className="text-xs text-amber-600">{collapsed ? "Show ▼" : "Hide ▲"}</span>
+      </button>
+
+      {/* Items */}
+      {!collapsed && (
+        <div className="border-t border-amber-200 divide-y divide-amber-100">
+          {items.map((item) => (
+            <div key={item.leadId} className="flex items-center justify-between gap-3 px-4 py-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span
+                  className={cn(
+                    "h-2 w-2 shrink-0 rounded-full",
+                    item.urgency === "high" ? "bg-red-500" : item.urgency === "medium" ? "bg-amber-500" : "bg-gray-400"
+                  )}
+                />
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold text-gray-900">{item.address}</p>
+                  <p className="truncate text-[11px] text-amber-700">{item.reason}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  if (item.action === "Make Offer" || item.action === "Send Offer") onNavigate("offer-analysis")
+                  else if (item.action === "Complete Setup") onNavigate("offer-analysis")
+                  else onNavigate("map-view")
+                }}
+                className="shrink-0 rounded-md bg-white border border-amber-300 px-2.5 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
+              >
+                {item.action} →
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -484,6 +776,7 @@ function VendorLeadsKpiBar({ kpis }: { kpis: Kpis }) {
       icon: <Users className="h-4 w-4 text-blue-600" />,
       iconBgClass: "bg-blue-50",
       valueColorClass: "text-gray-900",
+      tooltip: "Total vendor leads that are not archived. Includes all pipeline stages from New Lead to Ready to List.",
     },
     {
       label: "Avg BMV %",
@@ -491,6 +784,7 @@ function VendorLeadsKpiBar({ kpis }: { kpis: Kpis }) {
       icon: <TrendingUp className="h-4 w-4 text-green-600" />,
       iconBgClass: "bg-green-50",
       valueColorClass: "text-green-600",
+      tooltip: "Average Below Market Value across all leads. Target ≥10%. Calculated: (Market Value − Asking Price) ÷ Market Value × 100",
     },
     {
       label: "Portal Pass Rate",
@@ -498,6 +792,7 @@ function VendorLeadsKpiBar({ kpis }: { kpis: Kpis }) {
       icon: <BarChart2 className="h-4 w-4 text-blue-600" />,
       iconBgClass: "bg-blue-50",
       valueColorClass: "text-blue-600",
+      tooltip: "Percentage of leads that passed BMV & rental validation. Target >60% indicates strong lead quality.",
     },
     {
       label: "Processing",
@@ -505,6 +800,7 @@ function VendorLeadsKpiBar({ kpis }: { kpis: Kpis }) {
       icon: <Zap className="h-4 w-4 text-amber-600" />,
       iconBgClass: "bg-amber-50",
       valueColorClass: "text-amber-600",
+      tooltip: "Leads waiting for your next action — offers to send, negotiations to close, or follow-ups due.",
     },
   ]
   return <KpiBar tiles={tiles} />
@@ -591,6 +887,21 @@ function VendorNameCell({ lead }: { lead: VendorLead }) {
             <span className="truncate text-sm font-medium text-gray-900">{lead.vendorName}</span>
             <ProcessingIcon status={lead.processingStatus} />
           </div>
+          {lead.validationPassed === true && !lead.offerAmount && (lead.pipelineStage === "DEAL_VALIDATION" || lead.pipelineStage === "AI_CONVERSATION") && (
+            <span className="mt-0.5 inline-flex items-center gap-0.5 rounded-full bg-green-100 px-1.5 py-0.5 text-xs font-semibold text-green-700 whitespace-nowrap">
+              <CheckCircle2 className="h-3 w-3" /> Ready to Offer
+            </span>
+          )}
+          {lead.pipelineStage === "OFFER_ACCEPTED" && (
+            <span className="mt-0.5 inline-flex items-center gap-0.5 rounded-full bg-green-200 px-1.5 py-0.5 text-xs font-semibold text-green-800 whitespace-nowrap">
+              <CheckCircle2 className="h-3 w-3" /> Accepted
+            </span>
+          )}
+          {lead.pipelineStage === "OFFER_REJECTED" && (
+            <span className="mt-0.5 inline-flex items-center gap-0.5 rounded-full bg-red-100 px-1.5 py-0.5 text-xs font-semibold text-red-700 whitespace-nowrap">
+              <XCircle className="h-3 w-3" /> Rejected
+            </span>
+          )}
           <p className="truncate text-xs text-gray-400">{lead.vendorPhone}</p>
         </div>
       </div>
@@ -642,7 +953,7 @@ function ActionsCell({
         )}
         <ActionBtn icon={Eye} title="View" onClick={onView} />
         <ActionBtn icon={Pencil} title="Edit" onClick={() => {}} />
-        <ActionBtn icon={Archive} title="Archive" onClick={onArchive} />
+        <ActionBtn icon={Archive} title="Mark Dead & Archive" onClick={onArchive} />
         <ActionBtn icon={Trash2} title="Delete" onClick={onDelete} danger />
       </div>
     </td>
@@ -665,18 +976,19 @@ function ActionBtn({
   spinning?: boolean
 }) {
   return (
-    <button
-      title={title}
-      onClick={(e) => { e.stopPropagation(); onClick() }}
-      disabled={spinning}
-      className={cn(
-        "flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 transition-colors hover:border-gray-300 hover:text-gray-700 disabled:cursor-wait disabled:opacity-60",
-        danger && "hover:border-red-300 hover:bg-red-50 hover:text-red-600",
-        primary && "border-blue-200 bg-blue-50 text-blue-600 hover:border-blue-300 hover:bg-blue-100 hover:text-blue-700"
-      )}
-    >
-      <Icon className={cn("h-3.5 w-3.5", spinning && "animate-spin")} />
-    </button>
+    <Tip text={title}>
+      <button
+        onClick={(e) => { e.stopPropagation(); onClick() }}
+        disabled={spinning}
+        className={cn(
+          "flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 transition-colors hover:border-gray-300 hover:text-gray-700 disabled:cursor-wait disabled:opacity-60",
+          danger && "hover:border-red-300 hover:bg-red-50 hover:text-red-600",
+          primary && "border-blue-200 bg-blue-50 text-blue-600 hover:border-blue-300 hover:bg-blue-100 hover:text-blue-700"
+        )}
+      >
+        <Icon className={cn("h-3.5 w-3.5", spinning && "animate-spin")} />
+      </button>
+    </Tip>
   )
 }
 
@@ -685,6 +997,8 @@ function ActionBtn({
 // ─────────────────────────────────────────────────────────────────────────────
 
 function MapViewRow({ lead, onRowClick, onView, onArchive, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
+  const createdAt = new Date(lead.createdAt)
+  const leadAgeDays = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24))
   return (
     <tr
       className={cn("group cursor-pointer border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}
@@ -699,12 +1013,42 @@ function MapViewRow({ lead, onRowClick, onView, onArchive, onDelete, isSelected,
       <Td>{lead.propertyType ?? "—"}</Td>
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><BmvCell value={lead.bmvScore} /></Td>
+      <Td><span className="font-mono text-xs">{fmtCurrency(lead.askingPrice)}</span></Td>
+      <Td>
+        {lead.motivationScore !== null
+          ? (
+            <Tip text={`Motivation: ${lead.motivationScore}/10 — ${lead.motivationScore >= 8 ? "Highly motivated" : lead.motivationScore >= 5 ? "Moderately motivated" : "Low motivation"}`}>
+              <span className={cn("font-mono text-xs font-semibold cursor-default",
+                lead.motivationScore >= 8 ? "text-green-700" : lead.motivationScore >= 5 ? "text-amber-700" : "text-gray-500"
+              )}>
+                {lead.motivationScore}/10
+              </span>
+            </Tip>
+          )
+          : <span className="text-gray-400 text-xs">—</span>}
+      </Td>
+      <Td><UrgencyBadge level={lead.urgencyLevel} /></Td>
+      <Td>
+        <Tip text={`Lead created ${fmtDate(lead.createdAt)}`}>
+          <span className={cn("font-mono text-xs cursor-default",
+            leadAgeDays > 30 ? "text-red-600 font-semibold" : leadAgeDays > 14 ? "text-amber-600" : "text-gray-700"
+          )}>
+            {leadAgeDays}d
+          </span>
+        </Tip>
+      </Td>
       <ActionsCell lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete} />
     </tr>
   )
 }
 
 function PropertyDetailsRow({ lead, onRowClick, onView, onArchive, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
+  const ownershipTenure = (lead.latestPortalCheck?.ownershipCheckRaw as any)?.tenure ?? null
+  const tenure = lead.tenureType ?? ownershipTenure
+  const annualRent = toNum(lead.estimatedAnnualRent)
+  const askingPrice = toNum(lead.askingPrice)
+  const grossYield = annualRent && askingPrice && askingPrice > 0 ? (annualRent / askingPrice) * 100 : null
+  const profit = toNum(lead.profitPotential)
   return (
     <tr className={cn("group border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}>
       <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
@@ -715,16 +1059,27 @@ function PropertyDetailsRow({ lead, onRowClick, onView, onArchive, onDelete, isS
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
       <Td>{lead.propertyType ?? "—"}</Td>
-      <Td>{lead.tenureType ?? "—"}</Td>
+      <Td>{tenure ?? "—"}</Td>
+      <Td><span className="font-mono text-xs">{lead.squareFeet ? `${lead.squareFeet.toLocaleString()} ft²` : "—"}</span></Td>
       <Td><span className="font-mono text-xs">{fmtCurrency(lead.askingPrice)}</span></Td>
       <Td><span className="font-mono text-xs">{fmtCurrency(lead.estimatedMarketValue)}</span></Td>
-      <Td><span className="font-mono text-xs">{fmtCurrency(lead.estimatedMonthlyRent)}/mo</span></Td>
+      <Td><span className="font-mono text-xs">{fmtCurrency(lead.estimatedMonthlyRent)}{lead.estimatedMonthlyRent ? "/mo" : ""}</span></Td>
+      <Td>
+        <Tip text="Annual rent ÷ market value. Green ≥6% = strong BTL, Amber ≥4% = acceptable, Red <4% = poor cashflow">
+          <span className={cn("font-mono text-xs cursor-default", grossYield !== null && grossYield >= 6 ? "text-green-700 font-semibold" : grossYield !== null && grossYield >= 4 ? "text-amber-700" : "")}>{grossYield !== null ? fmtPercent(grossYield) : "—"}</span>
+        </Tip>
+      </Td>
       <Td><BmvCell value={lead.bmvScore} /></Td>
+      <Td>
+        <Tip text="Estimated profit = Market Value − Asking Price − Estimated Refurb Cost">
+          <span className={cn("font-mono text-xs cursor-default", profit !== null && profit > 0 ? "text-green-700 font-semibold" : profit !== null && profit <= 0 ? "text-red-600" : "")}>{fmtCurrency(profit)}</span>
+        </Tip>
+      </Td>
       <Td>
         {lead.bedrooms !== null ? `${lead.bedrooms}` : "—"}
         {lead.bathrooms !== null ? ` / ${lead.bathrooms}` : ""}
       </Td>
-      <Td>{lead.condition ?? "—"}</Td>
+      <Td>{lead.condition ? lead.condition.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "—"}</Td>
       <ActionsCell lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete} />
     </tr>
   )
@@ -735,6 +1090,8 @@ function PortalCheckRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck
   const ownerType = ownership?.isCorporateOwned
     ? ownership?.isOverseasOwned ? "Overseas Corp" : "Corporate"
     : ownership ? "Private" : null
+  const ownerDisplay = ownership?.companyName ?? (ownership ? "Private" : null)
+  const lastSalePrice = ownership?.lastSalePrice ?? null
   return (
     <tr className={cn("group border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}>
       <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
@@ -742,24 +1099,19 @@ function PortalCheckRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck
       </td>
       <VendorNameCell lead={lead} />
       <AddressCell address={lead.propertyAddress} />
+      <Td><OverallRiskBadge risk={lead.latestCheckRisk} /></Td>
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
       <Td>{lead.propertyType ?? "—"}</Td>
-      <Td><PortalPill status={getPortalStatus(lead, "RIGHTMOVE")} matchCount={getPortalMatchCount(lead, "RIGHTMOVE")} /></Td>
-      <Td><PortalPill status={getPortalStatus(lead, "ZOOPLA")} matchCount={getPortalMatchCount(lead, "ZOOPLA")} /></Td>
-      <Td><PortalPill status={getPortalStatus(lead, "ONTHEMARKET")} matchCount={getPortalMatchCount(lead, "ONTHEMARKET")} /></Td>
-      <Td><PortalPill status={getPortalStatus(lead, "PRIMELOCATION")} matchCount={getPortalMatchCount(lead, "PRIMELOCATION")} /></Td>
+      <Td><ActiveListingBadge lead={lead} /></Td>
+      <Td className="w-28 px-2">{ownerDisplay ?? <span className="text-gray-400">—</span>}</Td>
+      <Td className="w-24 px-2">{ownership?.tenure ?? lead.tenureType ?? "—"}</Td>
+      <Td className="w-24 px-2">{ownerType ?? "—"}</Td>
+      <Td><span className="font-mono text-xs">{lastSalePrice ? fmtCurrency(lastSalePrice) : "—"}</span></Td>
       <Td>
-        {ownership?.companyName
-          ? <span className="text-xs text-gray-700">{ownership.companyName}</span>
-          : ownership
-            ? <span className="text-xs text-gray-500">Private</span>
-            : <span className="text-xs text-gray-400">—</span>}
-      </Td>
-      <Td>{ownership?.tenure ?? lead.tenureType ?? "—"}</Td>
-      <Td>{ownerType ?? "—"}</Td>
-      <Td className="max-w-[120px]">
-        <p className="truncate text-xs">{ownership?.companyName ?? "—"}</p>
+        <span className="font-mono text-xs text-gray-500">
+          {lead.latestCheckedAt ? fmtDate(lead.latestCheckedAt) : "—"}
+        </span>
       </Td>
       <ActionsCell
         lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete}
@@ -770,14 +1122,12 @@ function PortalCheckRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck
 }
 
 function ValidationRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect }: RowRendererProps) {
-  // Gross monthly cashflow ≈ rent - 20% expenses (rough estimate)
   const rentNum = toNum(lead.estimatedMonthlyRent)
-  const cashflow = rentNum ? rentNum * 0.8 : null
-  // Rental yield from annual rent / asking price
+  const netCashflow = rentNum ? rentNum * 0.8 : null
   const annualRent = toNum(lead.estimatedAnnualRent)
   const price = toNum(lead.askingPrice)
-  const yieldPct = annualRent && price ? (annualRent / price) * 100 : null
-
+  const grossYield = annualRent && price && price > 0 ? (annualRent / price) * 100 : null
+  const profit = toNum(lead.profitPotential)
   return (
     <tr className={cn("group border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}>
       <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
@@ -785,32 +1135,31 @@ function ValidationRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
       </td>
       <VendorNameCell lead={lead} />
       <AddressCell address={lead.propertyAddress} />
-      <Td>
-        <div className="flex items-center gap-1.5">
-          <StageBadge stage={lead.pipelineStage} />
-          {lead.validationPassed === true && (
-            <Tip text="Deal passed BMV and profit validation criteria">
-              <span className="inline-block rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700 cursor-default">Passed</span>
-            </Tip>
-          )}
-          {lead.validationPassed === false && (
-            <Tip text="Deal did not meet minimum BMV or profit thresholds">
-              <span className="inline-block rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 cursor-default">Failed</span>
-            </Tip>
-          )}
-        </div>
-      </Td>
+      <Td><ValidationResultBadge passed={lead.validationPassed} /></Td>
+      <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
       <Td>{lead.propertyType ?? "—"}</Td>
-      <Td><span className="font-mono text-xs">{lead.localAverageRent ? `${fmtCurrency(lead.localAverageRent)}/mo` : "—"}</span></Td>
       <Td><span className="font-mono text-xs">{fmtCurrency(lead.askingPrice)}</span></Td>
-      <Td><span className="font-mono text-xs">{fmtCurrency(lead.avgComparablePrice)}</span></Td>
-      <Td><span className="font-mono text-xs">{yieldPct ? fmtPercent(yieldPct) : "—"}</span></Td>
-      <Td><span className="font-mono text-xs">{lead.comparablesCount ?? "—"}</span></Td>
-      <Td><span className="font-mono text-xs">{cashflow ? `${fmtCurrency(cashflow)}/mo` : "—"}</span></Td>
-      <Td><EpcRatingBadge rating={lead.epcRating} score={lead.epcScore} inspectionDate={lead.epcInspectionDate} /></Td>
-      <Td><EpcDueCell rating={lead.epcRating} score={lead.epcScore} inspectionDate={lead.epcInspectionDate} /></Td>
+      <Td><span className="font-mono text-xs">{lead.localAverageRent ? `${fmtCurrency(lead.localAverageRent)}/mo` : "—"}</span></Td>
       <Td><span className="font-mono text-xs">{lead.estimatedMonthlyRent ? `${fmtCurrency(lead.estimatedMonthlyRent)}/mo` : "—"}</span></Td>
+      <Td><span className="font-mono text-xs">{fmtCurrency(lead.avgComparablePrice)}</span></Td>
+      <Td>
+        <Tip text="Annual rent ÷ market value. Green ≥6% = strong BTL, Amber ≥4% = acceptable, Red <4% = poor cashflow">
+          <span className={cn("font-mono text-xs cursor-default", grossYield !== null && grossYield >= 6 ? "text-green-700 font-semibold" : grossYield !== null && grossYield >= 4 ? "text-amber-700" : "")}>{grossYield !== null ? fmtPercent(grossYield) : "—"}</span>
+        </Tip>
+      </Td>
+      <Td><BmvCell value={lead.bmvScore} /></Td>
+      <Td>
+        <Tip text="Estimated profit = Market Value − Asking Price − Estimated Refurb Cost">
+          <span className={cn("font-mono text-xs cursor-default", profit !== null && profit > 0 ? "text-green-700 font-semibold" : profit !== null && profit <= 0 ? "text-red-600" : "")}>{fmtCurrency(profit)}</span>
+        </Tip>
+      </Td>
+      <Td>
+        <Tip text="Monthly rent − mortgage − expenses. Positive = self-sustaining, negative = you fund it monthly">
+          <span className={cn("font-mono text-xs cursor-default", netCashflow !== null && netCashflow > 0 ? "text-green-700" : netCashflow !== null && netCashflow <= 0 ? "text-red-600" : "")}>{netCashflow ? `${fmtCurrency(netCashflow)}/mo` : "—"}</span>
+        </Tip>
+      </Td>
+      <Td><EpcCombinedCell rating={lead.epcRating} score={lead.epcScore} inspectionDate={lead.epcInspectionDate} /></Td>
       <ActionsCell
         lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete}
         checkAction={onCheck ? { icon: Calculator, title: "Calculate BMV & Validation", onClick: onCheck, loading: isChecking } : undefined}
@@ -823,9 +1172,10 @@ function ComparableRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
   const annualRent = toNum(lead.estimatedAnnualRent)
   const price = toNum(lead.askingPrice)
   const avgPrice = toNum(lead.avgComparablePrice)
-  const yieldPct = annualRent && price ? (annualRent / price) * 100 : null
-  // Price range: show "—" until comparables are fetched (no min/max on lead model)
+  const grossYield = annualRent && price && price > 0 ? (annualRent / price) * 100 : null
   const hasComps = (lead.comparablesCount ?? 0) > 0
+  // vs Market: positive = asking below market (good for investor), negative = asking above market (bad)
+  const vsMarket = hasComps && avgPrice && price ? ((avgPrice - price) / avgPrice) * 100 : null
 
   return (
     <tr className={cn("group border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}>
@@ -838,19 +1188,37 @@ function ComparableRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
       <Td>{lead.propertyType ?? "—"}</Td>
       <Td>
-        <span className={cn("font-mono text-xs", hasComps ? "text-gray-900" : "text-gray-400")}>
-          {lead.comparablesCount ?? "—"}
-        </span>
+        <Tip text={hasComps ? `${lead.comparablesCount} comparable properties found` : "No comparables fetched yet — data may be unreliable"}>
+          <span className={cn("font-mono text-xs font-semibold cursor-default", hasComps ? "text-gray-900" : "text-amber-600")}>
+            {lead.comparablesCount ?? 0}
+          </span>
+        </Tip>
       </Td>
-      <Td><span className="font-mono text-xs">{lead.localAverageRent ? `${fmtCurrency(lead.localAverageRent)}/mo` : "—"}</span></Td>
-      <Td><span className="font-mono text-xs">{yieldPct ? fmtPercent(yieldPct) : "—"}</span></Td>
+      <Td><span className="font-mono text-xs">{fmtCurrency(lead.askingPrice)}</span></Td>
       <Td><span className="font-mono text-xs">{fmtCurrency(lead.avgComparablePrice)}</span></Td>
-      <Td className="text-xs text-gray-400">
-        {hasComps && avgPrice && price
-          ? <span className="font-mono">{fmtPercent(((avgPrice - price) / avgPrice) * 100)}</span>
-          : "—"}
+      <Td>
+        {vsMarket !== null
+          ? (
+            <Tip text={vsMarket >= 0 ? `Asking price is ${fmtPercent(vsMarket)} below market average — potential deal` : `Asking price is ${fmtPercent(Math.abs(vsMarket))} above market average`}>
+              <span className={cn("font-mono text-xs font-semibold cursor-default", vsMarket >= 0 ? "text-green-700" : "text-red-600")}>
+                {vsMarket >= 0 ? "+" : ""}{fmtPercent(vsMarket)}
+              </span>
+            </Tip>
+          )
+          : <span className="text-gray-400 text-xs">—</span>}
       </Td>
       <Td><BmvCell value={lead.bmvScore} /></Td>
+      <Td><span className="font-mono text-xs">{lead.localAverageRent ? `${fmtCurrency(lead.localAverageRent)}/mo` : "—"}</span></Td>
+      <Td>
+        <Tip text="Annual rent ÷ market value. Green ≥6% = strong BTL, Amber ≥4% = acceptable, Red <4% = poor cashflow">
+          <span className={cn("font-mono text-xs cursor-default", grossYield !== null && grossYield >= 6 ? "text-green-700 font-semibold" : grossYield !== null && grossYield >= 4 ? "text-amber-700" : "")}>{grossYield !== null ? fmtPercent(grossYield) : "—"}</span>
+        </Tip>
+      </Td>
+      <Td>
+        <span className="font-mono text-xs text-gray-500">
+          {lead.bmvValidatedAt ? fmtDate(lead.bmvValidatedAt) : "—"}
+        </span>
+      </Td>
       <ActionsCell
         lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete}
         checkAction={onCheck ? { icon: GitCompare, title: "Fetch Comparables", onClick: onCheck, loading: isChecking } : undefined}
@@ -860,21 +1228,32 @@ function ComparableRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
 }
 
 function OfferAnalysisRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect }: RowRendererProps) {
-  // Build offer chain: initial offer → retries → current offer
+  // Build offer chain: initial offer → retries → projected ladder
   const retries = lead.offerRetries ?? []
-  const initialOffer = lead.offerAmount && retries.length === 0
-    ? lead.offerAmount
-    : retries.length > 0 ? retries[0].originalOfferAmount : null
-  const nextOffer = retries.length > 1
-    ? (retries[1].adjustedOfferAmount ?? retries[1].originalOfferAmount)
-    : retries.length === 1 ? (retries[0].adjustedOfferAmount ?? null) : null
-  const finalOffer = retries.length > 0
-    ? (retries[retries.length - 1].adjustedOfferAmount ?? lead.offerAmount)
-    : lead.offerAmount
+  // initialOffer: always the first offer sent to the vendor
+  const initialOffer = lead.offerAmount
+  // nextOffer: actual retry if exists, otherwise project using negotiation ladder algorithm
+  // finalOffer: actual last retry if 2+ retries exist, otherwise project from ladder
+  const round50 = (n: number) => Math.round(n / 50) * 50
+  const initialNum = initialOffer ? Number(initialOffer) : null
+  // Reverse-engineer ceiling from opening offer (opening = ceiling × 0.88)
+  const projectedCeiling = initialNum ? initialNum / 0.88 : null
+  const projectedNext = projectedCeiling && initialNum
+    ? round50(initialNum + (projectedCeiling - initialNum) * 0.45)
+    : null
+  const projectedFinal = projectedCeiling && projectedNext
+    ? round50(projectedNext + (projectedCeiling - projectedNext) * 0.40)
+    : null
+
+  const nextOffer = retries.length >= 1
+    ? (retries[0].adjustedOfferAmount ?? retries[0].originalOfferAmount)
+    : projectedNext
+  const finalOffer = retries.length >= 2
+    ? (retries[retries.length - 1].adjustedOfferAmount ?? retries[retries.length - 1].originalOfferAmount)
+    : projectedFinal
   const numOffers = lead.offerAmount
     ? (lead.retryCount ?? 0) + 1
     : 0
-  const emailSent = lead.offerSentAt !== null || lead.lockoutAgreementSent
 
   return (
     <tr className={cn("group border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}>
@@ -884,29 +1263,63 @@ function OfferAnalysisRow({ lead, onRowClick, onView, onArchive, onDelete, onChe
       <VendorNameCell lead={lead} />
       <AddressCell address={lead.propertyAddress} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
-      <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
       <Td>{lead.propertyType ?? "—"}</Td>
       <Td><span className="font-mono text-xs">{fmtCurrency(lead.askingPrice)}</span></Td>
-      <Td><span className="font-mono text-xs">{fmtCurrency(initialOffer)}</span></Td>
-      <Td><span className="font-mono text-xs">{fmtCurrency(nextOffer)}</span></Td>
-      <Td><span className="font-mono text-xs font-semibold">{fmtCurrency(finalOffer)}</span></Td>
       <Td>
-        <span className={cn("font-mono text-xs", numOffers > 0 ? "text-gray-900" : "text-gray-400")}>
-          {numOffers || "—"}
+        <span className={cn("font-mono text-xs", lead.offerPercentage ? "text-gray-900 font-semibold" : "text-gray-400")}>
+          {lead.offerPercentage ? fmtPercent(lead.offerPercentage, 0) : "—"}
+        </span>
+      </Td>
+      <Td><span className="font-mono text-xs">{fmtCurrency(initialOffer)}</span></Td>
+      <Td>
+        <span className={cn("font-mono text-xs", retries.length < 1 && nextOffer ? "text-gray-400 italic" : "")}>
+          {fmtCurrency(nextOffer)}
         </span>
       </Td>
       <Td>
-        {emailSent
-          ? (
-            <Tip text="Offer email or lockout agreement sent to vendor">
-              <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 cursor-default">Sent</span>
+        <span className={cn("font-mono text-xs font-semibold", retries.length < 2 && finalOffer ? "text-gray-400 italic" : "")}>
+          {fmtCurrency(finalOffer)}
+        </span>
+      </Td>
+      <Td>
+        {(() => {
+          const offerNum = toNum(finalOffer ?? initialOffer)
+          const askNum = toNum(lead.askingPrice)
+          const gap = offerNum && askNum ? askNum - offerNum : null
+          return gap !== null && gap > 0
+            ? <span className="font-mono text-xs text-amber-700">{fmtCurrency(gap)}</span>
+            : gap === 0
+            ? <span className="font-mono text-xs text-green-700">At asking</span>
+            : <span className="text-gray-400 text-xs">—</span>
+        })()}
+      </Td>
+      <Td>
+        <span className={cn("font-mono text-xs", numOffers > 0 ? "text-gray-900" : "text-gray-400")}>
+          {numOffers > 0 ? `Round ${numOffers}` : "—"}
+        </span>
+      </Td>
+      <Td><VendorResponseBadge stage={lead.pipelineStage} /></Td>
+      <Td>
+        <Tip text="Estimated profit if vendor accepts final offer = Market Value − Final Offer − Refurb − Costs">
+          <span className={cn("font-mono text-xs cursor-default", toNum(lead.profitPotential) !== null && toNum(lead.profitPotential)! > 0 ? "text-green-700 font-semibold" : toNum(lead.profitPotential) !== null ? "text-red-600" : "")}>
+            {fmtCurrency(lead.profitPotential)}
+          </span>
+        </Tip>
+      </Td>
+      <Td>
+        {(() => {
+          const lastRetryDate = retries.length > 0 ? retries[retries.length - 1].sentAt : null
+          const lastDate = lastRetryDate ?? lead.offerSentAt
+          if (!lastDate) return <span className="text-gray-400 text-xs">—</span>
+          const daysAgo = Math.floor((Date.now() - new Date(lastDate).getTime()) / (1000 * 60 * 60 * 24))
+          return (
+            <Tip text={`Last activity: ${fmtDate(lastDate)}`}>
+              <span className={cn("font-mono text-xs cursor-default", daysAgo > 7 ? "text-red-600 font-semibold" : daysAgo > 3 ? "text-amber-600" : "text-gray-700")}>
+                {daysAgo}d ago
+              </span>
             </Tip>
           )
-          : (
-            <Tip text="No offer communication sent yet">
-              <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500 cursor-default">Pending</span>
-            </Tip>
-          )}
+        })()}
       </Td>
       <ActionsCell
         lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete}
@@ -967,7 +1380,12 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
         {selectAllTh}
         {stickyLeft}
         {addressHeader}
-        <Th>Postcode</Th><Th>Type</Th><Th>Status</Th><Th>BMV %</Th>
+        <Th>Postcode</Th><Th>Type</Th><Th>Status</Th>
+        <Th><Tip text="Below Market Value %. Green ≥15% = excellent, Amber 10-14% = good, Red <10% = weak">BMV %</Tip></Th>
+        <Th><Tip text="Vendor's advertised price — your negotiation starting point">Asking Price</Tip></Th>
+        <Th><Tip text="AI-scored vendor motivation (1-10). Higher = more urgency to sell">Motivation</Tip></Th>
+        <Th><Tip text="How quickly vendor needs to sell: Urgent (&lt;2 weeks), Quick (1-2 months), Moderate, Flexible">Urgency</Tip></Th>
+        <Th><Tip text="How long lead has been in the system. Older leads may need re-engagement">Lead Age</Tip></Th>
         {stickyRight}
       </tr>
 
@@ -976,9 +1394,17 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
         {selectAllTh}
         {stickyLeft}
         {addressHeader}
-        <Th>Status</Th><Th>Postcode</Th><Th>Type</Th><Th>Tenure</Th>
-        <Th>Asking Price</Th><Th>Market Value</Th><Th>Rental</Th><Th>BMV %</Th>
-        <Th>Bed/Bath</Th><Th>Finish</Th>
+        <Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
+        <Th><Tip text="Freehold (you own land forever) vs Leasehold (you own for X years). Avoid leases <80 years remaining">Tenure</Tip></Th>
+        <Th><Tip text="Property size in sq ft. Used for price-per-sqft comparison">Sq Ft</Tip></Th>
+        <Th><Tip text="Vendor's advertised price — your negotiation starting point">Asking Price</Tip></Th>
+        <Th><Tip text="Estimated open market value from comparable sales">Est. Market Val.</Tip></Th>
+        <Th><Tip text="Estimated monthly rental income from comparable rentals in the area">Est. Rent/mo</Tip></Th>
+        <Th><Tip text="Annual rent ÷ market value. Green ≥6%, Amber ≥4%, Red <4%">Gross Yield %</Tip></Th>
+        <Th><Tip text="Below Market Value %. Green ≥15% = excellent, Amber 10-14% = good, Red <10% = weak">BMV %</Tip></Th>
+        <Th><Tip text="Market Value − Asking Price − Estimated Refurb Cost">Profit Potential</Tip></Th>
+        <Th>Bed/Bath</Th>
+        <Th><Tip text="Property condition: poor/fair/good/excellent. Affects refurb cost estimate">Condition</Tip></Th>
         {stickyRight}
       </tr>
 
@@ -987,9 +1413,14 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
         {selectAllTh}
         {stickyLeft}
         {addressHeader}
+        <Th><Tip text="Risk level from portal checks: Clear = not listed, Caution = some flags, Red Flag = listed or problematic">Overall Risk</Tip></Th>
         <Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
-        <Th>Rightmove</Th><Th>Zoopla</Th><Th>OnTheMarket</Th><Th>Primelocation</Th>
-        <Th>Ownership</Th><Th>Tenure</Th><Th>Owner Type</Th><Th>Company</Th>
+        <Th><Tip text="Whether property is currently listed for sale on portals. Listed = vendor may be testing market">Active Listing</Tip></Th>
+        <Th className="w-28"><Tip text="Current registered owner from Land Registry. Different from vendor = may be agent or investor">Owner</Tip></Th>
+        <Th className="w-24"><Tip text="Freehold (you own land forever) vs Leasehold (you own for X years). Avoid leases <80 years remaining">Tenure</Tip></Th>
+        <Th className="w-24"><Tip text="Individual, UK company, or overseas entity. Corporate/overseas = potential complications">Owner Type</Tip></Th>
+        <Th><Tip text="Last recorded sale price from Land Registry">Last Sale Price</Tip></Th>
+        <Th><Tip text="When portal check was last run. Refresh if >30 days old — listings change frequently">Last Checked</Tip></Th>
         {stickyRight}
       </tr>
 
@@ -998,9 +1429,17 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
         {selectAllTh}
         {stickyLeft}
         {addressHeader}
+        <Th><Tip text="Pass = lead meets minimum BMV & yield thresholds. Fail = does not meet criteria">Validation</Tip></Th>
         <Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
-        <Th>AVG Rental</Th><Th>Asking Price</Th><Th>AVG Sale Price</Th><Th>AVG Yield</Th>
-        <Th>Comparables</Th><Th>Gross Cashflow</Th><Th>EPC</Th><Th>EPC Due</Th><Th>EST Rental</Th>
+        <Th>Asking Price</Th>
+        <Th><Tip text="Average monthly rent for similar properties in this postcode from market data">Market Rent</Tip></Th>
+        <Th><Tip text="AI-estimated monthly rent based on comparable rentals">Est. Rent</Tip></Th>
+        <Th><Tip text="Average sale price of comparable properties (0.5mi radius, last 6 months). = Market Value estimate">AVG Sale Price</Tip></Th>
+        <Th><Tip text="Annual rent ÷ market value. Green ≥6%, Amber ≥4%, Red <4%">Gross Yield %</Tip></Th>
+        <Th><Tip text="Below Market Value %. Green ≥15% = excellent, Amber 10-14% = good, Red <10% = weak">BMV %</Tip></Th>
+        <Th><Tip text="Market Value − Asking Price − Estimated Refurb Cost">Profit Potential</Tip></Th>
+        <Th><Tip text="Monthly rent − mortgage − expenses. Positive = self-sustaining, negative = you fund it monthly">Est. Net Cashflow</Tip></Th>
+        <Th><Tip text="Energy Performance Certificate. A = most efficient, G = least. Below E = unmortgageable without improvement">EPC</Tip></Th>
         {stickyRight}
       </tr>
 
@@ -1010,8 +1449,14 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
         {stickyLeft}
         {addressHeader}
         <Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
-        <Th>No. Comps</Th><Th>AVG Rental</Th><Th>AVG Yield</Th><Th>AVG Sale Price</Th>
-        <Th>Range</Th><Th>BMV %</Th>
+        <Th><Tip text="Number of comparable sold properties found. <3 = low confidence, 6+ = high confidence"># Comps</Tip></Th>
+        <Th>Asking Price</Th>
+        <Th><Tip text="Average sale price of comparable properties (0.5mi radius, last 6 months). = Market Value estimate">AVG Sale Price</Tip></Th>
+        <Th><Tip text="Asking price vs average comparable price. Negative % = asking above market (bad), Positive % = asking below market (good deal)">vs Market</Tip></Th>
+        <Th><Tip text="Below Market Value %. Green ≥15% = excellent, Amber 10-14% = good, Red <10% = weak">BMV %</Tip></Th>
+        <Th><Tip text="Average monthly rent for similar properties in this postcode from market data">AVG Rental</Tip></Th>
+        <Th><Tip text="Annual rent ÷ market value. Green ≥6%, Amber ≥4%, Red <4%">Gross Yield %</Tip></Th>
+        <Th><Tip text="When BMV was last calculated. Refresh if >14 days — comparable prices change">Last Updated</Tip></Th>
         {stickyRight}
       </tr>
 
@@ -1020,9 +1465,17 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
         {selectAllTh}
         {stickyLeft}
         {addressHeader}
-        <Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
-        <Th>Asking Price</Th><Th>Initial Offer</Th><Th>Next Offer</Th><Th>Final Offer</Th>
-        <Th>No. Offers</Th><Th>Email Sent</Th>
+        <Th>Status</Th><Th>Type</Th>
+        <Th>Asking Price</Th>
+        <Th><Tip text="Your offer as % of asking price. Typical opening: 85-88%. Shows room left in negotiation">Offer %</Tip></Th>
+        <Th><Tip text="Your opening offer. Deliberate 12-15% below asking to leave room for negotiation">Initial Offer</Tip></Th>
+        <Th><Tip text="Second offer if vendor rejects initial. Italic = projected. Bold = already sent. ~45% of gap between initial & ceiling">Next Offer</Tip></Th>
+        <Th><Tip text="Best & Final = your absolute ceiling. Italic = projected. Bold = already sent. Above this price the deal fails your criteria">Final Offer</Tip></Th>
+        <Th><Tip text="Final offer minus asking price. Positive = below asking, negative = above asking">Offer Gap</Tip></Th>
+        <Th><Tip text="Number of offer rounds completed. More rounds = vendor fatigue">Round</Tip></Th>
+        <Th><Tip text="Vendor's current response status: awaiting, negotiating, accepted, or rejected">Vendor Response</Tip></Th>
+        <Th><Tip text="Estimated profit if vendor accepts final offer = Market Value − Final Offer − Refurb − Costs">Profit @ Offer</Tip></Th>
+        <Th>Last Activity</Th>
         {stickyRight}
       </tr>
 
@@ -1056,23 +1509,29 @@ interface BulkActionBarProps {
   selectedCount: number
   activeTab: TabId
   isRunning: boolean
+  isBulkArchiving: boolean
+  isBulkDeleting: boolean
   progress: { done: number; total: number } | null
   onRun: () => void
+  onBulkArchive: () => void
+  onBulkDelete: () => void
   onClear: () => void
 }
 
-function BulkActionBar({ selectedCount, activeTab, isRunning, progress, onRun, onClear }: BulkActionBarProps) {
+function BulkActionBar({ selectedCount, activeTab, isRunning, isBulkArchiving, isBulkDeleting, progress, onRun, onBulkArchive, onBulkDelete, onClear }: BulkActionBarProps) {
   const actionLabel = BULK_ACTION_LABELS[activeTab]
+  const busy = isRunning || isBulkArchiving || isBulkDeleting
   return (
     <div className="flex items-center justify-between bg-[#1e293b] px-4 py-3">
       <span className="text-sm font-medium text-slate-200">
         {selectedCount} lead{selectedCount !== 1 ? "s" : ""} selected
       </span>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
+        {/* Tab-specific bulk action (portal check, validation, etc.) */}
         {actionLabel && (
           <button
             onClick={onRun}
-            disabled={isRunning}
+            disabled={busy}
             className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
           >
             {isRunning ? (
@@ -1088,8 +1547,40 @@ function BulkActionBar({ selectedCount, activeTab, isRunning, progress, onRun, o
             )}
           </button>
         )}
-        {!isRunning && (
-          <button onClick={onClear} className="text-sm text-slate-400 hover:text-slate-200">
+
+        {/* Divider when tab action + archive/delete both shown */}
+        {actionLabel && <span className="h-4 w-px bg-slate-600" />}
+
+        {/* Bulk Archive */}
+        <button
+          onClick={onBulkArchive}
+          disabled={busy}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
+        >
+          {isBulkArchiving ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Archive className="h-3.5 w-3.5" />
+          )}
+          {isBulkArchiving ? "Archiving…" : "Archive"}
+        </button>
+
+        {/* Bulk Delete */}
+        <button
+          onClick={onBulkDelete}
+          disabled={busy}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+        >
+          {isBulkDeleting ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Trash2 className="h-3.5 w-3.5" />
+          )}
+          {isBulkDeleting ? "Deleting…" : "Delete"}
+        </button>
+
+        {!busy && (
+          <button onClick={onClear} className="ml-2 text-sm text-slate-400 hover:text-slate-200">
             ✕ Clear
           </button>
         )}
@@ -1106,6 +1597,7 @@ export function VendorLeadsTable() {
   const router = useRouter()
   const [leads, setLeads] = useState<VendorLead[]>([])
   const [loading, setLoading] = useState(true)
+  const [viewMode, setViewMode] = useState<"table" | "board">("table")
   const [activeTab, setActiveTab] = useState<TabId>("map-view")
   const [mapLead, setMapLead] = useState<VendorLead | null>(null)
   const [checkingIds, setCheckingIds] = useState<Set<string>>(new Set())
@@ -1118,6 +1610,16 @@ export function VendorLeadsTable() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkRunning, setBulkRunning] = useState(false)
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null)
+  const [bulkArchiving, setBulkArchiving] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    title: string
+    description: string
+    variant: "destructive" | "archive" | "warning" | "default"
+    confirmLabel: string
+    onConfirm: () => void
+  }>({ open: false, title: "", description: "", variant: "default", confirmLabel: "Confirm", onConfirm: () => {} })
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchLeads = useCallback(async () => {
@@ -1211,6 +1713,82 @@ export function VendorLeadsTable() {
     }
   }, [selectedIds, activeTab, fetchLeads, bulkRunning])
 
+  // ── Bulk Archive ──────────────────────────────────────────────────────────
+  const handleBulkArchive = useCallback(async () => {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0 || bulkArchiving) return
+    setConfirmDialog({
+      open: true,
+      title: `Archive ${ids.length} lead${ids.length !== 1 ? "s" : ""}?`,
+      description: "They will be moved to the Archive page and can be restored at any time.",
+      variant: "archive",
+      confirmLabel: "Archive",
+      onConfirm: async () => {
+        setBulkArchiving(true)
+        let done = 0
+        let failed = 0
+        for (const id of ids) {
+          try {
+            const res = await fetch(`/api/vendor-pipeline/leads/${id}/archive`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ archiveLinkedDeal: false }),
+            })
+            if (!res.ok) throw new Error("failed")
+            done++
+          } catch {
+            failed++
+          }
+        }
+        await fetchLeads()
+        setBulkArchiving(false)
+        setSelectedIds(new Set())
+        if (failed === 0) {
+          toast.success(`${done} lead${done !== 1 ? "s" : ""} archived`)
+        } else {
+          toast.warning(`${done} archived, ${failed} failed`)
+        }
+      },
+    })
+    return
+  }, [selectedIds, bulkArchiving, fetchLeads])
+
+  // ── Bulk Delete ───────────────────────────────────────────────────────────
+  const handleBulkDelete = useCallback(async () => {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0 || bulkDeleting) return
+    setConfirmDialog({
+      open: true,
+      title: `Delete ${ids.length} lead${ids.length !== 1 ? "s" : ""} permanently?`,
+      description: "This cannot be undone. All lead data and conversation history will be permanently removed.",
+      variant: "destructive",
+      confirmLabel: "Delete permanently",
+      onConfirm: async () => {
+        setBulkDeleting(true)
+        let done = 0
+        let failed = 0
+        for (const id of ids) {
+          try {
+            const res = await fetch(`/api/vendor-leads/${id}`, { method: "DELETE" })
+            if (!res.ok) throw new Error("failed")
+            done++
+          } catch {
+            failed++
+          }
+        }
+        await fetchLeads()
+        setBulkDeleting(false)
+        setSelectedIds(new Set())
+        if (failed === 0) {
+          toast.success(`${done} lead${done !== 1 ? "s" : ""} permanently deleted`)
+        } else {
+          toast.warning(`${done} deleted, ${failed} failed`)
+        }
+      },
+    })
+    return
+  }, [selectedIds, bulkDeleting, fetchLeads])
+
   // ── Poll RUNNING leads every 3 seconds ────────────────────────────────────
   useEffect(() => {
     const runningLeads = leads.filter((l) => l.processingStatus === "RUNNING")
@@ -1256,28 +1834,51 @@ export function VendorLeadsTable() {
 
   // ── Actions ───────────────────────────────────────────────────────────────
   const handleArchive = async (leadId: string) => {
-    try {
-      await fetch(`/api/vendor-pipeline/leads/${leadId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ archivedAt: new Date().toISOString() }),
-      })
-      setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, archivedAt: new Date().toISOString() } : l))
-      toast.success("Lead archived")
-    } catch {
-      toast.error("Failed to archive lead")
-    }
+    const lead = leads.find(l => l.id === leadId)
+    setConfirmDialog({
+      open: true,
+      title: "Archive this lead?",
+      description: (lead as any)?.dealId
+        ? "This lead has a linked deal. Both the lead and its deal will be archived and can be restored anytime."
+        : "The lead will be moved to the Archive page and can be restored at any time.",
+      variant: "archive",
+      confirmLabel: "Archive",
+      onConfirm: async () => {
+        const archiveLinkedDeal = !!(lead as any)?.dealId
+        try {
+          const res = await fetch(`/api/vendor-pipeline/leads/${leadId}/archive`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ archiveLinkedDeal }),
+          })
+          if (!res.ok) throw new Error("Failed to archive lead")
+          setLeads(prev => prev.filter(l => l.id !== leadId))
+          toast.success("Lead archived — moved to archive. Restore it anytime from the Archive page.")
+        } catch {
+          toast.error("Failed to archive lead")
+        }
+      },
+    })
   }
 
   const handleDelete = async (leadId: string) => {
-    if (!confirm("Permanently delete this lead? This cannot be undone.")) return
-    try {
-      await fetch(`/api/vendor-pipeline/leads/${leadId}`, { method: "DELETE" })
-      setLeads((prev) => prev.filter((l) => l.id !== leadId))
-      toast.success("Lead deleted")
-    } catch {
-      toast.error("Failed to delete lead")
-    }
+    setConfirmDialog({
+      open: true,
+      title: "Delete this lead permanently?",
+      description: "This cannot be undone. The vendor contact, conversation history, and all associated data will be permanently removed.",
+      variant: "destructive",
+      confirmLabel: "Delete permanently",
+      onConfirm: async () => {
+        try {
+          await fetch(`/api/vendor-pipeline/leads/${leadId}`, { method: "DELETE" })
+          setLeads((prev) => prev.filter((l) => l.id !== leadId))
+          toast.success("Lead deleted")
+        } catch {
+          toast.error("Failed to delete lead")
+        }
+      },
+    })
+    return
   }
 
   // ── Derived data ──────────────────────────────────────────────────────────
@@ -1304,6 +1905,9 @@ export function VendorLeadsTable() {
   return (
     <TooltipProvider>
       <div className="flex flex-col gap-0">
+      {/* Needs-Action Banner */}
+      <NeedsActionBanner leads={leads} onNavigate={setActiveTab} />
+
       {/* KPI Bar */}
       <div className="mb-4">
         <VendorLeadsKpiBar kpis={kpis} />
@@ -1317,6 +1921,42 @@ export function VendorLeadsTable() {
             {visibleLeads.length} lead{visibleLeads.length !== 1 ? "s" : ""}
           </p>
           <div className="flex items-center gap-2">
+            {/* Board / Table toggle */}
+            <div className="flex items-center gap-0.5 rounded-md border border-gray-200 bg-gray-50 p-0.5">
+              <button
+                onClick={() => setViewMode("table")}
+                title="Table view"
+                className={cn(
+                  "flex h-6 w-6 items-center justify-center rounded text-xs transition-colors",
+                  viewMode === "table"
+                    ? "bg-white text-blue-600 shadow-sm"
+                    : "text-gray-400 hover:text-gray-600"
+                )}
+              >
+                <Table2 className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode("board")}
+                title="Board view"
+                className={cn(
+                  "flex h-6 w-6 items-center justify-center rounded text-xs transition-colors",
+                  viewMode === "board"
+                    ? "bg-white text-blue-600 shadow-sm"
+                    : "text-gray-400 hover:text-gray-600"
+                )}
+              >
+                <Kanban className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            {/* Activity */}
+            <button
+              onClick={() => router.push("/dashboard/vendors/activity")}
+              className="flex h-7 items-center gap-1.5 rounded-md border border-gray-200 bg-white px-3 text-xs font-medium text-gray-600 hover:bg-gray-50"
+              title="View lead activity log"
+            >
+              <Clock className="h-3.5 w-3.5" />
+              Activity
+            </button>
             <button
               onClick={fetchLeads}
               className="flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 hover:text-gray-700"
@@ -1334,11 +1974,18 @@ export function VendorLeadsTable() {
           </div>
         </div>
 
-        {/* Tab Bar */}
-        <TabBar active={activeTab} onChange={setActiveTab} />
+        {/* Board view — rendered in place of the tab table when active */}
+        {viewMode === "board" && (
+          <div className="p-4">
+            <VendorPipelineKanbanBoard />
+          </div>
+        )}
 
-        {/* Table */}
-        <div className="overflow-x-auto">
+        {/* Tab Bar — only shown in table view */}
+        {viewMode === "table" && <TabBar active={activeTab} onChange={setActiveTab} />}
+
+        {/* Table — only shown in table view */}
+        {viewMode === "table" && <div className="overflow-x-auto">
           <table className="w-full min-w-max border-collapse bg-white text-sm">
             <thead>
               <TableHeaders
@@ -1417,16 +2064,20 @@ export function VendorLeadsTable() {
               })}
             </tbody>
           </table>
-        </div>
+        </div>}
 
-        {/* Bulk Action Bar */}
-        {selectedIds.size > 0 && (
+        {/* Bulk Action Bar — table view only */}
+        {viewMode === "table" && selectedIds.size > 0 && (
           <BulkActionBar
             selectedCount={selectedIds.size}
             activeTab={activeTab}
             isRunning={bulkRunning}
+            isBulkArchiving={bulkArchiving}
+            isBulkDeleting={bulkDeleting}
             progress={bulkProgress}
             onRun={handleBulkCheck}
+            onBulkArchive={handleBulkArchive}
+            onBulkDelete={handleBulkDelete}
             onClear={() => setSelectedIds(new Set())}
           />
         )}
@@ -1478,6 +2129,16 @@ export function VendorLeadsTable() {
       {offerModalLead && (
         <OfferAnalysisModal lead={offerModalLead} onClose={() => setOfferModalLead(null)} />
       )}
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog(prev => ({ ...prev, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        variant={confirmDialog.variant}
+        confirmLabel={confirmDialog.confirmLabel}
+        onConfirm={confirmDialog.onConfirm}
+      />
       </div>
     </TooltipProvider>
   )

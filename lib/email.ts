@@ -1297,3 +1297,220 @@ export async function sendVendorOfferEmail({
     return { success: false, error: err.message || "Failed to send email" }
   }
 }
+
+// ─── Sourcer: validation passed notification ──────────────────────────────────
+
+export async function sendSourcerValidationPassedEmail({
+  to,
+  sourcerName,
+  propertyAddress,
+  bmvScore,
+  profitPotential,
+  leadId,
+}: {
+  to: string
+  sourcerName?: string | null
+  propertyAddress: string
+  bmvScore?: number | null
+  profitPotential?: number | null
+  leadId: string
+}): Promise<EmailResult> {
+  const transporter = getTransporter()
+  if (!transporter) {
+    console.warn("[email] SMTP not configured — sourcer validation-passed email not sent")
+    return { success: false, noSmtp: true, error: "SMTP not configured" }
+  }
+
+  const fromName = process.env.SMTP_FROM_NAME || "DealStack"
+  const appUrl = process.env.NEXTAUTH_URL || "https://app.dealstack.co.uk"
+  const leadUrl = `${appUrl}/dashboard/vendors?lead=${leadId}`
+  const greeting = sourcerName ? `Hi ${sourcerName},` : "Hi,"
+
+  try {
+    await transporter.sendMail({
+      from: fromAddress(),
+      to,
+      subject: `✅ Deal Validated — Ready to Offer: ${propertyAddress}`,
+      html: `
+        <!DOCTYPE html><html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+        <body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+          <div style="background:#16a34a;padding:28px 28px 20px;border-radius:8px 8px 0 0;">
+            <h1 style="color:white;margin:0;font-size:22px;">${fromName}</h1>
+            <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:13px;">Deal Validation Alert</p>
+          </div>
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-top:none;padding:28px;border-radius:0 0 8px 8px;">
+            <p style="margin:0 0 16px;">${greeting}</p>
+            <p style="margin:0 0 12px;">A vendor lead has <strong>passed validation</strong> and is ready for you to make an offer:</p>
+            <div style="background:white;border:1px solid #d1fae5;border-radius:8px;padding:16px 20px;margin:0 0 20px;">
+              <p style="margin:0 0 6px;font-weight:700;font-size:16px;color:#111;">${propertyAddress}</p>
+              ${bmvScore != null ? `<p style="margin:0 0 4px;font-size:13px;color:#16a34a;font-weight:600;">BMV: ${bmvScore.toFixed(1)}%</p>` : ""}
+              ${profitPotential != null ? `<p style="margin:0;font-size:13px;color:#0369a1;font-weight:600;">Profit Potential: £${profitPotential.toLocaleString()}</p>` : ""}
+            </div>
+            <p style="margin:0 0 20px;">Log in to review the validation results and send your offer:</p>
+            <a href="${leadUrl}" style="display:inline-block;background:#16a34a;color:white;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:600;font-size:15px;">View Lead & Make Offer →</a>
+            <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
+            <p style="font-size:11px;color:#94a3b8;text-align:center;">This is an automated alert from ${fromName}.</p>
+          </div>
+        </body></html>
+      `,
+      text: `${greeting}\n\nA lead at ${propertyAddress} has passed validation and is ready for an offer.${bmvScore != null ? `\nBMV: ${bmvScore.toFixed(1)}%` : ""}${profitPotential != null ? `\nProfit Potential: £${profitPotential.toLocaleString()}` : ""}\n\nView lead: ${leadUrl}`,
+    })
+    console.log(`[email] Sourcer validation-passed email sent to ${to}`)
+    return { success: true }
+  } catch (err: any) {
+    console.error("[email] Sourcer validation-passed email failed:", err)
+    return { success: false, error: err.message || "Failed to send email" }
+  }
+}
+
+// ─── Sourcer: offer accepted notification ─────────────────────────────────────
+
+export async function sendSourcerOfferAcceptedEmail({
+  to,
+  sourcerName,
+  vendorName,
+  propertyAddress,
+  offerAmount,
+  dealId,
+  leadId,
+}: {
+  to: string
+  sourcerName?: string | null
+  vendorName: string
+  propertyAddress: string
+  offerAmount?: number | null
+  dealId?: string | null
+  leadId: string
+}): Promise<EmailResult> {
+  const transporter = getTransporter()
+  if (!transporter) {
+    console.warn("[email] SMTP not configured — sourcer offer-accepted email not sent")
+    return { success: false, noSmtp: true, error: "SMTP not configured" }
+  }
+
+  const fromName = process.env.SMTP_FROM_NAME || "DealStack"
+  const appUrl = process.env.NEXTAUTH_URL || "https://app.dealstack.co.uk"
+  const dealUrl = dealId ? `${appUrl}/dashboard/deals/${dealId}` : `${appUrl}/dashboard/deals`
+  const leadUrl = `${appUrl}/dashboard/vendors?lead=${leadId}`
+  const greeting = sourcerName ? `Hi ${sourcerName},` : "Hi,"
+
+  try {
+    await transporter.sendMail({
+      from: fromAddress(),
+      to,
+      subject: `🎉 Offer Accepted — ${propertyAddress}`,
+      html: `
+        <!DOCTYPE html><html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+        <body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+          <div style="background:#1e3a8a;padding:28px 28px 20px;border-radius:8px 8px 0 0;">
+            <h1 style="color:white;margin:0;font-size:22px;">${fromName}</h1>
+            <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:13px;">Offer Accepted 🎉</p>
+          </div>
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-top:none;padding:28px;border-radius:0 0 8px 8px;">
+            <p style="margin:0 0 16px;">${greeting}</p>
+            <p style="margin:0 0 12px;"><strong>${vendorName}</strong> has <strong style="color:#16a34a;">accepted your offer</strong> on:</p>
+            <div style="background:white;border:1px solid #d1fae5;border-radius:8px;padding:16px 20px;margin:0 0 20px;">
+              <p style="margin:0 0 6px;font-weight:700;font-size:16px;color:#111;">${propertyAddress}</p>
+              ${offerAmount != null ? `<p style="margin:0;font-size:14px;color:#16a34a;font-weight:600;">Accepted Offer: £${offerAmount.toLocaleString()}</p>` : ""}
+            </div>
+            <p style="margin:0 0 8px;font-weight:600;">A deal has been automatically created. Your next steps:</p>
+            <ol style="margin:0 0 20px;padding-left:20px;line-height:1.9;font-size:14px;">
+              <li>Add property photos to the deal</li>
+              <li>Set the investor pack price</li>
+              <li>Write the deal description and attach comparables</li>
+              <li>Send lock-out agreement to vendor</li>
+              <li>Mark the deal as Listed when ready for investors</li>
+            </ol>
+            <div style="display:flex;gap:12px;">
+              <a href="${dealUrl}" style="display:inline-block;background:#1e3a8a;color:white;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;font-size:14px;margin-right:8px;">Complete Deal Setup →</a>
+              <a href="${leadUrl}" style="display:inline-block;background:white;border:1px solid #d1d5db;color:#374151;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;font-size:14px;">View Vendor Lead</a>
+            </div>
+            <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
+            <p style="font-size:11px;color:#94a3b8;text-align:center;">This is an automated alert from ${fromName}.</p>
+          </div>
+        </body></html>
+      `,
+      text: `${greeting}\n\n${vendorName} has ACCEPTED your offer on ${propertyAddress}!${offerAmount != null ? `\nAccepted Offer: £${offerAmount.toLocaleString()}` : ""}\n\nA deal has been automatically created. Next steps:\n1. Add property photos\n2. Set investor pack price\n3. Write deal description\n4. Send lock-out agreement\n5. List the deal for investors\n\nComplete deal setup: ${dealUrl}\nView vendor lead: ${leadUrl}`,
+    })
+    console.log(`[email] Sourcer offer-accepted email sent to ${to}`)
+    return { success: true }
+  } catch (err: any) {
+    console.error("[email] Sourcer offer-accepted email failed:", err)
+    return { success: false, error: err.message || "Failed to send email" }
+  }
+}
+
+// ─── Sourcer: offer rejected notification ─────────────────────────────────────
+
+export async function sendSourcerOfferRejectedEmail({
+  to,
+  sourcerName,
+  vendorName,
+  propertyAddress,
+  offerAmount,
+  retryCount,
+  leadId,
+}: {
+  to: string
+  sourcerName?: string | null
+  vendorName: string
+  propertyAddress: string
+  offerAmount?: number | null
+  retryCount?: number
+  leadId: string
+}): Promise<EmailResult> {
+  const transporter = getTransporter()
+  if (!transporter) {
+    console.warn("[email] SMTP not configured — sourcer offer-rejected email not sent")
+    return { success: false, noSmtp: true, error: "SMTP not configured" }
+  }
+
+  const fromName = process.env.SMTP_FROM_NAME || "DealStack"
+  const appUrl = process.env.NEXTAUTH_URL || "https://app.dealstack.co.uk"
+  const leadUrl = `${appUrl}/dashboard/vendors?lead=${leadId}`
+  const greeting = sourcerName ? `Hi ${sourcerName},` : "Hi,"
+  const canRetry = (retryCount ?? 0) < 3
+
+  try {
+    await transporter.sendMail({
+      from: fromAddress(),
+      to,
+      subject: `⚠️ Offer Rejected — ${propertyAddress}`,
+      html: `
+        <!DOCTYPE html><html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+        <body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+          <div style="background:#b45309;padding:28px 28px 20px;border-radius:8px 8px 0 0;">
+            <h1 style="color:white;margin:0;font-size:22px;">${fromName}</h1>
+            <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:13px;">Offer Rejected</p>
+          </div>
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-top:none;padding:28px;border-radius:0 0 8px 8px;">
+            <p style="margin:0 0 16px;">${greeting}</p>
+            <p style="margin:0 0 12px;"><strong>${vendorName}</strong> has <strong style="color:#dc2626;">rejected your offer</strong> on:</p>
+            <div style="background:white;border:1px solid #fecaca;border-radius:8px;padding:16px 20px;margin:0 0 20px;">
+              <p style="margin:0 0 6px;font-weight:700;font-size:16px;color:#111;">${propertyAddress}</p>
+              ${offerAmount != null ? `<p style="margin:0;font-size:13px;color:#dc2626;">Rejected Offer: £${offerAmount.toLocaleString()}</p>` : ""}
+            </div>
+            <p style="margin:0 0 8px;font-weight:600;">Decide your next step:</p>
+            <ul style="margin:0 0 20px;padding-left:20px;line-height:1.9;font-size:14px;">
+              ${canRetry ? '<li><strong>Retry</strong> — send a revised offer with a short video to rebuild rapport</li>' : ""}
+              <li><strong>Close the lead</strong> — mark as Dead Lead if not worth pursuing</li>
+              <li><strong>Nurture</strong> — schedule a follow-up for 30–60 days</li>
+            </ul>
+            <a href="${leadUrl}" style="display:inline-block;background:#b45309;color:white;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:600;font-size:14px;">Review Lead →</a>
+            <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
+            <p style="font-size:11px;color:#94a3b8;text-align:center;">This is an automated alert from ${fromName}.</p>
+          </div>
+        </body></html>
+      `,
+      text: `${greeting}\n\n${vendorName} has REJECTED your offer on ${propertyAddress}.${offerAmount != null ? `\nRejected Offer: £${offerAmount.toLocaleString()}` : ""}\n\nNext steps:\n${canRetry ? "- Retry with a revised offer\n" : ""}- Close the lead (mark as Dead Lead)\n- Nurture for 30-60 days\n\nReview lead: ${leadUrl}`,
+    })
+    console.log(`[email] Sourcer offer-rejected email sent to ${to}`)
+    return { success: true }
+  } catch (err: any) {
+    console.error("[email] Sourcer offer-rejected email failed:", err)
+    return { success: false, error: err.message || "Failed to send email" }
+  }
+}

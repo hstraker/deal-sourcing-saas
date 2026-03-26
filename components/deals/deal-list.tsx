@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -16,7 +16,14 @@ import {
   Target,
   DollarSign,
   Star,
+  Archive,
+  Sparkles,
+  CheckCircle2,
+  ListChecks,
+  Lock,
+  BadgeCheck,
 } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 import type { ActionItem } from "@/app/api/action-counts/route"
 import { Button } from "@/components/ui/button"
 import {
@@ -49,6 +56,8 @@ import {
   type SortConfig,
 } from "@/components/deals/deal-sorting"
 import { DealDetailModal } from "@/components/deals/deal-detail-modal"
+import { toast } from "sonner"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import type { DealWithRelations } from "@/types/deal"
 import { formatCurrency } from "@/lib/format"
 import {
@@ -73,6 +82,41 @@ const formatStatus = (status: string) => {
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ")
+}
+
+const DEAL_STATUS_ICON: Record<string, LucideIcon> = {
+  new:         Sparkles,
+  review:      Eye,
+  in_progress: Zap,
+  ready:       CheckCircle2,
+  listed:      ListChecks,
+  reserved:    Lock,
+  sold:        BadgeCheck,
+  archived:    Archive,
+}
+
+const DEAL_STATUS_LABEL: Record<string, string> = {
+  new:         "New",
+  review:      "Review",
+  in_progress: "In Progress",
+  ready:       "Ready",
+  listed:      "Listed",
+  reserved:    "Reserved",
+  sold:        "Sold",
+  archived:    "Archived",
+}
+
+// ── Tooltip helper ─────────────────────────────────────────────────────────────
+
+function Tip({ text, children }: { text: string; children: React.ReactNode }) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent className="max-w-[220px] text-center text-xs">{text}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
 }
 
 // ── KPI Bar ────────────────────────────────────────────────────────────────────
@@ -130,6 +174,7 @@ function DealKpiBar({ deals }: { deals: DealWithRelations[] }) {
       icon: <Target className="h-4 w-4 text-blue-600" />,
       iconBgClass: "bg-blue-50",
       valueColorClass: "text-gray-900",
+      tooltip: "Deals that are not archived or sold. Includes new, review, in progress, ready, listed, and reserved statuses.",
     },
     {
       label: "Avg BMV %",
@@ -137,6 +182,7 @@ function DealKpiBar({ deals }: { deals: DealWithRelations[] }) {
       icon: <TrendingUp className="h-4 w-4 text-green-600" />,
       iconBgClass: "bg-green-50",
       valueColorClass: "text-green-600",
+      tooltip: "Average discount from market value. Green ≥15% = excellent, Amber ≥5% = acceptable, Red <5% = weak.",
     },
     {
       label: "Avg Gross Yield",
@@ -144,6 +190,7 @@ function DealKpiBar({ deals }: { deals: DealWithRelations[] }) {
       icon: <BarChart2 className="h-4 w-4 text-blue-600" />,
       iconBgClass: "bg-blue-50",
       valueColorClass: "text-blue-600",
+      tooltip: "Average rental yield before expenses. Green ≥6% = strong BTL, Amber ≥4% = acceptable, Red <4% = poor cashflow.",
     },
     {
       label: "Pipeline Value",
@@ -151,6 +198,7 @@ function DealKpiBar({ deals }: { deals: DealWithRelations[] }) {
       icon: <DollarSign className="h-4 w-4 text-purple-600" />,
       iconBgClass: "bg-purple-50",
       valueColorClass: "text-purple-600",
+      tooltip: "Total combined market values of active deals. Larger pipeline = more investor choice.",
     },
     {
       label: "Avg Deal Score",
@@ -158,6 +206,7 @@ function DealKpiBar({ deals }: { deals: DealWithRelations[] }) {
       icon: <Star className="h-4 w-4 text-amber-600" />,
       iconBgClass: "bg-amber-50",
       valueColorClass: "text-amber-600",
+      tooltip: "Average deal quality score (0-100). 80+ = excellent, 60-79 = good, 40-59 = fair, <40 = poor.",
     },
   ]
 
@@ -166,7 +215,8 @@ function DealKpiBar({ deals }: { deals: DealWithRelations[] }) {
 
 // ── Main DealList ──────────────────────────────────────────────────────────────
 
-export function DealList({ deals, teamMembers = [] }: DealListProps) {
+export function DealList({ deals: initialDeals, teamMembers = [] }: DealListProps) {
+  const [deals, setDeals] = useState(initialDeals)
   const [searchQuery, setSearchQuery] = useState("")
   const [filters, setFilters] = useState<DealFilters>({
     status: null,
@@ -187,6 +237,127 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
   const [currentPage, setCurrentPage] = useState(1)
   const [investorCriteria, setInvestorCriteria] = useState<InvestorCriteria[]>([])
   const [selectedDeal, setSelectedDeal] = useState<DealWithRelations | null>(null)
+  const [archivingId, setArchivingId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkArchiving, setBulkArchiving] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    title: string
+    description: string
+    variant: "destructive" | "archive" | "warning" | "default"
+    confirmLabel: string
+    onConfirm: () => void
+  }>({ open: false, title: "", description: "", variant: "default", confirmLabel: "Confirm", onConfirm: () => {} })
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) { next.delete(id) } else { next.add(id) }
+      return next
+    })
+  }
+
+  const handleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(paginatedDeals.map((d) => d.id)))
+    }
+  }
+
+  const handleBulkArchive = () => {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0 || bulkArchiving) return
+    setConfirmDialog({
+      open: true,
+      title: `Archive ${ids.length} deal${ids.length !== 1 ? "s" : ""}?`,
+      description: "They will be moved to the Archive page and can be restored at any time.",
+      variant: "archive",
+      confirmLabel: "Archive",
+      onConfirm: async () => {
+        setBulkArchiving(true)
+        let done = 0; let failed = 0
+        for (const id of ids) {
+          try {
+            const res = await fetch(`/api/deals/${id}/archive`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ archiveLinkedLead: false }),
+            })
+            if (!res.ok) throw new Error("failed")
+            done++
+          } catch { failed++ }
+        }
+        setDeals((prev) => prev.filter((d) => !ids.includes(d.id)))
+        setSelectedIds(new Set())
+        setBulkArchiving(false)
+        failed === 0
+          ? toast.success(`${done} deal${done !== 1 ? "s" : ""} archived`)
+          : toast.warning(`${done} archived, ${failed} failed`)
+      },
+    })
+  }
+
+  const handleBulkDelete = () => {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0 || bulkDeleting) return
+    setConfirmDialog({
+      open: true,
+      title: `Delete ${ids.length} deal${ids.length !== 1 ? "s" : ""} permanently?`,
+      description: "This cannot be undone. All deal data will be permanently removed.",
+      variant: "destructive",
+      confirmLabel: "Delete permanently",
+      onConfirm: async () => {
+        setBulkDeleting(true)
+        let done = 0; let failed = 0
+        for (const id of ids) {
+          try {
+            const res = await fetch(`/api/deals/${id}`, { method: "DELETE" })
+            if (!res.ok) throw new Error("failed")
+            done++
+          } catch { failed++ }
+        }
+        setDeals((prev) => prev.filter((d) => !ids.includes(d.id)))
+        setSelectedIds(new Set())
+        setBulkDeleting(false)
+        failed === 0
+          ? toast.success(`${done} deal${done !== 1 ? "s" : ""} permanently deleted`)
+          : toast.warning(`${done} deleted, ${failed} failed`)
+      },
+    })
+  }
+
+  const handleArchiveDeal = (dealId: string) => {
+    const deal = deals.find(d => d.id === dealId) as any
+    const hasLinkedLead = !!deal?.vendorLead
+    setConfirmDialog({
+      open: true,
+      title: "Archive this deal?",
+      description: hasLinkedLead
+        ? `This deal came from vendor lead "${deal.vendorLead.vendorName}". Both the deal and its linked vendor lead will be archived and can be restored anytime.`
+        : "The deal will be moved to the Archive page and can be restored at any time.",
+      variant: "archive",
+      confirmLabel: "Archive",
+      onConfirm: async () => {
+        setArchivingId(dealId)
+        try {
+          const res = await fetch(`/api/deals/${dealId}/archive`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ archiveLinkedLead: hasLinkedLead }),
+          })
+          if (!res.ok) throw new Error("Archive failed")
+          setDeals(prev => prev.filter(d => d.id !== dealId))
+          toast.success("Deal archived — moved to archive. Restore it anytime from the Archive page.")
+        } catch {
+          toast.error("Failed to archive deal")
+        } finally {
+          setArchivingId(null)
+        }
+      },
+    })
+  }
 
   // Fetch investor criteria once for match badges
   useEffect(() => {
@@ -344,6 +515,10 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
     return sortedDeals.slice(startIndex, startIndex + ITEMS_PER_PAGE)
   }, [sortedDeals, currentPage])
 
+  // Bulk selection derived state (depends on paginatedDeals)
+  const allSelected = paginatedDeals.length > 0 && paginatedDeals.every((d) => selectedIds.has(d.id))
+  const someSelected = paginatedDeals.some((d) => selectedIds.has(d.id))
+
   const handleSearchChange = (query: string) => {
     setSearchQuery(query)
   }
@@ -414,7 +589,25 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
             matchesByDealId={matchesByDealId}
             actionDealIds={actionDealIds}
             onViewDeal={setSelectedDeal}
+            onArchiveDeal={handleArchiveDeal}
+            archivingId={archivingId}
+            selectedIds={selectedIds}
+            allSelected={allSelected}
+            someSelected={someSelected}
+            onToggleSelect={handleToggleSelect}
+            onSelectAll={handleSelectAll}
           />
+          {/* Bulk action bar */}
+          {selectedIds.size > 0 && (
+            <DealBulkActionBar
+              selectedCount={selectedIds.size}
+              isBulkArchiving={bulkArchiving}
+              isBulkDeleting={bulkDeleting}
+              onBulkArchive={handleBulkArchive}
+              onBulkDelete={handleBulkDelete}
+              onClear={() => setSelectedIds(new Set())}
+            />
+          )}
           {totalPages > 1 && (
             <DealPagination
               currentPage={currentPage}
@@ -433,6 +626,122 @@ export function DealList({ deals, teamMembers = [] }: DealListProps) {
           onClose={() => setSelectedDeal(null)}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog(prev => ({ ...prev, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        variant={confirmDialog.variant}
+        confirmLabel={confirmDialog.confirmLabel}
+        onConfirm={confirmDialog.onConfirm}
+      />
+    </div>
+  )
+}
+
+// ── Deal Setup Progress ────────────────────────────────────────────────────────
+
+function DealSetupProgress({ deal }: { deal: DealWithRelations }) {
+  const checks = [
+    { label: "Photos",      done: (deal._count?.photos ?? 0) > 0 },
+    { label: "Pack price",  done: (deal as any).packPrice != null && Number((deal as any).packPrice) > 0 },
+    { label: "Assigned",    done: deal.assignedTo != null },
+    { label: "Listed",      done: deal.status === "listed" || deal.status === "sold" },
+  ]
+  const doneCount = checks.filter((c) => c.done).length
+  const allDone = doneCount === checks.length
+
+  if (allDone) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700 cursor-default">
+              ✓ Complete
+            </span>
+          </TooltipTrigger>
+          <TooltipContent className="text-xs">All setup steps complete</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex items-center gap-1 cursor-default">
+            <div className="flex gap-0.5">
+              {checks.map((c) => (
+                <span
+                  key={c.label}
+                  className={`h-2 w-2 rounded-full ${c.done ? "bg-green-500" : "bg-gray-200"}`}
+                />
+              ))}
+            </div>
+            <span className="text-[10px] text-gray-500">{doneCount}/{checks.length}</span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent className="text-xs space-y-1">
+          <p className="font-semibold mb-1">Deal Setup</p>
+          {checks.map((c) => (
+            <p key={c.label} className={c.done ? "text-green-600" : "text-gray-400"}>
+              {c.done ? "✓" : "○"} {c.label}
+            </p>
+          ))}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+// ── Deal Bulk Action Bar ───────────────────────────────────────────────────────
+
+function DealBulkActionBar({
+  selectedCount,
+  isBulkArchiving,
+  isBulkDeleting,
+  onBulkArchive,
+  onBulkDelete,
+  onClear,
+}: {
+  selectedCount: number
+  isBulkArchiving: boolean
+  isBulkDeleting: boolean
+  onBulkArchive: () => void
+  onBulkDelete: () => void
+  onClear: () => void
+}) {
+  const busy = isBulkArchiving || isBulkDeleting
+  return (
+    <div className="flex items-center justify-between rounded-b-lg bg-[#1e293b] px-4 py-3 -mt-px">
+      <span className="text-sm font-medium text-slate-200">
+        {selectedCount} deal{selectedCount !== 1 ? "s" : ""} selected
+      </span>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onBulkArchive}
+          disabled={busy}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
+        >
+          {isBulkArchiving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
+          {isBulkArchiving ? "Archiving…" : "Archive"}
+        </button>
+        <button
+          onClick={onBulkDelete}
+          disabled={busy}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+        >
+          {isBulkDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+          {isBulkDeleting ? "Deleting…" : "Delete"}
+        </button>
+        {!busy && (
+          <button onClick={onClear} className="ml-2 text-sm text-slate-400 hover:text-slate-200">
+            ✕ Clear
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -444,41 +753,81 @@ function TableView({
   matchesByDealId,
   actionDealIds,
   onViewDeal,
+  onArchiveDeal,
+  archivingId,
+  selectedIds,
+  allSelected,
+  someSelected,
+  onToggleSelect,
+  onSelectAll,
 }: {
   deals: DealWithRelations[]
   matchesByDealId: Map<string, MatchResult[]>
   actionDealIds: Set<string>
   onViewDeal: (deal: DealWithRelations) => void
+  onArchiveDeal: (dealId: string) => void
+  archivingId: string | null
+  selectedIds: Set<string>
+  allSelected: boolean
+  someSelected: boolean
+  onToggleSelect: (id: string) => void
+  onSelectAll: () => void
 }) {
+  const selectAllRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = someSelected && !allSelected
+    }
+  }, [someSelected, allSelected])
   return (
     <div className="ds-card overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr>
-              <th className="table-header">Address</th>
-              <th className="table-header">Status</th>
-              <th className="table-header">Type</th>
-              <th className="table-header text-right">Asking Price</th>
-              <th className="table-header text-right">Market Value</th>
-              <th className="table-header text-center">BMV %</th>
-              <th className="table-header text-center">Gross Yield</th>
-              <th className="table-header text-center">Score</th>
-              <th className="table-header">Assigned</th>
-              <th className="table-header text-center">Investors</th>
-              <th className="table-header text-right">Actions</th>
+              <th className="table-header w-10 px-3">
+                <input
+                  ref={selectAllRef}
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={onSelectAll}
+                  className="h-3.5 w-3.5 cursor-pointer accent-blue-600"
+                />
+              </th>
+              <th className="table-header w-[220px]"><Tip text="Property address and postcode. Click row to view full details">Address</Tip></th>
+              <th className="table-header"><Tip text="Deal status: New (just added), Review (being assessed), In Progress (active), Ready (for investors), Listed (on portal), Reserved (investor reserved), Sold (completed)">Status</Tip></th>
+              <th className="table-header"><Tip text="Property type affects valuation, rental demand, and comparable matching. Detached > semi > terrace > flat in most markets">Type</Tip></th>
+              <th className="table-header text-right w-28"><Tip text="Your agreed purchase price. What you offered and vendor accepted">Asking Price</Tip></th>
+              <th className="table-header text-right w-28"><Tip text="Estimated open market value from comparable sold properties. Used to calculate BMV %">Mkt Value</Tip></th>
+              <th className="table-header text-center w-20"><Tip text="Below Market Value %. How much below market you are buying. Green ≥15% = excellent, Amber ≥5% = acceptable, Red <5% = weak. Formula: (Market Value − Asking Price) ÷ Market Value × 100">BMV %</Tip></th>
+              <th className="table-header text-center w-20"><Tip text="Gross rental yield. Annual rent ÷ market value. Green ≥6% = strong BTL, Amber ≥4% = acceptable, Red <4% = poor cashflow. Does not include expenses">Yield</Tip></th>
+              <th className="table-header text-center w-20"><Tip text="Deal quality score (0-100). 80+ = excellent, 60-79 = good, 40-59 = fair, <40 = poor. Weighted across BMV %, yield, strategy fit, and property type">Score</Tip></th>
+              <th className="table-header w-24"><Tip text="Team member managing this deal. Unassigned deals need assignment before investor packs can be sent">Assigned</Tip></th>
+              <th className="table-header text-center w-20"><Tip text="Number of investors whose criteria match this deal. Click badge to see matched investor names and match scores">Investors</Tip></th>
+              <th className="table-header text-center w-16"><Tip text="Deal setup progress: Photos uploaded, Pack price set, Team member assigned, Listed on portal. All 4 required before presenting to investors">Setup</Tip></th>
+              <th className="table-header w-24"><Tip text="Where this deal originated. Vendor Lead = came from your lead pipeline with offer accepted. Manual = added directly">Source</Tip></th>
+              <th className="table-header text-right w-24">Actions</th>
             </tr>
           </thead>
           <tbody>
             {deals.map((deal) => (
-              <tr key={deal.id} className="table-row">
+              <tr key={deal.id} className={`table-row${selectedIds.has(deal.id) ? " bg-blue-50 hover:bg-blue-100" : ""}`}>
+                {/* Checkbox */}
+                <td className="table-cell w-10 px-3" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(deal.id)}
+                    onChange={() => onToggleSelect(deal.id)}
+                    className="h-3.5 w-3.5 cursor-pointer accent-blue-600"
+                  />
+                </td>
                 {/* Address */}
-                <td className="table-cell">
-                  <div className="flex items-center gap-1.5">
-                    <div>
-                      <div className="font-medium">{deal.address}</div>
+                <td className="table-cell max-w-[220px]">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="min-w-0">
+                      <div className="font-medium text-gray-900 truncate">{deal.address}</div>
                       {deal.postcode && (
-                        <div className="text-xs text-gray-400">{deal.postcode}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">{deal.postcode}</div>
                       )}
                     </div>
                     {actionDealIds.has(deal.id) && (
@@ -497,15 +846,26 @@ function TableView({
                 {/* Status */}
                 <td className="table-cell">
                   <StatusBadge
-                    label={formatStatus(deal.status)}
+                    label={DEAL_STATUS_LABEL[deal.status] ?? formatStatus(deal.status)}
                     cssKey={getDealStatusVarKey(deal.status)}
+                    icon={DEAL_STATUS_ICON[deal.status]}
+                    tooltip={
+                      deal.status === "new" ? "Newly created deal — needs review and team assignment" :
+                      deal.status === "review" ? "Under review — team is assessing viability" :
+                      deal.status === "in_progress" ? "Actively being worked — photos, pack, or listing in progress" :
+                      deal.status === "ready" ? "Ready to present to investors — pack complete" :
+                      deal.status === "listed" ? "Listed on investor portal — investors can view and reserve" :
+                      deal.status === "reserved" ? "An investor has reserved this deal — awaiting completion" :
+                      deal.status === "sold" ? "Transaction complete — deal has been sold to an investor" :
+                      undefined
+                    }
                   />
                 </td>
 
                 {/* Type */}
-                <td className="table-cell">
+                <td className="table-cell whitespace-nowrap">
                   {deal.propertyType ? (
-                    <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 capitalize">
+                    <span className="inline-block whitespace-nowrap rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600 capitalize">
                       {deal.propertyType}
                     </span>
                   ) : (
@@ -514,12 +874,12 @@ function TableView({
                 </td>
 
                 {/* Asking Price */}
-                <td className="table-cell text-right font-medium">
+                <td className="table-cell text-right font-semibold whitespace-nowrap">
                   {formatCurrency(Number(deal.askingPrice))}
                 </td>
 
                 {/* Market Value */}
-                <td className="table-cell text-right">
+                <td className="table-cell text-right whitespace-nowrap">
                   {(deal as any).marketValue != null
                     ? formatCurrency(Number((deal as any).marketValue))
                     : <span className="text-gray-400">—</span>
@@ -527,37 +887,50 @@ function TableView({
                 </td>
 
                 {/* BMV % */}
-                <td className="table-cell text-center">
+                <td className="table-cell text-center whitespace-nowrap">
                   {(deal as any).bmvPercentage != null ? (() => {
                     const v = Number((deal as any).bmvPercentage)
-                    const cls = v >= 15 ? "text-green-500" : v >= 5 ? "text-amber-500" : "text-red-500"
-                    return <span className={`font-semibold ${cls}`}>{v.toFixed(1)}%</span>
+                    const cls = v >= 15 ? "text-green-600" : v >= 5 ? "text-amber-500" : "text-red-500"
+                    return (
+                      <Tip text={`Below Market Value. ${v >= 15 ? "Excellent deal ≥15%." : v >= 5 ? "Acceptable deal ≥5%." : "Weak deal <5%."} Formula: (Market Value − Asking Price) ÷ Market Value × 100`}>
+                        <span className={`font-semibold ${cls}`}>{v.toFixed(1)}%</span>
+                      </Tip>
+                    )
                   })() : <span className="text-gray-400">—</span>}
                 </td>
 
                 {/* Gross Yield */}
-                <td className="table-cell text-center">
+                <td className="table-cell text-center whitespace-nowrap">
                   {(deal as any).grossYield != null ? (() => {
                     const v = Number((deal as any).grossYield)
-                    const cls = v >= 6 ? "text-green-500" : v >= 4 ? "text-amber-500" : "text-red-500"
-                    return <span className={`font-semibold ${cls}`}>{v.toFixed(1)}%</span>
+                    const cls = v >= 6 ? "text-green-600" : v >= 4 ? "text-amber-500" : "text-red-500"
+                    return (
+                      <Tip text={`Gross rental yield. ${v >= 6 ? "Strong BTL ≥6%." : v >= 4 ? "Acceptable ≥4%." : "Poor cashflow <4%."} Formula: (Annual Rent ÷ Market Value) × 100`}>
+                        <span className={`font-semibold ${cls}`}>{v.toFixed(1)}%</span>
+                      </Tip>
+                    )
                   })() : <span className="text-gray-400">—</span>}
                 </td>
 
                 {/* Deal Score */}
-                <td className="table-cell text-center">
+                <td className="table-cell text-center whitespace-nowrap">
                   {deal.dealScore != null ? (() => {
                     const s = deal.dealScore
                     const cls =
-                      s >= 80 ? "text-green-500" :
-                      s >= 60 ? "text-blue-400" :
+                      s >= 80 ? "text-green-600" :
+                      s >= 60 ? "text-blue-500" :
                       s >= 40 ? "text-amber-500" : "text-red-500"
-                    return <span className={`font-bold ${cls}`}>{s}/100</span>
+                    const grade = s >= 80 ? "Excellent" : s >= 60 ? "Good" : s >= 40 ? "Fair" : "Poor"
+                    return (
+                      <Tip text={`Deal quality score. ${grade} (${s}/100). 80+ = excellent, 60-79 = good, 40-59 = fair, <40 = poor. Weighted across BMV %, yield, and strategy fit`}>
+                        <span className={`font-semibold ${cls}`}>{s}/100</span>
+                      </Tip>
+                    )
                   })() : <span className="text-gray-400">—</span>}
                 </td>
 
                 {/* Assigned */}
-                <td className="table-cell text-sm">
+                <td className="table-cell whitespace-nowrap">
                   {deal.assignedTo
                     ? `${deal.assignedTo.firstName ?? ""} ${(deal.assignedTo.lastName ?? "").charAt(0)}.`.trim()
                     : <span className="text-gray-400">—</span>
@@ -578,6 +951,42 @@ function TableView({
                   />
                 </td>
 
+                {/* Setup progress */}
+                <td className="table-cell text-center">
+                  <DealSetupProgress deal={deal} />
+                </td>
+
+                {/* Source: vendor lead link */}
+                <td className="table-cell whitespace-nowrap">
+                  {(deal as any).vendorLead ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <a
+                            href={`/dashboard/vendors?lead=${(deal as any).vendorLead.id}`}
+                            className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+                          >
+                            <Users className="h-3 w-3" />
+                            {(deal as any).vendorLead.vendorName}
+                          </a>
+                        </TooltipTrigger>
+                        <TooltipContent className="text-xs">
+                          <p className="font-semibold">From Vendor Lead</p>
+                          <p>{(deal as any).vendorLead.vendorPhone}</p>
+                          {(deal as any).vendorLead.offerAmount && (
+                            <p>Offer: £{Number((deal as any).vendorLead.offerAmount).toLocaleString()}</p>
+                          )}
+                          {(deal as any).vendorLead.motivationScore && (
+                            <p>Motivation: {(deal as any).vendorLead.motivationScore}/10</p>
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : (
+                    <span className="text-xs text-gray-400">Manual</span>
+                  )}
+                </td>
+
                 {/* Actions */}
                 <td
                   className="table-cell text-right"
@@ -587,6 +996,8 @@ function TableView({
                     dealId={deal.id}
                     dealAddress={deal.address}
                     onView={() => onViewDeal(deal)}
+                    onArchive={() => onArchiveDeal(deal.id)}
+                    isArchiving={archivingId === deal.id}
                   />
                 </td>
               </tr>
@@ -656,10 +1067,14 @@ function DealActions({
   dealId,
   dealAddress,
   onView,
+  onArchive,
+  isArchiving,
 }: {
   dealId: string
   dealAddress: string
   onView?: () => void
+  onArchive?: () => void
+  isArchiving?: boolean
 }) {
   const [deleteOpen, setDeleteOpen] = useState(false)
   return (
@@ -706,6 +1121,27 @@ function DealActions({
             </TooltipTrigger>
             <TooltipContent>Reserve</TooltipContent>
           </Tooltip>
+          {onArchive && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  className="rounded p-1.5 text-amber-500 hover:bg-amber-50 hover:text-amber-600 disabled:opacity-50"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onArchive()
+                  }}
+                  disabled={isArchiving}
+                >
+                  {isArchiving ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Archive className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Archive</TooltipContent>
+            </Tooltip>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -757,7 +1193,7 @@ function DeleteConfirmDialog({
       router.refresh()
     } catch (err) {
       console.error("Error deleting deal:", err)
-      alert(err instanceof Error ? err.message : "Failed to delete deal")
+      toast.error(err instanceof Error ? err.message : "Failed to delete deal")
       setIsDeleting(false)
       onOpenChange(false)
     }

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { toast } from "sonner"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { PlusIcon, PencilIcon, TrashIcon, BellIcon, BellSlashIcon } from "@heroicons/react/24/outline"
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -126,18 +127,18 @@ function AlertRow({
   })()
 
   return (
-    <tr className={`border-b border-gray-100 last:border-0 ${!alert.isActive ? "opacity-50" : ""}`}>
-      <td className="py-3 pr-4">
-        <p className="text-sm font-medium text-gray-900">{alert.name || alert.address}</p>
-        {alert.name && <p className="text-xs text-gray-500">{alert.address}</p>}
+    <tr className={`table-row ${!alert.isActive ? "opacity-50" : ""}`}>
+      <td className="table-cell max-w-[200px]">
+        <p className="font-medium text-gray-900 truncate">{alert.name || alert.address}</p>
+        {alert.name && <p className="text-xs text-gray-500 truncate">{alert.address}</p>}
       </td>
-      <td className="py-3 pr-4 text-sm text-gray-700">{alert.radius}</td>
-      <td className="py-3 pr-4 text-sm text-gray-700">{priceRange}</td>
-      <td className="py-3 pr-4 text-sm text-gray-700">{bedsRange}</td>
-      <td className="py-3 pr-4 text-sm text-gray-700">
+      <td className="table-cell whitespace-nowrap">{alert.radius}</td>
+      <td className="table-cell whitespace-nowrap">{priceRange}</td>
+      <td className="table-cell whitespace-nowrap">{bedsRange}</td>
+      <td className="table-cell">
         {alert.propertyTypes.length > 0 ? alert.propertyTypes.join(", ") : "Any"}
       </td>
-      <td className="py-3">
+      <td className="table-cell">
         <div className="flex items-center gap-1">
           <button
             onClick={onToggle}
@@ -399,6 +400,12 @@ export function SourcingAlertsClient({
   const [editAlert, setEditAlert] = useState<SourcingAlert | undefined>(undefined)
   const [savingPrefs, setSavingPrefs] = useState(false)
 
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean; title: string; description: string;
+    variant: "destructive" | "archive" | "warning" | "default";
+    confirmLabel: string; onConfirm: () => void;
+  }>({ open: false, title: "", description: "", variant: "default", confirmLabel: "Confirm", onConfirm: () => {} })
+
   async function savePref(key: keyof NotificationPrefs, value: boolean) {
     const next = { ...prefs, [key]: value }
     setPrefs(next)
@@ -416,16 +423,24 @@ export function SourcingAlertsClient({
     }
   }
 
-  async function deleteAlert(id: string) {
-    if (!confirm("Delete this alert?")) return
-    try {
-      const res = await fetch(`/api/sourcing-alerts/${id}`, { method: "DELETE" })
-      if (!res.ok) throw new Error()
-      setAlerts((prev) => prev.filter((a) => a.id !== id))
-      toast.success("Alert deleted")
-    } catch {
-      toast.error("Failed to delete alert")
-    }
+  function deleteAlert(id: string) {
+    setConfirmDialog({
+      open: true,
+      title: "Delete this alert?",
+      description: "This sourcing alert will be permanently removed. You will no longer receive notifications for this criteria.",
+      variant: "destructive",
+      confirmLabel: "Delete alert",
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/sourcing-alerts/${id}`, { method: "DELETE" })
+          if (!res.ok) throw new Error()
+          setAlerts((prev) => prev.filter((a) => a.id !== id))
+          toast.success("Alert deleted")
+        } catch {
+          toast.error("Failed to delete alert")
+        }
+      },
+    })
   }
 
   async function toggleAlert(alert: SourcingAlert) {
@@ -555,13 +570,13 @@ export function SourcingAlertsClient({
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Alert</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Radius</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Price</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Beds</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                <tr>
+                  <th className="table-header text-left">Alert</th>
+                  <th className="table-header text-left">Radius</th>
+                  <th className="table-header text-left">Price</th>
+                  <th className="table-header text-left">Beds</th>
+                  <th className="table-header text-left">Type</th>
+                  <th className="table-header text-left">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -587,6 +602,16 @@ export function SourcingAlertsClient({
           onSaved={handleSaved}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((d) => ({ ...d, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        variant={confirmDialog.variant}
+        confirmLabel={confirmDialog.confirmLabel}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </div>
   )
 }

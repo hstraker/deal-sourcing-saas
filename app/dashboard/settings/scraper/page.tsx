@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/tooltip"
 import { toast } from "sonner"
 import { PageHeader } from "@/components/ui/page-header"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 // Pre-configured UK locations (mirrored from lib/scrapers/constants.ts)
 // isPriority = gets a boosted location score in the deal scoring algorithm (SA, CF, NP, LL)
@@ -152,6 +153,7 @@ export default function ScraperSettingsPage() {
   const [locationSearch, setLocationSearch] = useState("")
   const [isFixingPostcodes, setIsFixingPostcodes] = useState(false)
   const [isDryRunning, setIsDryRunning] = useState(false)
+  const [showPostcodeConfirm, setShowPostcodeConfirm] = useState(false)
   const [postcodeFixResult, setPostcodeFixResult] = useState<{
     totalProcessed: number
     totalCorrected: number
@@ -241,9 +243,6 @@ export default function ScraperSettingsPage() {
   )
 
   const runPostcodeFix = async (dryRun: boolean) => {
-    if (!dryRun && !confirm("This will update postcodes for all scraped properties and vendor leads with missing or incorrect postcodes. Continue?")) {
-      return
-    }
     if (dryRun) setIsDryRunning(true)
     else setIsFixingPostcodes(true)
     setPostcodeFixResult(null)
@@ -849,7 +848,7 @@ export default function ScraperSettingsPage() {
               <Button
                 className="btn-primary"
                 size="sm"
-                onClick={() => runPostcodeFix(false)}
+                onClick={() => setShowPostcodeConfirm(true)}
                 disabled={isDryRunning || isFixingPostcodes}
               >
                 {isFixingPostcodes ? (
@@ -863,6 +862,16 @@ export default function ScraperSettingsPage() {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={showPostcodeConfirm}
+        onOpenChange={setShowPostcodeConfirm}
+        variant="warning"
+        title="Update Postcodes"
+        description="This will update postcodes for all scraped properties and vendor leads with missing or incorrect postcodes."
+        confirmLabel="Update"
+        onConfirm={() => runPostcodeFix(false)}
+      />
     </div>
   )
 }
