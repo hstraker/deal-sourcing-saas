@@ -724,7 +724,7 @@ function NeedsActionBanner({ leads, onNavigate }: { leads: VendorLead[]; onNavig
                 onClick={() => {
                   if (item.action === "Make Offer" || item.action === "Send Offer") onNavigate("offer-analysis")
                   else if (item.action === "Complete Setup") onNavigate("offer-analysis")
-                  else router.push(`/dashboard/vendors/${item.leadId}`)
+                  else router.push(`/dashboard/vendors/${item.leadId}/contact`)
                 }}
                 className="shrink-0 rounded-md bg-white border border-amber-300 px-2.5 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
               >
