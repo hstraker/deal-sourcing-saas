@@ -25,7 +25,7 @@ const nextConfig = {
   // Allow Cloudflare Tunnel domain for development
   // This allows cross-origin requests to /_next/* resources from the tunnel domain
   allowedDevOrigins: [
-    'https://app.habbits.co.uk',
+    'app.habbits.co.uk',
   ],
 }
 

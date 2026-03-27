@@ -665,6 +665,7 @@ function getNeedsActionItems(leads: VendorLead[]): NeedsActionItem[] {
 }
 
 function NeedsActionBanner({ leads, onNavigate }: { leads: VendorLead[]; onNavigate: (tab: TabId) => void }) {
+  const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
   const items = getNeedsActionItems(leads)
   if (items.length === 0) return null
@@ -723,7 +724,7 @@ function NeedsActionBanner({ leads, onNavigate }: { leads: VendorLead[]; onNavig
                 onClick={() => {
                   if (item.action === "Make Offer" || item.action === "Send Offer") onNavigate("offer-analysis")
                   else if (item.action === "Complete Setup") onNavigate("offer-analysis")
-                  else onNavigate("map-view")
+                  else router.push(`/dashboard/vendors/${item.leadId}`)
                 }}
                 className="shrink-0 rounded-md bg-white border border-amber-300 px-2.5 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
               >
