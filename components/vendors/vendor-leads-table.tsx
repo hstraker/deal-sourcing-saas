@@ -654,7 +654,33 @@ function getNeedsActionItems(leads: VendorLead[]): NeedsActionItem[] {
       now - new Date(lead.createdAt).getTime() > fourteenDays
     ) {
       const days = Math.floor((now - new Date(lead.createdAt).getTime()) / (1000 * 60 * 60 * 24))
-      items.push({ leadId: lead.id, vendorName: lead.vendorName, address, reason: `Stale ${days}d — no progression`, action: "Review", urgency: "low" })
+      let reason = `Stale ${days}d — no progression`
+      if (stage === "NEW_LEAD") {
+        if (!lead.latestCheckedAt) {
+          reason = `New lead ${days}d old — no portal check run yet. Run portal check to qualify`
+        } else if (lead.latestCheckRisk === "clear" && lead.validationPassed === null) {
+          reason = `Portal check clear ${days}d ago — validation not started. Run validation next`
+        } else if (lead.validationPassed === false) {
+          reason = `Validation failed ${days}d ago — review failure reasons and decide to retry or close`
+        } else {
+          reason = `New lead ${days}d with no contact made — call vendor to qualify the property`
+        }
+      } else if (stage === "AI_CONVERSATION") {
+        reason = `AI conversation started ${days}d ago — no response from vendor. Follow up manually`
+      } else if (stage === "DEAL_VALIDATION") {
+        if (lead.validationPassed === null) {
+          reason = `In validation ${days}d — portal check and valuation not yet completed`
+        } else if (lead.validationPassed === false) {
+          reason = `Validation failed ${days}d ago — review failure reasons${lead.bmvScore ? ` (BMV: ${Number(lead.bmvScore).toFixed(1)}%)` : ""}. Decide to renegotiate or close`
+        } else {
+          reason = `Validation passed ${days}d ago — still no offer made. Make offer or close the lead`
+        }
+      } else if (stage === "OFFER_MADE") {
+        reason = `Offer made ${days}d ago — no vendor response. Chase vendor or withdraw offer`
+      } else if (stage === "PAPERWORK_SENT") {
+        reason = `Paperwork sent ${days}d ago — not returned. Chase vendor and solicitor to progress`
+      }
+      items.push({ leadId: lead.id, vendorName: lead.vendorName, address, reason, action: "Review", urgency: "low" })
     }
   }
 
@@ -2145,11 +2171,9 @@ export function VendorLeadsTable() {
       )}
 
       {detailModal && (
-        <VendorLeadDetailModal
+        <PropertyDetailsModal
           lead={detailModal.lead}
-          open={true}
-          onOpenChange={(open) => { if (!open) setDetailModal(null) }}
-          onUpdate={() => window.location.reload()}
+          onClose={() => setDetailModal(null)}
           alertReason={detailModal.reason}
           alertUrgency={detailModal.urgency}
         />

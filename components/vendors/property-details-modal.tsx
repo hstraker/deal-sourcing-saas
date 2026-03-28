@@ -1,10 +1,11 @@
 "use client"
 
 import React from "react"
-import { X } from "lucide-react"
+import { X, Clock, AlertTriangle, AlertCircle, Bell } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type { VendorLead } from "./vendor-leads-table"
 
 // ── Helpers (local — no external dependency) ──────────────────────────────────
@@ -135,9 +136,13 @@ function StrategyCard({
 export function PropertyDetailsModal({
   lead,
   onClose,
+  alertReason,
+  alertUrgency = "low",
 }: {
   lead: VendorLead
   onClose: () => void
+  alertReason?: string
+  alertUrgency?: "high" | "medium" | "low"
 }) {
   const asking = toNum(lead.askingPrice)
   const marketVal = toNum(lead.estimatedMarketValue)
@@ -207,6 +212,43 @@ export function PropertyDetailsModal({
             LEFT PANEL — dark, financial summary
         ═══════════════════════════════════════════════ */}
         <div className="flex w-[260px] shrink-0 flex-col gap-5 overflow-y-auto bg-[#1e293b] p-5 text-white">
+          {/* Alert banner — only shown when opened from Needs Attention */}
+          {alertReason && (
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className={cn(
+                    "flex items-start gap-2 rounded-lg px-3 py-2.5 cursor-help",
+                    alertUrgency === "high" ? "bg-red-500/20 border border-red-500/40"
+                      : alertUrgency === "medium" ? "bg-amber-500/20 border border-amber-500/40"
+                      : "bg-orange-500/15 border border-orange-400/30"
+                  )}>
+                    {alertUrgency === "high"
+                      ? <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-red-400" />
+                      : alertUrgency === "medium"
+                      ? <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-400" />
+                      : <Clock className="h-3.5 w-3.5 shrink-0 mt-0.5 text-orange-400" />
+                    }
+                    <div>
+                      <p className={cn("text-[10px] font-bold uppercase tracking-wider",
+                        alertUrgency === "high" ? "text-red-400" : alertUrgency === "medium" ? "text-amber-400" : "text-orange-400"
+                      )}>
+                        {alertUrgency === "high" ? "Action Required" : alertUrgency === "medium" ? "Needs Attention" : "Stale Lead"}
+                      </p>
+                      <p className="text-[11px] text-slate-300 leading-snug mt-0.5">{alertReason}</p>
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-[220px] text-xs">
+                  <div className="flex items-start gap-1.5">
+                    <Bell className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-400" />
+                    <span>{alertReason}</span>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+
           {/* Address */}
           <div>
             <p className="text-sm font-bold leading-snug text-slate-100">
