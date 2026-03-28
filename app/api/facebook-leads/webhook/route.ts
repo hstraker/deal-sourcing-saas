@@ -46,7 +46,11 @@ export async function POST(request: NextRequest) {
     console.log("📩 [Facebook Webhook] Received lead submission")
 
     const body = await request.json()
-    const leadData: FacebookLeadData = body
+
+    // Facebook sends leads wrapped in: entry[0].changes[0].value
+    // Direct / simulator posts send the lead object at the top level
+    const leadData: FacebookLeadData =
+      body?.entry?.[0]?.changes?.[0]?.value ?? body
 
     // Test-mode fields (set by simulators)
     const isTest: boolean = body.isTest === true
