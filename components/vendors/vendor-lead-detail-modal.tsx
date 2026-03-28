@@ -60,6 +60,9 @@ import {
   Bath,
   Maximize2,
   Minimize2,
+  Bell,
+  AlertCircle,
+  Clock as ClockIcon,
 } from "lucide-react"
 import { PipelineStage } from "@prisma/client"
 import { cn } from "@/lib/utils"
@@ -166,6 +169,8 @@ interface VendorLeadDetailModalProps {
   onOpenChange: (open: boolean) => void
   onUpdate?: () => void
   initialTab?: "details" | "comparables" | "activity" | "portal-check"
+  alertReason?: string
+  alertUrgency?: "high" | "medium" | "low"
 }
 
 const formatDate = (date: Date | null) => {
@@ -369,6 +374,8 @@ export function VendorLeadDetailModal({
   onOpenChange,
   onUpdate,
   initialTab,
+  alertReason,
+  alertUrgency = "low",
 }: VendorLeadDetailModalProps) {
   const [manualMessage, setManualMessage] = useState("")
   const [sendingMessage, setSendingMessage] = useState(false)
@@ -899,7 +906,7 @@ export function VendorLeadDetailModal({
           <DialogHeader className="pb-2 border-b pr-16">
             {/* ── Row 1: stage pill + action buttons ──────────────────────────── */}
             <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Badge className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-[#2563EB]/10 text-[#2563EB] border-0">
                   {currentLead.pipelineStage.replace(/_/g, " ")}
                 </Badge>
@@ -909,6 +916,39 @@ export function VendorLeadDetailModal({
                     Deal Created
                   </Badge>
                 ) : null}
+                {alertReason && (
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge
+                          className={cn(
+                            "text-[11px] font-medium px-2.5 py-0.5 rounded-full border inline-flex items-center gap-1 cursor-help",
+                            alertUrgency === "high"
+                              ? "bg-red-50 text-red-700 border-red-200"
+                              : alertUrgency === "medium"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : "bg-orange-50 text-orange-600 border-orange-200"
+                          )}
+                        >
+                          {alertUrgency === "high" ? (
+                            <AlertCircle className="h-3 w-3 shrink-0" />
+                          ) : alertUrgency === "medium" ? (
+                            <AlertTriangle className="h-3 w-3 shrink-0" />
+                          ) : (
+                            <ClockIcon className="h-3 w-3 shrink-0" />
+                          )}
+                          {alertUrgency === "high" ? "Action Required" : alertUrgency === "medium" ? "Needs Attention" : "Stale Lead"}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-[260px] text-xs">
+                        <div className="flex items-start gap-1.5">
+                          <Bell className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-400" />
+                          <span>{alertReason}</span>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
               </div>
 
               <div className="flex items-center gap-1.5">

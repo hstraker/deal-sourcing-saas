@@ -59,6 +59,7 @@ import { PortalCheckModal } from "./portal-check-modal"
 import { ValidationModal } from "./validation-modal"
 import { ComparableModal } from "./comparable-modal"
 import { OfferAnalysisModal } from "./offer-analysis-modal"
+import { VendorLeadDetailModal } from "./vendor-lead-detail-modal"
 import {
   Tooltip,
   TooltipContent,
@@ -664,7 +665,7 @@ function getNeedsActionItems(leads: VendorLead[]): NeedsActionItem[] {
   })
 }
 
-function NeedsActionBanner({ leads, onNavigate }: { leads: VendorLead[]; onNavigate: (tab: TabId) => void }) {
+function NeedsActionBanner({ leads, onNavigate, onOpenDetail }: { leads: VendorLead[]; onNavigate: (tab: TabId) => void; onOpenDetail: (lead: VendorLead, reason: string, urgency: "high" | "medium" | "low") => void }) {
   const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
   const items = getNeedsActionItems(leads)
@@ -720,16 +721,27 @@ function NeedsActionBanner({ leads, onNavigate }: { leads: VendorLead[]; onNavig
                   <p className="truncate text-[11px] text-amber-700">{item.reason}</p>
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  if (item.action === "Make Offer" || item.action === "Send Offer") onNavigate("offer-analysis")
-                  else if (item.action === "Complete Setup") onNavigate("offer-analysis")
-                  else router.push(`/dashboard/vendors/${item.leadId}/contact`)
-                }}
-                className="shrink-0 rounded-md bg-white border border-amber-300 px-2.5 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
-              >
-                {item.action} →
-              </button>
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => {
+                        const lead = leads.find((l) => l.id === item.leadId)
+                        if (!lead) return
+                        if (item.action === "Make Offer" || item.action === "Send Offer") onNavigate("offer-analysis")
+                        else if (item.action === "Complete Setup") onNavigate("offer-analysis")
+                        else onOpenDetail(lead, item.reason, item.urgency)
+                      }}
+                      className="shrink-0 rounded-md bg-white border border-amber-300 px-2.5 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
+                    >
+                      {item.action} →
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left" className="max-w-[220px] text-xs">
+                    {item.reason}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           ))}
         </div>
@@ -1602,6 +1614,7 @@ export function VendorLeadsTable() {
   const [activeTab, setActiveTab] = useState<TabId>("map-view")
   const [mapLead, setMapLead] = useState<VendorLead | null>(null)
   const [checkingIds, setCheckingIds] = useState<Set<string>>(new Set())
+  const [detailModal, setDetailModal] = useState<{ lead: VendorLead; reason: string; urgency: "high" | "medium" | "low" } | null>(null)
   const [propertyDetailsModalLead, setPropertyDetailsModalLead] = useState<VendorLead | null>(null)
   const [portalCheckModalLead, setPortalCheckModalLead] = useState<VendorLead | null>(null)
   const [validationModalLead, setValidationModalLead] = useState<VendorLead | null>(null)
@@ -1907,7 +1920,7 @@ export function VendorLeadsTable() {
     <TooltipProvider>
       <div className="flex flex-col gap-0">
       {/* Needs-Action Banner */}
-      <NeedsActionBanner leads={leads} onNavigate={setActiveTab} />
+      <NeedsActionBanner leads={leads} onNavigate={setActiveTab} onOpenDetail={(lead, reason, urgency) => setDetailModal({ lead, reason, urgency })} />
 
       {/* KPI Bar */}
       <div className="mb-4">
@@ -2129,6 +2142,17 @@ export function VendorLeadsTable() {
       {/* Offer Analysis Modal */}
       {offerModalLead && (
         <OfferAnalysisModal lead={offerModalLead} onClose={() => setOfferModalLead(null)} />
+      )}
+
+      {detailModal && (
+        <VendorLeadDetailModal
+          lead={detailModal.lead}
+          open={true}
+          onOpenChange={(open) => { if (!open) setDetailModal(null) }}
+          onUpdate={() => window.location.reload()}
+          alertReason={detailModal.reason}
+          alertUrgency={detailModal.urgency}
+        />
       )}
 
       <ConfirmDialog
