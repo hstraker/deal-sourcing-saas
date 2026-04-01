@@ -396,7 +396,7 @@ async function RecentReservations() {
       createdAt: true,
       proofOfFundsVerified: true,
       deal: { select: { address: true } },
-      investor: { select: { user: { select: { name: true, email: true } } } },
+      investor: { select: { user: { select: { firstName: true, lastName: true, email: true } } } },
     },
   })
 
@@ -440,8 +440,9 @@ async function RecentReservations() {
   return (
     <div className="divide-y divide-[var(--ds-border)]">
       {reservations.map((r) => {
-        const investorName =
-          r.investor?.user?.name || r.investor?.user?.email || "Unknown investor"
+        const investorName = r.investor?.user
+          ? `${r.investor.user.firstName ?? ""} ${r.investor.user.lastName ?? ""}`.trim() || r.investor.user.email
+          : "Unknown investor"
         return (
           <div key={r.id} className="flex items-center justify-between px-5 py-3">
             <div className="min-w-0">
