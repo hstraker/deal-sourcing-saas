@@ -17,7 +17,6 @@ import {
   DocumentDuplicateIcon,
   ChartPieIcon,
   BookmarkSquareIcon,
-  PresentationChartLineIcon,
   SwatchIcon,
   ArchiveBoxIcon,
   MegaphoneIcon,
@@ -62,8 +61,7 @@ export const NAV_SECTIONS = [
       {
         label: "Overview",
         items: [
-          { label: "Statistics", href: "/dashboard/statistics", icon: PresentationChartLineIcon, tooltip: "Key performance metrics: conversion rates, deal quality, pipeline health" },
-          { label: "Dashboard",  href: "/dashboard",            icon: ChartPieIcon,              tooltip: "Key performance metrics: conversion rates, deal quality, pipeline health" },
+          { label: "Dashboard", href: "/dashboard", icon: ChartPieIcon, tooltip: "Pipeline health, deal quality, investor reservations, and recent activity" },
         ],
       },
       {

@@ -14,14 +14,13 @@ import {
 import { format, parseISO } from "date-fns"
 
 interface KpiData {
-  totalDeals: number
-  dealsRecent: number
-  totalVendors: number
-  vendorsWithOffers: number
-  vendorsAccepted: number
-  totalReservations: number
-  reservationsWithProof: number
-  vendorConversionRate: string
+  activeLeads: number
+  leadsThisMonth: number
+  dealsReady: number
+  activeReservations: number
+  totalLeads: number
+  acceptedLeads: number
+  conversionRate: string
 }
 
 export function DashboardKpiStrip() {
@@ -47,9 +46,9 @@ export function DashboardKpiStrip() {
     fetchKpis(newFrom)
   }
 
-  const subLabelDeals = from
-    ? `+${data?.dealsRecent ?? 0} since ${format(parseISO(from), "d MMM")}`
-    : `+${data?.dealsRecent ?? 0} this month`
+  const newLeadsLabel = from
+    ? `+${data?.leadsThisMonth ?? 0} since ${format(parseISO(from), "d MMM")}`
+    : `+${data?.leadsThisMonth ?? 0} this month`
 
   return (
     <TooltipProvider>
@@ -62,19 +61,19 @@ export function DashboardKpiStrip() {
           <MetricsDateFilter onChange={handleFilterChange} />
         </div>
 
-        {/* Loading / data */}
         {loading || !data ? (
           <div className="flex min-h-[100px] items-center justify-center p-6">
             <Loader2 className="h-5 w-5 animate-spin text-gray-300" />
           </div>
         ) : (
           <div className="grid grid-cols-2 divide-x divide-[var(--ds-border)] md:grid-cols-4">
+            {/* Active Leads */}
             <div className="p-6">
               <div className="flex items-start justify-between gap-2">
                 <KpiCard
-                  label="Total Deals"
-                  value={String(data.totalDeals)}
-                  subLabel={subLabelDeals}
+                  label="Active Leads"
+                  value={String(data.activeLeads)}
+                  subLabel={newLeadsLabel}
                   valueType="highlight"
                 />
                 <Tooltip>
@@ -82,38 +81,41 @@ export function DashboardKpiStrip() {
                     <Info className="mt-1 h-3.5 w-3.5 shrink-0 cursor-help text-gray-300" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs text-xs">
-                    All deals across all stages: new, review, in-progress, ready, listed,
-                    reserved, sold, archived.
+                    Vendor leads currently in the pipeline, excluding dead leads and rejected
+                    offers.
                   </TooltipContent>
                 </Tooltip>
               </div>
             </div>
 
+            {/* Deals for Investors */}
             <div className="p-6">
               <div className="flex items-start justify-between gap-2">
                 <KpiCard
-                  label="Active Vendors"
-                  value={String(data.totalVendors)}
-                  subLabel={`${data.vendorsWithOffers} with offers`}
-                  valueType="neutral"
+                  label="Deals for Investors"
+                  value={String(data.dealsReady)}
+                  subLabel="ready &amp; listed"
+                  valueType={data.dealsReady > 0 ? "positive" : "neutral"}
                 />
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Info className="mt-1 h-3.5 w-3.5 shrink-0 cursor-help text-gray-300" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs text-xs">
-                    Total vendors from all sources. Each represents a potential property seller.
+                    Deals with status &ldquo;Ready&rdquo; or &ldquo;Listed&rdquo; — available for
+                    investor reservations right now.
                   </TooltipContent>
                 </Tooltip>
               </div>
             </div>
 
+            {/* Active Reservations */}
             <div className="p-6">
               <div className="flex items-start justify-between gap-2">
                 <KpiCard
                   label="Reservations"
-                  value={String(data.totalReservations)}
-                  subLabel={`${data.reservationsWithProof} verified`}
+                  value={String(data.activeReservations)}
+                  subLabel="active (not cancelled)"
                   valueType="neutral"
                 />
                 <Tooltip>
@@ -121,27 +123,28 @@ export function DashboardKpiStrip() {
                     <Info className="mt-1 h-3.5 w-3.5 shrink-0 cursor-help text-gray-300" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs text-xs">
-                    All investor reservations across all deals and statuses.
+                    All investor reservations that have not been cancelled, across all stages.
                   </TooltipContent>
                 </Tooltip>
               </div>
             </div>
 
+            {/* Lead Conversion Rate */}
             <div className="p-6">
               <div className="flex items-start justify-between gap-2">
                 <KpiCard
-                  label="Conversion Rate"
-                  value={`${data.vendorConversionRate}%`}
-                  subLabel={`${data.vendorsAccepted} accepted`}
-                  valueType={Number(data.vendorConversionRate) > 0 ? "positive" : "neutral"}
+                  label="Lead → Offer Accepted"
+                  value={`${data.conversionRate}%`}
+                  subLabel={`${data.acceptedLeads} accepted`}
+                  valueType={Number(data.conversionRate) > 0 ? "positive" : "neutral"}
                 />
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Info className="mt-1 h-3.5 w-3.5 shrink-0 cursor-help text-gray-300" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs text-xs">
-                    (Accepted Offers / Total Vendors) × 100. Shows % of vendors who accepted
-                    offers.
+                    (Leads with accepted offer / Total leads) × 100. Shows the percentage of vendor
+                    leads that result in an accepted offer.
                   </TooltipContent>
                 </Tooltip>
               </div>

@@ -12,6 +12,9 @@ function parseFromDate(url: string): Date | undefined {
   return isNaN(d.getTime()) ? undefined : d
 }
 
+// Stages that represent a dead/lost lead — excluded from "active" count
+const DEAD_STAGES = ["DEAD_LEAD", "OFFER_REJECTED"] as const
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -20,43 +23,55 @@ export async function GET(request: NextRequest) {
     const fromDate = parseFromDate(request.url)
     const df = fromDate ? { createdAt: { gte: fromDate } } : {}
 
-    // "dealsRecent" = deals created since fromDate (or since start of current month if no filter)
     const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
     const recentSince = fromDate ?? monthStart
 
     const [
-      totalDeals,
-      dealsRecent,
-      totalVendors,
-      vendorsWithOffers,
-      vendorsAccepted,
-      totalReservations,
-      reservationsWithProof,
+      activeLeads,
+      leadsThisMonth,
+      dealsReady,
+      activeReservations,
+      totalLeads,
+      acceptedLeads,
     ] = await Promise.all([
-      prisma.deal.count({ where: { ...df } }),
-      prisma.deal.count({ where: { createdAt: { gte: recentSince } } }),
-      prisma.vendor.count({ where: { ...df } }),
-      prisma.vendor.count({ where: { status: { in: ["offer_made", "negotiating"] }, ...df } }),
-      prisma.vendor.count({ where: { status: "offer_accepted", ...df } }),
-      prisma.investorReservation.count({ where: { ...df } }),
-      prisma.investorReservation.count({ where: { proofOfFundsVerified: true, ...df } }),
+      // Active leads = not dead/rejected
+      prisma.vendorLead.count({
+        where: { pipelineStage: { notIn: DEAD_STAGES }, ...df },
+      }),
+      // New leads since the selected date (or start of month)
+      prisma.vendorLead.count({
+        where: { createdAt: { gte: recentSince } },
+      }),
+      // Deals currently listed or ready for investors
+      prisma.deal.count({
+        where: { status: { in: ["ready", "listed"] } },
+      }),
+      // Reservations that haven't been cancelled
+      prisma.investorReservation.count({
+        where: { status: { not: "cancelled" } },
+      }),
+      // Total leads (for conversion rate denominator)
+      prisma.vendorLead.count({ where: { ...df } }),
+      // Leads where offer was accepted
+      prisma.vendorLead.count({
+        where: { pipelineStage: "OFFER_ACCEPTED", ...df },
+      }),
     ])
 
-    const vendorConversionRate =
-      totalVendors > 0 ? ((vendorsAccepted / totalVendors) * 100).toFixed(1) : "0"
+    const conversionRate =
+      totalLeads > 0 ? ((acceptedLeads / totalLeads) * 100).toFixed(1) : "0"
 
     return NextResponse.json({
-      totalDeals,
-      dealsRecent,
-      totalVendors,
-      vendorsWithOffers,
-      vendorsAccepted,
-      totalReservations,
-      reservationsWithProof,
-      vendorConversionRate,
+      activeLeads,
+      leadsThisMonth,
+      dealsReady,
+      activeReservations,
+      totalLeads,
+      acceptedLeads,
+      conversionRate,
     })
   } catch (error) {
-    console.error("Error fetching KPIs:", error)
+    console.error("Error fetching KPIs", error)
     return NextResponse.json({ error: "Failed to fetch KPIs" }, { status: 500 })
   }
 }
