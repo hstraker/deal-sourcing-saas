@@ -201,21 +201,36 @@ export function VendorComparablesTab({
       {propertyPostcode && (!data || data.comparables.length === 0) && (
         <div className="ds-card overflow-hidden">
           <div className="px-5 py-4 border-b border-[var(--ds-border)]">
-            <h3 className="text-sm font-semibold text-gray-900">No Comparables Yet</h3>
+            <h3 className="text-sm font-semibold text-gray-900">
+              {data?.lastFetchedAt ? "No Comparables Found" : "No Comparables Yet"}
+            </h3>
             <p className="text-xs text-gray-400 mt-0.5">
-              Click &quot;Fetch Comparables&quot; to find similar properties that have sold in the area
+              {data?.lastFetchedAt
+                ? `Searched on ${new Date(data.lastFetchedAt).toLocaleString("en-GB")} — no sold prices found in this area`
+                : `Click "Fetch Comparables" to find similar properties that have sold in the area`}
             </p>
           </div>
           <div className="p-5">
-            <div className="space-y-2 text-sm text-gray-400">
-              <p>Comparables help you:</p>
-              <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>Estimate accurate market value</li>
-                <li>Calculate BMV (Below Market Value) percentage</li>
-                <li>Assess rental yield potential</li>
-                <li>Make data-driven offers</li>
-              </ul>
-            </div>
+            {data?.lastFetchedAt ? (
+              <div className="space-y-2 text-sm text-gray-400">
+                <p>This can happen when:</p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>The postcode is in a low-transaction area</li>
+                  <li>The search radius is too small (try Settings → increase radius)</li>
+                  <li>The property type or bedroom filter is too strict</li>
+                </ul>
+              </div>
+            ) : (
+              <div className="space-y-2 text-sm text-gray-400">
+                <p>Comparables help you:</p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Estimate accurate market value</li>
+                  <li>Calculate BMV (Below Market Value) percentage</li>
+                  <li>Assess rental yield potential</li>
+                  <li>Make data-driven offers</li>
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       )}

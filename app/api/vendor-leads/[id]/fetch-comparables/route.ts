@@ -219,6 +219,13 @@ export async function POST(
     console.log(`[Fetch Comparables] Average rental yield: ${detailedResult.avgRentalYield ? detailedResult.avgRentalYield + '%' : 'N/A'}`)
 
     if (detailedResult.comparables.length === 0) {
+      // Still record that we attempted a fetch so the UI can show "tried but found nothing"
+      // rather than "never fetched". Non-blocking — don't fail the response if this errors.
+      await prisma.vendorLead.update({
+        where: { id: params.id },
+        data: { comparablesFetchedAt: new Date(), comparablesCount: 0 },
+      }).catch(() => {})
+
       return NextResponse.json({
         success: true,
         data: {
@@ -228,6 +235,7 @@ export async function POST(
           avgRentalYield: null,
           confidence: "LOW",
           creditsUsed: detailedResult.creditsUsed,
+          lastFetchedAt: new Date().toISOString(),
           message: `No comparable properties found within ${searchRadius} miles. Try increasing the search radius.`,
         },
       })

@@ -1690,15 +1690,22 @@ export function VendorLeadsTable() {
     setCheckingIds((prev) => new Set(prev).add(leadId))
     try {
       const res = await fetch(endpoint, { method: "POST" })
+      const body = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || `Request failed (${res.status})`)
+        throw new Error(body.error || `Request failed (${res.status})`)
       }
-      // If this was a comparables fetch, bust the modal cache so it reloads fresh data
       if (endpoint.includes("fetch-comparables")) {
+        // Always bust the modal cache so it reloads fresh data on next open
         invalidateComparablesCache(leadId)
+        const count: number = body?.data?.count ?? 0
+        if (count === 0) {
+          toast.warning("No comparable sales found for this postcode — try increasing the search radius in Settings")
+        } else {
+          toast.success(`${count} comparable${count !== 1 ? "s" : ""} fetched`)
+        }
+      } else {
+        toast.success(successMsg)
       }
-      toast.success(successMsg)
       await fetchLeads()
     } catch (err: any) {
       toast.error(err.message || "Action failed")
