@@ -16,6 +16,11 @@ import { toast } from "sonner"
 // Keyed by vendorLeadId. Data is shown instantly on re-open without a loading spinner.
 const _comparablesCache = new Map<string, ComparablesData>()
 
+/** Call this after a table-level fetch so the modal re-loads fresh data on next open */
+export function invalidateComparablesCache(vendorLeadId: string) {
+  _comparablesCache.delete(vendorLeadId)
+}
+
 interface VendorComparablesTabProps {
   vendorLeadId: string
   askingPrice?: number

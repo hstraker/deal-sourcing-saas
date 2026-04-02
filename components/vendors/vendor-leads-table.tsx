@@ -58,6 +58,7 @@ import { MapModal } from "./map-modal"
 import { PortalCheckModal } from "./portal-check-modal"
 import { ValidationModal } from "./validation-modal"
 import { ComparableModal } from "./comparable-modal"
+import { invalidateComparablesCache } from "./vendor-comparables-tab"
 import { OfferAnalysisModal } from "./offer-analysis-modal"
 import { VendorLeadDetailModal } from "./vendor-lead-detail-modal"
 import {
@@ -1692,6 +1693,10 @@ export function VendorLeadsTable() {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.error || `Request failed (${res.status})`)
+      }
+      // If this was a comparables fetch, bust the modal cache so it reloads fresh data
+      if (endpoint.includes("fetch-comparables")) {
+        invalidateComparablesCache(leadId)
       }
       toast.success(successMsg)
       await fetchLeads()
