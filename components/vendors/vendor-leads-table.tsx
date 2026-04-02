@@ -1051,6 +1051,7 @@ function MapViewRow({ lead, onRowClick, onView, onArchive, onDelete, isSelected,
       <AddressCell address={lead.propertyAddress} />
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
       <Td>{lead.propertyType ?? "—"}</Td>
+      <Td><span className="font-mono text-xs">{lead.bedrooms !== null ? `${lead.bedrooms}bd` : "—"}</span></Td>
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><BmvCell value={lead.bmvScore} /></Td>
       <Td><span className="font-mono text-xs">{fmtCurrency(lead.askingPrice)}</span></Td>
@@ -1143,6 +1144,7 @@ function PortalCheckRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
       <Td>{lead.propertyType ?? "—"}</Td>
+      <Td><span className="font-mono text-xs">{lead.bedrooms !== null ? `${lead.bedrooms}bd` : "—"}</span></Td>
       <Td><ActiveListingBadge lead={lead} /></Td>
       <Td className="w-28 px-2">{ownerDisplay ?? <span className="text-gray-400">—</span>}</Td>
       <Td className="w-24 px-2">{ownership?.tenure ?? lead.tenureType ?? "—"}</Td>
@@ -1179,6 +1181,7 @@ function ValidationRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
       <Td>{lead.propertyType ?? "—"}</Td>
+      <Td><span className="font-mono text-xs">{lead.bedrooms !== null ? `${lead.bedrooms}bd` : "—"}</span></Td>
       <Td><span className="font-mono text-xs">{fmtCurrency(lead.askingPrice)}</span></Td>
       <Td><span className="font-mono text-xs">{lead.localAverageRent ? `${fmtCurrency(lead.localAverageRent)}/mo` : "—"}</span></Td>
       <Td><span className="font-mono text-xs">{lead.estimatedMonthlyRent ? `${fmtCurrency(lead.estimatedMonthlyRent)}/mo` : "—"}</span></Td>
@@ -1227,6 +1230,7 @@ function ComparableRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
       <Td>{lead.propertyType ?? "—"}</Td>
+      <Td><span className="font-mono text-xs">{lead.bedrooms !== null ? `${lead.bedrooms}bd` : "—"}</span></Td>
       <Td>
         <Tip text={hasComps ? `${lead.comparablesCount} comparable properties found` : "No comparables fetched yet — data may be unreliable"}>
           <span className={cn("font-mono text-xs font-semibold cursor-default", hasComps ? "text-gray-900" : "text-amber-600")}>
@@ -1303,7 +1307,9 @@ function OfferAnalysisRow({ lead, onRowClick, onView, onArchive, onDelete, onChe
       <VendorNameCell lead={lead} />
       <AddressCell address={lead.propertyAddress} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
+      <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
       <Td>{lead.propertyType ?? "—"}</Td>
+      <Td><span className="font-mono text-xs">{lead.bedrooms !== null ? `${lead.bedrooms}bd` : "—"}</span></Td>
       <Td><span className="font-mono text-xs">{fmtCurrency(lead.askingPrice)}</span></Td>
       <Td>
         <span className={cn("font-mono text-xs", lead.offerPercentage ? "text-gray-900 font-semibold" : "text-gray-400")}>
@@ -1420,7 +1426,7 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
         {selectAllTh}
         {stickyLeft}
         {addressHeader}
-        <Th>Postcode</Th><Th>Type</Th><Th>Status</Th>
+        <Th>Postcode</Th><Th>Type</Th><Th><Tip text="Number of bedrooms">Beds</Tip></Th><Th>Status</Th>
         <Th><Tip text="Below Market Value %. Green ≥15% = excellent, Amber 10-14% = good, Red <10% = weak">BMV %</Tip></Th>
         <Th><Tip text="Vendor's advertised price — your negotiation starting point">Asking Price</Tip></Th>
         <Th><Tip text="AI-scored vendor motivation (1-10). Higher = more urgency to sell">Motivation</Tip></Th>
@@ -1454,7 +1460,7 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
         {stickyLeft}
         {addressHeader}
         <Th><Tip text="Risk level from portal checks: Clear = not listed, Caution = some flags, Red Flag = listed or problematic">Overall Risk</Tip></Th>
-        <Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
+        <Th>Status</Th><Th>Postcode</Th><Th>Type</Th><Th><Tip text="Number of bedrooms">Beds</Tip></Th>
         <Th><Tip text="Whether property is currently listed for sale on portals. Listed = vendor may be testing market">Active Listing</Tip></Th>
         <Th className="w-28"><Tip text="Current registered owner from Land Registry. Different from vendor = may be agent or investor">Owner</Tip></Th>
         <Th className="w-24"><Tip text="Freehold (you own land forever) vs Leasehold (you own for X years). Avoid leases <80 years remaining">Tenure</Tip></Th>
@@ -1470,7 +1476,7 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
         {stickyLeft}
         {addressHeader}
         <Th><Tip text="Pass = lead meets minimum BMV & yield thresholds. Fail = does not meet criteria">Validation</Tip></Th>
-        <Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
+        <Th>Status</Th><Th>Postcode</Th><Th>Type</Th><Th><Tip text="Number of bedrooms">Beds</Tip></Th>
         <Th>Asking Price</Th>
         <Th><Tip text="Average monthly rent for similar properties in this postcode from market data">Market Rent</Tip></Th>
         <Th><Tip text="AI-estimated monthly rent based on comparable rentals">Est. Rent</Tip></Th>
@@ -1488,7 +1494,7 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
         {selectAllTh}
         {stickyLeft}
         {addressHeader}
-        <Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
+        <Th>Status</Th><Th>Postcode</Th><Th>Type</Th><Th><Tip text="Number of bedrooms">Beds</Tip></Th>
         <Th><Tip text="Number of comparable sold properties found. <3 = low confidence, 6+ = high confidence"># Comps</Tip></Th>
         <Th>Asking Price</Th>
         <Th><Tip text="Average sale price of comparable properties (0.5mi radius, last 6 months). = Market Value estimate">AVG Sale Price</Tip></Th>
@@ -1505,7 +1511,7 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
         {selectAllTh}
         {stickyLeft}
         {addressHeader}
-        <Th>Status</Th><Th>Type</Th>
+        <Th>Status</Th><Th>Postcode</Th><Th>Type</Th><Th><Tip text="Number of bedrooms">Beds</Tip></Th>
         <Th>Asking Price</Th>
         <Th><Tip text="Your offer as % of asking price. Typical opening: 85-88%. Shows room left in negotiation">Offer %</Tip></Th>
         <Th><Tip text="Your opening offer. Deliberate 12-15% below asking to leave room for negotiation">Initial Offer</Tip></Th>
