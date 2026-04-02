@@ -233,9 +233,13 @@ function getPortalMatchCount(lead: VendorLead, portal: PortalSource): number {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function Tip({ text, children }: { text: string; children: React.ReactNode }) {
+  // TooltipTrigger with asChild requires a React element — not a plain string.
+  // Wrap raw strings in a <span> so Radix's Slot can clone them correctly.
+  // Without this, string children render as null and column headers go blank.
+  const trigger = typeof children === "string" ? <span>{children}</span> : children
   return (
     <Tooltip>
-      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipTrigger asChild>{trigger}</TooltipTrigger>
       <TooltipContent className="max-w-[220px] text-center text-[11px] leading-snug">
         {text}
       </TooltipContent>
