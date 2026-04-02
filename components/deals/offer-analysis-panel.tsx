@@ -796,12 +796,15 @@ function AssumptionsPanel({
   defaults,
   onRecalculate,
   loading,
+  hasDefaultedRefurb = false,
 }: {
   defaults: AssumptionsState
   onRecalculate: (overrides: AssumptionsState) => void
   loading: boolean
+  hasDefaultedRefurb?: boolean
 }) {
-  const [editMode, setEditMode] = useState(false)
+  // Start expanded when refurb was defaulted so the user sees the estimated value
+  const [editMode, setEditMode] = useState(hasDefaultedRefurb)
   const [vals, setVals] = useState<AssumptionsState>(defaults)
 
   const set = (key: keyof AssumptionsState) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -879,12 +882,17 @@ function AssumptionsPanel({
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Refurb (£)</Label>
+              <Label className="text-xs flex items-center gap-1.5">
+                Refurb (£)
+                {hasDefaultedRefurb && (
+                  <span className="text-amber-600 font-normal">(estimated — update with actual)</span>
+                )}
+              </Label>
               <Input
                 value={vals.totalRefurbishment}
                 onChange={set("totalRefurbishment")}
                 placeholder="e.g. 28000"
-                className="h-8 text-sm bg-white"
+                className={`h-8 text-sm bg-white ${hasDefaultedRefurb ? "border-amber-300 ring-1 ring-amber-200" : ""}`}
               />
             </div>
             <div className="space-y-1">
@@ -952,12 +960,17 @@ export function OfferAnalysisPanel({
   const [error, setError] = useState<string | null>(null)
   const [calculatedAt, setCalculatedAt] = useState<string | null>(null)
 
-  const hasRequiredInputs = !!(gdv && estimatedRent && totalRefurbishment)
+  // If refurb cost not yet set, estimate 10% of GDV as a standard light-refurb default
+  const refurbDefault = !totalRefurbishment && gdv ? Math.round(gdv * 0.1) : null
+  const effectiveRefurb = totalRefurbishment ?? refurbDefault
+  const hasDefaultedRefurb = !totalRefurbishment && !!refurbDefault
+
+  const hasRequiredInputs = !!(gdv && estimatedRent && effectiveRefurb)
 
   const assumptionDefaults: AssumptionsState = {
     gdv: gdv ? String(Math.round(gdv)) : "",
     estimatedRent: estimatedRent ? String(Math.round(estimatedRent)) : "",
-    totalRefurbishment: totalRefurbishment ? String(Math.round(totalRefurbishment)) : "",
+    totalRefurbishment: effectiveRefurb ? String(effectiveRefurb) : "",
     bridgingMonths: "12",
     mortgageRate: "4.59",
   }
@@ -1042,6 +1055,15 @@ export function OfferAnalysisPanel({
     [dealId, askingPrice, gdv, estimatedRent, totalRefurbishment]
   )
 
+  // Auto-calculate on mount for vendor lead mode (no dealId) when we have enough data
+  useEffect(() => {
+    if (dealId) return // deal mode loads from cache separately
+    if (hasRequiredInputs) {
+      void runCalculation(assumptionDefaults)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // intentionally run once on mount only
+
   // Load cached result on mount (deal mode only)
   useEffect(() => {
     if (!dealId) return
@@ -1117,8 +1139,8 @@ export function OfferAnalysisPanel({
           </div>
         </div>
 
-        <div className="p-5 space-y-5">          {/* Missing inputs warning */}
-          {!hasRequiredInputs && !result && (
+        <div className="p-5 space-y-5">          {/* Missing inputs warning — only shown when GDV or rent are absent (refurb has a default) */}
+          {(!gdv || !estimatedRent) && !result && (
             <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-sm">
               <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
               <div className="text-amber-800">
@@ -1127,7 +1149,6 @@ export function OfferAnalysisPanel({
                   {[
                     !gdv && "GDV / market value",
                     !estimatedRent && "monthly rent",
-                    !totalRefurbishment && "estimated refurb cost",
                   ]
                     .filter(Boolean)
                     .join(", ")}{" "}
@@ -1358,12 +1379,13 @@ export function OfferAnalysisPanel({
             </>
           )}
 
-          {/* Assumptions override (always visible if we have base inputs) */}
+          {/* Assumptions override — always visible when we have base inputs */}
           {hasRequiredInputs && (
             <AssumptionsPanel
               defaults={assumptionDefaults}
               onRecalculate={runCalculation}
               loading={loading}
+              hasDefaultedRefurb={hasDefaultedRefurb}
             />
           )}
         </div>
