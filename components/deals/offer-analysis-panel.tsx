@@ -45,6 +45,8 @@ interface OfferAnalysisPanelProps {
   onOfferSent?: (offerPrice: number, strategy: "flip" | "hold", round: number) => void
   onReject?: () => void
   readOnly?: boolean
+  /** Fired every time a calculation completes — lets the modal left panel stay in sync */
+  onResult?: (result: OfferCalculationResult) => void
   // Vendor contact — passed through to the negotiation ladder's Send Offer dialog
   vendorLeadId?: string | null
   vendorName?: string | null
@@ -803,8 +805,8 @@ function AssumptionsPanel({
   loading: boolean
   hasDefaultedRefurb?: boolean
 }) {
-  // Start expanded when refurb was defaulted so the user sees the estimated value
-  const [editMode, setEditMode] = useState(hasDefaultedRefurb)
+  // Always start expanded — sourcer needs to see and adjust numbers without an extra click
+  const [editMode, setEditMode] = useState(true)
   const [vals, setVals] = useState<AssumptionsState>(defaults)
 
   const set = (key: keyof AssumptionsState) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -950,6 +952,7 @@ export function OfferAnalysisPanel({
   vendorName,
   vendorEmail,
   vendorPhone,
+  onResult,
 }: OfferAnalysisPanelProps) {
   const [result, setResult] = useState<OfferCalculationResult | null>(null)
   const [ladders, setLadders] = useState<{
@@ -1046,6 +1049,7 @@ export function OfferAnalysisPanel({
         setResult(calcResult)
         setLadders(generateBothLadders(calcResult))
         setCalculatedAt(new Date().toLocaleTimeString())
+        onResult?.(calcResult)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error")
       } finally {
@@ -1083,6 +1087,7 @@ export function OfferAnalysisPanel({
                 ? new Date(data.offerCalculatedAt).toLocaleDateString()
                 : null
             )
+            onResult?.(data.offerCalculation)
           }
         }
       } catch {
@@ -1303,7 +1308,7 @@ export function OfferAnalysisPanel({
                 <CollapsibleSection
                   title="Negotiation Ladder"
                   summary={`Opening → Counter 1 → Counter 2 → Best & Final`}
-                  defaultOpen={false}
+                  defaultOpen={true}
                 >
                   <NegotiationLadderPanel
                     flipLadder={ladders.flip}
