@@ -368,8 +368,17 @@ function computeMetrics(purchasePrice: number, inp: ResolvedInputs): MetricsAtPr
 
   const cashSurplusOrMoneyLeftIn = mortgageLoanAmount - totalEquityInvested
   const grossYield = inp.gdv > 0 ? (inp.estimatedRent * 12) / inp.gdv : 0
+
+  // BRRR case: mortgage loan exceeds all equity invested → full capital recycled (or surplus).
+  // ROCE = annualCashflow / |moneyLeftIn| is undefined / infinite when moneyLeftIn = 0.
+  // Dividing by the cash SURPLUS gives a meaninglessly low number and causes the goal-seek
+  // to reject a perfectly valid BRRR deal.  Use a sentinel (99.9) to represent "passes any
+  // ROCE threshold" without breaking JSON serialisation or UI display.
+  const isBRRR = cashSurplusOrMoneyLeftIn >= 0
   const roce = annualCashflow / Math.max(Math.abs(cashSurplusOrMoneyLeftIn), 1)
-  const roceMultiple = inp.mortgageRate > 0 ? roce / inp.mortgageRate : 0
+  const roceMultiple = isBRRR
+    ? 99.9   // Full BRRR — all capital recycled; effectively infinite return on £0 left in
+    : (inp.mortgageRate > 0 ? roce / inp.mortgageRate : 0)
   const moneyLeftIn = Math.max(cashSurplusOrMoneyLeftIn * -1, 0)
 
   return {

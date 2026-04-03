@@ -66,6 +66,11 @@ function pct(n: number): string {
   return `${(n * 100).toFixed(1)}%`
 }
 
+/** Display ROCE — sentinel 99.9 means full BRRR (all capital recycled), show "∞ BRRR" */
+function fmtROCE(multiple: number): string {
+  return multiple >= 99 ? "∞ (BRRR)" : `${multiple.toFixed(2)}×`
+}
+
 function ViabilityDots({ score }: { score: number }) {
   const filled = Math.round((score / 100) * 5)
   return (
@@ -157,7 +162,9 @@ function StrategyRationale({ result }: { result: OfferCalculationResult }) {
     ? `⚠ Returns work at ${fmt(hold.maxPurchasePrice)} but needs a ${pct(hold.discountPercent)} discount from asking — above the 20% threshold. Achievable with a motivated seller.`
     : !mortgage.icrPass
     ? `✗ Rent (${fmt(inputs.estimatedRent)}/mo) is below the lender ICR minimum (${fmt(mortgage.requiredRentForICR)}/mo). A BTL mortgage won't be approved.`
-    : `✗ ROCE at asking is ${atAsking.roceMultiple.toFixed(2)}× — below the 2.5× target. Not enough cashflow relative to capital invested.`
+    : atAsking.roceMultiple >= 99
+    ? `✗ Full BRRR appears possible at asking price but cashflow is negative — check rent estimate.`
+    : `✗ ROCE at asking is ${fmtROCE(atAsking.roceMultiple)} — below the 2.5× target. Not enough cashflow relative to capital invested.`
 
   const recLabel =
     recommendedStrategy === "both"
@@ -283,9 +290,13 @@ function StrategyRationale({ result }: { result: OfferCalculationResult }) {
             {/* ROCE — ceiling-price value if has price, else asking-price as diagnostic */}
             <MetricRow
               label="ROCE multiple"
-              value={`${(holdHasPrice ? hold.roceMultiple : atAsking.roceMultiple).toFixed(2)}×`}
+              value={fmtROCE(holdHasPrice ? hold.roceMultiple : atAsking.roceMultiple)}
               pass={(holdHasPrice ? hold.roceMultiple : atAsking.roceMultiple) >= 2.5}
-              hint={holdHasPrice ? "target ≥2.5×" : "at asking · target ≥2.5×"}
+              hint={
+                (holdHasPrice ? hold.roceMultiple : atAsking.roceMultiple) >= 99
+                  ? "full BRRR — capital recycled"
+                  : holdHasPrice ? "target ≥2.5×" : "at asking · target ≥2.5×"
+              }
             />
             {/* Net cashflow is price-independent (mortgage based on GDV) */}
             <MetricRow
@@ -429,7 +440,10 @@ function StrategyColumn({
                     <div className="flex justify-between">
                       <span className="text-gray-400">ROCE multiple</span>
                       <span className={atAsking.roceMultiple >= 2.5 ? "text-green-600 font-medium" : "text-red-500 font-medium"}>
-                        {atAsking.roceMultiple.toFixed(2)}× <span className="text-gray-400 font-normal">(need 2.5×)</span>
+                        {fmtROCE(atAsking.roceMultiple)}{" "}
+                        <span className="text-gray-400 font-normal">
+                          {atAsking.roceMultiple >= 99 ? "(full BRRR)" : "(need 2.5×)"}
+                        </span>
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -530,7 +544,7 @@ function StrategyColumn({
                   : "text-red-500"
               }`}
             >
-              {data.roceMultiple.toFixed(2)}x
+              {fmtROCE(data.roceMultiple)}
             </span>
           </div>
           <div className="flex justify-between items-center">
