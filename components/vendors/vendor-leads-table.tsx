@@ -923,44 +923,55 @@ function Td({ children, className }: { children: React.ReactNode; className?: st
 // Shared sticky cells
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Sticky-left vendor name cell (with pin icon + processing indicator) */
-function VendorNameCell({ lead }: { lead: VendorLead }) {
+/**
+ * Merged sticky-left cell — Vendor Name stacked above Property Address.
+ * Replaces the old two-column (VendorName + Address) layout, saving ~180px
+ * of fixed width and giving more room for the scrollable data columns.
+ */
+function VendorAddressCell({ lead, isSelected }: { lead: VendorLead; isSelected?: boolean }) {
   return (
-    <td className="sticky left-[40px] z-10 w-[180px] bg-white px-4 py-[11px] group-hover:bg-[#f3f4f6]">
-      <div className="flex items-center gap-2">
-        <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-gray-300" />
-        <div className="min-w-0">
+    <td
+      className={cn(
+        "sticky left-[40px] z-10 w-[220px] min-w-[220px] border-r border-gray-200 px-3 py-[9px]",
+        isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]"
+      )}
+    >
+      <div className="flex items-start gap-2 min-w-0">
+        <MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-gray-300" />
+        <div className="min-w-0 flex-1">
+
+          {/* Vendor name + processing spinner */}
           <div className="flex items-center gap-1.5">
-            <span className="truncate text-sm font-medium text-gray-900">{lead.vendorName}</span>
+            <span className="truncate text-sm font-semibold text-gray-900 leading-tight">
+              {lead.vendorName}
+            </span>
             <ProcessingIcon status={lead.processingStatus} />
           </div>
-          {lead.validationPassed === true && !lead.offerAmount && (lead.pipelineStage === "DEAL_VALIDATION" || lead.pipelineStage === "AI_CONVERSATION") && (
-            <span className="mt-0.5 inline-flex items-center gap-0.5 rounded-full bg-green-100 px-1.5 py-0.5 text-xs font-semibold text-green-700 whitespace-nowrap">
-              <CheckCircle2 className="h-3 w-3" /> Ready to Offer
+
+          {/* Property address */}
+          <p className="truncate text-xs text-gray-500 mt-0.5 leading-tight">
+            {lead.propertyAddress ?? <span className="text-gray-300 italic">No address</span>}
+          </p>
+
+          {/* Status badges (shown when relevant) */}
+          {lead.validationPassed === true && !lead.offerAmount &&
+            (lead.pipelineStage === "DEAL_VALIDATION" || lead.pipelineStage === "AI_CONVERSATION") && (
+            <span className="mt-1 inline-flex items-center gap-0.5 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700 whitespace-nowrap">
+              <CheckCircle2 className="h-2.5 w-2.5" /> Ready to Offer
             </span>
           )}
           {lead.pipelineStage === "OFFER_ACCEPTED" && (
-            <span className="mt-0.5 inline-flex items-center gap-0.5 rounded-full bg-green-200 px-1.5 py-0.5 text-xs font-semibold text-green-800 whitespace-nowrap">
-              <CheckCircle2 className="h-3 w-3" /> Accepted
+            <span className="mt-1 inline-flex items-center gap-0.5 rounded-full bg-green-200 px-1.5 py-0.5 text-[10px] font-semibold text-green-800 whitespace-nowrap">
+              <CheckCircle2 className="h-2.5 w-2.5" /> Accepted
             </span>
           )}
           {lead.pipelineStage === "OFFER_REJECTED" && (
-            <span className="mt-0.5 inline-flex items-center gap-0.5 rounded-full bg-red-100 px-1.5 py-0.5 text-xs font-semibold text-red-700 whitespace-nowrap">
-              <XCircle className="h-3 w-3" /> Rejected
+            <span className="mt-1 inline-flex items-center gap-0.5 rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700 whitespace-nowrap">
+              <XCircle className="h-2.5 w-2.5" /> Rejected
             </span>
           )}
-          <p className="truncate text-xs text-gray-400">{lead.vendorPhone}</p>
         </div>
       </div>
-    </td>
-  )
-}
-
-/** Sticky second-left address cell */
-function AddressCell({ address }: { address: string | null }) {
-  return (
-    <td className="sticky left-[220px] z-10 max-w-[200px] border-r border-gray-200 bg-white px-4 py-[11px] group-hover:bg-[#f3f4f6]">
-      <p className="truncate text-sm text-gray-700">{address ?? <span className="text-gray-400">—</span>}</p>
     </td>
   )
 }
@@ -1066,8 +1077,7 @@ function MapViewRow({ lead, onRowClick, onView, onDelete, isSelected, onToggleSe
       <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
-      <VendorNameCell lead={lead} />
-      <AddressCell address={lead.propertyAddress} />
+      <VendorAddressCell lead={lead} isSelected={isSelected} />
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
       <Td>{lead.propertyType ?? "—"}</Td>
       <Td><span className="font-mono text-xs">{lead.bedrooms !== null ? `${lead.bedrooms}bd` : "—"}</span></Td>
@@ -1178,8 +1188,7 @@ function PropertyDetailsRow({ lead, onRowClick, onView, onArchive, onDelete, isS
       <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
-      <VendorNameCell lead={lead} />
-      <AddressCell address={lead.propertyAddress} />
+      <VendorAddressCell lead={lead} isSelected={isSelected} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
       <Td>{lead.propertyType ?? "—"}</Td>
@@ -1221,8 +1230,7 @@ function PortalCheckRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck
       <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
-      <VendorNameCell lead={lead} />
-      <AddressCell address={lead.propertyAddress} />
+      <VendorAddressCell lead={lead} isSelected={isSelected} />
       <Td><OverallRiskBadge risk={lead.latestCheckRisk} /></Td>
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
@@ -1258,8 +1266,7 @@ function ValidationRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
       <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
-      <VendorNameCell lead={lead} />
-      <AddressCell address={lead.propertyAddress} />
+      <VendorAddressCell lead={lead} isSelected={isSelected} />
       <Td><ValidationResultBadge passed={lead.validationPassed} /></Td>
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
@@ -1308,8 +1315,7 @@ function ComparableRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
       <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
-      <VendorNameCell lead={lead} />
-      <AddressCell address={lead.propertyAddress} />
+      <VendorAddressCell lead={lead} isSelected={isSelected} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
       <Td>{lead.propertyType ?? "—"}</Td>
@@ -1387,8 +1393,7 @@ function OfferAnalysisRow({ lead, onRowClick, onView, onArchive, onDelete, onChe
       <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
-      <VendorNameCell lead={lead} />
-      <AddressCell address={lead.propertyAddress} />
+      <VendorAddressCell lead={lead} isSelected={isSelected} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
       <Td>{lead.propertyType ?? "—"}</Td>
@@ -1499,16 +1504,18 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
       />
     </th>
   )
-  const stickyLeft = <Th className="sticky left-[40px] z-10 w-[180px] bg-[#f9fafb]">Vendor Name</Th>
-  const addressHeader = <Th className="sticky left-[220px] z-10 border-r border-gray-200 bg-[#f9fafb]">Address</Th>
+  const vendorAddressHeader = (
+    <Th className="sticky left-[40px] z-10 w-[220px] min-w-[220px] border-r border-gray-200 bg-[#f9fafb]">
+      Vendor / Property
+    </Th>
+  )
   const stickyRight = <Th className="sticky right-0 z-10 bg-[#f9fafb]">Actions</Th>
 
   switch (tab) {
     case "map-view":
       return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
         {selectAllTh}
-        {stickyLeft}
-        {addressHeader}
+        {vendorAddressHeader}
         <Th>Postcode</Th><Th>Type</Th><Th><Tip text="Number of bedrooms">Beds</Tip></Th><Th>Status</Th>
         <Th><Tip text="Below Market Value %. Green ≥15% = excellent, Amber 10-14% = good, Red <10% = weak">BMV %</Tip></Th>
         <Th><Tip text="Vendor's advertised price — your negotiation starting point">Asking Price</Tip></Th>
@@ -1521,8 +1528,7 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
     case "property-details":
       return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
         {selectAllTh}
-        {stickyLeft}
-        {addressHeader}
+        {vendorAddressHeader}
         <Th>Status</Th><Th>Postcode</Th><Th>Type</Th>
         <Th><Tip text="Freehold (you own land forever) vs Leasehold (you own for X years). Avoid leases <80 years remaining">Tenure</Tip></Th>
         <Th><Tip text="Property size in sq ft. Used for price-per-sqft comparison">Sq Ft</Tip></Th>
@@ -1540,8 +1546,7 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
     case "portal-check":
       return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
         {selectAllTh}
-        {stickyLeft}
-        {addressHeader}
+        {vendorAddressHeader}
         <Th><Tip text="Risk level from portal checks: Clear = not listed, Caution = some flags, Red Flag = listed or problematic">Overall Risk</Tip></Th>
         <Th>Status</Th><Th>Postcode</Th><Th>Type</Th><Th><Tip text="Number of bedrooms">Beds</Tip></Th>
         <Th><Tip text="Whether property is currently listed for sale on portals. Listed = vendor may be testing market">Active Listing</Tip></Th>
@@ -1556,8 +1561,7 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
     case "validation":
       return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
         {selectAllTh}
-        {stickyLeft}
-        {addressHeader}
+        {vendorAddressHeader}
         <Th><Tip text="Pass = lead meets minimum BMV & yield thresholds. Fail = does not meet criteria">Validation</Tip></Th>
         <Th>Status</Th><Th>Postcode</Th><Th>Type</Th><Th><Tip text="Number of bedrooms">Beds</Tip></Th>
         <Th>Asking Price</Th>
@@ -1575,8 +1579,7 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
     case "comparable":
       return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
         {selectAllTh}
-        {stickyLeft}
-        {addressHeader}
+        {vendorAddressHeader}
         <Th>Status</Th><Th>Postcode</Th><Th>Type</Th><Th><Tip text="Number of bedrooms">Beds</Tip></Th>
         <Th><Tip text="Number of comparable sold properties found. <3 = low confidence, 6+ = high confidence"># Comps</Tip></Th>
         <Th>Asking Price</Th>
@@ -1592,8 +1595,7 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
     case "offer-analysis":
       return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
         {selectAllTh}
-        {stickyLeft}
-        {addressHeader}
+        {vendorAddressHeader}
         <Th>Status</Th><Th>Postcode</Th><Th>Type</Th><Th><Tip text="Number of bedrooms">Beds</Tip></Th>
         <Th>Asking Price</Th>
         <Th><Tip text="Your offer as % of asking price. Typical opening: 85-88%. Shows room left in negotiation">Offer %</Tip></Th>
