@@ -1,25 +1,38 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Loader2, RefreshCw, Home, Settings, TrendingUp, Clock } from "lucide-react"
 import {
-  ComparablesGrid,
+  Loader2,
+  RefreshCw,
+  Home,
+  Settings,
+  TrendingUp,
+  Clock,
+  ChevronRight,
+  ExternalLink,
+} from "lucide-react"
+import {
   ComparablesAnalysis,
   ComparablesSettings,
   type ComparableProperty,
 } from "@/components/comparables"
+import { cn } from "@/lib/utils"
+import { formatCurrency } from "@/lib/format"
+import { format } from "date-fns"
 import { toast } from "sonner"
 
-// Module-level cache — survives component unmount/remount (e.g. modal close/reopen)
-// Keyed by vendorLeadId. Data is shown instantly on re-open without a loading spinner.
+// ─── module-level cache ───────────────────────────────────────────────────────
+// Survives component unmount/remount (e.g. modal close/reopen).
+// Data is shown instantly on re-open without a loading spinner.
 const _comparablesCache = new Map<string, ComparablesData>()
 
 /** Call this after a table-level fetch so the modal re-loads fresh data on next open */
 export function invalidateComparablesCache(vendorLeadId: string) {
   _comparablesCache.delete(vendorLeadId)
 }
+
+// ─── types ────────────────────────────────────────────────────────────────────
 
 interface VendorComparablesTabProps {
   vendorLeadId: string
@@ -39,6 +52,278 @@ interface ComparablesData {
   lastFetchedAt: string | null
 }
 
+// ─── accordion helpers ────────────────────────────────────────────────────────
+
+function getYieldColour(y: number | undefined | null): string {
+  if (y == null) return "text-gray-400"
+  if (y >= 6) return "text-green-600"
+  if (y >= 4) return "text-amber-500"
+  return "text-red-500"
+}
+
+function getConfidenceInfo(c: number | undefined): { label: string; colour: string } {
+  if (c == null) return { label: "Unknown", colour: "text-gray-400" }
+  if (c >= 0.8)  return { label: "High",    colour: "text-green-600" }
+  if (c >= 0.6)  return { label: "Medium",  colour: "text-amber-500" }
+  return              { label: "Low",       colour: "text-red-500"   }
+}
+
+function AccRow({
+  label,
+  value,
+  valueClass,
+}: {
+  label: string
+  value: React.ReactNode
+  valueClass?: string
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="shrink-0 text-[10px] text-gray-400">{label}</span>
+      <span className={cn("text-right text-[10px] font-semibold text-gray-800", valueClass)}>
+        {value}
+      </span>
+    </div>
+  )
+}
+
+// ─── accordion component ──────────────────────────────────────────────────────
+
+function ComparablesAccordion({ comparables }: { comparables: ComparableProperty[] }) {
+  const [openId, setOpenId] = useState<string | null>(null)
+
+  const sorted = useMemo(
+    () => [...comparables].sort((a, b) => (a.distance ?? 999) - (b.distance ?? 999)),
+    [comparables]
+  )
+
+  // Column template: #  address  sale-price  distance  yield  rent/mo  chevron
+  const cols = "1.5rem 1fr 7.5rem 4.5rem 4.5rem 6.5rem 1.5rem"
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-gray-200 text-sm">
+
+      {/* Header */}
+      <div
+        className="grid items-center gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400"
+        style={{ gridTemplateColumns: cols }}
+      >
+        <span>#</span>
+        <span>Address</span>
+        <span className="text-right">Sale Price</span>
+        <span className="text-right">Dist</span>
+        <span className="text-right">Yield</span>
+        <span className="text-right">Rent/mo</span>
+        <span />
+      </div>
+
+      {/* Rows */}
+      <div className="divide-y divide-gray-100">
+        {sorted.map((comp, i) => {
+          const isOpen     = openId === comp.id
+          const yieldClass = getYieldColour(comp.rentalYield)
+          const conf       = getConfidenceInfo(comp.confidence)
+
+          const saleDateFmt = (() => {
+            try { return format(new Date(comp.saleDate), "d MMM yyyy") }
+            catch { return comp.saleDate }
+          })()
+
+          return (
+            <div key={comp.id}>
+
+              {/* ── Collapsed row ── */}
+              <button
+                type="button"
+                className={cn(
+                  "grid w-full items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-gray-50 focus:outline-none",
+                  isOpen && "bg-blue-50/60"
+                )}
+                style={{ gridTemplateColumns: cols }}
+                onClick={() => setOpenId(isOpen ? null : comp.id)}
+              >
+                {/* # */}
+                <span className="text-xs font-medium text-gray-400">{i + 1}</span>
+
+                {/* Address */}
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold leading-tight text-gray-900">
+                    {comp.address}
+                  </p>
+                  {comp.postcode && (
+                    <p className="mt-0.5 font-mono text-[10px] leading-tight text-gray-400">
+                      {comp.postcode}
+                    </p>
+                  )}
+                </div>
+
+                {/* Sale price */}
+                <span className="text-right text-xs font-bold text-gray-900">
+                  {formatCurrency(comp.salePrice)}
+                </span>
+
+                {/* Distance */}
+                <span className="text-right text-xs text-gray-500">
+                  {comp.distance != null ? `${comp.distance.toFixed(2)} mi` : "—"}
+                </span>
+
+                {/* Yield */}
+                <span className={cn("text-right text-xs font-semibold", yieldClass)}>
+                  {comp.rentalYield != null ? `${comp.rentalYield.toFixed(1)}%` : "—"}
+                </span>
+
+                {/* Rent/mo */}
+                <span className="text-right text-xs text-gray-700">
+                  {comp.monthlyRent
+                    ? `£${Math.round(comp.monthlyRent).toLocaleString("en-GB")}/mo`
+                    : "—"}
+                </span>
+
+                {/* Chevron */}
+                <ChevronRight
+                  className={cn(
+                    "h-3.5 w-3.5 text-gray-300 transition-transform duration-200",
+                    isOpen && "rotate-90"
+                  )}
+                />
+              </button>
+
+              {/* ── Expanded panel ── */}
+              {isOpen && (
+                <div className="grid grid-cols-2 gap-4 border-t border-gray-100 bg-gray-50/80 px-4 py-4">
+
+                  {/* Property column */}
+                  <div className="space-y-1.5">
+                    <p className="mb-2 text-[9px] font-bold uppercase tracking-widest text-gray-400">
+                      Property
+                    </p>
+                    <AccRow label="Sold" value={saleDateFmt} />
+                    {comp.propertyType && (
+                      <AccRow label="Type" value={comp.propertyType} />
+                    )}
+                    {comp.bedrooms != null && comp.bedrooms > 0 && (
+                      <AccRow label="Bedrooms" value={comp.bedrooms} />
+                    )}
+                    {comp.bathrooms != null && comp.bathrooms > 0 && (
+                      <AccRow label="Bathrooms" value={comp.bathrooms} />
+                    )}
+                    {comp.squareFeet ? (
+                      <AccRow
+                        label="Sq Ft"
+                        value={`${comp.squareFeet.toLocaleString()} ft²`}
+                      />
+                    ) : null}
+                    {comp.pricePerSqft ? (
+                      <AccRow label="£/sqft" value={`£${comp.pricePerSqft}`} />
+                    ) : null}
+                    {comp.daysOnMarket != null && (
+                      <AccRow label="Days Listed" value={comp.daysOnMarket} />
+                    )}
+                    {comp.priceReductions != null && comp.priceReductions > 0 && (
+                      <AccRow
+                        label="Price Cuts"
+                        value={comp.priceReductions}
+                        valueClass="text-amber-500"
+                      />
+                    )}
+                    <AccRow
+                      label="Confidence"
+                      value={conf.label}
+                      valueClass={conf.colour}
+                    />
+                  </div>
+
+                  {/* Rental column */}
+                  <div className="space-y-1.5">
+                    <p className="mb-2 text-[9px] font-bold uppercase tracking-widest text-gray-400">
+                      Rental
+                    </p>
+
+                    {comp.monthlyRent ? (
+                      <>
+                        <AccRow
+                          label="Monthly Rent"
+                          value={`£${Math.round(comp.monthlyRent).toLocaleString("en-GB")}/mo`}
+                        />
+                        <AccRow
+                          label="Annual Rent"
+                          value={formatCurrency(comp.monthlyRent * 12)}
+                        />
+                        {comp.weeklyRent ? (
+                          <AccRow
+                            label="Weekly Rent"
+                            value={`£${Math.round(comp.weeklyRent)}/wk`}
+                          />
+                        ) : null}
+                      </>
+                    ) : (
+                      <p className="text-[10px] italic text-gray-400">
+                        No rental data for this postcode
+                      </p>
+                    )}
+
+                    {comp.rentalYield != null && (
+                      <AccRow
+                        label="Gross Yield"
+                        value={`${comp.rentalYield.toFixed(2)}%`}
+                        valueClass={yieldClass}
+                      />
+                    )}
+                    {comp.rentalYieldMin != null && comp.rentalYieldMax != null && (
+                      <AccRow
+                        label="Yield Range"
+                        value={`${comp.rentalYieldMin.toFixed(1)}%–${comp.rentalYieldMax.toFixed(1)}%`}
+                        valueClass="text-gray-500"
+                      />
+                    )}
+                    {comp.areaAverageRent ? (
+                      <AccRow
+                        label="Area Avg Rent"
+                        value={`£${Math.round(comp.areaAverageRent).toLocaleString("en-GB")}/mo`}
+                      />
+                    ) : null}
+
+                    {/* Portal links */}
+                    {(comp.listingUrl || comp.listingUrlSecondary) && (
+                      <div className="mt-1 flex gap-3 border-t border-gray-200 pt-2.5">
+                        {comp.listingUrl && (
+                          <a
+                            href={comp.listingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-[10px] font-medium text-blue-600 hover:text-blue-800"
+                          >
+                            Rightmove
+                            <ExternalLink className="h-2.5 w-2.5" />
+                          </a>
+                        )}
+                        {comp.listingUrlSecondary && (
+                          <a
+                            href={comp.listingUrlSecondary}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-[10px] font-medium text-blue-600 hover:text-blue-800"
+                          >
+                            Zoopla
+                            <ExternalLink className="h-2.5 w-2.5" />
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── main tab component ───────────────────────────────────────────────────────
+
 /**
  * VendorComparablesTab Component
  * Displays comparables for a specific vendor lead
@@ -49,7 +334,9 @@ export function VendorComparablesTab({
   propertyPostcode,
 }: VendorComparablesTabProps) {
   // Seed state from module cache so re-opens are instant (no spinner, no re-fetch)
-  const [data, setData] = useState<ComparablesData | null>(() => _comparablesCache.get(vendorLeadId) ?? null)
+  const [data, setData] = useState<ComparablesData | null>(
+    () => _comparablesCache.get(vendorLeadId) ?? null
+  )
   const [isLoading, setIsLoading] = useState(() => !_comparablesCache.has(vendorLeadId))
   const [isFetching, setIsFetching] = useState(false)
 
@@ -118,13 +405,14 @@ export function VendorComparablesTab({
 
   const isStale = (lastFetchedAt: string | null): boolean => {
     if (!lastFetchedAt) return true
-    const daysSince = (Date.now() - new Date(lastFetchedAt).getTime()) / (1000 * 60 * 60 * 24)
+    const daysSince =
+      (Date.now() - new Date(lastFetchedAt).getTime()) / (1000 * 60 * 60 * 24)
     return daysSince > 7
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-[400px] flex items-center justify-center">
+      <div className="flex min-h-[400px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
       </div>
     )
@@ -134,15 +422,16 @@ export function VendorComparablesTab({
 
   return (
     <div className="space-y-6">
+
       {/* Header with actions */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Comparable Properties</h3>
-          {data && data.lastFetchedAt && (
-            <p className="text-sm text-gray-400 mt-1 flex items-center gap-2">
+          {data?.lastFetchedAt && (
+            <p className="mt-1 flex items-center gap-2 text-sm text-gray-400">
               Last updated: {new Date(data.lastFetchedAt).toLocaleString("en-GB")}
               {dataIsStale && (
-                <span className="inline-flex items-center gap-1 text-xs text-amber-600 font-medium">
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600">
                   <Clock className="h-3 w-3" />
                   Stale — over 7 days old
                 </span>
@@ -154,7 +443,7 @@ export function VendorComparablesTab({
           <ComparablesSettings
             trigger={
               <Button variant="outline" size="sm">
-                <Settings className="h-4 w-4 mr-2" />
+                <Settings className="mr-2 h-4 w-4" />
                 Settings
               </Button>
             }
@@ -163,20 +452,30 @@ export function VendorComparablesTab({
             }}
           />
           <Button
-            variant={dataIsStale || !(data && data.comparables.length > 0) ? "default" : "outline"}
+            variant={
+              dataIsStale || !(data && data.comparables.length > 0)
+                ? "default"
+                : "outline"
+            }
             size="sm"
-            onClick={() => handleFetchNew(!!(data && data.comparables.length > 0))}
+            onClick={() =>
+              handleFetchNew(!!(data && data.comparables.length > 0))
+            }
             disabled={isFetching || !propertyPostcode}
           >
             {isFetching ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Fetching...
               </>
             ) : (
               <>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                {data && data.comparables.length > 0 ? (dataIsStale ? "Refresh (Stale)" : "Refresh") : "Fetch Comparables"}
+                <RefreshCw className="mr-2 h-4 w-4" />
+                {data && data.comparables.length > 0
+                  ? dataIsStale
+                    ? "Refresh (Stale)"
+                    : "Refresh"
+                  : "Fetch Comparables"}
               </>
             )}
           </Button>
@@ -186,7 +485,8 @@ export function VendorComparablesTab({
       {/* No postcode warning */}
       {!propertyPostcode && (
         <div className="ds-card overflow-hidden">
-          <div className="p-5 flex items-center gap-3 py-6">            <Home className="h-5 w-5 text-gray-400" />
+          <div className="flex items-center gap-3 p-5 py-6">
+            <Home className="h-5 w-5 text-gray-400" />
             <div>
               <p className="font-medium">Property postcode required</p>
               <p className="text-sm text-gray-400">
@@ -200,11 +500,11 @@ export function VendorComparablesTab({
       {/* No comparables yet */}
       {propertyPostcode && (!data || data.comparables.length === 0) && (
         <div className="ds-card overflow-hidden">
-          <div className="px-5 py-4 border-b border-[var(--ds-border)]">
+          <div className="border-b border-[var(--ds-border)] px-5 py-4">
             <h3 className="text-sm font-semibold text-gray-900">
               {data?.lastFetchedAt ? "No Comparables Found" : "No Comparables Yet"}
             </h3>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="mt-0.5 text-xs text-gray-400">
               {data?.lastFetchedAt
                 ? `Searched on ${new Date(data.lastFetchedAt).toLocaleString("en-GB")} — no sold prices found in this area`
                 : `Click "Fetch Comparables" to find similar properties that have sold in the area`}
@@ -214,7 +514,7 @@ export function VendorComparablesTab({
             {data?.lastFetchedAt ? (
               <div className="space-y-2 text-sm text-gray-400">
                 <p>This can happen when:</p>
-                <ul className="list-disc list-inside space-y-1 ml-2">
+                <ul className="ml-2 list-inside list-disc space-y-1">
                   <li>The postcode is in a low-transaction area</li>
                   <li>The search radius is too small (try Settings → increase radius)</li>
                   <li>The property type or bedroom filter is too strict</li>
@@ -223,7 +523,7 @@ export function VendorComparablesTab({
             ) : (
               <div className="space-y-2 text-sm text-gray-400">
                 <p>Comparables help you:</p>
-                <ul className="list-disc list-inside space-y-1 ml-2">
+                <ul className="ml-2 list-inside list-disc space-y-1">
                   <li>Estimate accurate market value</li>
                   <li>Calculate BMV (Below Market Value) percentage</li>
                   <li>Assess rental yield potential</li>
@@ -238,19 +538,23 @@ export function VendorComparablesTab({
       {/* Comparables data */}
       {data && data.comparables.length > 0 && (
         <>
-          {/* Rental Data Status Info */}
+          {/* Rental data status banners */}
           {(() => {
-            const hasRentalData = data.comparables.some(c => c.monthlyRent)
-            const rentalDataCount = data.comparables.filter(c => c.monthlyRent).length
+            const hasRentalData   = data.comparables.some((c) => c.monthlyRent)
+            const rentalDataCount = data.comparables.filter((c) => c.monthlyRent).length
 
             if (!hasRentalData) {
               return (
-                <div className="ds-card overflow-hidden bg-yellow-50 border-yellow-200">                  <div className="p-5 py-4">                    <div className="flex items-start gap-3">
-                      <TrendingUp className="h-5 w-5 text-yellow-600 mt-0.5" />
+                <div className="ds-card overflow-hidden border-yellow-200 bg-yellow-50">
+                  <div className="p-5 py-4">
+                    <div className="flex items-start gap-3">
+                      <TrendingUp className="mt-0.5 h-5 w-5 text-yellow-600" />
                       <div>
                         <p className="font-semibold text-yellow-900">Rental Data Not Available</p>
-                        <p className="text-sm text-yellow-800 mt-1">
-                          These comparables were fetched before rental yield analysis was added. Click &quot;Refresh&quot; to fetch updated data with rental information for buy-to-let investment analysis.
+                        <p className="mt-1 text-sm text-yellow-800">
+                          These comparables were fetched before rental yield analysis was
+                          added. Click &quot;Refresh&quot; to fetch updated data with rental
+                          information for buy-to-let investment analysis.
                         </p>
                       </div>
                     </div>
@@ -259,12 +563,16 @@ export function VendorComparablesTab({
               )
             } else if (rentalDataCount < data.comparables.length) {
               return (
-                <div className="ds-card overflow-hidden bg-blue-50 border-blue-200">                  <div className="p-5 py-4">                    <div className="flex items-start gap-3">
-                      <TrendingUp className="h-5 w-5 text-blue-600 mt-0.5" />
+                <div className="ds-card overflow-hidden border-blue-200 bg-blue-50">
+                  <div className="p-5 py-4">
+                    <div className="flex items-start gap-3">
+                      <TrendingUp className="mt-0.5 h-5 w-5 text-blue-600" />
                       <div>
                         <p className="font-semibold text-blue-900">Partial Rental Data</p>
-                        <p className="text-sm text-blue-800 mt-1">
-                          {rentalDataCount} of {data.comparables.length} properties have rental data. Some postcodes may not have rental information available.
+                        <p className="mt-1 text-sm text-blue-800">
+                          {rentalDataCount} of {data.comparables.length} properties have
+                          rental data. Some postcodes may not have rental information
+                          available.
                         </p>
                       </div>
                     </div>
@@ -275,20 +583,23 @@ export function VendorComparablesTab({
             return null
           })()}
 
-          {/* Analysis Summary */}
+          {/* Analysis summary (includes bar chart) */}
           <ComparablesAnalysis
             comparables={data.comparables}
             askingPrice={askingPrice}
             showRentalData={true}
           />
 
-          {/* Comparables Grid */}
-          <ComparablesGrid
-            comparables={data.comparables}
-            showRentalData={true}
-            isLoading={false}
-            emptyMessage="No comparable properties found"
-          />
+          {/* Accordion list */}
+          <div>
+            <h4 className="mb-3 text-sm font-semibold text-gray-700">
+              {data.comparables.length} Comparable{data.comparables.length !== 1 ? "s" : ""} Found
+              <span className="ml-2 text-xs font-normal text-gray-400">
+                — sorted by distance, click a row to expand
+              </span>
+            </h4>
+            <ComparablesAccordion comparables={data.comparables} />
+          </div>
         </>
       )}
     </div>
