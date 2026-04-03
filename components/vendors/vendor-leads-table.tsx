@@ -1307,10 +1307,16 @@ function ComparableRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
   const annualRent = toNum(lead.estimatedAnnualRent)
   const price = toNum(lead.askingPrice)
   const avgPrice = toNum(lead.avgComparablePrice)
-  const grossYield = annualRent && price && price > 0 ? (annualRent / price) * 100 : null
+  // In the comparable tab, yield is calculated against market value (avg comparable price)
+  // so investors see: "if I pay market value, what yield do I get?" — more accurate than asking price
+  const yieldBase = avgPrice ?? price
+  const grossYield = annualRent && yieldBase && yieldBase > 0 ? (annualRent / yieldBase) * 100 : null
   const hasComps = (lead.comparablesCount ?? 0) > 0
   // vs Market: positive = asking below market (good for investor), negative = asking above market (bad)
   const vsMarket = hasComps && avgPrice && price ? ((avgPrice - price) / avgPrice) * 100 : null
+  // Use estimatedMonthlyRent (set by fetch-comparables) first; fall back to localAverageRent
+  // (set by calculate-bmv). Both represent the monthly rental income estimate.
+  const monthlyRent = toNum(lead.estimatedMonthlyRent) ?? toNum(lead.localAverageRent)
 
   return (
     <tr className={cn("group border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}>
@@ -1343,9 +1349,15 @@ function ComparableRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
           : <span className="font-mono text-xs text-gray-400">—</span>}
       </Td>
       <Td><BmvCell value={lead.bmvScore} /></Td>
-      <Td><span className="font-mono text-xs">{lead.localAverageRent ? `${fmtCurrency(lead.localAverageRent)}/mo` : "—"}</span></Td>
       <Td>
-        <Tip text="Annual rent ÷ market value. Green ≥6% = strong BTL, Amber ≥4% = acceptable, Red <4% = poor cashflow">
+        <Tip text="Estimated monthly rental income from comparable rentals in the area. Source: PropertyData comparable rental data.">
+          <span className="font-mono text-xs cursor-default">
+            {monthlyRent !== null ? `${fmtCurrency(monthlyRent)}/mo` : <span className="text-gray-400">—</span>}
+          </span>
+        </Tip>
+      </Td>
+      <Td>
+        <Tip text="Annual rent ÷ avg comparable sale price (market value). Green ≥6% = strong BTL, Amber ≥4% = acceptable, Red <4% = poor cashflow">
           <span className={cn("font-mono text-xs cursor-default", grossYield !== null && grossYield >= 6 ? "text-green-700 font-semibold" : grossYield !== null && grossYield >= 4 ? "text-amber-700" : "")}>{grossYield !== null ? fmtPercent(grossYield) : "—"}</span>
         </Tip>
       </Td>
@@ -1588,7 +1600,7 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
         <Th><Tip text="Average sale price of comparable properties (0.5mi radius, last 6 months). = Market Value estimate">AVG Sale Price</Tip></Th>
         <Th><Tip text="Asking price vs average comparable price. Negative % = asking above market (bad), Positive % = asking below market (good deal)">vs Market</Tip></Th>
         <Th><Tip text="Below Market Value %. Green ≥15% = excellent, Amber 10-14% = good, Red <10% = weak">BMV %</Tip></Th>
-        <Th><Tip text="Average monthly rent for similar properties in this postcode from market data">AVG Rental</Tip></Th>
+        <Th><Tip text="Est. monthly rental income from comparable rentals. Populated after Fetch Comparables or Run Validation.">AVG Rental</Tip></Th>
         <Th><Tip text="Annual rent ÷ market value. Green ≥6%, Amber ≥4%, Red <4%">Gross Yield %</Tip></Th>
         <Th><Tip text="When BMV was last calculated. Refresh if >14 days — comparable prices change">Last Updated</Tip></Th>
         {stickyRight}
