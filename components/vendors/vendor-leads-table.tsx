@@ -524,7 +524,7 @@ function UrgencyBadge({ level }: { level: string | null }) {
     return <span className="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">Moderate</span>
   if (level === "flexible")
     return <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">Flexible</span>
-  return <span className="text-gray-400 text-xs">—</span>
+  return <span className="font-mono text-xs text-gray-400">—</span>
 }
 
 function ValidationResultBadge({ passed }: { passed: boolean | null }) {
@@ -552,7 +552,7 @@ function EpcCombinedCell({ rating, score, inspectionDate }: {
   score: number | null
   inspectionDate: string | null
 }) {
-  if (!rating) return <span className="text-gray-400 text-xs">—</span>
+  if (!rating) return <span className="font-mono text-xs text-gray-400">—</span>
   const colourCls = EPC_COLOUR[rating.toUpperCase()] ?? "bg-gray-200 text-gray-700"
   const expiry = inspectionDate
     ? new Date(new Date(inspectionDate).getTime() + 10 * 365.25 * 24 * 60 * 60 * 1000)
@@ -589,13 +589,13 @@ function VendorResponseBadge({ stage }: { stage: PipelineStage }) {
     return <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Negotiating</span>
   if (stage === "OFFER_MADE")
     return <span className="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">Awaiting</span>
-  return <span className="text-gray-400 text-xs">—</span>
+  return <span className="font-mono text-xs text-gray-400">—</span>
 }
 
 function BmvCell({ value }: { value: string | number | null | undefined }) {
   const n = toNum(value)
   if (n === null)
-    return <span className="font-mono text-gray-400">—</span>
+    return <span className="font-mono text-xs text-gray-400">—</span>
   const cls =
     n >= 15 ? "text-green-700 font-bold" :
     n >= 10 ? "text-amber-600 font-bold" :
@@ -913,7 +913,7 @@ function Th({ children, className }: { children: React.ReactNode; className?: st
 
 function Td({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <td className={cn("px-4 py-[11px] text-sm text-gray-700", className)}>
+    <td className={cn("px-4 py-[11px] text-xs text-gray-700", className)}>
       {children}
     </td>
   )
@@ -1079,7 +1079,7 @@ function MapViewRow({ lead, onRowClick, onView, onDelete, isSelected, onToggleSe
       </td>
       <VendorAddressCell lead={lead} isSelected={isSelected} />
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
-      <Td>{lead.propertyType ?? "—"}</Td>
+      <Td><span className="text-xs text-gray-700">{lead.propertyType ?? <span className="text-gray-400">—</span>}</span></Td>
       <Td><span className="font-mono text-xs">{lead.bedrooms !== null ? `${lead.bedrooms}bd` : "—"}</span></Td>
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><BmvCell value={lead.bmvScore} /></Td>
@@ -1095,7 +1095,7 @@ function MapViewRow({ lead, onRowClick, onView, onDelete, isSelected, onToggleSe
               </span>
             </Tip>
           )
-          : <span className="text-gray-400 text-xs">—</span>}
+          : <span className="font-mono text-xs text-gray-400">—</span>}
       </Td>
       <Td><UrgencyBadge level={lead.urgencyLevel} /></Td>
       <Td>
@@ -1191,8 +1191,8 @@ function PropertyDetailsRow({ lead, onRowClick, onView, onArchive, onDelete, isS
       <VendorAddressCell lead={lead} isSelected={isSelected} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
-      <Td>{lead.propertyType ?? "—"}</Td>
-      <Td>{tenure ?? "—"}</Td>
+      <Td><span className="text-xs text-gray-700">{lead.propertyType ?? <span className="text-gray-400">—</span>}</span></Td>
+      <Td><span className="text-xs text-gray-700">{tenure ?? <span className="text-gray-400">—</span>}</span></Td>
       <Td><span className="font-mono text-xs">{lead.squareFeet ? `${lead.squareFeet.toLocaleString()} ft²` : "—"}</span></Td>
       <Td><span className="font-mono text-xs">{fmtCurrency(lead.askingPrice)}</span></Td>
       <Td><span className="font-mono text-xs">{fmtCurrency(lead.estimatedMarketValue)}</span></Td>
@@ -1209,10 +1209,12 @@ function PropertyDetailsRow({ lead, onRowClick, onView, onArchive, onDelete, isS
         </Tip>
       </Td>
       <Td>
-        {lead.bedrooms !== null ? `${lead.bedrooms}` : "—"}
-        {lead.bathrooms !== null ? ` / ${lead.bathrooms}` : ""}
+        <span className="font-mono text-xs">
+          {lead.bedrooms !== null ? lead.bedrooms : "—"}
+          {lead.bathrooms !== null ? ` / ${lead.bathrooms}` : ""}
+        </span>
       </Td>
-      <Td>{lead.condition ? lead.condition.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "—"}</Td>
+      <Td><span className="text-xs text-gray-700">{lead.condition ? lead.condition.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : <span className="text-gray-400">—</span>}</span></Td>
       <ActionsCell lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete} />
     </tr>
   )
@@ -1234,12 +1236,12 @@ function PortalCheckRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck
       <Td><OverallRiskBadge risk={lead.latestCheckRisk} /></Td>
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
-      <Td>{lead.propertyType ?? "—"}</Td>
+      <Td><span className="text-xs text-gray-700">{lead.propertyType ?? <span className="text-gray-400">—</span>}</span></Td>
       <Td><span className="font-mono text-xs">{lead.bedrooms !== null ? `${lead.bedrooms}bd` : "—"}</span></Td>
       <Td><ActiveListingBadge lead={lead} /></Td>
-      <Td className="w-28 px-2">{ownerDisplay ?? <span className="text-gray-400">—</span>}</Td>
-      <Td className="w-24 px-2">{ownership?.tenure ?? lead.tenureType ?? "—"}</Td>
-      <Td className="w-24 px-2">{ownerType ?? "—"}</Td>
+      <Td className="w-28 px-2"><span className="text-xs text-gray-700">{ownerDisplay ?? <span className="text-gray-400">—</span>}</span></Td>
+      <Td className="w-24 px-2"><span className="text-xs text-gray-700">{ownership?.tenure ?? lead.tenureType ?? <span className="text-gray-400">—</span>}</span></Td>
+      <Td className="w-24 px-2"><span className="text-xs text-gray-700">{ownerType ?? <span className="text-gray-400">—</span>}</span></Td>
       <Td><span className="font-mono text-xs">{lastSalePrice ? fmtCurrency(lastSalePrice) : "—"}</span></Td>
       <Td>
         <span className="font-mono text-xs text-gray-500">
@@ -1270,7 +1272,7 @@ function ValidationRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
       <Td><ValidationResultBadge passed={lead.validationPassed} /></Td>
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
-      <Td>{lead.propertyType ?? "—"}</Td>
+      <Td><span className="text-xs text-gray-700">{lead.propertyType ?? <span className="text-gray-400">—</span>}</span></Td>
       <Td><span className="font-mono text-xs">{lead.bedrooms !== null ? `${lead.bedrooms}bd` : "—"}</span></Td>
       <Td><span className="font-mono text-xs">{fmtCurrency(lead.askingPrice)}</span></Td>
       <Td><span className="font-mono text-xs">{lead.localAverageRent ? `${fmtCurrency(lead.localAverageRent)}/mo` : "—"}</span></Td>
@@ -1318,7 +1320,7 @@ function ComparableRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
       <VendorAddressCell lead={lead} isSelected={isSelected} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
-      <Td>{lead.propertyType ?? "—"}</Td>
+      <Td><span className="text-xs text-gray-700">{lead.propertyType ?? <span className="text-gray-400">—</span>}</span></Td>
       <Td><span className="font-mono text-xs">{lead.bedrooms !== null ? `${lead.bedrooms}bd` : "—"}</span></Td>
       <Td>
         <Tip text={hasComps ? `${lead.comparablesCount} comparable properties found` : "No comparables fetched yet — data may be unreliable"}>
@@ -1338,7 +1340,7 @@ function ComparableRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
               </span>
             </Tip>
           )
-          : <span className="text-gray-400 text-xs">—</span>}
+          : <span className="font-mono text-xs text-gray-400">—</span>}
       </Td>
       <Td><BmvCell value={lead.bmvScore} /></Td>
       <Td><span className="font-mono text-xs">{lead.localAverageRent ? `${fmtCurrency(lead.localAverageRent)}/mo` : "—"}</span></Td>
@@ -1396,7 +1398,7 @@ function OfferAnalysisRow({ lead, onRowClick, onView, onArchive, onDelete, onChe
       <VendorAddressCell lead={lead} isSelected={isSelected} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
-      <Td>{lead.propertyType ?? "—"}</Td>
+      <Td><span className="text-xs text-gray-700">{lead.propertyType ?? <span className="text-gray-400">—</span>}</span></Td>
       <Td><span className="font-mono text-xs">{lead.bedrooms !== null ? `${lead.bedrooms}bd` : "—"}</span></Td>
       <Td><span className="font-mono text-xs">{fmtCurrency(lead.askingPrice)}</span></Td>
       <Td>
@@ -1424,7 +1426,7 @@ function OfferAnalysisRow({ lead, onRowClick, onView, onArchive, onDelete, onChe
             ? <span className="font-mono text-xs text-amber-700">{fmtCurrency(gap)}</span>
             : gap === 0
             ? <span className="font-mono text-xs text-green-700">At asking</span>
-            : <span className="text-gray-400 text-xs">—</span>
+            : <span className="font-mono text-xs text-gray-400">—</span>
         })()}
       </Td>
       <Td>
@@ -1444,7 +1446,7 @@ function OfferAnalysisRow({ lead, onRowClick, onView, onArchive, onDelete, onChe
         {(() => {
           const lastRetryDate = retries.length > 0 ? retries[retries.length - 1].sentAt : null
           const lastDate = lastRetryDate ?? lead.offerSentAt
-          if (!lastDate) return <span className="text-gray-400 text-xs">—</span>
+          if (!lastDate) return <span className="font-mono text-xs text-gray-400">—</span>
           const daysAgo = Math.floor((Date.now() - new Date(lastDate).getTime()) / (1000 * 60 * 60 * 24))
           return (
             <Tip text={`Last activity: ${fmtDate(lastDate)}`}>
