@@ -48,6 +48,9 @@ import {
   Lock,
   ListChecks,
   BadgeCheck,
+  ExternalLink,
+  Navigation,
+  Search,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { VendorPipelineKanbanBoard } from "./vendor-pipeline-kanban-board"
@@ -1040,9 +1043,21 @@ function ActionBtn({
 // Per-tab Row renderers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function MapViewRow({ lead, onRowClick, onView, onArchive, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
+function MapViewRow({ lead, onRowClick, onView, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
   const createdAt = new Date(lead.createdAt)
   const leadAgeDays = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24))
+
+  // Build external map URLs from property address / postcode
+  const encoded = encodeURIComponent(lead.propertyAddress ?? lead.propertyPostcode ?? "")
+  const googleMapsUrl  = `https://www.google.com/maps/search/?api=1&query=${encoded}`
+  const streetViewUrl  = `https://www.google.com/maps?q=${encoded}&layer=c`
+  const postcodeSlug   = (lead.propertyPostcode ?? "").replace(/\s/g, "").toUpperCase()
+  const rightmoveUrl   = postcodeSlug
+    ? `https://www.rightmove.co.uk/property-for-sale/find.html?searchType=SALE&locationIdentifier=POSTCODE%5E${postcodeSlug}`
+    : `https://www.rightmove.co.uk/property-for-sale/search.html?searchLocation=${encoded}`
+
+  const mapBtnClass = "flex h-7 w-7 items-center justify-center rounded-md border transition-colors"
+
   return (
     <tr
       className={cn("group cursor-pointer border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}
@@ -1082,7 +1097,71 @@ function MapViewRow({ lead, onRowClick, onView, onArchive, onDelete, isSelected,
           </span>
         </Tip>
       </Td>
-      <ActionsCell lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete} />
+
+      {/* Map-specific actions — no Edit (irrelevant), no Archive (irrelevant here) */}
+      <td className={cn("sticky right-0 z-10 px-4 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")}>
+        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+
+          {/* 1. View on Map — opens the rich map modal */}
+          <Tip text="View on Map">
+            <button
+              onClick={(e) => { e.stopPropagation(); onView() }}
+              className={cn(mapBtnClass, "border-blue-200 bg-blue-50 text-blue-600 hover:border-blue-300 hover:bg-blue-100 hover:text-blue-700")}
+            >
+              <MapPin className="h-3.5 w-3.5" />
+            </button>
+          </Tip>
+
+          {/* 2. Open in Google Maps (new tab) */}
+          <Tip text="Open in Google Maps">
+            <a
+              href={googleMapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className={cn(mapBtnClass, "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700")}
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </Tip>
+
+          {/* 3. Street View (new tab) */}
+          <Tip text="Open Street View">
+            <a
+              href={streetViewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className={cn(mapBtnClass, "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700")}
+            >
+              <Navigation className="h-3.5 w-3.5" />
+            </a>
+          </Tip>
+
+          {/* 4. Search Rightmove by postcode (new tab) */}
+          <Tip text="Search on Rightmove">
+            <a
+              href={rightmoveUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className={cn(mapBtnClass, "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700")}
+            >
+              <Search className="h-3.5 w-3.5" />
+            </a>
+          </Tip>
+
+          {/* 5. Delete lead (danger) */}
+          <Tip text="Delete Lead">
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete() }}
+              className={cn(mapBtnClass, "border-gray-200 bg-white text-gray-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600")}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </Tip>
+        </div>
+      </td>
     </tr>
   )
 }
@@ -2090,7 +2169,9 @@ export function VendorLeadsTable() {
                     if (activeTab === "map-view") setMapLead(lead)
                   },
                   onView: () => {
-                    if (activeTab === "property-details") {
+                    if (activeTab === "map-view") {
+                      setMapLead(lead)
+                    } else if (activeTab === "property-details") {
                       setPropertyDetailsModalLead(lead)
                     } else if (activeTab === "portal-check") {
                       setPortalCheckModalLead(lead)
