@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { X, TrendingUp, Loader2, Calculator, CheckCircle, XCircle, Home } from "lucide-react"
+import { X, Loader2, Calculator, CheckCircle, XCircle, Home, ChevronDown, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -19,97 +19,561 @@ function toNum(v: string | number | null | undefined): number | null {
 function fmtCurrency(v: string | number | null | undefined): string {
   const n = toNum(v)
   if (n === null) return "—"
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-    maximumFractionDigits: 0,
-  }).format(n)
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(n)
 }
 
-/** Opening offer — 88% of the ceiling, rounded to nearest £50 */
 function calcOpening(ceiling: number): number {
   return Math.round((ceiling * 0.88) / 50) * 50
 }
 
-/** Pull strategy from AI-generated notes text */
 function parseStrategy(notes: string | null): string | null {
   if (!notes) return null
   const m = notes.match(/Strategy:\s*([A-Z\/]+)/i)
   return m ? m[1].toUpperCase() : null
 }
 
-// ─── validation notes renderer ────────────────────────────────────────────────
+// ─── accordion wrapper ────────────────────────────────────────────────────────
 
-function ValidationNotesRenderer({ notes }: { notes: string }) {
-  const lines = notes.split("\n")
-
+function Accordion({
+  title,
+  badge,
+  defaultOpen = false,
+  children,
+}: {
+  title: string
+  badge?: React.ReactNode
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="space-y-1">
-      {lines.map((line, i) => {
-        const trimmed = line.trim()
-
-        // Skip blank lines — add spacing via space-y instead
-        if (!trimmed) return <div key={i} className="h-2" />
-
-        // Separator lines (===)
-        if (/^={3,}/.test(trimmed) || /^-{3,}/.test(trimmed)) {
-          return <hr key={i} className="border-gray-200 my-2" />
+    <div className="rounded-xl border border-gray-200 overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between gap-2 bg-gray-50 px-4 py-2.5 text-left hover:bg-gray-100 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">{title}</span>
+          {badge}
+        </div>
+        {open
+          ? <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
+          : <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
         }
-
-        // Section headers — lines with an emoji or ALL CAPS header-like text
-        if (/^[✅❌📊🏠💡⚠️🔑]/.test(trimmed)) {
-          return (
-            <div key={i} className="flex items-start gap-2 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 mt-3">
-              <span className="text-base leading-snug">{trimmed.slice(0, 2)}</span>
-              <p className="text-xs font-bold text-gray-800 uppercase tracking-wide leading-5">
-                {trimmed.slice(2).trim()}
-              </p>
-            </div>
-          )
-        }
-
-        // Numbered steps — "1. Something"
-        const numMatch = trimmed.match(/^(\d+)\.\s+(.+)/)
-        if (numMatch) {
-          return (
-            <div key={i} className="flex items-start gap-3 py-1">
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700">
-                {numMatch[1]}
-              </span>
-              <p className="text-sm text-gray-700 leading-snug">{numMatch[2]}</p>
-            </div>
-          )
-        }
-
-        // Indented rationale lines
-        if (/^\s{4,}/.test(line) || trimmed.toLowerCase().startsWith("rationale:")) {
-          return (
-            <p key={i} className="ml-8 text-xs text-gray-500 italic leading-snug">
-              {trimmed}
-            </p>
-          )
-        }
-
-        // Key-value lines — "Strategy: BTL", "Market Value: £xxx"
-        const kvMatch = trimmed.match(/^([A-Za-z\s]+):\s+(.+)/)
-        if (kvMatch && !trimmed.includes("—") && trimmed.length < 80) {
-          return (
-            <div key={i} className="flex items-baseline justify-between gap-2 text-xs py-0.5">
-              <span className="text-gray-500 shrink-0">{kvMatch[1]}</span>
-              <span className="font-semibold text-gray-800 text-right">{kvMatch[2]}</span>
-            </div>
-          )
-        }
-
-        // Default — regular paragraph text
-        return (
-          <p key={i} className="text-sm text-gray-700 leading-relaxed">
-            {trimmed}
-          </p>
-        )
-      })}
+      </button>
+      {open && <div className="px-4 py-3">{children}</div>}
     </div>
   )
+}
+
+function PassBadge({ pass }: { pass: boolean | null }) {
+  if (pass === null) return null
+  return (
+    <span className={cn(
+      "rounded-full px-2 py-0.5 text-[10px] font-bold",
+      pass ? "bg-green-100 text-green-700 border border-green-200"
+           : "bg-red-100 text-red-700 border border-red-200"
+    )}>
+      {pass ? "✓ PASS" : "✗ FAIL"}
+    </span>
+  )
+}
+
+// ─── section parsers ──────────────────────────────────────────────────────────
+
+/**
+ * Extract [STRATEGY_DATA]{...}[/STRATEGY_DATA] JSON from text.
+ * Returns parsed data and text with the block removed.
+ */
+function extractStrategyData(text: string): {
+  cleaned: string
+  strategies: Array<{ key: string; name: string; emoji: string; maxOffer: number; yield: number; viable: boolean }> | null
+  recommended: string | null
+} {
+  const match = text.match(/\[STRATEGY_DATA\]([\s\S]*?)\[\/STRATEGY_DATA\]/i)
+  if (!match) return { cleaned: text, strategies: null, recommended: null }
+
+  let strategies = null
+  let recommended = null
+  try {
+    const json = JSON.parse(match[1].trim())
+    strategies = json.strategies ?? null
+    recommended = json.recommended ?? null
+  } catch {}
+
+  const cleaned = text.replace(/\[STRATEGY_DATA\][\s\S]*?\[\/STRATEGY_DATA\]/i, "").trim()
+  return { cleaned, strategies, recommended }
+}
+
+/**
+ * Split raw text into named sections by emoji-prefixed headers.
+ */
+function splitSections(text: string): Array<{ header: string; body: string[] }> {
+  // A section header is a line that starts with an emoji or is ALL CAPS with known keywords
+  const HEADER_RE = /^[\u{1F300}-\u{1FFFF}\u{2600}-\u{27BF}❌✅⚠️💡]/u
+
+  const sections: Array<{ header: string; body: string[] }> = []
+  let current: { header: string; body: string[] } | null = null
+
+  for (const raw of text.split("\n")) {
+    const line = raw.trim()
+    if (!line) continue
+
+    if (HEADER_RE.test(line)) {
+      if (current) sections.push(current)
+      current = { header: line, body: [] }
+    } else if (current) {
+      current.body.push(line)
+    }
+  }
+  if (current) sections.push(current)
+  return sections
+}
+
+/** Parse numbered step lines from a body array */
+function parseSteps(lines: string[]): Array<{ num: string; text: string; sub: string | null }> {
+  const steps: Array<{ num: string; text: string; sub: string | null }> = []
+  for (const line of lines) {
+    const numMatch = line.match(/^(\d+)\.\s+(.+)/)
+    if (numMatch) {
+      steps.push({ num: numMatch[1], text: numMatch[2], sub: null })
+    } else if (steps.length > 0 && (line.toLowerCase().startsWith("rationale:") || /^\s{4,}/.test(line))) {
+      steps[steps.length - 1].sub = line.trim()
+    }
+  }
+  return steps
+}
+
+/** Parse KV pairs from a body (e.g. "Strategy: BTL") */
+function parseKV(lines: string[]): Array<{ key: string; val: string }> {
+  return lines
+    .map(line => {
+      const m = line.match(/^([^:]{1,40}):\s+(.+)/)
+      return m ? { key: m[1].trim(), val: m[2].trim() } : null
+    })
+    .filter(Boolean) as Array<{ key: string; val: string }>
+}
+
+/** Parse bullet lines starting with "•" */
+function parseBullets(lines: string[]): string[] {
+  return lines
+    .filter(l => l.startsWith("•") || l.startsWith("-") || l.startsWith("*"))
+    .map(l => l.replace(/^[•\-\*]\s*/, "").trim())
+    .filter(Boolean)
+}
+
+/** Parse comparable property blocks */
+interface Comp { address: string; price: string; beds: string; date: string; dist: string }
+function parseComparables(lines: string[]): Comp[] {
+  const comps: Comp[] = []
+  let currentAddress = ""
+  for (const line of lines) {
+    // Address lines: "1   14, Marston Road, B29 5ND" or "1. 14, Marston..."
+    const addrMatch = line.match(/^\d+[.\s]\s+(.+)/)
+    if (addrMatch) {
+      currentAddress = addrMatch[1].trim()
+      continue
+    }
+    // Detail line: "📖 £200,000 | 🛏 0 BED | 📅 JAN 2026 | 0.1 MI"
+    if (currentAddress && (line.includes("£") || line.includes("|"))) {
+      const parts = line.split("|").map(p => p.trim())
+      const price = parts.find(p => p.includes("£"))?.replace(/[^\d£,]/g, "").trim() ?? "—"
+      const beds  = parts.find(p => /BED/i.test(p))?.replace(/[^\d]/g, "") ?? "?"
+      const date  = parts.find(p => /\d{4}/.test(p) && !/£/.test(p))?.replace(/[^A-Z0-9 ]/gi, "").trim() ?? "—"
+      const dist  = parts.find(p => /MI/i.test(p))?.replace(/[^0-9.]/g, "") ?? "—"
+      comps.push({ address: currentAddress, price: `£${price.replace("£","")}`, beds, date, dist: `${dist}mi` })
+      currentAddress = ""
+    }
+  }
+  return comps
+}
+
+/** Parse strategy sub-sections (BTL, FLIP, BRRR inline blocks) */
+interface StrategyInline { name: string; maxOffer: string; yield: string; viable: boolean | null }
+function parseInlineStrategies(lines: string[]): StrategyInline[] {
+  const strategies: StrategyInline[] = []
+  const STRATEGY_HEADER_RE = /^[🏠🔨🔄🏗📝💼]\s*(BTL|Buy.to.Let|Buy\s*&\s*Hold|BuyHold|FLIP|Flip|BRRR|BRR)/i
+
+  let current: StrategyInline | null = null
+  for (const line of lines) {
+    if (STRATEGY_HEADER_RE.test(line)) {
+      if (current) strategies.push(current)
+      const name = line.replace(/^[^\w]*/, "").trim()
+      current = { name, maxOffer: "—", yield: "—", viable: null }
+    } else if (current && line.includes("Max Offer")) {
+      const offerM = line.match(/Max Offer[:\s]+([£\d,]+)/i)
+      const yieldM = line.match(/Yield[:\s]+([\d.]+)%/i)
+      const viableM = line.match(/✅\s*Viable|viable/i)
+      const notViableM = line.match(/❌\s*Not Viable|not viable/i)
+      if (offerM) current.maxOffer = offerM[1]
+      if (yieldM) current.yield = `${yieldM[1]}%`
+      if (viableM) current.viable = true
+      if (notViableM) current.viable = false
+    }
+  }
+  if (current) strategies.push(current)
+  return strategies
+}
+
+/** Extract rent/yield KPI values */
+interface RentKPIs { monthly: string | null; weekly: string | null; annual: string | null; grossYield: string | null }
+function parseRentKPIs(lines: string[]): RentKPIs {
+  const find = (re: RegExp) => {
+    for (const l of lines) {
+      const m = l.match(re)
+      if (m) return m[1]
+    }
+    return null
+  }
+  return {
+    monthly:    find(/MONTHLY RENT[:\s]+(£[\d,]+)/i),
+    weekly:     find(/WEEKLY RENT[:\s]+(£[\d,]+)/i),
+    annual:     find(/ANNUAL RENT[:\s]+(£[\d,]+)/i),
+    grossYield: find(/GROSS YIELD[:\s]+([\d.]+%[^)]*)/i),
+  }
+}
+
+// ─── section renderers ────────────────────────────────────────────────────────
+
+function StepsRenderer({ steps }: { steps: Array<{ num: string; text: string; sub: string | null }> }) {
+  if (!steps.length) return null
+  return (
+    <div className="space-y-1.5">
+      {steps.map((s, i) => (
+        <div key={i} className="flex items-start gap-2.5">
+          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700">
+            {s.num}
+          </span>
+          <div>
+            <p className="text-xs text-gray-700 leading-snug">{s.text}</p>
+            {s.sub && <p className="mt-0.5 text-[11px] text-gray-400 italic">{s.sub}</p>}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function KVRenderer({ pairs }: { pairs: Array<{ key: string; val: string }> }) {
+  if (!pairs.length) return null
+  return (
+    <div className="space-y-1">
+      {pairs.map((p, i) => (
+        <div key={i} className="flex items-baseline justify-between gap-2 text-xs">
+          <span className="text-gray-500 shrink-0">{p.key}</span>
+          <span className="font-semibold text-gray-800 text-right">{p.val}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function CompsRenderer({ comps }: { comps: Comp[] }) {
+  if (!comps.length) return <p className="text-xs text-gray-400">No comparables found</p>
+  return (
+    <div className="overflow-hidden rounded-lg border border-gray-200">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50">
+            <th className="px-3 py-1.5 text-left font-semibold text-gray-600 w-5">#</th>
+            <th className="px-3 py-1.5 text-left font-semibold text-gray-600">Address</th>
+            <th className="px-3 py-1.5 text-right font-semibold text-gray-600">Price</th>
+            <th className="px-3 py-1.5 text-right font-semibold text-gray-600">Beds</th>
+            <th className="px-3 py-1.5 text-right font-semibold text-gray-600">Date</th>
+            <th className="px-3 py-1.5 text-right font-semibold text-gray-600">Dist</th>
+          </tr>
+        </thead>
+        <tbody>
+          {comps.map((c, i) => (
+            <tr key={i} className={cn("border-b border-gray-100 last:border-0", i % 2 === 0 ? "bg-white" : "bg-gray-50/50")}>
+              <td className="px-3 py-1.5 text-gray-400">{i + 1}</td>
+              <td className="px-3 py-1.5 text-gray-700 max-w-[160px] truncate">{c.address}</td>
+              <td className="px-3 py-1.5 text-right font-semibold text-gray-800">{c.price}</td>
+              <td className="px-3 py-1.5 text-right text-gray-500">{c.beds}</td>
+              <td className="px-3 py-1.5 text-right text-gray-500">{c.date}</td>
+              <td className="px-3 py-1.5 text-right text-gray-500">{c.dist}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function StrategyTableRenderer({
+  strategies,
+  recommended,
+}: {
+  strategies: Array<{ key: string; name: string; emoji: string; maxOffer: number; yield: number; viable: boolean }> | null
+  inlineStrategies: StrategyInline[]
+  recommended: string | null
+}) {
+  // Prefer parsed JSON strategies, fall back to inline-parsed
+  const rows = strategies?.map(s => ({
+    name:     s.name,
+    maxOffer: `£${s.maxOffer.toLocaleString("en-GB")}`,
+    yield:    `${s.yield}%`,
+    viable:   s.viable,
+    isRec:    s.key === recommended,
+  })) ?? []
+
+  if (!rows.length) return null
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-gray-200">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50">
+            <th className="px-3 py-1.5 text-left font-semibold text-gray-600">Strategy</th>
+            <th className="px-3 py-1.5 text-right font-semibold text-gray-600">Max Offer</th>
+            <th className="px-3 py-1.5 text-right font-semibold text-gray-600">Yield</th>
+            <th className="px-3 py-1.5 text-right font-semibold text-gray-600">Viable</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className={cn(
+              "border-b border-gray-100 last:border-0",
+              r.isRec ? "bg-blue-50" : i % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+            )}>
+              <td className="px-3 py-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold text-gray-800">{r.name}</span>
+                  {r.isRec && (
+                    <span className="rounded-full bg-blue-100 border border-blue-200 px-1.5 py-0.5 text-[9px] font-bold text-blue-700">
+                      REC
+                    </span>
+                  )}
+                </div>
+              </td>
+              <td className="px-3 py-1.5 text-right font-semibold text-gray-800">{r.maxOffer}</td>
+              <td className="px-3 py-1.5 text-right text-gray-700">{r.yield}</td>
+              <td className="px-3 py-1.5 text-right">
+                {r.viable
+                  ? <span className="text-green-600 font-semibold">✓ Yes</span>
+                  : <span className="text-red-500 font-semibold">✗ No</span>
+                }
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function RentKPIRenderer({ kpis, bullets }: { kpis: RentKPIs; bullets: string[] }) {
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        {kpis.monthly && (
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-center">
+            <p className="text-[10px] text-gray-500 mb-0.5">Monthly Rent</p>
+            <p className="text-sm font-bold text-gray-900">{kpis.monthly}</p>
+          </div>
+        )}
+        {kpis.annual && (
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-center">
+            <p className="text-[10px] text-gray-500 mb-0.5">Annual Rent</p>
+            <p className="text-sm font-bold text-gray-900">{kpis.annual}</p>
+          </div>
+        )}
+        {kpis.weekly && (
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-center">
+            <p className="text-[10px] text-gray-500 mb-0.5">Weekly Rent</p>
+            <p className="text-sm font-bold text-gray-900">{kpis.weekly}</p>
+          </div>
+        )}
+        {kpis.grossYield && (
+          <div className={cn(
+            "rounded-lg border p-2.5 text-center",
+            kpis.grossYield.includes("STRONG") || parseFloat(kpis.grossYield) >= 7
+              ? "border-green-200 bg-green-50"
+              : parseFloat(kpis.grossYield) >= 5
+              ? "border-amber-200 bg-amber-50"
+              : "border-red-200 bg-red-50"
+          )}>
+            <p className="text-[10px] text-gray-500 mb-0.5">Gross Yield</p>
+            <p className={cn(
+              "text-sm font-bold",
+              kpis.grossYield.includes("STRONG") || parseFloat(kpis.grossYield) >= 7
+                ? "text-green-700"
+                : parseFloat(kpis.grossYield) >= 5
+                ? "text-amber-700"
+                : "text-red-700"
+            )}>
+              {kpis.grossYield.split("(")[0].trim()}
+            </p>
+          </div>
+        )}
+      </div>
+      {bullets.length > 0 && (
+        <div className="space-y-1">
+          {bullets.map((b, i) => (
+            <p key={i} className="text-xs text-gray-600">• {b}</p>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── main notes renderer ──────────────────────────────────────────────────────
+
+function ValidationNotesRenderer({ notes }: { notes: string }) {
+  // 1. Extract and remove [STRATEGY_DATA] block
+  const { cleaned, strategies, recommended } = extractStrategyData(notes)
+
+  // 2. Split into raw sections
+  const rawSections = splitSections(cleaned)
+
+  // 3. Classify and render each section
+  const rendered: React.ReactNode[] = []
+
+  // Collect all "inline strategy" lines for the strategy table fallback
+  const allStrategyLines: string[] = []
+  let offerCalcSection: typeof rawSections[0] | null = null
+  let comparablesSection: typeof rawSections[0] | null = null
+  let landRegSection: typeof rawSections[0] | null = null
+  let rentalSection: typeof rawSections[0] | null = null
+  let bmvSection: typeof rawSections[0] | null = null
+  const strategyInlineSections: typeof rawSections[0][] = []
+
+  for (const sec of rawSections) {
+    const h = sec.header.toUpperCase()
+
+    if (h.includes("DEAL FAILED") || h.includes("DEAL PASSED") || h.includes("DEAL VALIDATION")) {
+      // Skip — verdict is already shown prominently on the left panel
+      continue
+    } else if (h.includes("STRATEGY-AWARE") || h.includes("OFFER CALCULATION")) {
+      offerCalcSection = sec
+    } else if (h.includes("COMPARABLE")) {
+      comparablesSection = sec
+    } else if (h.includes("LAND REGISTRY") || h.includes("OWNERSHIP")) {
+      landRegSection = sec
+    } else if (h.includes("RENTAL YIELD") || h.includes("RENTAL ANALYSIS")) {
+      rentalSection = sec
+    } else if (h.includes("BMV ANALYSIS")) {
+      bmvSection = sec
+    } else if (/BTL|BUY.TO.LET|FLIP|BRRR|BRR|BUY\s*&\s*HOLD|BUYHOLD/.test(h)) {
+      strategyInlineSections.push(sec)
+      allStrategyLines.push(sec.header, ...sec.body)
+    }
+  }
+
+  // ── Offer Calculation section ─────────────────────────────────────────────
+  if (offerCalcSection) {
+    const allLines = offerCalcSection.body
+    const kvLines = allLines.filter(l => /^[A-Za-z\s]+:\s/.test(l) && !l.match(/^\d+\./))
+    const steps = parseSteps(allLines)
+    const kvPairs = parseKV(kvLines)
+
+    rendered.push(
+      <Accordion key="offer" title="Offer Calculation" defaultOpen>
+        {kvPairs.length > 0 && (
+          <div className="mb-3 pb-3 border-b border-gray-100">
+            <KVRenderer pairs={kvPairs} />
+          </div>
+        )}
+        <StepsRenderer steps={steps} />
+      </Accordion>
+    )
+  }
+
+  // ── Strategy Comparison section ───────────────────────────────────────────
+  const inlineStrategies = parseInlineStrategies(allStrategyLines)
+  const hasStrategyData = (strategies && strategies.length > 0) || inlineStrategies.length > 0
+  if (hasStrategyData) {
+    rendered.push(
+      <Accordion key="strategies" title="Strategy Comparison" defaultOpen>
+        <StrategyTableRenderer
+          strategies={strategies}
+          inlineStrategies={inlineStrategies}
+          recommended={recommended}
+        />
+      </Accordion>
+    )
+  }
+
+  // ── Comparable Properties section ─────────────────────────────────────────
+  if (comparablesSection) {
+    const comps = parseComparables(comparablesSection.body)
+    rendered.push(
+      <Accordion key="comps" title={`Comparable Properties${comps.length ? ` (${comps.length})` : ""}`}>
+        <CompsRenderer comps={comps} />
+      </Accordion>
+    )
+  }
+
+  // ── Land Registry section ─────────────────────────────────────────────────
+  if (landRegSection) {
+    const bullets = parseBullets(landRegSection.body)
+    const extras = landRegSection.body.filter(l => !l.startsWith("•") && !l.startsWith("-") && !l.startsWith("*") && l.trim())
+    rendered.push(
+      <Accordion key="land" title="Land Registry Ownership">
+        <div className="space-y-1">
+          {[...extras, ...bullets].map((b, i) => (
+            <p key={i} className="text-xs text-gray-700">
+              {b.startsWith("•") ? b : `• ${b}`}
+            </p>
+          ))}
+        </div>
+      </Accordion>
+    )
+  }
+
+  // ── Rental Yield section ──────────────────────────────────────────────────
+  if (rentalSection) {
+    const allLines = [rentalSection.header, ...rentalSection.body]
+    const kpis = parseRentKPIs(allLines)
+    const bullets = parseBullets(rentalSection.body)
+    const hasPass = rentalSection.header.includes("✅") || rentalSection.header.toUpperCase().includes("PASS")
+    const hasFail = rentalSection.header.includes("❌") || rentalSection.header.toUpperCase().includes("FAIL")
+
+    rendered.push(
+      <Accordion
+        key="rental"
+        title="Rental Yield Analysis"
+        badge={<PassBadge pass={hasPass ? true : hasFail ? false : null} />}
+        defaultOpen
+      >
+        <RentKPIRenderer kpis={kpis} bullets={bullets} />
+      </Accordion>
+    )
+  }
+
+  // ── BMV Analysis section ──────────────────────────────────────────────────
+  if (bmvSection) {
+    const hasPass = bmvSection.header.includes("✅") || bmvSection.header.toUpperCase().includes("PASS")
+    const hasFail = bmvSection.header.includes("❌") || bmvSection.header.toUpperCase().includes("FAIL")
+    const bullets = parseBullets(bmvSection.body)
+    const others = bmvSection.body.filter(l => !l.startsWith("•") && !l.startsWith("-") && l.trim())
+
+    rendered.push(
+      <Accordion
+        key="bmv"
+        title="BMV Analysis"
+        badge={<PassBadge pass={hasPass ? true : hasFail ? false : null} />}
+      >
+        <div className="space-y-1">
+          {[...others, ...bullets].filter(Boolean).map((b, i) => (
+            <p key={i} className="text-xs text-gray-700">• {b.replace(/^[•\-]\s*/, "")}</p>
+          ))}
+        </div>
+      </Accordion>
+    )
+  }
+
+  if (rendered.length === 0) {
+    // Fallback — just show text nicely
+    return (
+      <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+        {cleaned}
+      </div>
+    )
+  }
+
+  return <div className="space-y-2">{rendered}</div>
 }
 
 // ─── component ────────────────────────────────────────────────────────────────
@@ -125,13 +589,13 @@ export function ValidationModal({
 }) {
   const [checking, setChecking] = useState(false)
 
-  const bmv      = toNum(lead.bmvScore)
-  const profit   = toNum(lead.profitPotential)
-  const offer    = toNum(lead.offerAmount)
-  const refurb   = toNum(lead.estimatedRefurbCost)
-  const opening  = offer ? calcOpening(offer) : null
+  const bmv     = toNum(lead.bmvScore)
+  const profit  = toNum(lead.profitPotential)
+  const offer   = toNum(lead.offerAmount)
+  const refurb  = toNum(lead.estimatedRefurbCost)
+  const opening = offer ? calcOpening(offer) : null
   const strategy = parseStrategy(lead.validationNotes)
-  const passed   = lead.validationPassed
+  const passed  = lead.validationPassed
 
   // ── Left panel ───────────────────────────────────────────────────────────
   const leftPanel = (
@@ -192,25 +656,23 @@ export function ValidationModal({
         )}
       </div>
 
-      {/* Recommended offer — only if we have numbers */}
+      {/* Recommended offer */}
       {offer && (
-        <>
-          <div className="mb-4">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-2">
-              Recommended Offer
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-lg border border-white/10 bg-white/5 p-2.5 text-center">
-                <p className="text-[9px] text-slate-500 mb-0.5">Opening</p>
-                <p className="text-sm font-bold text-slate-100">{fmtCurrency(opening)}</p>
-              </div>
-              <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-2.5 text-center">
-                <p className="text-[9px] text-blue-400 mb-0.5">Max Ceiling</p>
-                <p className="text-sm font-bold text-blue-300">{fmtCurrency(offer)}</p>
-              </div>
+        <div className="mb-4">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-2">
+            Recommended Offer
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-lg border border-white/10 bg-white/5 p-2.5 text-center">
+              <p className="text-[9px] text-slate-500 mb-0.5">Opening</p>
+              <p className="text-sm font-bold text-slate-100">{fmtCurrency(opening)}</p>
+            </div>
+            <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-2.5 text-center">
+              <p className="text-[9px] text-blue-400 mb-0.5">Max Ceiling</p>
+              <p className="text-sm font-bold text-blue-300">{fmtCurrency(offer)}</p>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       <div className="mb-4 h-px bg-white/10" />
@@ -227,30 +689,23 @@ export function ValidationModal({
             </span>
           </div>
         )}
-
         <div className="flex items-center justify-between text-xs">
           <span className="text-slate-400">Asking Price</span>
           <span className="font-semibold text-slate-100">{fmtCurrency(lead.askingPrice)}</span>
         </div>
-
         <div className="flex items-center justify-between text-xs">
           <span className="text-slate-400">Market Value</span>
           <span className="font-semibold text-slate-100">{fmtCurrency(lead.estimatedMarketValue)}</span>
         </div>
-
         {bmv !== null && (
           <div className="flex items-center justify-between text-xs">
             <span className="text-slate-400">BMV Discount</span>
-            <span className={cn(
-              "font-bold",
-              bmv >= 20 ? "text-green-400" : bmv >= 10 ? "text-amber-400" : "text-red-400"
-            )}>
+            <span className={cn("font-bold", bmv >= 20 ? "text-green-400" : bmv >= 10 ? "text-amber-400" : "text-red-400")}>
               {bmv.toFixed(1)}%
-              {bmv < 20 && <span className="ml-1 text-[10px] font-normal text-slate-500">(below 20% target)</span>}
+              {bmv < 20 && <span className="ml-1 text-[10px] font-normal text-slate-500">(below 20%)</span>}
             </span>
           </div>
         )}
-
         {profit !== null && (
           <div className="flex items-center justify-between text-xs">
             <span className="text-slate-400">Profit Potential</span>
@@ -259,14 +714,12 @@ export function ValidationModal({
             </span>
           </div>
         )}
-
         {refurb !== null && refurb > 0 && (
           <div className="flex items-center justify-between text-xs">
             <span className="text-slate-400">Refurb Cost</span>
             <span className="font-semibold text-amber-400">{fmtCurrency(refurb)}</span>
           </div>
         )}
-
         {lead.estimatedMonthlyRent && (
           <div className="flex items-center justify-between text-xs">
             <span className="text-slate-400">Est. Monthly Rent</span>
@@ -275,7 +728,7 @@ export function ValidationModal({
         )}
       </div>
 
-      {/* Pipeline stage — pinned to bottom */}
+      {/* Pipeline stage */}
       <div className="mt-auto border-t border-white/10 pt-3">
         <div className="flex items-center justify-between">
           <span className="text-[10px] text-slate-500">Pipeline Stage</span>
@@ -295,14 +748,16 @@ export function ValidationModal({
 
   return (
     <ModalShell onClose={onClose} leftPanel={leftPanel} maxWidth="4xl">
-      {/* Header + close */}
+      {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3 shrink-0">
         <div>
           <p className="text-sm font-bold text-gray-900">Validation Notes</p>
           <p className="text-xs text-gray-400">
             {lead.validationNotes
               ? lead.bmvValidatedAt
-                ? `Calculated ${new Date(lead.bmvValidatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
+                ? `Calculated ${new Date(lead.bmvValidatedAt).toLocaleDateString("en-GB", {
+                    day: "numeric", month: "short", year: "numeric",
+                  })}`
                 : "Validation complete"
               : "No validation run yet"}
           </p>
@@ -317,7 +772,7 @@ export function ValidationModal({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-5">
+      <div className="flex-1 overflow-y-auto p-4">
         {lead.validationNotes ? (
           <ValidationNotesRenderer notes={lead.validationNotes} />
         ) : (
@@ -333,20 +788,12 @@ export function ValidationModal({
               <button
                 onClick={async () => {
                   setChecking(true)
-                  try {
-                    await onCheck()
-                  } finally {
-                    setChecking(false)
-                  }
+                  try { await onCheck() } finally { setChecking(false) }
                 }}
                 disabled={checking}
                 className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
               >
-                {checking ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Calculator className="h-4 w-4" />
-                )}
+                {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
                 {checking ? "Calculating…" : "Calculate BMV"}
               </button>
             )}
