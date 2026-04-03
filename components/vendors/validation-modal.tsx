@@ -381,51 +381,79 @@ function StrategyTableRenderer({
   )
 }
 
-function RentKPIRenderer({ kpis, bullets }: { kpis: RentKPIs; bullets: string[] }) {
+function RentKPIRenderer({
+  kpis,
+  bullets,
+  rawBody,
+}: {
+  kpis: RentKPIs
+  bullets: string[]
+  rawBody?: string[]
+}) {
+  const hasKpis = kpis.monthly || kpis.annual || kpis.weekly || kpis.grossYield
+
+  // Fallback: if KPI parsing found nothing but we have raw body lines, display them
+  // as readable bullet points so the data is never silently hidden
+  if (!hasKpis && (!bullets.length) && rawBody?.length) {
+    return (
+      <div className="space-y-1">
+        {rawBody
+          .filter(l => l.trim() && !/^={3,}/.test(l) && !/^-{3,}/.test(l))
+          .map((line, i) => {
+            // Strip leading emoji (surrogate pairs = 2 JS chars)
+            const clean = line.replace(/^[\s\S]{0,3}/, "").trim()
+            return <p key={i} className="text-xs text-gray-700">• {clean || line.trim()}</p>
+          })}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2">
-        {kpis.monthly && (
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-center">
-            <p className="text-[10px] text-gray-500 mb-0.5">Monthly Rent</p>
-            <p className="text-sm font-bold text-gray-900">{kpis.monthly}</p>
-          </div>
-        )}
-        {kpis.annual && (
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-center">
-            <p className="text-[10px] text-gray-500 mb-0.5">Annual Rent</p>
-            <p className="text-sm font-bold text-gray-900">{kpis.annual}</p>
-          </div>
-        )}
-        {kpis.weekly && (
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-center">
-            <p className="text-[10px] text-gray-500 mb-0.5">Weekly Rent</p>
-            <p className="text-sm font-bold text-gray-900">{kpis.weekly}</p>
-          </div>
-        )}
-        {kpis.grossYield && (
-          <div className={cn(
-            "rounded-lg border p-2.5 text-center",
-            kpis.grossYield.includes("STRONG") || parseFloat(kpis.grossYield) >= 7
-              ? "border-green-200 bg-green-50"
-              : parseFloat(kpis.grossYield) >= 5
-              ? "border-amber-200 bg-amber-50"
-              : "border-red-200 bg-red-50"
-          )}>
-            <p className="text-[10px] text-gray-500 mb-0.5">Gross Yield</p>
-            <p className={cn(
-              "text-sm font-bold",
+      {hasKpis && (
+        <div className="grid grid-cols-2 gap-2">
+          {kpis.monthly && (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-center">
+              <p className="text-[10px] text-gray-500 mb-0.5">Monthly Rent</p>
+              <p className="text-sm font-bold text-gray-900">{kpis.monthly}</p>
+            </div>
+          )}
+          {kpis.annual && (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-center">
+              <p className="text-[10px] text-gray-500 mb-0.5">Annual Rent</p>
+              <p className="text-sm font-bold text-gray-900">{kpis.annual}</p>
+            </div>
+          )}
+          {kpis.weekly && (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-center">
+              <p className="text-[10px] text-gray-500 mb-0.5">Weekly Rent</p>
+              <p className="text-sm font-bold text-gray-900">{kpis.weekly}</p>
+            </div>
+          )}
+          {kpis.grossYield && (
+            <div className={cn(
+              "rounded-lg border p-2.5 text-center",
               kpis.grossYield.includes("STRONG") || parseFloat(kpis.grossYield) >= 7
-                ? "text-green-700"
+                ? "border-green-200 bg-green-50"
                 : parseFloat(kpis.grossYield) >= 5
-                ? "text-amber-700"
-                : "text-red-700"
+                ? "border-amber-200 bg-amber-50"
+                : "border-red-200 bg-red-50"
             )}>
-              {kpis.grossYield.split("(")[0].trim()}
-            </p>
-          </div>
-        )}
-      </div>
+              <p className="text-[10px] text-gray-500 mb-0.5">Gross Yield</p>
+              <p className={cn(
+                "text-sm font-bold",
+                kpis.grossYield.includes("STRONG") || parseFloat(kpis.grossYield) >= 7
+                  ? "text-green-700"
+                  : parseFloat(kpis.grossYield) >= 5
+                  ? "text-amber-700"
+                  : "text-red-700"
+              )}>
+                {kpis.grossYield.split("(")[0].trim()}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
       {bullets.length > 0 && (
         <div className="space-y-1">
           {bullets.map((b, i) => (
@@ -543,8 +571,12 @@ function ValidationNotesRenderer({ notes }: { notes: string }) {
 
   // ── Rental Yield section ──────────────────────────────────────────────────
   if (rentalSection) {
-    const allLines = [rentalSection.header, ...rentalSection.body]
-    const kpis = parseRentKPIs(allLines)
+    // Parse KPIs from the FULL cleaned text — the section body may be incomplete
+    // if emoji-prefixed data lines were not captured during section splitting.
+    // Rent patterns (MONTHLY RENT, ANNUAL RENT, etc.) are unique enough that
+    // scanning the full text won't produce false positives.
+    const fullLines = cleaned.split("\n").map(l => l.trim()).filter(Boolean)
+    const kpis = parseRentKPIs(fullLines)
     const bullets = parseBullets(rentalSection.body)
     const hasPass = rentalSection.header.includes("✅") || rentalSection.header.toUpperCase().includes("PASS")
     const hasFail = rentalSection.header.includes("❌") || rentalSection.header.toUpperCase().includes("FAIL")
@@ -556,7 +588,7 @@ function ValidationNotesRenderer({ notes }: { notes: string }) {
         badge={<PassBadge pass={hasPass ? true : hasFail ? false : null} />}
         defaultOpen
       >
-        <RentKPIRenderer kpis={kpis} bullets={bullets} />
+        <RentKPIRenderer kpis={kpis} bullets={bullets} rawBody={rentalSection.body} />
       </Accordion>
     )
   }
