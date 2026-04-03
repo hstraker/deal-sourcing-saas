@@ -106,12 +106,31 @@ function extractStrategyData(text: string): {
 }
 
 /**
- * Split raw text into named sections by emoji-prefixed headers.
+ * Split raw text into named sections by emoji-prefixed MAJOR section headers only.
+ * Data lines like "📖 £200,000 | 🛏 0 BED" or "📖 MONTHLY RENT: £1,244" are NOT
+ * treated as headers — they stay inside the current section body.
  */
-function splitSections(text: string): Array<{ header: string; body: string[] }> {
-  // A section header is a line that starts with an emoji or is ALL CAPS with known keywords
-  const HEADER_RE = /^[\u{1F300}-\u{1FFFF}\u{2600}-\u{27BF}❌✅⚠️💡]/u
+const MAJOR_SECTION_KEYWORDS = [
+  "DEAL FAILED", "DEAL PASSED", "DEAL VALIDATION",
+  "STRATEGY-AWARE", "OFFER CALCULATION",
+  "COMPARABLE PROPERT",
+  "LAND REGISTRY", "OWNERSHIP",
+  "RENTAL YIELD", "RENTAL ANALYSIS",
+  "BMV ANALYSIS",
+]
+const STRATEGY_HEADER_KEYWORDS = /^(BTL|BUY.TO.LET|BUY\s*&\s*HOLD|BUYHOLD|FLIP|BRRR|BRR)\b/i
 
+function isMajorSectionHeader(line: string): boolean {
+  // Strip leading emoji / punctuation, get the text content
+  const text = line.replace(/^[\s\S]{0,3}/, "").trim().toUpperCase()
+  const full = line.toUpperCase()
+  return (
+    MAJOR_SECTION_KEYWORDS.some(kw => full.includes(kw)) ||
+    STRATEGY_HEADER_KEYWORDS.test(text)
+  )
+}
+
+function splitSections(text: string): Array<{ header: string; body: string[] }> {
   const sections: Array<{ header: string; body: string[] }> = []
   let current: { header: string; body: string[] } | null = null
 
@@ -119,7 +138,7 @@ function splitSections(text: string): Array<{ header: string; body: string[] }> 
     const line = raw.trim()
     if (!line) continue
 
-    if (HEADER_RE.test(line)) {
+    if (isMajorSectionHeader(line)) {
       if (current) sections.push(current)
       current = { header: line, body: [] }
     } else if (current) {
@@ -169,7 +188,7 @@ function parseComparables(lines: string[]): Comp[] {
   let currentAddress = ""
   for (const line of lines) {
     // Address lines: "1   14, Marston Road, B29 5ND" or "1. 14, Marston..."
-    const addrMatch = line.match(/^\d+[.\s]\s+(.+)/)
+    const addrMatch = line.match(/^\d+[.\s]+\s*(.+)/)
     if (addrMatch) {
       currentAddress = addrMatch[1].trim()
       continue
@@ -229,7 +248,7 @@ function parseRentKPIs(lines: string[]): RentKPIs {
     monthly:    find(/MONTHLY RENT[:\s]+(£[\d,]+)/i),
     weekly:     find(/WEEKLY RENT[:\s]+(£[\d,]+)/i),
     annual:     find(/ANNUAL RENT[:\s]+(£[\d,]+)/i),
-    grossYield: find(/GROSS YIELD[:\s]+([\d.]+%[^)]*)/i),
+    grossYield: find(/GROSS YIELD[:\s]+([\d.]+%(?:\s*\([^)]*\))?)/i),
   }
 }
 
