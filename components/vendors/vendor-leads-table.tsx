@@ -64,6 +64,7 @@ import { ComparableModal } from "./comparable-modal"
 import { invalidateComparablesCache } from "./vendor-comparables-tab"
 import { OfferAnalysisModal } from "./offer-analysis-modal"
 import { VendorLeadDetailModal } from "./vendor-lead-detail-modal"
+import { AiConversationModal } from "./ai-conversation-modal"
 import {
   Tooltip,
   TooltipContent,
@@ -167,9 +168,23 @@ export interface VendorLead {
   reasonForSelling: ReasonForSale | null
   competingOffers: boolean
   timelineDays: number | null
+  conversationState?: Record<string, any> | null
+  lastContactAt?: string | null
+  smsMessages?: Array<{
+    id: string
+    direction: string
+    messageBody: string
+    createdAt: string
+    aiGenerated?: boolean | null
+    intentDetected?: string | null
+    status?: string | null
+    aiResponseMetadata?: Record<string, any> | null
+    confidenceScore?: number | null
+  }>
+  _count?: { smsMessages: number; pipelineEvents: number }
 }
 
-type TabId = "map-view" | "property-details" | "portal-check" | "validation" | "comparable" | "offer-analysis"
+type TabId = "map-view" | "property-details" | "portal-check" | "validation" | "comparable" | "offer-analysis" | "ai-conversation"
 
 type PortalSource = "RIGHTMOVE" | "ZOOPLA" | "ONTHEMARKET" | "PRIMELOCATION"
 
@@ -864,6 +879,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "validation", label: "Validation" },
   { id: "comparable", label: "Comparable" },
   { id: "offer-analysis", label: "Offer Analysis" },
+  { id: "ai-conversation", label: "AI Conversation" },
 ]
 
 function TabBar({ active, onChange }: { active: TabId; onChange: (t: TabId) => void }) {
@@ -1477,6 +1493,89 @@ function OfferAnalysisRow({ lead, onRowClick, onView, onArchive, onDelete, onChe
   )
 }
 
+function AiConversationRow({ lead, onView, onArchive, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
+  const convState = (lead.conversationState ?? {}) as Record<string, any>
+  const isComplete = !!convState.conversationComplete
+  const messageCount = lead._count?.smsMessages ?? lead.smsMessages?.length ?? 0
+  const lastContactMs = lead.lastContactAt ? Date.now() - new Date(lead.lastContactAt).getTime() : null
+  const lastContactDays = lastContactMs !== null ? Math.floor(lastContactMs / (1000 * 60 * 60 * 24)) : null
+
+  const REASON_LABELS: Record<string, string> = {
+    relocation: "Relocation", financial: "Financial", divorce: "Divorce",
+    inheritance: "Inheritance", downsize: "Downsize", other: "Other",
+  }
+  const URGENCY_LABELS: Record<string, string> = {
+    urgent: "< 2 weeks", quick: "1–2 months", moderate: "3 months", flexible: "Flexible",
+  }
+
+  return (
+    <tr
+      className={cn("group cursor-pointer border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}
+      onClick={onView}
+    >
+      <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
+        <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
+      </td>
+      <VendorAddressCell lead={lead} isSelected={isSelected} />
+      <Td><StageBadge stage={lead.pipelineStage} /></Td>
+      <Td>
+        <span className={cn("font-mono text-xs font-semibold", messageCount > 0 ? "text-blue-600" : "text-gray-400")}>
+          {messageCount > 0 ? `${messageCount} msg${messageCount !== 1 ? "s" : ""}` : "—"}
+        </span>
+      </Td>
+      <Td>
+        {lead.motivationScore !== null
+          ? (
+            <Tip text={`Motivation: ${lead.motivationScore}/10`}>
+              <span className={cn("font-mono text-xs font-semibold cursor-default",
+                lead.motivationScore >= 8 ? "text-green-700" : lead.motivationScore >= 5 ? "text-amber-700" : "text-gray-500"
+              )}>
+                {lead.motivationScore}/10
+              </span>
+            </Tip>
+          )
+          : <span className="font-mono text-xs text-gray-400">—</span>}
+      </Td>
+      <Td>
+        <span className="text-xs text-gray-700 capitalize">
+          {lead.reasonForSelling ? (REASON_LABELS[lead.reasonForSelling] ?? lead.reasonForSelling) : <span className="text-gray-400">—</span>}
+        </span>
+      </Td>
+      <Td>
+        <span className="text-xs text-gray-700">
+          {lead.urgencyLevel ? (URGENCY_LABELS[lead.urgencyLevel] ?? lead.urgencyLevel) : lead.timelineDays ? `${lead.timelineDays}d` : <span className="text-gray-400">—</span>}
+        </span>
+      </Td>
+      <Td>
+        {lastContactDays !== null
+          ? (
+            <Tip text={`Last contact: ${fmtDate(lead.lastContactAt!)}`}>
+              <span className={cn("font-mono text-xs cursor-default",
+                lastContactDays > 7 ? "text-red-600 font-semibold" : lastContactDays > 3 ? "text-amber-600" : "text-gray-700"
+              )}>
+                {lastContactDays === 0 ? "Today" : `${lastContactDays}d ago`}
+              </span>
+            </Tip>
+          )
+          : <span className="font-mono text-xs text-gray-400">—</span>}
+      </Td>
+      <Td>
+        <span className={cn(
+          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+          isComplete
+            ? "bg-green-100 text-green-700"
+            : messageCount > 0
+              ? "bg-blue-100 text-blue-700"
+              : "bg-gray-100 text-gray-500"
+        )}>
+          {isComplete ? "Complete" : messageCount > 0 ? "In Progress" : "Not Started"}
+        </span>
+      </Td>
+      <ActionsCell lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete} />
+    </tr>
+  )
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Table headers per tab
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1624,6 +1723,20 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
         {stickyRight}
       </tr>
 
+    case "ai-conversation":
+      return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
+        {selectAllTh}
+        {vendorAddressHeader}
+        <Th>Status</Th>
+        <Th><Tip text="Total SMS messages exchanged with this vendor">Messages</Tip></Th>
+        <Th><Tip text="AI-scored vendor motivation (1-10). Higher = more urgency to sell">Motivation</Tip></Th>
+        <Th><Tip text="Reason vendor gave for selling their property">Reason</Tip></Th>
+        <Th><Tip text="How quickly vendor needs to sell">Timeline</Tip></Th>
+        <Th><Tip text="Last time a message was sent or received">Last Contact</Tip></Th>
+        <Th><Tip text="Whether the AI has finished gathering all required information">Conv. Status</Tip></Th>
+        {stickyRight}
+      </tr>
+
     default:
       return null
   }
@@ -1747,6 +1860,7 @@ export function VendorLeadsTable() {
   const [mapLead, setMapLead] = useState<VendorLead | null>(null)
   const [checkingIds, setCheckingIds] = useState<Set<string>>(new Set())
   const [detailModal, setDetailModal] = useState<{ lead: VendorLead; reason: string; urgency: "high" | "medium" | "low" } | null>(null)
+  const [aiConvoModalLead, setAiConvoModalLead] = useState<VendorLead | null>(null)
   const [propertyDetailsModalLead, setPropertyDetailsModalLead] = useState<VendorLead | null>(null)
   const [portalCheckModalLead, setPortalCheckModalLead] = useState<VendorLead | null>(null)
   const [validationModalLead, setValidationModalLead] = useState<VendorLead | null>(null)
@@ -2197,6 +2311,8 @@ export function VendorLeadsTable() {
                       setComparableModalLead(lead)
                     } else if (activeTab === "offer-analysis") {
                       setOfferModalLead(lead)
+                    } else if (activeTab === "ai-conversation") {
+                      setAiConvoModalLead(lead)
                     } else {
                       router.push(`/dashboard/vendors/${lead.id}/contact`)
                     }
@@ -2218,6 +2334,7 @@ export function VendorLeadsTable() {
                   case "validation":       return <ValidationRow key={lead.id} {...rowProps} />
                   case "comparable":       return <ComparableRow key={lead.id} {...rowProps} />
                   case "offer-analysis":   return <OfferAnalysisRow key={lead.id} {...rowProps} />
+                  case "ai-conversation":  return <AiConversationRow key={lead.id} {...rowProps} />
                   default:                 return null
                 }
               })}
@@ -2295,6 +2412,14 @@ export function VendorLeadsTable() {
           onClose={() => setDetailModal(null)}
           alertReason={detailModal.reason}
           alertUrgency={detailModal.urgency}
+        />
+      )}
+
+      {/* AI Conversation Modal */}
+      {aiConvoModalLead && (
+        <AiConversationModal
+          lead={aiConvoModalLead}
+          onClose={() => setAiConvoModalLead(null)}
         />
       )}
 
