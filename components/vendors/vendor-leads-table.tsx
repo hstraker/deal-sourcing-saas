@@ -1003,12 +1003,14 @@ interface CheckAction {
 function ActionsCell({
   lead,
   onView,
+  onEdit,
   onArchive,
   onDelete,
   checkAction,
 }: {
   lead: VendorLead
   onView: () => void
+  onEdit: () => void
   onArchive: () => void
   onDelete: () => void
   checkAction?: CheckAction
@@ -1026,7 +1028,7 @@ function ActionsCell({
           />
         )}
         <ActionBtn icon={Eye} title="View" onClick={onView} />
-        <ActionBtn icon={Pencil} title="Edit" onClick={() => {}} />
+        <ActionBtn icon={Pencil} title="Edit" onClick={onEdit} />
         <ActionBtn icon={Archive} title="Mark Dead & Archive" onClick={onArchive} />
         <ActionBtn icon={Trash2} title="Delete" onClick={onDelete} danger />
       </div>
@@ -1192,7 +1194,7 @@ function MapViewRow({ lead, onRowClick, onView, onDelete, isSelected, onToggleSe
   )
 }
 
-function PropertyDetailsRow({ lead, onRowClick, onView, onArchive, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
+function PropertyDetailsRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
   const ownershipTenure = (lead.latestPortalCheck?.ownershipCheckRaw as any)?.tenure ?? null
   const tenure = lead.tenureType ?? ownershipTenure
   const annualRent = toNum(lead.estimatedAnnualRent)
@@ -1231,12 +1233,12 @@ function PropertyDetailsRow({ lead, onRowClick, onView, onArchive, onDelete, isS
         </span>
       </Td>
       <Td><span className="text-xs text-gray-700">{lead.condition ? lead.condition.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : <span className="text-gray-400">—</span>}</span></Td>
-      <ActionsCell lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete} />
+      <ActionsCell lead={lead} onView={onView} onEdit={onEdit} onArchive={onArchive} onDelete={onDelete} />
     </tr>
   )
 }
 
-function PortalCheckRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect }: RowRendererProps) {
+function PortalCheckRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect }: RowRendererProps) {
   const ownership = lead.latestPortalCheck?.ownershipCheckRaw as any
   const ownerType = ownership?.isCorporateOwned
     ? ownership?.isOverseasOwned ? "Overseas Corp" : "Corporate"
@@ -1265,14 +1267,14 @@ function PortalCheckRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck
         </span>
       </Td>
       <ActionsCell
-        lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete}
+        lead={lead} onView={onView} onEdit={onEdit} onArchive={onArchive} onDelete={onDelete}
         checkAction={onCheck ? { icon: ShieldCheck, title: "Run Portal Check", onClick: onCheck, loading: isChecking } : undefined}
       />
     </tr>
   )
 }
 
-function ValidationRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect }: RowRendererProps) {
+function ValidationRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect }: RowRendererProps) {
   const rentNum = toNum(lead.estimatedMonthlyRent)
   const netCashflow = rentNum ? rentNum * 0.8 : null
   const annualRent = toNum(lead.estimatedAnnualRent)
@@ -1312,14 +1314,14 @@ function ValidationRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
       </Td>
       <Td><EpcCombinedCell rating={lead.epcRating} score={lead.epcScore} inspectionDate={lead.epcInspectionDate} /></Td>
       <ActionsCell
-        lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete}
+        lead={lead} onView={onView} onEdit={onEdit} onArchive={onArchive} onDelete={onDelete}
         checkAction={onCheck ? { icon: Calculator, title: "Calculate BMV & Validation", onClick: onCheck, loading: isChecking } : undefined}
       />
     </tr>
   )
 }
 
-function ComparableRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect }: RowRendererProps) {
+function ComparableRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect }: RowRendererProps) {
   const annualRent = toNum(lead.estimatedAnnualRent)
   const price = toNum(lead.askingPrice)
   const avgPrice = toNum(lead.avgComparablePrice)
@@ -1383,14 +1385,14 @@ function ComparableRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck,
         </span>
       </Td>
       <ActionsCell
-        lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete}
+        lead={lead} onView={onView} onEdit={onEdit} onArchive={onArchive} onDelete={onDelete}
         checkAction={onCheck ? { icon: GitCompare, title: "Fetch Comparables", onClick: onCheck, loading: isChecking } : undefined}
       />
     </tr>
   )
 }
 
-function OfferAnalysisRow({ lead, onRowClick, onView, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect }: RowRendererProps) {
+function OfferAnalysisRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect }: RowRendererProps) {
   // Build offer chain: initial offer → retries → projected ladder
   const retries = lead.offerRetries ?? []
   // initialOffer: always the first offer sent to the vendor
@@ -1486,14 +1488,14 @@ function OfferAnalysisRow({ lead, onRowClick, onView, onArchive, onDelete, onChe
         })()}
       </Td>
       <ActionsCell
-        lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete}
+        lead={lead} onView={onView} onEdit={onEdit} onArchive={onArchive} onDelete={onDelete}
         checkAction={onCheck ? { icon: Calculator, title: "Calculate Offer", onClick: onCheck, loading: isChecking } : undefined}
       />
     </tr>
   )
 }
 
-function AiConversationRow({ lead, onView, onArchive, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
+function AiConversationRow({ lead, onView, onEdit, onArchive, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
   const convState = (lead.conversationState ?? {}) as Record<string, any>
   const isComplete = !!convState.conversationComplete
   const messageCount = lead._count?.smsMessages ?? lead.smsMessages?.length ?? 0
@@ -1571,7 +1573,7 @@ function AiConversationRow({ lead, onView, onArchive, onDelete, isSelected, onTo
           {isComplete ? "Complete" : messageCount > 0 ? "In Progress" : "Not Started"}
         </span>
       </Td>
-      <ActionsCell lead={lead} onView={onView} onArchive={onArchive} onDelete={onDelete} />
+      <ActionsCell lead={lead} onView={onView} onEdit={onEdit} onArchive={onArchive} onDelete={onDelete} />
     </tr>
   )
 }
@@ -1584,6 +1586,7 @@ interface RowRendererProps {
   lead: VendorLead
   onRowClick: () => void
   onView: () => void
+  onEdit: () => void
   onArchive: () => void
   onDelete: () => void
   onCheck?: () => void
@@ -1861,6 +1864,7 @@ export function VendorLeadsTable() {
   const [checkingIds, setCheckingIds] = useState<Set<string>>(new Set())
   const [detailModal, setDetailModal] = useState<{ lead: VendorLead; reason: string; urgency: "high" | "medium" | "low" } | null>(null)
   const [aiConvoModalLead, setAiConvoModalLead] = useState<VendorLead | null>(null)
+  const [editLead, setEditLead] = useState<VendorLead | null>(null)
   const [propertyDetailsModalLead, setPropertyDetailsModalLead] = useState<VendorLead | null>(null)
   const [portalCheckModalLead, setPortalCheckModalLead] = useState<VendorLead | null>(null)
   const [validationModalLead, setValidationModalLead] = useState<VendorLead | null>(null)
@@ -2317,6 +2321,7 @@ export function VendorLeadsTable() {
                       router.push(`/dashboard/vendors/${lead.id}/contact`)
                     }
                   },
+                  onEdit: () => setEditLead(lead),
                   onArchive: () => handleArchive(lead.id),
                   onDelete: () => handleDelete(lead.id),
                   onCheck: checkCfg
@@ -2412,6 +2417,17 @@ export function VendorLeadsTable() {
           onClose={() => setDetailModal(null)}
           alertReason={detailModal.reason}
           alertUrgency={detailModal.urgency}
+        />
+      )}
+
+      {/* Edit Lead Modal */}
+      {editLead && (
+        <VendorLeadDetailModal
+          lead={editLead}
+          open={!!editLead}
+          onOpenChange={(open) => { if (!open) setEditLead(null) }}
+          onUpdate={() => { fetchLeads(); setEditLead(null) }}
+          initialTab="details"
         />
       )}
 
