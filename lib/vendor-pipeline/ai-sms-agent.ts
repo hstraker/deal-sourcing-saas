@@ -88,8 +88,8 @@ export class AISMSAgent {
       data: {
         vendorLeadId: lead.id,
         direction: "outbound" as SMSDirection,
-        messageSid: result.messageSid,
-        fromNumber: process.env.TWILIO_PHONE_NUMBER,
+        messageSid: result.messageSid || undefined,
+        fromNumber: process.env.TWILIO_PHONE_NUMBER || undefined,
         toNumber: lead.vendorPhone,
         messageBody: initialMessage,
         aiGenerated: true,
@@ -177,8 +177,8 @@ export class AISMSAgent {
       data: {
         vendorLeadId: lead.id,
         direction: "outbound" as SMSDirection,
-        messageSid: result.messageSid,
-        fromNumber: process.env.TWILIO_PHONE_NUMBER,
+        messageSid: result.messageSid || undefined,
+        fromNumber: process.env.TWILIO_PHONE_NUMBER || undefined,
         toNumber: lead.vendorPhone,
         messageBody: aiResponse.message,
         aiGenerated: true,
