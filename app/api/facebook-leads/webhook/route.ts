@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { aiSMSAgent } from "@/lib/vendor-pipeline/ai-sms-agent"
 import { runVendorCheck } from "@/lib/vendor-checks/vendor-check-orchestrator"
+import { shouldAutoStartAI } from "@/lib/vendor-pipeline/ai-conversation-settings"
 import { PipelineStage } from "@prisma/client"
 
 // Facebook Lead Ad field mapping
@@ -161,14 +162,18 @@ export async function POST(request: NextRequest) {
 
     console.log("✅ [Facebook Webhook] Created vendor lead:", lead.id)
 
-    // Trigger AI SMS conversation
+    // Trigger AI SMS conversation (only if enabled for Facebook leads)
     try {
-      console.log("🤖 [Facebook Webhook] Starting AI SMS conversation...")
-      await aiSMSAgent.sendInitialMessage(lead.id)
-      console.log("✅ [Facebook Webhook] Initial AI message sent")
+      const autoStart = await shouldAutoStartAI("facebook")
+      if (autoStart) {
+        console.log("🤖 [Facebook Webhook] Starting AI SMS conversation...")
+        await aiSMSAgent.sendInitialMessage(lead.id)
+        console.log("✅ [Facebook Webhook] Initial AI message sent")
+      } else {
+        console.log("⏸️ [Facebook Webhook] AI auto-start disabled for Facebook leads — skipping")
+      }
     } catch (error: any) {
       // Log error but don't fail the webhook
-      // The lead is created, AI conversation can be retried
       console.error("⚠️ [Facebook Webhook] Failed to send initial AI message:", error.message)
     }
 

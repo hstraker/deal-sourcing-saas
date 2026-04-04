@@ -1665,6 +1665,31 @@ model ScraperSettings {
   @@map("scraper_settings")
 }
 
+// ─── AI Conversation Settings ─────────────────────────────────────────────────
+// Singleton row controlling when the AI SMS agent auto-starts conversations.
+// Each source can be toggled independently. Fetched/created on first use.
+model AIConversationSettings {
+  id String @id @default(uuid())
+
+  // Global master switch — overrides all per-source toggles when OFF
+  enabled              Boolean @default(true)
+
+  // Per-source toggles
+  facebookLeadsEnabled Boolean @default(true)  @map("facebook_leads_enabled")
+  manualLeadsEnabled   Boolean @default(false) @map("manual_leads_enabled")
+  apiLeadsEnabled      Boolean @default(false) @map("api_leads_enabled")
+
+  // Conversation behaviour
+  sendInitialGreeting  Boolean @default(true)  @map("send_initial_greeting")  // send opener or wait for vendor to initiate
+  maxMessagesPerLead   Int     @default(20)     @map("max_messages_per_lead")  // safety cap
+
+  // Audit
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  updatedBy            String?  @map("updated_by")
+
+  @@map("ai_conversation_settings")
+}
+
 // ─── Offer Calculator Config ──────────────────────────────────────────────────
 // Singleton row that controls how the professional BMV offer calculator works.
 // When enableStrategyMode = false, the legacy motivation-based calculation runs.

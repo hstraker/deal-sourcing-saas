@@ -12,6 +12,8 @@ import { z } from "zod"
 import { PipelineStage } from "@prisma/client"
 import { estimateRentalIncome, estimateSquareFeet, calculateRentPerSqFt } from "@/lib/rental-estimator"
 import { runVendorLeadAutoTriggers } from "@/lib/services/vendorLeadAutoTriggers"
+import { aiSMSAgent } from "@/lib/vendor-pipeline/ai-sms-agent"
+import { shouldAutoStartAI } from "@/lib/vendor-pipeline/ai-conversation-settings"
 
 const createVendorLeadSchema = z.object({
   facebookLeadId: z.string().optional(),
@@ -251,6 +253,20 @@ export async function POST(request: NextRequest) {
     runVendorLeadAutoTriggers(lead.id).catch((err) =>
       console.error("[AutoTrigger] Failed for lead:", lead.id, err?.message)
     )
+
+    // Fire-and-forget: AI conversation (only if enabled for manual/api leads)
+    const source = validatedData.leadSource === "facebook_ads" ? "facebook"
+      : validatedData.facebookLeadId ? "facebook"
+      : "manual"
+
+    shouldAutoStartAI(source as any).then((autoStart) => {
+      if (autoStart) {
+        console.log(`🤖 [Leads API] Auto-starting AI conversation for ${source} lead ${lead.id}`)
+        aiSMSAgent.sendInitialMessage(lead.id).catch((err) =>
+          console.error("[Leads API] AI send failed:", lead.id, err?.message)
+        )
+      }
+    }).catch((err) => console.error("[Leads API] Settings check failed:", err?.message))
 
     return NextResponse.json(lead, { status: 201 })
   } catch (error: any) {
