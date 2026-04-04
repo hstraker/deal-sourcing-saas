@@ -185,7 +185,10 @@ export function AiConversationModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: manualMsg.trim() }),
       })
-      const json = await res.json()
+      let json: any = {}
+      try { json = await res.json() } catch {
+        throw new Error(`HTTP ${res.status} — server returned non-JSON (check terminal logs)`)
+      }
       if (!res.ok) throw new Error(json.error || `Error ${res.status}`)
       toast.success("Message sent to vendor")
       setManualMsg("")
