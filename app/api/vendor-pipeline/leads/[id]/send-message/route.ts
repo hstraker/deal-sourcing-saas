@@ -47,12 +47,22 @@ export async function POST(
     const twilioService = getTwilioService()
     const result = await twilioService.sendSMS(lead.vendorPhone, message)
 
+    // If Twilio returned an error, surface it clearly rather than silently failing
+    if (result.error) {
+      console.error("[send-message] Twilio send failed:", result.error)
+      return NextResponse.json(
+        { error: `SMS delivery failed: ${result.error}` },
+        { status: 502 }
+      )
+    }
+
     // Save message to database
+    // Use undefined (not empty string) for messageSid on failure to avoid @unique constraint violation
     const smsMessage = await prisma.sMSMessage.create({
       data: {
         vendorLeadId: lead.id,
         direction: "outbound" as any,
-        messageSid: result.messageSid,
+        messageSid: result.messageSid || undefined,
         fromNumber: process.env.TWILIO_PHONE_NUMBER || undefined,
         toNumber: lead.vendorPhone,
         messageBody: message,

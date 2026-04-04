@@ -185,8 +185,9 @@ export function AiConversationModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: manualMsg.trim() }),
       })
-      if (!res.ok) throw new Error((await res.json()).error || "Send failed")
-      toast.success("Message sent")
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || `Error ${res.status}`)
+      toast.success("Message sent to vendor")
       setManualMsg("")
       await refresh()
     } catch (e: any) { toast.error(e.message) }
