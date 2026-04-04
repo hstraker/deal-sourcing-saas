@@ -74,6 +74,7 @@ import { ShieldCheck } from "lucide-react"
 import { SolicitorSelector, type Solicitor as SolicitorType } from "@/components/solicitors/solicitor-selector"
 import { PortalCheckDetailPanel } from "./portal-check-detail-panel"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { AiConversationTab } from "./ai-conversation-tab"
 
 interface SMSMessage {
   id: string
@@ -82,6 +83,10 @@ interface SMSMessage {
   createdAt: Date
   messageSid?: string | null
   status?: string | null
+  aiGenerated?: boolean | null
+  intentDetected?: string | null
+  aiResponseMetadata?: Record<string, any> | null
+  confidenceScore?: number | null
 }
 
 interface PipelineEvent {
@@ -159,6 +164,8 @@ export interface VendorLead {
   isTest?: boolean
   solicitorId?: string | null
   solicitor?: SolicitorType | null
+  conversationState?: Record<string, any> | null
+  conversationStartedAt?: Date | null
   smsMessages: SMSMessage[]
   pipelineEvents?: PipelineEvent[]
 }
@@ -168,7 +175,7 @@ interface VendorLeadDetailModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onUpdate?: () => void
-  initialTab?: "details" | "comparables" | "activity" | "portal-check"
+  initialTab?: "details" | "comparables" | "activity" | "portal-check" | "ai-conversation"
   alertReason?: string
   alertUrgency?: "high" | "medium" | "low"
 }
@@ -1140,7 +1147,7 @@ export function VendorLeadDetailModal({
           onValueChange={setActiveTab}
           className="w-full"
         >
-          <TabsList className="grid w-full grid-cols-4 h-auto p-1 gap-0.5 bg-gray-50">
+          <TabsList className="grid w-full grid-cols-5 h-auto p-1 gap-0.5 bg-gray-50">
             <TabsTrigger
               value="details"
               className="relative flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
@@ -1179,6 +1186,18 @@ export function VendorLeadDetailModal({
             >
               <ShieldCheck className="h-3.5 w-3.5" />
               <span>Portal Check</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="ai-conversation"
+              className="relative flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
+                hover:bg-gray-50 hover:text-[#2563EB] hover:shadow-sm
+                data-[state=active]:bg-white data-[state=active]:text-[#2563EB] data-[state=active]:shadow-sm"
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              <span>AI Convo</span>
+              {currentLead.smsMessages && currentLead.smsMessages.length > 0 && (
+                <span className="absolute top-1.5 right-2 inline-block h-1.5 w-1.5 rounded-full bg-blue-500" />
+              )}
             </TabsTrigger>
           </TabsList>
 
@@ -2066,6 +2085,30 @@ export function VendorLeadDetailModal({
                   : null
               }
               onRiskUpdated={() => onUpdate?.()}
+            />
+          </TabsContent>
+
+          <TabsContent value="ai-conversation" className="space-y-4">
+            <AiConversationTab
+              lead={{
+                id: currentLead.id,
+                vendorName: currentLead.vendorName,
+                vendorPhone: currentLead.vendorPhone,
+                propertyAddress: currentLead.propertyAddress,
+                pipelineStage: currentLead.pipelineStage,
+                motivationScore: currentLead.motivationScore,
+                urgencyLevel: currentLead.urgencyLevel,
+                reasonForSelling: currentLead.reasonForSelling,
+                timelineDays: currentLead.timelineDays,
+                competingOffers: currentLead.competingOffers,
+                condition: currentLead.condition,
+                askingPrice: currentLead.askingPrice,
+                conversationState: currentLead.conversationState,
+                conversationStartedAt: currentLead.conversationStartedAt,
+                lastContactAt: currentLead.lastContactAt,
+                smsMessages: currentLead.smsMessages,
+              }}
+              onUpdate={onUpdate}
             />
           </TabsContent>
         </Tabs>

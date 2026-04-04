@@ -350,7 +350,7 @@ Data: ${JSON.stringify(context.extractedData)}`
    * Generate initial message template
    */
   private generateInitialMessage(vendorName: string, propertyAddress: string): string {
-    return `Hi ${vendorName}! Thanks for your enquiry about selling ${propertyAddress}. We're cash buyers who can move quickly with no chain. What's your rough timeline for selling?`
+    return `Hi ${vendorName}, thanks for reaching out about your property on ${propertyAddress}. We specialise in fast, hassle-free sales — no viewings, no chains. What's prompting the move?`
   }
 
   /**
