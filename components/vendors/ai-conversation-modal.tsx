@@ -206,7 +206,10 @@ export function AiConversationModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ vendorLeadId: lead.id, message: simMsg.trim() }),
       })
-      if (!res.ok) throw new Error((await res.json()).error || "Simulation failed")
+      if (!res.ok) {
+        const j = await res.json()
+        throw new Error(j.details || j.error || "Simulation failed")
+      }
       toast.success("Vendor reply simulated — AI responded")
       setSimMsg("")
       await refresh()
