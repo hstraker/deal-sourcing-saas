@@ -52,7 +52,7 @@ export async function POST(
       console.error("[send-message] Twilio send failed:", result.error)
       return NextResponse.json(
         { error: `SMS delivery failed: ${result.error}` },
-        { status: 502 }
+        { status: 400 }
       )
     }
 
