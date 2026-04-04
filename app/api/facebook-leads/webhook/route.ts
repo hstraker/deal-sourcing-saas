@@ -98,9 +98,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check for duplicate lead (by Facebook lead ID or phone number)
+    // Check for duplicate lead (by Facebook lead ID or phone number) — ignore archived leads
     const existingLead = await prisma.vendorLead.findFirst({
       where: {
+        archivedAt: null,
         OR: [
           { facebookLeadId: leadData.leadgen_id },
           { vendorPhone: phoneNumber }
