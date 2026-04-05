@@ -36,10 +36,16 @@ export class TwilioService {
     status: SMSStatus
     error?: string
   }> {
+    // Read fresh each call — avoids stale singleton value if env was set after module load
+    const fromNumber = process.env.TWILIO_PHONE_NUMBER || this.fromNumber
+    if (!fromNumber) {
+      return { messageSid: "", status: "failed" as SMSStatus, error: "TWILIO_PHONE_NUMBER not configured" }
+    }
+    console.log(`[Twilio] Sending SMS from ${fromNumber} to ${to}`)
     try {
       const result = await this.client.messages.create({
         body: message,
-        from: this.fromNumber,
+        from: fromNumber,
         to: to,
       })
 

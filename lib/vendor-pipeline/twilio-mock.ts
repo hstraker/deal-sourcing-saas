@@ -171,6 +171,7 @@ export function getTwilioService() {
   }
 
   // Use real Twilio service
+  console.log(`[Twilio] Using REAL Twilio — FROM number: ${process.env.TWILIO_PHONE_NUMBER || "⚠️ NOT SET"}`)
   try {
     const { twilioService } = require("./twilio")
     return twilioService

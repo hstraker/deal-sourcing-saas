@@ -23,7 +23,7 @@ YOUR GOALS:
 4. Keep natural - avoid interrogation
 
 STRATEGY:
-- SMS: 1-2 sentences max, <160 chars ideal
+- SMS: 1-2 sentences max, STRICT 155 char limit, plain ASCII only (no em dashes, smart quotes)
 - ONE question at a time
 - Acknowledge their info before next question
 - Get address early, then condition, price, reason, timeline, competing offers
@@ -371,10 +371,16 @@ Data: ${JSON.stringify(context.extractedData)}`
   }
 
   /**
-   * Generate initial message template
+   * Generate initial message template.
+   * Keep under 160 chars and GSM-7 only (no smart quotes, em dashes etc.)
+   * so trial Twilio accounts can send it as a single segment.
    */
   private generateInitialMessage(vendorName: string, propertyAddress: string): string {
-    return `Hi ${vendorName}, thanks for reaching out about your property on ${propertyAddress}. We specialise in fast, hassle-free sales — no viewings, no chains. What's prompting the move?`
+    // Use first name only to keep the message short
+    const firstName = vendorName.split(" ")[0]
+    const msg = `Hi ${firstName}, thanks for reaching out. We buy properties fast - no viewings, no chains. What's prompting the sale?`
+    // Safety cap at 155 chars (leaves room for any edge cases)
+    return msg.length <= 155 ? msg : msg.slice(0, 152) + "..."
   }
 
   /**
