@@ -78,6 +78,7 @@ import { SolicitorSelector, type Solicitor as SolicitorType } from "@/components
 import { PortalCheckDetailPanel } from "./portal-check-detail-panel"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { AiConversationTab } from "./ai-conversation-tab"
+import { SourcingFeePanel } from "./sourcing-fee-panel"
 
 interface SMSMessage {
   id: string
@@ -171,6 +172,24 @@ export interface VendorLead {
   conversationStartedAt?: Date | null
   smsMessages: SMSMessage[]
   pipelineEvents?: PipelineEvent[]
+  // Sourcing Fee & Deal P&L
+  sourcingFee?: string | number | null
+  sourcingFeeType?: string | null
+  sourcingFeePercent?: string | number | null
+  coSourcingPartner?: string | null
+  coSourcingFeePercent?: string | number | null
+  acquisitionCostSurvey?: string | number | null
+  acquisitionCostLegal?: string | number | null
+  acquisitionCostMarketing?: string | number | null
+  acquisitionCostOther?: string | number | null
+  sourcingFeeInvoicedAt?: string | null
+  sourcingFeePaidAt?: string | null
+  // Acquisition Cost Overrides
+  sdltBuyerType?: string | null
+  solicitorFeesOverride?: string | number | null
+  surveyFeeOverride?: string | number | null
+  bridgingCostOverride?: string | number | null
+  insuranceOverride?: string | number | null
 }
 
 interface VendorLeadDetailModalProps {
@@ -178,7 +197,7 @@ interface VendorLeadDetailModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onUpdate?: () => void
-  initialTab?: "details" | "portal-check" | "comparables" | "ai-conversation" | "activity"
+  initialTab?: "details" | "portal-check" | "comparables" | "ai-conversation" | "activity" | "deal-pl"
   alertReason?: string
   alertUrgency?: "high" | "medium" | "low"
 }
@@ -1095,7 +1114,7 @@ export function VendorLeadDetailModal({
           onValueChange={setActiveTab}
           className="flex flex-col flex-1 min-h-0 w-full"
         >
-          <TabsList className="grid w-full grid-cols-5 h-auto p-1 gap-0.5 bg-gray-50 flex-shrink-0">
+          <TabsList className="grid w-full grid-cols-6 h-auto p-1 gap-0.5 bg-gray-50 flex-shrink-0">
 
             {/* 1 — Lead Details */}
             <TabsTrigger
@@ -1165,6 +1184,20 @@ export function VendorLeadDetailModal({
             >
               <FileText className="h-3.5 w-3.5" />
               <span>Deal Log</span>
+            </TabsTrigger>
+
+            {/* 6 — Deal P&L (sourcing fee + profit) */}
+            <TabsTrigger
+              value="deal-pl"
+              className="relative flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
+                hover:bg-gray-50 hover:text-[#2563EB] hover:shadow-sm
+                data-[state=active]:bg-white data-[state=active]:text-[#2563EB] data-[state=active]:shadow-sm"
+            >
+              <PoundSterling className="h-3.5 w-3.5" />
+              <span>Deal P&L</span>
+              {currentLead.sourcingFee && (
+                <span className="absolute top-1.5 right-2 inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
+              )}
             </TabsTrigger>
 
           </TabsList>
@@ -2238,6 +2271,39 @@ export function VendorLeadDetailModal({
               }}
               onUpdate={onUpdate}
             />
+          </TabsContent>
+
+          {/* ── Deal P&L Tab ──────────────────────────────────────────────────── */}
+          <TabsContent value="deal-pl" className="flex-1 overflow-y-auto min-h-0 pt-2 pb-6 px-0.5">
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-800 mb-1">Sourcing Fee & Deal P&L</h3>
+                <p className="text-xs text-gray-400">
+                  Track your sourcing fee, partner split and deal costs to see your net profit.
+                </p>
+              </div>
+              <SourcingFeePanel
+                leadId={currentLead.id}
+                purchasePrice={currentLead.offerAmount ? Number(currentLead.offerAmount) : currentLead.askingPrice ? Number(currentLead.askingPrice) : undefined}
+                data={{
+                  sourcingFee: currentLead.sourcingFee ?? null,
+                  sourcingFeeType: currentLead.sourcingFeeType ?? null,
+                  sourcingFeePercent: currentLead.sourcingFeePercent ?? null,
+                  coSourcingPartner: currentLead.coSourcingPartner ?? null,
+                  coSourcingFeePercent: currentLead.coSourcingFeePercent ?? null,
+                  acquisitionCostSurvey: currentLead.acquisitionCostSurvey ?? null,
+                  acquisitionCostLegal: currentLead.acquisitionCostLegal ?? null,
+                  acquisitionCostMarketing: currentLead.acquisitionCostMarketing ?? null,
+                  acquisitionCostOther: currentLead.acquisitionCostOther ?? null,
+                  sourcingFeeInvoicedAt: currentLead.sourcingFeeInvoicedAt ?? null,
+                  sourcingFeePaidAt: currentLead.sourcingFeePaidAt ?? null,
+                }}
+                onSaved={(saved) => {
+                  setFullLead((prev) => prev ? { ...prev, ...saved } : prev)
+                  onUpdate?.()
+                }}
+              />
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>

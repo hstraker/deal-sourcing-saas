@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/ui/status-badge"
 import { ModalShell } from "./modal-shell"
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 import type { VendorLead } from "./vendor-leads-table"
+import { AcquisitionCostPanel } from "./acquisition-cost-panel"
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -982,10 +983,12 @@ export function ValidationModal({
   lead,
   onClose,
   onCheck,
+  onUpdate,
 }: {
   lead: VendorLead
   onClose: () => void
   onCheck?: () => Promise<void>
+  onUpdate?: () => void
 }) {
   const [checking, setChecking] = useState(false)
 
@@ -1184,11 +1187,11 @@ export function ValidationModal({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {lead.validationNotes ? (
           <ValidationNotesRenderer notes={lead.validationNotes} />
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center py-16">
+          <div className="flex flex-col items-center justify-center h-48 text-center py-8">
             <div className="rounded-full bg-gray-100 p-4 mb-4">
               <Home className="h-8 w-8 text-gray-300" />
             </div>
@@ -1211,6 +1214,37 @@ export function ValidationModal({
             )}
           </div>
         )}
+
+        {/* ── Acquisition Costs & SDLT ─────────────────────────────────── */}
+        <div>
+          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200">
+            <Calculator className="h-4 w-4 text-blue-500" />
+            <p className="text-sm font-bold text-gray-800">Acquisition Costs & SDLT</p>
+          </div>
+          <AcquisitionCostPanel
+            purchasePrice={toNum(lead.offerAmount) ?? toNum(lead.estimatedMarketValue) ?? 0}
+            refurbCost={toNum(lead.estimatedRefurbCost) ?? undefined}
+            savedBuyerType={lead.sdltBuyerType ?? null}
+            savedSolicitorFees={toNum(lead.solicitorFeesOverride) ?? null}
+            savedSurveyFee={toNum(lead.surveyFeeOverride) ?? null}
+            savedBridgingCost={toNum(lead.bridgingCostOverride) ?? null}
+            savedInsurance={toNum(lead.insuranceOverride) ?? null}
+            onSave={async (overrides) => {
+              const body: Record<string, unknown> = {}
+              if (overrides.buyerType !== undefined) body.sdltBuyerType = overrides.buyerType
+              if (overrides.solicitorFees !== undefined) body.solicitorFeesOverride = overrides.solicitorFees
+              if (overrides.surveyFee !== undefined) body.surveyFeeOverride = overrides.surveyFee
+              if (overrides.bridgingCost !== undefined) body.bridgingCostOverride = overrides.bridgingCost
+              if (overrides.insurance !== undefined) body.insuranceOverride = overrides.insurance
+              await fetch(`/api/vendor-pipeline/leads/${lead.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+              })
+              onUpdate?.()
+            }}
+          />
+        </div>
       </div>
     </ModalShell>
   )

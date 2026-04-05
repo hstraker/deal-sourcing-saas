@@ -1040,6 +1040,26 @@ model VendorLead {
   conversationStartedAt DateTime? @map("conversation_started_at")
   dealClosedAt          DateTime? @map("deal_closed_at")
 
+  // ── Sourcing Fee & Deal P&L ──────────────────────────────────────────────
+  sourcingFee              Decimal?  @db.Decimal(10, 2) @map("sourcing_fee")
+  sourcingFeeType          String?   @map("sourcing_fee_type")   // "fixed" | "percent"
+  sourcingFeePercent       Decimal?  @db.Decimal(5, 2)  @map("sourcing_fee_percent")
+  coSourcingPartner        String?   @map("co_sourcing_partner")
+  coSourcingFeePercent     Decimal?  @db.Decimal(5, 2)  @map("co_sourcing_fee_percent")
+  acquisitionCostSurvey    Decimal?  @db.Decimal(10, 2) @map("acquisition_cost_survey")
+  acquisitionCostLegal     Decimal?  @db.Decimal(10, 2) @map("acquisition_cost_legal")
+  acquisitionCostMarketing Decimal?  @db.Decimal(10, 2) @map("acquisition_cost_marketing")
+  acquisitionCostOther     Decimal?  @db.Decimal(10, 2) @map("acquisition_cost_other")
+  sourcingFeeInvoicedAt    DateTime? @map("sourcing_fee_invoiced_at")
+  sourcingFeePaidAt        DateTime? @map("sourcing_fee_paid_at")
+
+  // ── Acquisition Cost Overrides (used in All-In Cost calculator) ──────────
+  sdltBuyerType            String?   @map("sdlt_buyer_type")  // SdltBuyerType
+  solicitorFeesOverride    Decimal?  @db.Decimal(10, 2) @map("solicitor_fees_override")
+  surveyFeeOverride        Decimal?  @db.Decimal(10, 2) @map("survey_fee_override")
+  bridgingCostOverride     Decimal?  @db.Decimal(10, 2) @map("bridging_cost_override")
+  insuranceOverride        Decimal?  @db.Decimal(10, 2) @map("insurance_override")
+
   // Relations
   smsMessages          SMSMessage[]
   pipelineEvents       PipelineEvent[]

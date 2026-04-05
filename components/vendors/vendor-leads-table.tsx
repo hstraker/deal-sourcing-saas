@@ -183,6 +183,24 @@ export interface VendorLead {
     confidenceScore?: number | null
   }>
   _count?: { smsMessages: number; pipelineEvents: number }
+  // Sourcing Fee & Deal P&L
+  sourcingFee?: string | number | null
+  sourcingFeeType?: string | null
+  sourcingFeePercent?: string | number | null
+  coSourcingPartner?: string | null
+  coSourcingFeePercent?: string | number | null
+  acquisitionCostSurvey?: string | number | null
+  acquisitionCostLegal?: string | number | null
+  acquisitionCostMarketing?: string | number | null
+  acquisitionCostOther?: string | number | null
+  sourcingFeeInvoicedAt?: string | null
+  sourcingFeePaidAt?: string | null
+  // Acquisition Cost Overrides
+  sdltBuyerType?: string | null
+  solicitorFeesOverride?: string | number | null
+  surveyFeeOverride?: string | number | null
+  bridgingCostOverride?: string | number | null
+  insuranceOverride?: string | number | null
 }
 
 type TabId = "map-view" | "property-details" | "portal-check" | "validation" | "comparable" | "offer-analysis" | "ai-conversation"
