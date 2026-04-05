@@ -5,6 +5,7 @@
  */
 
 import { SMSDirection, SMSStatus } from "@prisma/client"
+import { type MessageChannel, stripWhatsAppPrefix, detectChannel } from "./twilio"
 
 export interface MockSMS {
   id: string
@@ -29,23 +30,55 @@ class MockTwilioService {
     status: SMSStatus
     error?: string
   }> {
+    return this._mockSend(to, message, "sms")
+  }
+
+  /**
+   * Send WhatsApp (mock - same as SMS in mock mode)
+   */
+  async sendWhatsApp(to: string, message: string): Promise<{
+    messageSid: string
+    status: SMSStatus
+    error?: string
+  }> {
+    return this._mockSend(to, message, "whatsapp")
+  }
+
+  /**
+   * Unified send
+   */
+  async sendMessage(to: string, message: string, channel: MessageChannel = "sms"): Promise<{
+    messageSid: string
+    status: SMSStatus
+    error?: string
+  }> {
+    return this._mockSend(to, message, channel)
+  }
+
+  private _mockSend(to: string, message: string, channel: MessageChannel): {
+    messageSid: string
+    status: SMSStatus
+    error?: string
+  } {
     this.messageCounter++
     const messageSid = `SM${Date.now()}${this.messageCounter}`
-    
+    const cleanTo = stripWhatsAppPrefix(to)
+
     const mockMessage: MockSMS = {
       id: messageSid,
       messageSid,
-      to,
+      to: cleanTo,
       from: process.env.TWILIO_PHONE_NUMBER || "+447700900000",
       body: message,
-      status: "delivered" as SMSStatus, // Immediately "delivered" in mock
+      status: "delivered" as SMSStatus,
       sentAt: new Date(),
       deliveredAt: new Date(),
     }
 
     this.messages.set(messageSid, mockMessage)
-    
-    console.log(`[Mock Twilio] SMS sent to ${to}:`, message)
+
+    const channelLabel = channel === "whatsapp" ? "WhatsApp" : "SMS"
+    console.log(`[Mock Twilio] ${channelLabel} sent to ${cleanTo}:`, message)
     console.log(`[Mock Twilio] Message SID: ${messageSid}`)
 
     return {
@@ -120,19 +153,25 @@ class MockTwilioService {
   }
 
   /**
-   * Parse inbound message (same as real Twilio)
+   * Parse inbound message (same as real Twilio).
+   * Handles both SMS and WhatsApp (whatsapp: prefix).
    */
   parseInboundMessage(body: Record<string, any>): {
     messageSid: string
     fromNumber: string
     toNumber: string
     messageBody: string
+    channel: MessageChannel
   } {
+    const rawFrom = body.From || ""
+    const rawTo   = body.To   || ""
+    const channel = detectChannel(rawTo) || detectChannel(rawFrom)
     return {
-      messageSid: body.MessageSid || `SM${Date.now()}`,
-      fromNumber: body.From || "",
-      toNumber: body.To || "",
+      messageSid:  body.MessageSid || `SM${Date.now()}`,
+      fromNumber:  stripWhatsAppPrefix(rawFrom),
+      toNumber:    stripWhatsAppPrefix(rawTo),
       messageBody: body.Body || "",
+      channel,
     }
   }
 

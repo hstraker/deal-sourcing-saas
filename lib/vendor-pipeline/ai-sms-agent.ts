@@ -6,6 +6,7 @@
 
 import { prisma } from "@/lib/db"
 import { getTwilioService } from "./twilio-mock"
+import type { MessageChannel } from "./twilio"
 import { AIProviderService } from "./ai-provider"
 import {
   AIConversationContext,
@@ -82,8 +83,9 @@ export class AISMSAgent {
 
   /**
    * Send initial message to a new vendor lead
+   * @param channel "sms" (default) or "whatsapp"
    */
-  async sendInitialMessage(vendorLeadId: string): Promise<void> {
+  async sendInitialMessage(vendorLeadId: string, channel: MessageChannel = "sms"): Promise<void> {
     const lead = await prisma.vendorLead.findUnique({
       where: { id: vendorLeadId },
     })
@@ -101,14 +103,18 @@ export class AISMSAgent {
 
     const initialMessage = this.generateInitialMessage(lead.vendorName, lead.propertyAddress || "your property")
 
-    // Send via Twilio (or mock)
+    // Send via Twilio (or mock) on the right channel
     const twilioService = getTwilioService()
-    const result = await twilioService.sendSMS(toNumber, initialMessage)
+    const result = await twilioService.sendMessage(toNumber, initialMessage, channel)
 
     // Surface Twilio errors — do NOT silently continue with a failed status
     if (result.error) {
-      throw new Error(`SMS delivery failed: ${result.error}`)
+      throw new Error(`${channel === "whatsapp" ? "WhatsApp" : "SMS"} delivery failed: ${result.error}`)
     }
+
+    const fromNumber = channel === "whatsapp"
+      ? (process.env.TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_PHONE_NUMBER || undefined)
+      : (process.env.TWILIO_PHONE_NUMBER || undefined)
 
     // Save to database
     await prisma.sMSMessage.create({
@@ -116,21 +122,23 @@ export class AISMSAgent {
         vendorLeadId: lead.id,
         direction: "outbound" as SMSDirection,
         messageSid: result.messageSid || undefined,
-        fromNumber: process.env.TWILIO_PHONE_NUMBER || undefined,
+        fromNumber,
         toNumber: toNumber,
         messageBody: initialMessage,
         aiGenerated: true,
         status: result.status,
+        channel,
       },
     })
 
-    // Update lead
+    // Update lead with preferred channel
     await prisma.vendorLead.update({
       where: { id: vendorLeadId },
       data: {
         pipelineStage: "AI_CONVERSATION" as PipelineStage,
         conversationStartedAt: new Date(),
         lastContactAt: new Date(),
+        preferredChannel: channel,
         conversationState: {
           conversationFlow: "initial",
           messagesExchanged: 1,
@@ -141,11 +149,13 @@ export class AISMSAgent {
 
   /**
    * Process inbound message from vendor and generate AI response
+   * @param channel "sms" (default) or "whatsapp" — use the channel the vendor replied on
    */
   async processInboundMessage(
     vendorLeadId: string,
     messageBody: string,
-    fromNumber: string
+    fromNumber: string,
+    channel: MessageChannel = "sms"
   ): Promise<void> {
     const lead = await prisma.vendorLead.findUnique({
       where: { id: vendorLeadId },
@@ -155,15 +165,20 @@ export class AISMSAgent {
       throw new Error(`Vendor lead ${vendorLeadId} not found`)
     }
 
+    const ourNumber = channel === "whatsapp"
+      ? (process.env.TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_PHONE_NUMBER || undefined)
+      : (process.env.TWILIO_PHONE_NUMBER || undefined)
+
     // Save inbound message
     const inboundMessage = await prisma.sMSMessage.create({
       data: {
         vendorLeadId: lead.id,
         direction: "inbound" as SMSDirection,
         fromNumber,
-        toNumber: process.env.TWILIO_PHONE_NUMBER,
+        toNumber: ourNumber,
         messageBody,
         aiGenerated: false,
+        channel,
       },
     })
 
@@ -195,9 +210,13 @@ export class AISMSAgent {
     const aiResponse = await this.generateAIResponse(context, messageBody)
     const responseTime = Date.now() - startTime
 
-    // Send AI response via Twilio (or mock)
+    // Send AI response via Twilio (or mock) — reply on same channel vendor used
     const twilioService = getTwilioService()
-    const result = await twilioService.sendSMS(lead.vendorPhone, aiResponse.message)
+    const result = await twilioService.sendMessage(lead.vendorPhone, aiResponse.message, channel)
+
+    const replyFrom = channel === "whatsapp"
+      ? (process.env.TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_PHONE_NUMBER || undefined)
+      : (process.env.TWILIO_PHONE_NUMBER || undefined)
 
     // Save AI response
     await prisma.sMSMessage.create({
@@ -205,8 +224,9 @@ export class AISMSAgent {
         vendorLeadId: lead.id,
         direction: "outbound" as SMSDirection,
         messageSid: result.messageSid || undefined,
-        fromNumber: process.env.TWILIO_PHONE_NUMBER || undefined,
+        fromNumber: replyFrom,
         toNumber: lead.vendorPhone,
+        channel,
         messageBody: aiResponse.message,
         aiGenerated: true,
         aiPrompt: JSON.stringify(context),

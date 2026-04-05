@@ -80,13 +80,20 @@ export async function POST(
       console.log(`[start-conversation] Normalised phone ${lead.vendorPhone} → ${normalisedPhone}`)
     }
 
-    // Send initial AI message — errors are surfaced, not swallowed
-    await aiSMSAgent.sendInitialMessage(lead.id)
+    // Read requested channel (default to lead's preferredChannel, then "sms")
+    let body: any = {}
+    try { body = await request.json() } catch {}
+    const channel: "sms" | "whatsapp" = body.channel === "whatsapp" ? "whatsapp" : "sms"
 
+    // Send initial AI message — errors are surfaced, not swallowed
+    await aiSMSAgent.sendInitialMessage(lead.id, channel)
+
+    const channelLabel = channel === "whatsapp" ? "WhatsApp" : "SMS"
     return NextResponse.json({
       success: true,
-      message: "AI conversation started — initial SMS sent",
+      message: `AI conversation started — initial ${channelLabel} sent`,
       phone: normalisedPhone,
+      channel,
     })
   } catch (error: any) {
     console.error("[start-conversation] Failed:", error)

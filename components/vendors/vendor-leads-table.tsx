@@ -183,6 +183,7 @@ export interface VendorLead {
     confidenceScore?: number | null
   }>
   _count?: { smsMessages: number; pipelineEvents: number }
+  preferredChannel?: string | null  // "sms" | "whatsapp"
   // Sourcing Fee & Deal P&L
   sourcingFee?: string | number | null
   sourcingFeeType?: string | null

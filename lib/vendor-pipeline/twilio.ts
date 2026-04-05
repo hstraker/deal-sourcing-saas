@@ -1,12 +1,30 @@
 /**
- * Twilio SMS Integration for Vendor Pipeline
- * Handles sending and receiving SMS messages for AI conversations
+ * Twilio SMS + WhatsApp Integration for Vendor Pipeline
+ * Handles sending and receiving SMS and WhatsApp messages for AI conversations
  */
 
 import { Twilio } from "twilio"
 import { validateRequest } from "twilio"
 import { SMSMessageInput } from "@/types/vendor-pipeline"
 import { SMSDirection, SMSStatus } from "@prisma/client"
+
+export type MessageChannel = "sms" | "whatsapp"
+
+/** Format a E.164 phone number for WhatsApp (adds whatsapp: prefix) */
+function toWhatsAppAddress(phone: string): string {
+  const cleaned = phone.startsWith("whatsapp:") ? phone : `whatsapp:${phone}`
+  return cleaned
+}
+
+/** Strip whatsapp: prefix from a number, returning bare E.164 */
+export function stripWhatsAppPrefix(phone: string): string {
+  return phone.replace(/^whatsapp:/i, "")
+}
+
+/** Detect channel from a Twilio `To` or `From` field value */
+export function detectChannel(address: string): MessageChannel {
+  return address.toLowerCase().startsWith("whatsapp:") ? "whatsapp" : "sms"
+}
 
 export class TwilioService {
   private client: Twilio
@@ -36,17 +54,62 @@ export class TwilioService {
     status: SMSStatus
     error?: string
   }> {
-    // Read fresh each call — avoids stale singleton value if env was set after module load
-    const fromNumber = process.env.TWILIO_PHONE_NUMBER || this.fromNumber
-    if (!fromNumber) {
-      return { messageSid: "", status: "failed" as SMSStatus, error: "TWILIO_PHONE_NUMBER not configured" }
-    }
-    console.log(`[Twilio] Sending SMS from ${fromNumber} to ${to}`)
+    return this._send(to, message, "sms")
+  }
+
+  /**
+   * Send WhatsApp message
+   * Requires TWILIO_WHATSAPP_NUMBER env var (e.g. +14155238886 for sandbox,
+   * or your approved WhatsApp Business number).
+   * First outbound message to a new contact should use a pre-approved template.
+   */
+  async sendWhatsApp(to: string, message: string): Promise<{
+    messageSid: string
+    status: SMSStatus
+    error?: string
+  }> {
+    return this._send(to, message, "whatsapp")
+  }
+
+  /**
+   * Unified send — picks channel automatically
+   */
+  async sendMessage(to: string, message: string, channel: MessageChannel = "sms"): Promise<{
+    messageSid: string
+    status: SMSStatus
+    error?: string
+  }> {
+    return this._send(to, message, channel)
+  }
+
+  private async _send(to: string, message: string, channel: MessageChannel): Promise<{
+    messageSid: string
+    status: SMSStatus
+    error?: string
+  }> {
     try {
+      let fromNumber: string
+      let toAddress: string
+
+      if (channel === "whatsapp") {
+        const waNumber = process.env.TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_PHONE_NUMBER || this.fromNumber
+        fromNumber = toWhatsAppAddress(waNumber)
+        toAddress  = toWhatsAppAddress(stripWhatsAppPrefix(to))
+        console.log(`[Twilio] Sending WhatsApp from ${fromNumber} to ${toAddress}`)
+      } else {
+        fromNumber = process.env.TWILIO_PHONE_NUMBER || this.fromNumber
+        toAddress  = stripWhatsAppPrefix(to) // ensure no stray prefix
+        console.log(`[Twilio] Sending SMS from ${fromNumber} to ${toAddress}`)
+      }
+
+      if (!fromNumber) {
+        return { messageSid: "", status: "failed" as SMSStatus, error: "From number not configured" }
+      }
+
       const result = await this.client.messages.create({
         body: message,
         from: fromNumber,
-        to: to,
+        to: toAddress,
       })
 
       return {
@@ -54,7 +117,7 @@ export class TwilioService {
         status: this.mapTwilioStatus(result.status as string),
       }
     } catch (error: any) {
-      console.error("Error sending SMS:", error)
+      console.error(`[Twilio] Error sending ${channel} message:`, error)
       return {
         messageSid: "",
         status: "failed" as SMSStatus,
@@ -106,19 +169,26 @@ export class TwilioService {
   }
 
   /**
-   * Parse inbound SMS from Twilio webhook
+   * Parse inbound message from Twilio webhook.
+   * Handles both SMS (plain E.164) and WhatsApp (whatsapp:+44xxx prefixed) addresses.
    */
   parseInboundMessage(body: Record<string, any>): {
     messageSid: string
     fromNumber: string
     toNumber: string
     messageBody: string
+    channel: MessageChannel
   } {
+    const rawFrom = body.From || ""
+    const rawTo   = body.To   || ""
+    const channel = detectChannel(rawTo) || detectChannel(rawFrom)
+
     return {
-      messageSid: body.MessageSid || "",
-      fromNumber: body.From || "",
-      toNumber: body.To || "",
+      messageSid:  body.MessageSid || "",
+      fromNumber:  stripWhatsAppPrefix(rawFrom),
+      toNumber:    stripWhatsAppPrefix(rawTo),
       messageBody: body.Body || "",
+      channel,
     }
   }
 
@@ -140,4 +210,3 @@ export class TwilioService {
 }
 
 export const twilioService = new TwilioService()
-

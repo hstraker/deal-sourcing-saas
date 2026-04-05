@@ -12,7 +12,8 @@ import { getTwilioService } from "@/lib/vendor-pipeline/twilio-mock"
 import { z } from "zod"
 
 const sendMessageSchema = z.object({
-  message: z.string().min(1).max(1600), // SMS character limit
+  message: z.string().min(1).max(4096), // WhatsApp allows longer messages
+  channel: z.enum(["sms", "whatsapp"]).optional(),
 })
 
 // POST /api/vendor-pipeline/leads/[id]/send-message
@@ -32,7 +33,7 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { message } = sendMessageSchema.parse(body)
+    const { message, channel: rawChannel } = sendMessageSchema.parse(body)
 
     // Get the vendor lead
     const lead = await prisma.vendorLead.findUnique({
@@ -43,31 +44,39 @@ export async function POST(
       return NextResponse.json({ error: "Lead not found" }, { status: 404 })
     }
 
-    // Send SMS via Twilio service
+    // Use requested channel, fall back to lead's preferredChannel, then sms
+    const channel = rawChannel ?? ((lead as any).preferredChannel ?? "sms") as "sms" | "whatsapp"
+
+    // Send via Twilio service on the right channel
     const twilioService = getTwilioService()
-    const result = await twilioService.sendSMS(lead.vendorPhone, message)
+    const result = await twilioService.sendMessage(lead.vendorPhone, message, channel)
 
     // If Twilio returned an error, surface it clearly rather than silently failing
     if (result.error) {
-      console.error("[send-message] Twilio send failed:", result.error)
+      const label = channel === "whatsapp" ? "WhatsApp" : "SMS"
+      console.error(`[send-message] Twilio ${label} send failed:`, result.error)
       return NextResponse.json(
-        { error: `SMS delivery failed: ${result.error}` },
+        { error: `${label} delivery failed: ${result.error}` },
         { status: 400 }
       )
     }
 
+    const fromNumber = channel === "whatsapp"
+      ? (process.env.TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_PHONE_NUMBER || undefined)
+      : (process.env.TWILIO_PHONE_NUMBER || undefined)
+
     // Save message to database
-    // Use undefined (not empty string) for messageSid on failure to avoid @unique constraint violation
     const smsMessage = await prisma.sMSMessage.create({
       data: {
         vendorLeadId: lead.id,
         direction: "outbound" as any,
         messageSid: result.messageSid || undefined,
-        fromNumber: process.env.TWILIO_PHONE_NUMBER || undefined,
+        fromNumber,
         toNumber: lead.vendorPhone,
         messageBody: message,
         aiGenerated: false,
         status: result.status,
+        channel,
       },
     })
 

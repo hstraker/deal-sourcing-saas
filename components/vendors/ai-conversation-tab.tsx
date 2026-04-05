@@ -34,6 +34,7 @@ export interface AISMSMessage {
   status?: string | null
   aiGenerated?: boolean | null
   intentDetected?: string | null
+  channel?: string | null   // "sms" | "whatsapp"
   aiResponseMetadata?: {
     model?: string
     provider?: string
@@ -73,6 +74,7 @@ export interface AiConversationTabLead {
   smsMessages: AISMSMessage[]
   conversationStartedAt?: Date | null
   lastContactAt?: Date | null
+  preferredChannel?: string | null  // "sms" | "whatsapp"
 }
 
 interface AiConversationTabProps {
@@ -152,11 +154,28 @@ function formatTime(date: Date | string) {
   })
 }
 
+// WhatsApp green icon as inline SVG
+function WhatsAppIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+    </svg>
+  )
+}
+
 export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
+  // Detect active channel from existing messages or lead preference
+  const activeChannel = (
+    lead.smsMessages?.find(m => m.channel)?.channel ||
+    lead.preferredChannel ||
+    "sms"
+  ) as "sms" | "whatsapp"
+
   const [messages, setMessages] = useState<AISMSMessage[]>(lead.smsMessages || [])
   const [manualMessage, setManualMessage] = useState("")
   const [simulateMessage, setSimulateMessage] = useState("")
   const [sendMode, setSendMode] = useState<"manual" | "simulate">("manual")
+  const [selectedChannel, setSelectedChannel] = useState<"sms" | "whatsapp">(activeChannel)
   const [isSending, setIsSending] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isStarting, setIsStarting] = useState(false)
@@ -230,15 +249,19 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
     }
   }
 
-  const startAIConversation = async () => {
+  const startAIConversation = async (channel: "sms" | "whatsapp" = selectedChannel) => {
     setIsStarting(true)
     try {
       const res = await fetch(`/api/vendor-pipeline/leads/${lead.id}/start-conversation`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || "Failed to start conversation")
-      toast.success("AI conversation started — initial SMS sent to vendor")
+      const label = channel === "whatsapp" ? "WhatsApp" : "SMS"
+      toast.success(`AI conversation started — initial ${label} sent to vendor`)
+      setSelectedChannel(channel)
       await refreshMessages()
       onUpdate?.()
     } catch (e: any) {
@@ -255,7 +278,7 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
       const res = await fetch(`/api/vendor-pipeline/leads/${lead.id}/send-message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: manualMessage.trim() }),
+        body: JSON.stringify({ message: manualMessage.trim(), channel: selectedChannel }),
       })
       if (!res.ok) {
         const err = await res.json()
@@ -368,9 +391,24 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
           {/* Thread header */}
           <div className="px-4 py-3 border-b border-[var(--ds-border)] flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-[#2563EB]" />
-              <span className="text-sm font-semibold text-gray-900">SMS Thread</span>
+              {selectedChannel === "whatsapp"
+                ? <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
+                : <MessageSquare className="h-4 w-4 text-[#2563EB]" />
+              }
+              <span className="text-sm font-semibold text-gray-900">
+                {selectedChannel === "whatsapp" ? "WhatsApp" : "SMS"} Thread
+              </span>
               <span className="text-xs text-gray-400">{lead.vendorPhone}</span>
+              {/* Channel indicator badge */}
+              {selectedChannel === "whatsapp" ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#25D366]/10 border border-[#25D366]/30 px-2 py-0.5 text-[10px] font-semibold text-[#128C7E]">
+                  <WhatsAppIcon className="h-2.5 w-2.5" /> WhatsApp
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 border border-blue-200 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                  SMS
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2">
               {/* Live indicator when polling is active */}
@@ -404,19 +442,57 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
                   <Sparkles className="h-6 w-6 text-[#2563EB]" />
                 </div>
                 <p className="text-sm font-semibold text-gray-700 mb-1">No conversation started yet</p>
-                <p className="text-xs text-gray-400 mb-5 max-w-[220px] leading-relaxed">
-                  Auto-start may be off for this lead source. Click below to send the AI opening message now.
+                <p className="text-xs text-gray-400 mb-4 max-w-[240px] leading-relaxed">
+                  Choose a channel and send the AI opening message. Most UK vendors over 50 respond faster on WhatsApp.
                 </p>
+
+                {/* Channel selector */}
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => setSelectedChannel("sms")}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors",
+                      selectedChannel === "sms"
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                    )}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" /> SMS
+                  </button>
+                  <button
+                    onClick={() => setSelectedChannel("whatsapp")}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors",
+                      selectedChannel === "whatsapp"
+                        ? "bg-[#25D366] text-white border-[#25D366]"
+                        : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                    )}
+                  >
+                    <WhatsAppIcon className="h-3.5 w-3.5" /> WhatsApp
+                  </button>
+                </div>
+
                 <Button
-                  onClick={startAIConversation}
+                  onClick={() => startAIConversation(selectedChannel)}
                   disabled={isStarting}
-                  className="gap-2 text-sm"
+                  className={cn(
+                    "gap-2 text-sm",
+                    selectedChannel === "whatsapp" && "bg-[#25D366] hover:bg-[#128C7E] border-none"
+                  )}
                   size="sm"
                 >
                   {isStarting
                     ? <><Loader2 className="h-4 w-4 animate-spin" /> Starting…</>
-                    : <><Zap className="h-4 w-4" /> Start AI Conversation</>}
+                    : selectedChannel === "whatsapp"
+                    ? <><WhatsAppIcon className="h-4 w-4" /> Start via WhatsApp</>
+                    : <><Zap className="h-4 w-4" /> Start via SMS</>}
                 </Button>
+
+                {selectedChannel === "whatsapp" && (
+                  <p className="mt-2 text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 max-w-[240px]">
+                    ⚠ Requires WhatsApp Business account linked to Twilio. Set TWILIO_WHATSAPP_NUMBER in env.
+                  </p>
+                )}
                 <p className="mt-3 text-[11px] text-gray-300">
                   Sends to {lead.vendorPhone}
                 </p>
@@ -436,15 +512,20 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
                         "h-5 w-5 rounded-full flex items-center justify-center shrink-0",
                         isOutbound
                           ? msg.aiGenerated ? "bg-[#2563EB]" : "bg-gray-500"
-                          : "bg-gray-200"
+                          : msg.channel === "whatsapp" ? "bg-[#25D366]" : "bg-gray-200"
                       )}>
                         {isOutbound
                           ? msg.aiGenerated
                             ? <Bot className="h-3 w-3 text-white" />
                             : <User className="h-3 w-3 text-white" />
+                          : msg.channel === "whatsapp"
+                          ? <WhatsAppIcon className="h-3 w-3 text-white" />
                           : <User className="h-3 w-3 text-gray-600" />
                         }
                       </div>
+                      {msg.channel === "whatsapp" && (
+                        <span className="text-[9px] font-bold text-[#128C7E]">WA</span>
+                      )}
                       <span className="text-xs text-gray-400">
                         {isOutbound
                           ? msg.aiGenerated ? "AI" : "Manual"

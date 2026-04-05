@@ -1038,6 +1038,7 @@ model VendorLead {
   updatedAt             DateTime  @updatedAt @map("updated_at")
   lastContactAt         DateTime? @map("last_contact_at")
   conversationStartedAt DateTime? @map("conversation_started_at")
+  preferredChannel      String    @default("sms") @map("preferred_channel")  // "sms" | "whatsapp"
   dealClosedAt          DateTime? @map("deal_closed_at")
 
   // ── Sourcing Fee & Deal P&L ──────────────────────────────────────────────
@@ -1131,6 +1132,9 @@ model SMSMessage {
   fromNumber  String? @map("from_number")
   toNumber    String? @map("to_number")
   messageBody String  @map("message_body") @db.Text
+
+  // Channel: "sms" | "whatsapp"
+  channel String @default("sms") @map("channel")
 
   // AI Context
   aiGenerated        Boolean  @default(false) @map("ai_generated")

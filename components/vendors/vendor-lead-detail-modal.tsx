@@ -90,6 +90,7 @@ interface SMSMessage {
   status?: string | null
   aiGenerated?: boolean | null
   intentDetected?: string | null
+  channel?: string | null  // "sms" | "whatsapp"
   aiResponseMetadata?: Record<string, any> | null
   confidenceScore?: number | null
 }
@@ -191,6 +192,8 @@ export interface VendorLead {
   surveyFeeOverride?: string | number | null
   bridgingCostOverride?: string | number | null
   insuranceOverride?: string | number | null
+  // Outreach channel
+  preferredChannel?: string | null  // "sms" | "whatsapp"
 }
 
 interface VendorLeadDetailModalProps {
@@ -2274,6 +2277,7 @@ export function VendorLeadDetailModal({
                 conversationState: currentLead.conversationState,
                 conversationStartedAt: currentLead.conversationStartedAt,
                 lastContactAt: currentLead.lastContactAt,
+                preferredChannel: currentLead.preferredChannel ?? "sms",
                 smsMessages: currentLead.smsMessages,
               }}
               onUpdate={onUpdate}
