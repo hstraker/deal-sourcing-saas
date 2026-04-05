@@ -964,90 +964,37 @@ export function VendorLeadDetailModal({
               <div className="flex items-center gap-1.5">
                 {!isEditing ? (
                   <>
-                    {/* Template selector + Pack button — grouped */}
-                    <div className="flex items-center rounded-md border bg-white overflow-hidden">
-                      {templates.length > 0 && (
-                        <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                          <SelectTrigger className="h-8 w-36 border-0 border-r rounded-none shadow-none focus:ring-0 text-xs pl-2.5 pr-1">
-                            <SelectValue placeholder="Template" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {templates.filter((t: any) => t.isActive).map((template: any) => (
-                              <SelectItem key={template.id} value={template.id}>
-                                {template.name}{template.isDefault ? " ✓" : ""}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                      <TooltipProvider delayDuration={300}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="relative">
-                              <Button
-                                size="sm"
-                                className="h-8 rounded-none border-0 gap-1.5 text-xs px-3"
-                                onClick={handleGenerateInvestorPack}
-                                disabled={isGeneratingPack || !currentLead.propertyAddress || !currentLead.askingPrice || !selectedTemplateId}
-                              >
-                                {isGeneratingPack
-                                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  : <FileDown className="h-3.5 w-3.5" />}
-                                {isGeneratingPack ? "Generating…" : "Investor Pack"}
-                              </Button>
-                              {currentLead.investorPackGenerationCount != null && currentLead.investorPackGenerationCount > 0 && (
-                                <span className="absolute -top-1.5 -right-1.5 bg-green-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center leading-none z-10">
-                                  {currentLead.investorPackGenerationCount}
-                                </span>
-                              )}
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom" className="text-xs">
-                            <p suppressHydrationWarning>
-                              {currentLead.investorPackGenerationCount && currentLead.investorPackGenerationCount > 0
-                                ? `Generated ${currentLead.investorPackGenerationCount}×${currentLead.lastInvestorPackGeneratedAt ? ` · Last: ${formatTimeAgo(currentLead.lastInvestorPackGeneratedAt)}` : ""}`
-                                : "Generate professional investor pack PDF"}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-
                     {/* Edit — icon button */}
                     <TooltipProvider delayDuration={300}>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 w-8 p-0"
+                          <button
                             onClick={handleEdit}
                             disabled={isSaving}
+                            className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 transition-colors hover:border-gray-300 hover:text-gray-700 disabled:opacity-50"
                           >
                             <Edit className="h-3.5 w-3.5" />
-                          </Button>
+                          </button>
                         </TooltipTrigger>
                         <TooltipContent side="bottom" className="text-xs">Edit lead</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
 
-                    {/* Delete — icon button, red tint */}
+                    {/* Delete — icon button, danger on hover */}
                     <TooltipProvider delayDuration={300}>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                          <button
                             onClick={handleDelete}
                             disabled={isSaving || isDeleting}
+                            className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
                           >
                             {isDeleting
                               ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                               : <Trash2 className="h-3.5 w-3.5" />}
-                          </Button>
+                          </button>
                         </TooltipTrigger>
-                        <TooltipContent side="bottom" className="text-xs text-red-600">Delete lead</TooltipContent>
+                        <TooltipContent side="bottom" className="text-xs">Delete lead</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
 
@@ -1055,16 +1002,14 @@ export function VendorLeadDetailModal({
                     <TooltipProvider delayDuration={300}>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 w-8 p-0"
+                          <button
                             onClick={() => setIsFullscreen((v) => !v)}
+                            className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 transition-colors hover:border-gray-300 hover:text-gray-700"
                           >
                             {isFullscreen
                               ? <Minimize2 className="h-3.5 w-3.5" />
                               : <Maximize2 className="h-3.5 w-3.5" />}
-                          </Button>
+                          </button>
                         </TooltipTrigger>
                         <TooltipContent side="bottom" className="text-xs">
                           {isFullscreen ? "Exit fullscreen" : "Fullscreen"}
@@ -1830,31 +1775,83 @@ export function VendorLeadDetailModal({
               return (
                 <div className="ds-card overflow-hidden">
                   <div className="px-5 py-4 border-b border-[var(--ds-border)]">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
                       <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                         <KeyRound className="h-4 w-4 text-[#2563EB]" />
                         Investor Reservation
                       </h3>
-                      {res && (
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className={cn("text-xs border", statusColor[res.status] || "")}>
-                            {statusLabel[res.status] || res.status}
-                          </Badge>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 px-2 text-xs text-red-500 hover:text-red-500 hover:bg-red-50"
-                            onClick={handleRemoveReservation}
-                            disabled={isRemovingReservation}
-                          >
-                            {isRemovingReservation
-                              ? <Loader2 className="h-3 w-3 animate-spin" />
-                              : <X className="h-3 w-3 mr-0.5" />
-                            }
-                            Remove
-                          </Button>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {/* Investor pack: template selector + generate button */}
+                        <div className="flex items-center rounded-md border bg-gray-50 overflow-hidden">
+                          {templates.length > 0 && (
+                            <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                              <SelectTrigger className="h-7 w-32 border-0 border-r rounded-none shadow-none focus:ring-0 text-[11px] pl-2 pr-1 bg-transparent">
+                                <SelectValue placeholder="Template" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {templates.filter((t: any) => t.isActive).map((template: any) => (
+                                  <SelectItem key={template.id} value={template.id}>
+                                    {template.name}{template.isDefault ? " ✓" : ""}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                          <TooltipProvider delayDuration={300}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="relative">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 rounded-none border-0 gap-1.5 text-[11px] px-2.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                                    onClick={handleGenerateInvestorPack}
+                                    disabled={isGeneratingPack || !currentLead.propertyAddress || !currentLead.askingPrice || !selectedTemplateId}
+                                  >
+                                    {isGeneratingPack
+                                      ? <Loader2 className="h-3 w-3 animate-spin" />
+                                      : <FileDown className="h-3 w-3" />}
+                                    {isGeneratingPack ? "Generating…" : "Pack"}
+                                  </Button>
+                                  {currentLead.investorPackGenerationCount != null && currentLead.investorPackGenerationCount > 0 && (
+                                    <span className="absolute -top-1.5 -right-1.5 bg-green-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center leading-none z-10">
+                                      {currentLead.investorPackGenerationCount}
+                                    </span>
+                                  )}
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="text-xs">
+                                <p suppressHydrationWarning>
+                                  {currentLead.investorPackGenerationCount && currentLead.investorPackGenerationCount > 0
+                                    ? `Generated ${currentLead.investorPackGenerationCount}×${currentLead.lastInvestorPackGeneratedAt ? ` · Last: ${formatTimeAgo(currentLead.lastInvestorPackGeneratedAt)}` : ""}`
+                                    : "Generate investor pack PDF"}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
-                      )}
+
+                        {res && (
+                          <>
+                            <Badge variant="outline" className={cn("text-xs border", statusColor[res.status] || "")}>
+                              {statusLabel[res.status] || res.status}
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 px-2 text-xs text-red-500 hover:text-red-500 hover:bg-red-50"
+                              onClick={handleRemoveReservation}
+                              disabled={isRemovingReservation}
+                            >
+                              {isRemovingReservation
+                                ? <Loader2 className="h-3 w-3 animate-spin" />
+                                : <X className="h-3 w-3 mr-0.5" />
+                              }
+                              Remove
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="p-5">
