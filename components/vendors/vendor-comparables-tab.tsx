@@ -87,9 +87,54 @@ function AccRow({
   )
 }
 
+// ─── helpers ──────────────────────────────────────────────────────────────────
+
+/** How many whole months ago a sale date was */
+function monthsAgo(dateStr: string): number | null {
+  try {
+    const sold = new Date(dateStr)
+    const now  = new Date()
+    return Math.floor((now.getTime() - sold.getTime()) / (1000 * 60 * 60 * 24 * 30.44))
+  } catch { return null }
+}
+
+/** Colour + label for sale recency */
+function getSoldStyle(months: number | null): { label: string; className: string } {
+  if (months == null) return { label: "—", className: "text-gray-400" }
+  if (months <= 6)    return { label: `${months}mo`,  className: "text-green-600 font-semibold" }
+  if (months <= 18)   return { label: `${months}mo`,  className: "text-amber-500 font-semibold" }
+  return                     { label: `${months}mo`,  className: "text-red-500 font-semibold" }
+}
+
+/** Colour + sign for vs-asking-price delta */
+function getVsAskStyle(pct: number): { label: string; className: string } {
+  if (pct >= 5)   return { label: `+${pct.toFixed(1)}%`, className: "text-green-600 font-semibold" }
+  if (pct >= 0)   return { label: `+${pct.toFixed(1)}%`, className: "text-green-500" }
+  if (pct >= -10) return { label: `${pct.toFixed(1)}%`,  className: "text-amber-500 font-semibold" }
+  return                 { label: `${pct.toFixed(1)}%`,  className: "text-red-500 font-semibold" }
+}
+
+/** Short property type label */
+function shortType(type: string | undefined): string {
+  if (!type) return ""
+  const t = type.toLowerCase()
+  if (t.includes("detach")) return t.includes("semi") ? "Semi" : "Det"
+  if (t.includes("terrace") || t.includes("terraced")) return "Terr"
+  if (t.includes("flat") || t.includes("apartment")) return "Flat"
+  if (t.includes("bungalow")) return "Bung"
+  if (t.includes("end"))  return "EOT"
+  return type.slice(0, 4)
+}
+
 // ─── accordion component ──────────────────────────────────────────────────────
 
-function ComparablesAccordion({ comparables }: { comparables: ComparableProperty[] }) {
+function ComparablesAccordion({
+  comparables,
+  askingPrice,
+}: {
+  comparables: ComparableProperty[]
+  askingPrice?: number
+}) {
   const [openId, setOpenId] = useState<string | null>(null)
 
   const sorted = useMemo(
@@ -97,8 +142,8 @@ function ComparablesAccordion({ comparables }: { comparables: ComparableProperty
     [comparables]
   )
 
-  // Column template: #  address  sale-price  distance  yield  rent/mo  chevron
-  const cols = "1.5rem 1fr 7.5rem 4.5rem 4.5rem 6.5rem 1.5rem"
+  // Column template:  #  address  beds  sale-price  £/bed  vs-ask  sold  dist  yield  rent/mo  chevron
+  const cols = "1.5rem 1fr 2.5rem 7rem 5rem 5rem 4rem 4.5rem 4.5rem 6rem 1.5rem"
 
   return (
     <div className="overflow-hidden rounded-lg border border-gray-200 text-sm">
@@ -110,7 +155,11 @@ function ComparablesAccordion({ comparables }: { comparables: ComparableProperty
       >
         <span>#</span>
         <span>Address</span>
+        <span className="text-center">Beds</span>
         <span className="text-right">Sale Price</span>
+        <span className="text-right">£/Bed</span>
+        <span className="text-right">vs Ask</span>
+        <span className="text-right">Sold</span>
         <span className="text-right">Dist</span>
         <span className="text-right">Yield</span>
         <span className="text-right">Rent/mo</span>
@@ -129,6 +178,25 @@ function ComparablesAccordion({ comparables }: { comparables: ComparableProperty
             catch { return comp.saleDate }
           })()
 
+          // Beds
+          const beds = comp.bedrooms != null && comp.bedrooms > 0 ? comp.bedrooms : null
+
+          // £ per bedroom
+          const pricePerBed = beds ? Math.round(comp.salePrice / beds) : null
+          const pricePerBedFmt = pricePerBed
+            ? `£${(pricePerBed / 1000).toFixed(0)}k`
+            : "—"
+
+          // vs Asking Price
+          const vsAsk = askingPrice && askingPrice > 0
+            ? ((comp.salePrice - askingPrice) / askingPrice) * 100
+            : null
+          const vsAskStyle = vsAsk != null ? getVsAskStyle(vsAsk) : null
+
+          // Sold recency
+          const mo       = monthsAgo(comp.saleDate)
+          const soldStyle = getSoldStyle(mo)
+
           return (
             <div key={comp.id}>
 
@@ -145,21 +213,48 @@ function ComparablesAccordion({ comparables }: { comparables: ComparableProperty
                 {/* # */}
                 <span className="text-xs font-medium text-gray-400">{i + 1}</span>
 
-                {/* Address */}
+                {/* Address + type tag */}
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold leading-tight text-gray-900">
                     {comp.address}
                   </p>
-                  {comp.postcode && (
-                    <p className="mt-0.5 font-mono text-[10px] leading-tight text-gray-400">
-                      {comp.postcode}
-                    </p>
-                  )}
+                  <div className="mt-0.5 flex items-center gap-1.5">
+                    {comp.postcode && (
+                      <span className="font-mono text-[10px] leading-tight text-gray-400">
+                        {comp.postcode}
+                      </span>
+                    )}
+                    {comp.propertyType && (
+                      <span className="rounded bg-gray-100 px-1 py-px text-[9px] font-medium text-gray-500">
+                        {shortType(comp.propertyType)}
+                      </span>
+                    )}
+                  </div>
                 </div>
+
+                {/* Beds */}
+                <span className="text-center text-xs font-semibold text-gray-700">
+                  {beds ?? "—"}
+                </span>
 
                 {/* Sale price */}
                 <span className="text-right text-xs font-bold text-gray-900">
                   {formatCurrency(comp.salePrice)}
+                </span>
+
+                {/* £/Bed */}
+                <span className="text-right text-xs text-gray-600">
+                  {pricePerBedFmt}
+                </span>
+
+                {/* vs Ask */}
+                <span className={cn("text-right text-xs", vsAskStyle?.className ?? "text-gray-400")}>
+                  {vsAskStyle?.label ?? "—"}
+                </span>
+
+                {/* Sold */}
+                <span className={cn("text-right text-xs", soldStyle.className)}>
+                  {soldStyle.label}
                 </span>
 
                 {/* Distance */}
@@ -198,11 +293,16 @@ function ComparablesAccordion({ comparables }: { comparables: ComparableProperty
                       Property
                     </p>
                     <AccRow label="Sold" value={saleDateFmt} />
+                    <AccRow
+                      label="Freshness"
+                      value={soldStyle.label}
+                      valueClass={soldStyle.className}
+                    />
                     {comp.propertyType && (
                       <AccRow label="Type" value={comp.propertyType} />
                     )}
-                    {comp.bedrooms != null && comp.bedrooms > 0 && (
-                      <AccRow label="Bedrooms" value={comp.bedrooms} />
+                    {beds != null && (
+                      <AccRow label="Bedrooms" value={beds} />
                     )}
                     {comp.bathrooms != null && comp.bathrooms > 0 && (
                       <AccRow label="Bathrooms" value={comp.bathrooms} />
@@ -216,6 +316,16 @@ function ComparablesAccordion({ comparables }: { comparables: ComparableProperty
                     {comp.pricePerSqft ? (
                       <AccRow label="£/sqft" value={`£${comp.pricePerSqft}`} />
                     ) : null}
+                    {pricePerBed && (
+                      <AccRow label="£/Bedroom" value={`£${pricePerBed.toLocaleString("en-GB")}`} />
+                    )}
+                    {vsAskStyle && (
+                      <AccRow
+                        label="vs Asking Price"
+                        value={vsAskStyle.label}
+                        valueClass={vsAskStyle.className}
+                      />
+                    )}
                     {comp.daysOnMarket != null && (
                       <AccRow label="Days Listed" value={comp.daysOnMarket} />
                     )}
@@ -598,7 +708,7 @@ export function VendorComparablesTab({
                 — sorted by distance, click a row to expand
               </span>
             </h4>
-            <ComparablesAccordion comparables={data.comparables} />
+            <ComparablesAccordion comparables={data.comparables} askingPrice={askingPrice} />
           </div>
         </>
       )}

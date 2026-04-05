@@ -1457,34 +1457,70 @@ export async function fetchDetailedComparables(
       console.warn(`[PropertyData] ⚠️ No rental data returned from API for ${postcode}`)
     }
 
-    // Step 4: Enrich each comparable with rental data and calculated fields
+    // Step 4: Enrich each comparable with rental data and calculated fields.
+    //
+    // UK bedroom-to-rent ratios relative to a 3-bed baseline.
+    // Derived from Rightmove/Zoopla market data averages.
+    // Rent is location-driven, NOT price-driven, so we scale the area
+    // average rent by bedroom count rather than using a yield-on-price formula.
+    const BEDROOM_RENT_RATIO: Record<number, number> = {
+      0: 0.52, // Studio
+      1: 0.70,
+      2: 0.86,
+      3: 1.00, // Reference point (area rental data fetched for subject property)
+      4: 1.18,
+      5: 1.35,
+      6: 1.50,
+    }
+
+    function scaleRentForBedrooms(
+      baseRent: number,
+      baseBedrooms: number,      // bedroom count the baseRent was fetched for
+      compBedrooms: number,      // bedroom count of this comparable
+    ): number {
+      const baseRatio = BEDROOM_RENT_RATIO[Math.min(baseBedrooms, 6)] ?? 1.00
+      const compRatio = BEDROOM_RENT_RATIO[Math.min(compBedrooms, 6)] ?? 1.00
+      return Math.round(baseRent * (compRatio / baseRatio))
+    }
+
+    // The bedroom count the area rental data was fetched for (subject property)
+    const rentalDataBedrooms = bedrooms ?? 3
+
     const detailedComparables: DetailedComparableProperty[] = filteredComparables.map((comp) => {
       const detailed: DetailedComparableProperty = {
         ...comp,
       }
 
-      // Add rental data if available
       if (rentalData) {
-        detailed.monthlyRent = rentalData.monthlyRent
-        detailed.weeklyRent = rentalData.weeklyRent
+        // Area average is always the area benchmark (unchanged)
         detailed.areaAverageRent = rentalData.monthlyRent
+        detailed.weeklyRent = rentalData.weeklyRent
 
-        // Calculate rental yield: (Annual Rent / Sale Price) * 100
+        // Per-property rent: scale by this comparable's own bedroom count
+        const compBeds = typeof comp.bedrooms === "number" ? comp.bedrooms : rentalDataBedrooms
+        const compMonthlyRent = scaleRentForBedrooms(rentalData.monthlyRent, rentalDataBedrooms, compBeds)
+        detailed.monthlyRent = compMonthlyRent
+
+        // Yield based on THIS comparable's scaled rent and its own sale price
         if (comp.salePrice > 0) {
-          const annualRent = rentalData.monthlyRent * 12
+          const annualRent = compMonthlyRent * 12
           detailed.rentalYield = Number(((annualRent / comp.salePrice) * 100).toFixed(2))
           detailed.grossYield = detailed.rentalYield
 
-          // Calculate yield range based on rental confidence range
+          // Confidence range: scale the area confidence band by the same bedroom ratio
           if (rentalData.confidenceRange) {
-            const annualRentMin = rentalData.confidenceRange.min * 12
-            const annualRentMax = rentalData.confidenceRange.max * 12
+            const bedroomScale = compMonthlyRent / rentalData.monthlyRent
+            const annualRentMin = rentalData.confidenceRange.min * bedroomScale * 12
+            const annualRentMax = rentalData.confidenceRange.max * bedroomScale * 12
             detailed.rentalYieldMin = Number(((annualRentMin / comp.salePrice) * 100).toFixed(2))
             detailed.rentalYieldMax = Number(((annualRentMax / comp.salePrice) * 100).toFixed(2))
           }
         }
 
-        console.log(`[PropertyData] Enriched comparable ${comp.address} with rental data: £${detailed.monthlyRent}/mo, yield: ${detailed.rentalYield}%`)
+        console.log(
+          `[PropertyData] Enriched comparable ${comp.address} ` +
+          `(${compBeds}bed): £${compMonthlyRent}/mo (area avg £${rentalData.monthlyRent}/mo for ${rentalDataBedrooms}bed), yield: ${detailed.rentalYield}%`
+        )
       } else {
         console.log(`[PropertyData] No rental data to enrich comparable: ${comp.address}`)
       }
