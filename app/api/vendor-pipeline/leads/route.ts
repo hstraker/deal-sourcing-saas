@@ -17,7 +17,7 @@ import { shouldAutoStartAI } from "@/lib/vendor-pipeline/ai-conversation-setting
 
 const createVendorLeadSchema = z.object({
   facebookLeadId: z.string().optional(),
-  leadSource: z.string().default("facebook_ads"),
+  leadSource: z.string().default("manual"),  // dashboard-created leads are "manual" by default
   campaignId: z.string().optional(),
   vendorName: z.string().min(1),
   vendorPhone: z.string().min(1),
@@ -254,21 +254,43 @@ export async function POST(request: NextRequest) {
       console.error("[AutoTrigger] Failed for lead:", lead.id, err?.message)
     )
 
-    // Fire-and-forget: AI conversation (only if enabled for manual/api leads)
-    const source = validatedData.leadSource === "facebook_ads" ? "facebook"
-      : validatedData.facebookLeadId ? "facebook"
+    // Determine the lead source for AI settings check
+    const source = validatedData.facebookLeadId ? "facebook"
+      : validatedData.leadSource === "facebook_ads" ? "facebook"
+      : validatedData.leadSource === "api" ? "api"
       : "manual"
 
-    shouldAutoStartAI(source as any).then((autoStart) => {
+    // AI conversation auto-start — awaited so the response includes the SMS result
+    let aiStarted = false
+    let aiError: string | null = null
+
+    try {
+      const autoStart = await shouldAutoStartAI(source as any)
       if (autoStart) {
         console.log(`🤖 [Leads API] Auto-starting AI conversation for ${source} lead ${lead.id}`)
-        aiSMSAgent.sendInitialMessage(lead.id).catch((err) =>
-          console.error("[Leads API] AI send failed:", lead.id, err?.message)
-        )
+        await aiSMSAgent.sendInitialMessage(lead.id)
+        aiStarted = true
+        console.log(`✅ [Leads API] Initial AI message sent for lead ${lead.id}`)
+      } else {
+        console.log(`⏸️ [Leads API] AI auto-start disabled for source "${source}" — skipping`)
       }
-    }).catch((err) => console.error("[Leads API] Settings check failed:", err?.message))
+    } catch (err: any) {
+      aiError = err?.message || "Failed to send AI message"
+      console.error("[Leads API] AI send failed:", lead.id, aiError)
+      // Don't fail the whole request — lead was created successfully
+    }
 
-    return NextResponse.json(lead, { status: 201 })
+    return NextResponse.json(
+      {
+        ...lead,
+        _aiConversation: {
+          started: aiStarted,
+          source,
+          error: aiError,
+        },
+      },
+      { status: 201 }
+    )
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
