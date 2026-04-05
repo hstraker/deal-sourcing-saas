@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { X, Clock, AlertTriangle, AlertCircle, Bell } from "lucide-react"
+import { X, Clock, AlertTriangle, AlertCircle, Bell, Phone, Mail, User } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -24,6 +24,39 @@ function fmtCurrency(v: string | number | null | undefined): string {
     currency: "GBP",
     maximumFractionDigits: 0,
   }).format(n)
+}
+
+// ── Parse strategy data from validation notes ─────────────────────────────────
+
+interface ValidatedStrategy {
+  key: string
+  name: string
+  emoji: string
+  viable: boolean
+  maxViable: number | null
+  recommendedOffer: number | null
+  yieldAtOffer: number | null
+  flipProfit: number | null
+  brrLeftIn: number | null
+  brrProceeds: number | null
+}
+
+function extractValidationStrategies(notes: string | null): {
+  recommended: string | null
+  strategies: ValidatedStrategy[] | null
+} {
+  if (!notes) return { recommended: null, strategies: null }
+  const match = notes.match(/\[STRATEGY_DATA\]([\s\S]*?)\[\/STRATEGY_DATA\]/i)
+  if (!match) return { recommended: null, strategies: null }
+  try {
+    const json = JSON.parse(match[1].trim())
+    return {
+      recommended: json.recommended ?? null,
+      strategies: json.strategies ?? null,
+    }
+  } catch {
+    return { recommended: null, strategies: null }
+  }
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -109,22 +142,43 @@ function StrategyCard({
   fit,
   name,
   reason,
+  isRecommended = false,
+  noData = false,
 }: {
   fit: boolean
   name: string
   reason: string
+  isRecommended?: boolean
+  noData?: boolean
 }) {
   return (
     <div
       className={cn(
-        "rounded-md border p-2",
-        fit ? "border-green-200 bg-green-50" : "border-gray-200 bg-gray-50 opacity-60"
+        "rounded-md border p-2 relative",
+        fit && isRecommended
+          ? "border-blue-300 bg-blue-50"
+          : fit
+          ? "border-green-200 bg-green-50"
+          : noData
+          ? "border-gray-100 bg-gray-50 opacity-50"
+          : "border-red-100 bg-red-50/40 opacity-70"
       )}
     >
-      <p className={cn("text-[11px] font-bold", fit ? "text-green-700" : "text-gray-500")}>
-        {fit ? "✓" : "—"} {name}
+      {isRecommended && (
+        <span className="absolute -top-1.5 -right-1 rounded-full bg-blue-500 px-1.5 py-0.5 text-[8px] font-bold text-white leading-none">
+          REC
+        </span>
+      )}
+      <p className={cn(
+        "text-[11px] font-bold",
+        fit && isRecommended ? "text-blue-700" : fit ? "text-green-700" : "text-gray-500"
+      )}>
+        {fit ? "✓" : noData ? "—" : "✗"} {name}
       </p>
-      <p className={cn("mt-0.5 text-[10px]", fit ? "text-green-600" : "text-gray-400")}>
+      <p className={cn(
+        "mt-0.5 text-[10px]",
+        fit && isRecommended ? "text-blue-600" : fit ? "text-green-600" : "text-gray-400"
+      )}>
         {reason}
       </p>
     </div>
@@ -160,10 +214,64 @@ export function PropertyDetailsModal({
     asking && asking > 0 && annualRent ? (annualRent / asking) * 100 : null
   const netYield = grossYield !== null ? grossYield * NET_YIELD_FACTOR : null
 
-  // Strategy fit
-  const btlFit = monthlyRent !== null && grossYield !== null && grossYield >= 5
-  const flipFit = bmv !== null && bmv >= 10 && profit !== null && profit > 0
-  const brrFit = refurb !== null && bmv !== null && bmv >= 10
+  // ── Try to use validated strategy data if the lead has been run through BMV calc ──
+  const { recommended: validatedRecommended, strategies: validatedStrategies } =
+    extractValidationStrategies(lead.validationNotes)
+
+  const vs = (key: string) => validatedStrategies?.find(s => s.key === key) ?? null
+
+  // Strategy fit — use validated data when available, else fall back to local thresholds
+  const btlS = vs("BTL")
+  const flipS = vs("Flip")
+  const brrS = vs("BRR")
+
+  const btlFit = btlS ? btlS.viable : (monthlyRent !== null && grossYield !== null && grossYield >= 5)
+  const flipFit = flipS ? flipS.viable : (bmv !== null && bmv >= 10 && profit !== null && profit > 0)
+  const brrFit = brrS ? brrS.viable : (refurb !== null && bmv !== null && bmv >= 10)
+
+  // Build human-readable reasons using real numbers where possible
+  const fmt = (n: number | null | undefined) =>
+    n != null ? `£${Math.round(n).toLocaleString("en-GB")}` : "—"
+
+  const btlReason = btlS
+    ? btlS.viable
+      ? `${btlS.yieldAtOffer?.toFixed(1) ?? grossYield?.toFixed(1) ?? "?"}% yield · ceiling ${fmt(btlS.maxViable)}`
+      : btlS.maxViable != null
+        ? `Yield too low — max price ${fmt(btlS.maxViable)} vs offer ${fmt(btlS.recommendedOffer)}`
+        : grossYield != null
+          ? `${grossYield.toFixed(1)}% yield — below min threshold`
+          : "Insufficient rental data"
+    : btlFit && grossYield !== null
+      ? `${grossYield.toFixed(1)}% yield · good cashflow`
+      : grossYield !== null
+        ? `${grossYield.toFixed(1)}% yield — below 5% threshold`
+        : "No rental data available"
+
+  const flipReason = flipS
+    ? flipS.viable
+      ? `${fmt(flipS.flipProfit)} profit · ceiling ${fmt(flipS.maxViable)}`
+      : flipS.maxViable != null
+        ? `Max price ${fmt(flipS.maxViable)} vs offer ${fmt(flipS.recommendedOffer)}`
+        : bmv !== null
+          ? `${bmv.toFixed(1)}% BMV — below flip threshold`
+          : "Insufficient BMV data"
+    : flipFit && bmv !== null
+      ? `${bmv.toFixed(1)}% BMV · ${fmt(profit)} profit`
+      : bmv !== null
+        ? `${bmv.toFixed(1)}% BMV — needs ≥10% for flip`
+        : "No BMV/profit data"
+
+  const brrReason = brrS
+    ? brrS.viable
+      ? `${fmt(brrS.brrLeftIn)} left in · refi ${fmt(brrS.brrProceeds)}`
+      : brrS.maxViable != null
+        ? `Ceiling ${fmt(brrS.maxViable)} vs offer ${fmt(brrS.recommendedOffer)}`
+        : "Refurb/BMV insufficient for BRRR"
+    : brrFit
+      ? "Refurb + refi potential"
+      : refurb === null
+        ? "No refurb estimate"
+        : "BMV too low for BRRR"
 
   // Condition colour on dark background
   const conditionChipClass =
@@ -386,6 +494,41 @@ export function PropertyDetailsModal({
             </button>
           </div>
 
+          {/* Contact Details */}
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-500">
+              Contact
+            </p>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <User className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                <span className="text-sm font-semibold text-gray-800">{lead.vendorName}</span>
+              </div>
+              {lead.vendorPhone && (
+                <div className="flex items-center gap-2">
+                  <Phone className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                  <a
+                    href={`tel:${lead.vendorPhone}`}
+                    className="text-sm text-blue-600 hover:underline font-medium"
+                  >
+                    {lead.vendorPhone}
+                  </a>
+                </div>
+              )}
+              {lead.vendorEmail && (
+                <div className="flex items-center gap-2">
+                  <Mail className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                  <a
+                    href={`mailto:${lead.vendorEmail}`}
+                    className="text-sm text-blue-600 hover:underline truncate"
+                  >
+                    {lead.vendorEmail}
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Property Specs */}
           <div>
             <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-500">
@@ -453,34 +596,39 @@ export function PropertyDetailsModal({
 
           {/* Strategy Fit */}
           <div>
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-500">
-              Strategy Fit
-            </p>
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                Strategy Fit
+              </p>
+              {validatedRecommended && (
+                <span className="text-[10px] text-blue-600 font-semibold">
+                  from validation ✓
+                </span>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <StrategyCard
                 fit={btlFit}
                 name="BTL"
-                reason={
-                  btlFit && grossYield !== null
-                    ? `${grossYield.toFixed(1)}% yield · good cashflow`
-                    : "Insufficient yield data"
-                }
+                reason={btlReason}
+                isRecommended={validatedRecommended === "BTL"}
+                noData={!btlS && monthlyRent === null}
               />
               <StrategyCard
                 fit={flipFit}
                 name="Flip"
-                reason={
-                  flipFit && bmv !== null
-                    ? `${bmv.toFixed(1)}% BMV · ${fmtCurrency(profit)} profit`
-                    : "Insufficient BMV/profit data"
-                }
+                reason={flipReason}
+                isRecommended={validatedRecommended === "Flip"}
+                noData={!flipS && bmv === null}
               />
               <StrategyCard
                 fit={brrFit}
-                name="BRR"
-                reason={brrFit ? "Refurb + refi potential" : "Insufficient refurb/BMV data"}
+                name="BRRR"
+                reason={brrReason}
+                isRecommended={validatedRecommended === "BRR"}
+                noData={!brrS && refurb === null && bmv === null}
               />
-              <StrategyCard fit={false} name="SA" reason="Not assessed" />
+              <StrategyCard fit={false} name="SA" reason="Not assessed" noData />
             </div>
           </div>
 
