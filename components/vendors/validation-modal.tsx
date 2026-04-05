@@ -756,6 +756,226 @@ function ValidationNotesRenderer({ notes }: { notes: string }) {
   return <div className="space-y-2">{rendered}</div>
 }
 
+// ─── sourcer summary generator ───────────────────────────────────────────────
+
+type SourcingVerdict = "strong_buy" | "buy" | "negotiate" | "avoid"
+
+interface SourcerSummary {
+  verdict: SourcingVerdict
+  headline: string
+  body: string
+  action: string
+}
+
+function buildSourcerSummary(lead: {
+  validationPassed: boolean | null
+  bmvScore: string | number | null
+  profitPotential: string | number | null
+  offerAmount: string | number | null
+  estimatedMarketValue: string | number | null
+  askingPrice: string | number | null
+  estimatedMonthlyRent: string | number | null
+  estimatedAnnualRent: string | number | null
+  estimatedRefurbCost: string | number | null
+  motivationScore: number | null
+  urgencyLevel: string | null
+  timelineDays: number | null
+  reasonForSelling: string | null
+  condition: string | null
+  competingOffers: boolean
+  validationNotes: string | null
+}): SourcerSummary | null {
+  if (!lead.validationNotes) return null
+
+  const n = (v: string | number | null | undefined) => {
+    if (v === null || v === undefined || v === "") return null
+    const x = typeof v === "number" ? v : parseFloat(String(v))
+    return isNaN(x) ? null : x
+  }
+  const gbp = (v: number) => `£${Math.round(v).toLocaleString("en-GB")}`
+
+  const bmv        = n(lead.bmvScore)
+  const profit     = n(lead.profitPotential)
+  const asking     = n(lead.askingPrice)
+  const marketVal  = n(lead.estimatedMarketValue)
+  const offer      = n(lead.offerAmount)
+  const rent       = n(lead.estimatedMonthlyRent)
+  const annualRent = n(lead.estimatedAnnualRent) ?? (rent ? rent * 12 : null)
+  const refurb     = n(lead.estimatedRefurbCost)
+  const motivation = lead.motivationScore
+  const passed     = lead.validationPassed
+
+  // Pull validated strategy data from notes
+  const stratMatch = lead.validationNotes.match(/\[STRATEGY_DATA\]([\s\S]*?)\[\/STRATEGY_DATA\]/i)
+  let validatedStrategies: Array<{
+    key: string; viable: boolean
+    maxViable: number | null; recommendedOffer: number | null
+    yieldAtOffer: number | null; flipProfit: number | null
+    brrProceeds: number | null; brrLeftIn: number | null
+  }> | null = null
+  let recommended: string | null = null
+  if (stratMatch) {
+    try {
+      const j = JSON.parse(stratMatch[1].trim())
+      validatedStrategies = j.strategies ?? null
+      recommended = j.recommended ?? null
+    } catch {}
+  }
+
+  const vs = (key: string) => validatedStrategies?.find(s => s.key === key) ?? null
+  const btl  = vs("BTL")
+  const flip = vs("Flip")
+  const brr  = vs("BRR")
+  const bh   = vs("BuyHold")
+
+  const viableStrategies = validatedStrategies?.filter(s => s.viable) ?? []
+  const hasViable = viableStrategies.length > 0
+
+  // ── Leverage signals ─────────────────────────────────────────────────────────
+  const leverageLines: string[] = []
+  const reasonLabel: Record<string, string> = {
+    relocation: "relocating", financial_distress: "under financial pressure",
+    divorce: "going through a divorce", bereavement: "dealing with a bereavement",
+    downsizing: "downsizing", emigrating: "emigrating",
+    chain_break: "a chain break", inheritance: "selling an inherited property",
+    other: "moving on",
+  }
+  if (lead.reasonForSelling) leverageLines.push(reasonLabel[lead.reasonForSelling] ?? lead.reasonForSelling.replace(/_/g, " "))
+  if (motivation !== null) leverageLines.push(`${motivation}/10 motivation`)
+  if (lead.timelineDays) leverageLines.push(`${lead.timelineDays}-day deadline`)
+  if (lead.urgencyLevel === "urgent") leverageLines.push("urgent sale")
+  if (lead.competingOffers) leverageLines.push("⚠ competing offers — move fast")
+
+  const leverageStr = leverageLines.length
+    ? `Seller is ${leverageLines.join(", ")}.`
+    : ""
+
+  // ── Above market value ───────────────────────────────────────────────────────
+  const aboveMarket = bmv !== null && bmv < 0
+  const overBy = (aboveMarket && asking && marketVal) ? asking - marketVal : 0
+
+  // ── Gross yield at asking ────────────────────────────────────────────────────
+  const grossYieldAtAsking = asking && asking > 0 && annualRent
+    ? (annualRent / asking) * 100
+    : null
+
+  // ── Discount needed from asking to reach each ceiling ───────────────────────
+  const discountNeeded = (ceiling: number | null) =>
+    ceiling && asking ? ((asking - ceiling) / asking * 100) : null
+
+  // ── Verdict classification ───────────────────────────────────────────────────
+  let verdict: SourcingVerdict
+  if (passed && bmv !== null && bmv >= 25 && (motivation === null || motivation >= 7)) {
+    verdict = "strong_buy"
+  } else if (passed && bmv !== null && bmv >= 15) {
+    verdict = "buy"
+  } else if (!passed && hasViable && (motivation === null || motivation >= 5) && offer) {
+    verdict = "negotiate"
+  } else {
+    verdict = "avoid"
+  }
+
+  // ── Build the narrative ──────────────────────────────────────────────────────
+  let headline: string
+  let body: string
+  let action: string
+
+  if (verdict === "strong_buy") {
+    headline = "Strong buy — act now"
+    const yieldLine = grossYieldAtAsking ? `${grossYieldAtAsking.toFixed(1)}% gross yield` : ""
+    const stratLine = recommended
+      ? `Best strategy: ${recommended}${brr?.viable ? " — full capital recycled after refinancing" : ""}.`
+      : ""
+    body = [
+      `${bmv!.toFixed(1)}% below market value with ${profit ? gbp(profit) + " profit potential" : "solid upside"}.`,
+      yieldLine ? `Rental income supports ${yieldLine} at asking price.` : "",
+      stratLine,
+      leverageStr,
+    ].filter(Boolean).join(" ")
+    action = `Open at ${offer ? gbp(Math.round((offer * 0.88) / 50) * 50) : "opening offer"} and secure with a lockout agreement immediately.`
+
+  } else if (verdict === "buy") {
+    headline = "Good deal — proceed"
+    const yieldLine = btl?.viable && btl.yieldAtOffer ? `BTL yields ${btl.yieldAtOffer.toFixed(1)}% at the recommended offer — above the minimum threshold.` : ""
+    const flipLine = flip?.viable && flip.flipProfit ? `Flip pencils at ${gbp(flip.flipProfit)} profit.` : ""
+    body = [
+      `${bmv!.toFixed(1)}% BMV gives ${profit ? gbp(profit) : "meaningful"} profit potential.`,
+      yieldLine || flipLine,
+      brr?.viable ? "BRRR possible — refinance would recycle most/all capital." : "",
+      leverageStr,
+    ].filter(Boolean).join(" ")
+    action = `Open at ${offer ? gbp(Math.round((offer * 0.88) / 50) * 50) : "opening offer"}. Don't exceed ${offer ? gbp(offer) : "the ceiling"}.`
+
+  } else if (verdict === "negotiate") {
+    headline = "Steep discount required — negotiate hard"
+
+    const aboveLines = aboveMarket
+      ? `Seller is asking ${gbp(overBy)} above market value (${gbp(marketVal!)}), putting you in negative BMV territory from the start.`
+      : `At ${bmv !== null ? bmv.toFixed(1) + "% BMV" : "current price"}, this doesn't meet the 20% minimum — you need a bigger discount.`
+
+    const stratLines: string[] = []
+    if (brr?.viable && brr.maxViable) {
+      const disc = discountNeeded(brr.maxViable)
+      stratLines.push(`BRRR viable below ${gbp(brr.maxViable)}${disc ? ` (${disc.toFixed(0)}% off asking)` : ""}${brr.brrLeftIn === 0 ? " — full capital recycled" : brr.brrLeftIn ? `, ${gbp(brr.brrLeftIn)} left in` : ""}.`)
+    }
+    if (flip?.viable && flip.maxViable) {
+      const disc = discountNeeded(flip.maxViable)
+      stratLines.push(`Flip viable below ${gbp(flip.maxViable)}${disc ? ` (${disc.toFixed(0)}% off asking)` : ""}${flip.flipProfit ? ` — ${gbp(flip.flipProfit)} profit` : ""}.`)
+    }
+    if (!brr?.viable && !flip?.viable && btl?.maxViable) {
+      stratLines.push(`BTL requires price below ${gbp(btl.maxViable)} — likely unrealistic at current asking.`)
+    }
+
+    const rentWarning = grossYieldAtAsking && grossYieldAtAsking < 5
+      ? `Gross yield is only ${grossYieldAtAsking.toFixed(1)}% at asking price — income strategies won't work without a heavy discount.`
+      : ""
+
+    body = [aboveLines, rentWarning, ...stratLines, leverageStr].filter(Boolean).join(" ")
+    action = offer
+      ? `Open at ${gbp(Math.round((offer * 0.88) / 50) * 50)}. Walk away if they won't go below ${gbp(offer)}.`
+      : "Open very low and walk away if seller won't negotiate meaningfully."
+
+  } else {
+    headline = "Walk away — numbers don't stack"
+    const reason = aboveMarket
+      ? `Asking price is ${gbp(overBy)} above market value with no viable exit strategy at any realistic price.`
+      : `Deal fails minimum BMV and profit thresholds with no viable strategy.`
+    const yieldNote = grossYieldAtAsking && grossYieldAtAsking < 4
+      ? `Gross yield of ${grossYieldAtAsking.toFixed(1)}% is too low for any income strategy.`
+      : ""
+    body = [reason, yieldNote, leverageStr || "Seller motivation is unclear — limited negotiating leverage."].filter(Boolean).join(" ")
+    action = "Do not pursue unless seller dramatically reprices. Archive this lead."
+  }
+
+  return { verdict, headline, body, action }
+}
+
+function SourcerSummaryPanel({ summary }: { summary: SourcerSummary }) {
+  const colours: Record<SourcingVerdict, { border: string; bg: string; badge: string; badgeText: string; icon: string }> = {
+    strong_buy: { border: "border-green-500/40", bg: "bg-green-500/10", badge: "bg-green-500/20 border-green-500/30", badgeText: "text-green-300", icon: "✅" },
+    buy:        { border: "border-green-400/30", bg: "bg-green-400/8",  badge: "bg-green-400/20 border-green-400/30", badgeText: "text-green-300", icon: "✓" },
+    negotiate:  { border: "border-amber-500/40", bg: "bg-amber-500/10", badge: "bg-amber-500/20 border-amber-500/30", badgeText: "text-amber-300", icon: "⚠️" },
+    avoid:      { border: "border-red-500/30",   bg: "bg-red-500/8",    badge: "bg-red-500/20 border-red-500/30",     badgeText: "text-red-300",   icon: "✕" },
+  }
+  const c = colours[summary.verdict]
+
+  return (
+    <div className={cn("rounded-xl border p-3 space-y-2", c.border, c.bg)}>
+      <div className="flex items-center gap-2">
+        <span className="text-base leading-none">{c.icon}</span>
+        <p className={cn("text-[11px] font-bold uppercase tracking-wide", c.badgeText)}>
+          {summary.headline}
+        </p>
+      </div>
+      <p className="text-[11px] text-slate-300 leading-relaxed">{summary.body}</p>
+      <div className={cn("rounded-lg border px-2.5 py-2", c.badge)}>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-0.5">Action</p>
+        <p className={cn("text-[11px] font-semibold leading-snug", c.badgeText)}>{summary.action}</p>
+      </div>
+    </div>
+  )
+}
+
 // ─── component ────────────────────────────────────────────────────────────────
 
 export function ValidationModal({
@@ -776,6 +996,8 @@ export function ValidationModal({
   const opening = offer ? calcOpening(offer) : null
   const strategy = parseStrategy(lead.validationNotes)
   const passed  = lead.validationPassed
+
+  const sourcerSummary = buildSourcerSummary(lead)
 
   // ── Left panel ───────────────────────────────────────────────────────────
   const leftPanel = (
@@ -907,6 +1129,16 @@ export function ValidationModal({
           </div>
         )}
       </div>
+
+      {/* Sourcer summary */}
+      {sourcerSummary && (
+        <div className="mb-4">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-2">
+            Sourcer Summary
+          </p>
+          <SourcerSummaryPanel summary={sourcerSummary} />
+        </div>
+      )}
 
       {/* Pipeline stage */}
       <div className="mt-auto border-t border-white/10 pt-3">
