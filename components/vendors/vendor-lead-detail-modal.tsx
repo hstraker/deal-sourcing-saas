@@ -79,6 +79,7 @@ import { PortalCheckDetailPanel } from "./portal-check-detail-panel"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { AiConversationTab } from "./ai-conversation-tab"
 import { SourcingFeePanel } from "./sourcing-fee-panel"
+import { InvestorMatchPanel } from "./investor-match-panel"
 
 interface SMSMessage {
   id: string
@@ -2234,6 +2235,12 @@ export function VendorLeadDetailModal({
               vendorLeadId={lead.id}
               askingPrice={typeof currentLead.askingPrice === 'number' ? currentLead.askingPrice : (currentLead.askingPrice ? Number(currentLead.askingPrice) : undefined)}
               propertyPostcode={currentLead.propertyPostcode}
+            />
+
+            {/* ── Investor Matching ────────────────────────────────────────── */}
+            <InvestorMatchPanel
+              leadId={currentLead.id}
+              validationPassed={currentLead.validationPassed ?? null}
             />
           </TabsContent>
           <TabsContent value="portal-check" className="flex-1 overflow-y-auto min-h-0 space-y-4 pt-2 pb-6 px-0.5">
