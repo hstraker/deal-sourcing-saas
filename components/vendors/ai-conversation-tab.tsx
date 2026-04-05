@@ -200,10 +200,9 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
     }
   }, [lead.id, onUpdate])
 
-  // Start / stop live polling based on conversation state
+  // Start live polling when conversation is not yet complete; stop when done
   useEffect(() => {
-    const conversationActive = lead.conversationStartedAt && !isComplete
-    if (conversationActive) {
+    if (!isComplete) {
       setIsLive(true)
       pollRef.current = setInterval(silentRefresh, 3000)
     } else {
@@ -212,7 +211,7 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
     }
-  }, [lead.conversationStartedAt, isComplete, silentRefresh])
+  }, [isComplete, silentRefresh])
 
   const refreshMessages = async () => {
     setIsRefreshing(true)

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import {
   X, Bot, Send, RefreshCw, User, Zap, Brain,
   MessageSquare, Sparkles, ChevronDown, ChevronUp,
@@ -137,7 +137,10 @@ export function AiConversationModal({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showPrompt, setShowPrompt] = useState(false)
   const [promptCopied, setPromptCopied] = useState(false)
+  const [isLive, setIsLive] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const lastCountRef = useRef(messages.length)
 
   const convState = (lead.conversationState ?? {}) as Record<string, any>
   const isComplete = !!convState.conversationComplete
@@ -150,7 +153,9 @@ export function AiConversationModal({
         const res = await fetch(`/api/vendor-pipeline/leads/${lead.id}`)
         if (res.ok) {
           const data = await res.json()
-          setMessages(data.lead.smsMessages ?? [])
+          const msgs = data.lead?.smsMessages ?? []
+          lastCountRef.current = msgs.length
+          setMessages(msgs)
         }
       } catch { /* silent — table messages shown as fallback */ }
     }
@@ -164,13 +169,43 @@ export function AiConversationModal({
     }
   }, [messages])
 
+  // Silent auto-refresh — only fetches if message count changed
+  const silentRefresh = useCallback(async () => {
+    if (document.hidden) return
+    try {
+      const res = await fetch(`/api/vendor-pipeline/leads/${lead.id}`)
+      if (!res.ok) return
+      const data = await res.json()
+      const incoming: FullSMSMessage[] = data.lead?.smsMessages ?? []
+      if (incoming.length !== lastCountRef.current) {
+        lastCountRef.current = incoming.length
+        setMessages(incoming)
+      }
+    } catch { /* silent */ }
+  }, [lead.id])
+
+  // Start live polling when conversation is active; stop when complete
+  useEffect(() => {
+    if (!isComplete) {
+      setIsLive(true)
+      pollRef.current = setInterval(silentRefresh, 3000)
+    } else {
+      setIsLive(false)
+    }
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
+  }, [isComplete, silentRefresh])
+
   const refresh = async () => {
     setIsRefreshing(true)
     try {
       const res = await fetch(`/api/vendor-pipeline/leads/${lead.id}`)
       if (res.ok) {
         const data = await res.json()
-        setMessages(data.lead.smsMessages ?? [])
+        const msgs = data.lead?.smsMessages ?? []
+        lastCountRef.current = msgs.length
+        setMessages(msgs)
       }
     } catch { toast.error("Refresh failed") }
     finally { setIsRefreshing(false) }
@@ -328,6 +363,15 @@ export function AiConversationModal({
           <MessageSquare className="h-4 w-4 text-blue-600" />
           <span className="text-sm font-semibold text-gray-900">AI Conversation</span>
           <span className="text-xs text-gray-400">· {lead.vendorName}</span>
+          {isLive && (
+            <div className="flex items-center gap-1.5 ml-1" title="Auto-updating every 3s">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+              </span>
+              <span className="text-xs text-green-600 font-medium">Live</span>
+            </div>
+          )}
         </div>
         <button
           onClick={onClose}
