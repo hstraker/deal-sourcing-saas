@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { X, Clock, AlertTriangle, AlertCircle, Bell, Phone, Mail, User } from "lucide-react"
+import { X, Clock, AlertTriangle, AlertCircle, Bell, Phone, Mail } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -391,6 +391,59 @@ export function PropertyDetailsModal({
 
           <div className="h-px bg-white/10" />
 
+          {/* Vendor contact */}
+          <div className="space-y-2">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+              Vendor
+            </p>
+            <p className="text-sm font-bold text-slate-100">{lead.vendorName}</p>
+            {lead.vendorPhone && (
+              <a
+                href={`tel:${lead.vendorPhone}`}
+                className="flex items-center gap-2 rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-1.5 hover:bg-green-500/20 transition-colors"
+              >
+                <Phone className="h-3.5 w-3.5 shrink-0 text-green-400" />
+                <span className="text-[12px] font-semibold text-green-300">{lead.vendorPhone}</span>
+              </a>
+            )}
+            {lead.vendorEmail && (
+              <a
+                href={`mailto:${lead.vendorEmail}`}
+                className="flex items-center gap-2 rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 hover:bg-blue-500/20 transition-colors"
+              >
+                <Mail className="h-3.5 w-3.5 shrink-0 text-blue-400" />
+                <span className="text-[12px] font-medium text-blue-300 truncate">{lead.vendorEmail}</span>
+              </a>
+            )}
+            {(motivation !== null || lead.urgencyLevel) && (
+              <div className="flex items-center justify-between text-xs pt-0.5">
+                {motivation !== null && (
+                  <span className="text-slate-400">
+                    Motivation{" "}
+                    <span className={cn(
+                      "font-bold",
+                      motivation >= 8 ? "text-green-400" : motivation >= 5 ? "text-amber-400" : "text-slate-300"
+                    )}>
+                      {motivation}/10{motivation >= 8 ? " 🔥" : ""}
+                    </span>
+                  </span>
+                )}
+                {lead.urgencyLevel && (
+                  <span className={cn(
+                    "rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize",
+                    lead.urgencyLevel === "urgent" ? "bg-red-500/20 text-red-300"
+                      : lead.urgencyLevel === "moderate" ? "bg-amber-500/20 text-amber-300"
+                      : "bg-slate-500/20 text-slate-400"
+                  )}>
+                    {lead.urgencyLevel}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="h-px bg-white/10" />
+
           {/* Financials */}
           <div className="space-y-2">
             <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
@@ -492,41 +545,6 @@ export function PropertyDetailsModal({
             >
               <X className="h-4 w-4" />
             </button>
-          </div>
-
-          {/* Contact Details */}
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-500">
-              Contact
-            </p>
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <User className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                <span className="text-sm font-semibold text-gray-800">{lead.vendorName}</span>
-              </div>
-              {lead.vendorPhone && (
-                <div className="flex items-center gap-2">
-                  <Phone className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                  <a
-                    href={`tel:${lead.vendorPhone}`}
-                    className="text-sm text-blue-600 hover:underline font-medium"
-                  >
-                    {lead.vendorPhone}
-                  </a>
-                </div>
-              )}
-              {lead.vendorEmail && (
-                <div className="flex items-center gap-2">
-                  <Mail className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                  <a
-                    href={`mailto:${lead.vendorEmail}`}
-                    className="text-sm text-blue-600 hover:underline truncate"
-                  >
-                    {lead.vendorEmail}
-                  </a>
-                </div>
-              )}
-            </div>
           </div>
 
           {/* Property Specs */}
