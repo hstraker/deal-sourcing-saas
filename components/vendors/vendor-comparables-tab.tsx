@@ -142,11 +142,13 @@ function ComparablesAccordion({
     [comparables]
   )
 
-  // Column template:  #  address  beds  sale-price  £/bed  vs-ask  sold  dist  yield  rent/mo  chevron
-  const cols = "1.5rem 1fr 2.5rem 7rem 5rem 5rem 4rem 4.5rem 4.5rem 6rem 1.5rem"
+  // Column template:  #  address  beds  type  sale-price  £/bed  vs-ask  sold  yield  rent/mo  chevron
+  // DIST removed from columns (moved to expanded panel) so address gets more 1fr space.
+  // TYPE gets its own column instead of being buried in the address cell.
+  const cols = "1.5rem 1fr 2rem 4rem 6.5rem 4.5rem 5rem 4rem 4rem 5.5rem 1.5rem"
 
   return (
-    <div className="overflow-hidden rounded-lg border border-gray-200 text-sm">
+    <div className="w-full overflow-hidden rounded-lg border border-gray-200 text-sm">
 
       {/* Header */}
       <div
@@ -156,11 +158,11 @@ function ComparablesAccordion({
         <span>#</span>
         <span>Address</span>
         <span className="text-center">Beds</span>
+        <span>Type</span>
         <span className="text-right">Sale Price</span>
         <span className="text-right">£/Bed</span>
         <span className="text-right">vs Ask</span>
         <span className="text-right">Sold</span>
-        <span className="text-right">Dist</span>
         <span className="text-right">Yield</span>
         <span className="text-right">Rent/mo</span>
         <span />
@@ -213,28 +215,26 @@ function ComparablesAccordion({
                 {/* # */}
                 <span className="text-xs font-medium text-gray-400">{i + 1}</span>
 
-                {/* Address + type tag */}
+                {/* Address — postcode only as sub-line, type is its own column */}
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold leading-tight text-gray-900">
                     {comp.address}
                   </p>
-                  <div className="mt-0.5 flex items-center gap-1.5">
-                    {comp.postcode && (
-                      <span className="font-mono text-[10px] leading-tight text-gray-400">
-                        {comp.postcode}
-                      </span>
-                    )}
-                    {comp.propertyType && (
-                      <span className="rounded bg-gray-100 px-1 py-px text-[9px] font-medium text-gray-500">
-                        {shortType(comp.propertyType)}
-                      </span>
-                    )}
-                  </div>
+                  {comp.postcode && (
+                    <p className="mt-0.5 font-mono text-[10px] leading-tight text-gray-400">
+                      {comp.postcode}
+                    </p>
+                  )}
                 </div>
 
                 {/* Beds */}
                 <span className="text-center text-xs font-semibold text-gray-700">
                   {beds ?? "—"}
+                </span>
+
+                {/* Type — own column, abbreviated */}
+                <span className="text-xs text-gray-600">
+                  {comp.propertyType ? shortType(comp.propertyType) : "—"}
                 </span>
 
                 {/* Sale price */}
@@ -255,11 +255,6 @@ function ComparablesAccordion({
                 {/* Sold */}
                 <span className={cn("text-right text-xs", soldStyle.className)}>
                   {soldStyle.label}
-                </span>
-
-                {/* Distance */}
-                <span className="text-right text-xs text-gray-500">
-                  {comp.distance != null ? `${comp.distance.toFixed(2)} mi` : "—"}
                 </span>
 
                 {/* Yield */}
@@ -298,6 +293,9 @@ function ComparablesAccordion({
                       value={soldStyle.label}
                       valueClass={soldStyle.className}
                     />
+                    {comp.distance != null && (
+                      <AccRow label="Distance" value={`${comp.distance.toFixed(2)} mi`} />
+                    )}
                     {comp.propertyType && (
                       <AccRow label="Type" value={comp.propertyType} />
                     )}
