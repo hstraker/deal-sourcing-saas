@@ -66,6 +66,18 @@ export class AISMSAgent {
   }
 
   /**
+   * Normalise a UK phone number to E.164 format so Twilio accepts it.
+   * e.g. 07595354573 → +447595354573
+   */
+  private normalisePhone(phone: string): string {
+    const cleaned = phone.replace(/[\s\-\(\)]/g, "")
+    if (/^07\d{9}$/.test(cleaned))  return "+44" + cleaned.slice(1)
+    if (/^447\d{9}$/.test(cleaned)) return "+" + cleaned
+    if (/^\+\d{10,15}$/.test(cleaned)) return cleaned
+    return cleaned // return as-is; Twilio will give a clear error
+  }
+
+  /**
    * Send initial message to a new vendor lead
    */
   async sendInitialMessage(vendorLeadId: string): Promise<void> {
@@ -77,11 +89,23 @@ export class AISMSAgent {
       throw new Error(`Vendor lead ${vendorLeadId} not found`)
     }
 
+    // Normalise phone to E.164 — catches numbers stored as 07xxx instead of +447xxx
+    const toNumber = this.normalisePhone(lead.vendorPhone)
+    if (toNumber !== lead.vendorPhone) {
+      console.log(`[AISMSAgent] Normalised phone ${lead.vendorPhone} → ${toNumber}`)
+      await prisma.vendorLead.update({ where: { id: lead.id }, data: { vendorPhone: toNumber } })
+    }
+
     const initialMessage = this.generateInitialMessage(lead.vendorName, lead.propertyAddress || "your property")
 
     // Send via Twilio (or mock)
     const twilioService = getTwilioService()
-    const result = await twilioService.sendSMS(lead.vendorPhone, initialMessage)
+    const result = await twilioService.sendSMS(toNumber, initialMessage)
+
+    // Surface Twilio errors — do NOT silently continue with a failed status
+    if (result.error) {
+      throw new Error(`SMS delivery failed: ${result.error}`)
+    }
 
     // Save to database
     await prisma.sMSMessage.create({
@@ -90,7 +114,7 @@ export class AISMSAgent {
         direction: "outbound" as SMSDirection,
         messageSid: result.messageSid || undefined,
         fromNumber: process.env.TWILIO_PHONE_NUMBER || undefined,
-        toNumber: lead.vendorPhone,
+        toNumber: toNumber,
         messageBody: initialMessage,
         aiGenerated: true,
         status: result.status,

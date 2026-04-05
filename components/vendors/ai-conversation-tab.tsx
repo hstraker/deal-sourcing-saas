@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   Sparkles,
   Edit3,
+  Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -158,6 +159,7 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
   const [sendMode, setSendMode] = useState<"manual" | "simulate">("manual")
   const [isSending, setIsSending] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isStarting, setIsStarting] = useState(false)
   const [showPrompt, setShowPrompt] = useState(false)
   const [promptCopied, setPromptCopied] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -186,6 +188,24 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
       toast.error("Failed to refresh messages")
     } finally {
       setIsRefreshing(false)
+    }
+  }
+
+  const startAIConversation = async () => {
+    setIsStarting(true)
+    try {
+      const res = await fetch(`/api/vendor-pipeline/leads/${lead.id}/start-conversation`, {
+        method: "POST",
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || "Failed to start conversation")
+      toast.success("AI conversation started — initial SMS sent to vendor")
+      await refreshMessages()
+      onUpdate?.()
+    } catch (e: any) {
+      toast.error(e.message || "Failed to start AI conversation")
+    } finally {
+      setIsStarting(false)
     }
   }
 
@@ -329,11 +349,26 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
           {/* Bubbles */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50/30">
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                <MessageSquare className="h-8 w-8 text-gray-200 mb-2" />
-                <p className="text-sm text-gray-400">No messages yet</p>
-                <p className="text-xs text-gray-300 mt-1">
-                  The AI will send an opening message when the lead is created
+              <div className="flex flex-col items-center justify-center h-full text-center py-10 px-6">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 mb-3">
+                  <Sparkles className="h-6 w-6 text-[#2563EB]" />
+                </div>
+                <p className="text-sm font-semibold text-gray-700 mb-1">No conversation started yet</p>
+                <p className="text-xs text-gray-400 mb-5 max-w-[220px] leading-relaxed">
+                  Auto-start may be off for this lead source. Click below to send the AI opening message now.
+                </p>
+                <Button
+                  onClick={startAIConversation}
+                  disabled={isStarting}
+                  className="gap-2 text-sm"
+                  size="sm"
+                >
+                  {isStarting
+                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Starting…</>
+                    : <><Zap className="h-4 w-4" /> Start AI Conversation</>}
+                </Button>
+                <p className="mt-3 text-[11px] text-gray-300">
+                  Sends to {lead.vendorPhone}
                 </p>
               </div>
             ) : (
