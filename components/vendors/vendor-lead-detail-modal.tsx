@@ -910,10 +910,10 @@ export function VendorLeadDetailModal({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className={isFullscreen
-            ? "!fixed !left-2 !top-2 !right-2 !bottom-2 !translate-x-0 !translate-y-0 !max-w-none !w-auto !max-h-none !h-auto rounded-xl overflow-y-auto"
-            : "max-w-6xl w-[95vw] max-h-[90vh] overflow-y-auto"
+            ? "!fixed !left-2 !top-2 !right-2 !bottom-2 !translate-x-0 !translate-y-0 !max-w-none !w-auto !max-h-none !h-auto rounded-xl flex flex-col overflow-hidden"
+            : "max-w-6xl w-[95vw] h-[88vh] flex flex-col overflow-hidden"
           }>
-          <DialogHeader className="pb-2 border-b pr-16">
+          <DialogHeader className="pb-2 border-b pr-16 flex-shrink-0">
             {/* ── Row 1: stage pill + action buttons ──────────────────────────── */}
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 flex-wrap">
@@ -1093,9 +1093,9 @@ export function VendorLeadDetailModal({
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
-          className="w-full"
+          className="flex flex-col flex-1 min-h-0 w-full"
         >
-          <TabsList className="grid w-full grid-cols-5 h-auto p-1 gap-0.5 bg-gray-50">
+          <TabsList className="grid w-full grid-cols-5 h-auto p-1 gap-0.5 bg-gray-50 flex-shrink-0">
 
             {/* 1 — Lead Details */}
             <TabsTrigger
@@ -1169,7 +1169,7 @@ export function VendorLeadDetailModal({
 
           </TabsList>
 
-          <TabsContent value="details" className="space-y-4">
+          <TabsContent value="details" className="flex-1 overflow-y-auto min-h-0 space-y-4 pt-2 pb-6 px-0.5">
             {/* ── Row 1: Contact + Property ──────────────────────────────────────── */}
             <div className="grid grid-cols-2 gap-4">
               {/* Contact */}
@@ -1986,7 +1986,7 @@ export function VendorLeadDetailModal({
 
 
           {/* ── Deal Log Tab ──────────────────────────────────────────────────── */}
-          <TabsContent value="activity" className="space-y-4">
+          <TabsContent value="activity" className="flex-1 overflow-y-auto min-h-0 space-y-4 pt-2 pb-6 px-0.5">
             {(() => {
               const STAGE_LABELS: Record<string, string> = {
                 NEW_LEAD: "New Lead",
@@ -2088,7 +2088,7 @@ export function VendorLeadDetailModal({
             })()}
           </TabsContent>
 
-          <TabsContent value="comparables" className="space-y-4 w-full min-w-0 overflow-hidden">
+          <TabsContent value="comparables" className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 space-y-4 pt-2 pb-6 px-0.5 w-full min-w-0">
 
             {/* ── Validation Summary Card ─────────────────────────────────────── */}
             {(currentLead.validationPassed !== null && currentLead.validationPassed !== undefined) ? (
@@ -2203,7 +2203,7 @@ export function VendorLeadDetailModal({
               propertyPostcode={currentLead.propertyPostcode}
             />
           </TabsContent>
-          <TabsContent value="portal-check" className="space-y-4">
+          <TabsContent value="portal-check" className="flex-1 overflow-y-auto min-h-0 space-y-4 pt-2 pb-6 px-0.5">
             <PortalCheckDetailPanel
               leadId={currentLead.id}
               latestCheckRisk={currentLead.latestCheckRisk ?? null}
@@ -2216,7 +2216,7 @@ export function VendorLeadDetailModal({
             />
           </TabsContent>
 
-          <TabsContent value="ai-conversation" className="space-y-4">
+          <TabsContent value="ai-conversation" className="flex-1 overflow-y-auto min-h-0 space-y-4 pt-2 pb-6 px-0.5">
             <AiConversationTab
               lead={{
                 id: currentLead.id,
