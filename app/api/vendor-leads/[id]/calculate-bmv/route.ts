@@ -545,6 +545,61 @@ export async function POST(
             brrLeftIn = Math.max(0, r.recommendedOffer + refurbCost - brrProceeds)
           }
 
+          // A strategy is truly viable only if the recommended offer is AT or BELOW
+          // the strategy's own ceiling (maxViable).  r.passesValidation only checks
+          // general BMV/profit thresholds, not the per-strategy ceiling, so it can
+          // incorrectly show "Viable" even when the offer exceeds the ceiling.
+          const strategyViable = maxViable != null
+            ? r.recommendedOffer <= maxViable
+            : r.passesValidation
+
+          // Yield shown in "At Rec. Offer" column: for income strategies, compute
+          // yield at the actual offer (not at the ceiling), so the number is honest.
+          if ((r.key === "BTL" || r.key === "BuyHold") && annualRent > 0 && r.recommendedOffer > 0) {
+            yieldAtOffer = Math.round((annualRent / r.recommendedOffer) * 1000) / 10
+          }
+
+          // ── Pre-compute human-readable tooltip strings ─────────────────────
+          const gb = (n: number) => `£${Math.round(n).toLocaleString("en-GB")}`
+          const pct = (n: number) => `${n}%`
+
+          const maxViableTooltip: string | null = (() => {
+            if (r.key === "BTL") {
+              if (annualRent <= 0) return "No rental data — cannot compute BTL ceiling"
+              return `Annual Rent ÷ Min BTL Yield\n${gb(annualRent)} ÷ ${pct(btlMin)} = ${gb(maxViable!)}`
+            }
+            if (r.key === "BuyHold") {
+              if (annualRent <= 0) return "No rental data — cannot compute Buy & Hold ceiling"
+              return `Annual Rent ÷ Min B&H Yield\n${gb(annualRent)} ÷ ${pct(bhMin)} = ${gb(maxViable!)}`
+            }
+            if (r.key === "Flip") {
+              return `Market Value × ${pct(flipPct)} − Refurb Cost\n${gb(marketValue)} × ${pct(flipPct)} − ${gb(refurbCost)} = ${gb(maxViable!)}`
+            }
+            if (r.key === "BRR") {
+              return `Market Value × ${pct(brrLtv)} LTV − Refurb Cost\n${gb(marketValue)} × ${pct(brrLtv)} − ${gb(refurbCost)} = ${gb(maxViable!)}`
+            }
+            return null
+          })()
+
+          const atRecOfferTooltip: string | null = (() => {
+            if ((r.key === "BTL" || r.key === "BuyHold") && annualRent > 0 && r.recommendedOffer > 0) {
+              const label = r.key === "BTL" ? "Min BTL Yield" : "Min B&H Yield"
+              return `Annual Rent ÷ Recommended Offer\n${gb(annualRent)} ÷ ${gb(r.recommendedOffer)} = ${yieldAtOffer?.toFixed(1)}%\n(Target ≥ ${pct(r.key === "BTL" ? btlMin : bhMin)} to be viable)`
+            }
+            if (r.key === "Flip" && flipProfit != null) {
+              const sellingCosts = Math.round(marketValue * 0.05)
+              return `Market Value − Rec. Offer − Refurb − Selling Costs (5% MV)\n${gb(marketValue)} − ${gb(r.recommendedOffer)} − ${gb(refurbCost)} − ${gb(sellingCosts)} = ${gb(flipProfit)}`
+            }
+            if (r.key === "BRR" && brrProceeds != null && brrLeftIn != null) {
+              return `Cash left in after refinance:\nRec. Offer + Refurb − Refinance Proceeds\n${gb(r.recommendedOffer)} + ${gb(refurbCost)} − ${gb(brrProceeds)} = ${gb(brrLeftIn)} left in`
+            }
+            return null
+          })()
+
+          const viableTooltip: string = strategyViable
+            ? `✓ Viable — Rec. offer (${gb(r.recommendedOffer)}) ≤ max ceiling (${gb(maxViable ?? 0)})`
+            : `✗ Not viable — Rec. offer (${gb(r.recommendedOffer)}) exceeds ceiling (${maxViable != null ? gb(maxViable) : "n/a"})\nYou would need to pay more than this strategy allows`
+
           return {
             key: r.key,
             name: r.label,
@@ -561,7 +616,13 @@ export async function POST(
             // BRR metrics
             brrProceeds,
             brrLeftIn,
-            viable: r.passesValidation,
+            viable: strategyViable,
+            // Human-readable tooltip explanations for each column
+            tooltips: {
+              maxViable: maxViableTooltip,
+              atRecOffer: atRecOfferTooltip,
+              viable: viableTooltip,
+            },
           }
         }),
       })

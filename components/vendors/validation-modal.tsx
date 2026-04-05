@@ -1,11 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { X, Loader2, Calculator, CheckCircle, XCircle, Home, ChevronDown, ChevronRight } from "lucide-react"
+import { X, Loader2, Calculator, CheckCircle, XCircle, Home, ChevronDown, ChevronRight, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { ModalShell } from "./modal-shell"
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 import type { VendorLead } from "./vendor-leads-table"
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -87,7 +88,17 @@ function PassBadge({ pass }: { pass: boolean | null }) {
  */
 function extractStrategyData(text: string): {
   cleaned: string
-  strategies: Array<{ key: string; name: string; emoji: string; maxOffer: number; yield: number; viable: boolean }> | null
+  strategies: Array<{
+    key: string; name: string; emoji: string
+    maxViable?: number | null
+    maxOffer?: number; yield?: number | null
+    recommendedOffer?: number
+    yieldAtOffer?: number | null
+    flipProfit?: number | null; flipMargin?: number | null
+    brrProceeds?: number | null; brrLeftIn?: number | null
+    viable: boolean
+    tooltips?: { maxViable?: string | null; atRecOffer?: string | null; viable?: string | null }
+  }> | null
   recommended: string | null
 } {
   const match = text.match(/\[STRATEGY_DATA\]([\s\S]*?)\[\/STRATEGY_DATA\]/i)
@@ -319,6 +330,25 @@ function CompsRenderer({ comps }: { comps: Comp[] }) {
   )
 }
 
+// ─── small tooltip helper ─────────────────────────────────────────────────────
+
+function CalcTooltip({ tip, children }: { tip: string | null | undefined; children: React.ReactNode }) {
+  if (!tip) return <>{children}</>
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex items-center gap-1 cursor-help">{children}</span>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        className="max-w-[260px] text-[11px] leading-snug whitespace-pre-line bg-gray-900 text-gray-100 border-gray-700 shadow-xl"
+      >
+        {tip}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 function StrategyTableRenderer({
   strategies,
   recommended,
@@ -331,6 +361,11 @@ function StrategyTableRenderer({
     flipProfit?: number | null; flipMargin?: number | null
     brrProceeds?: number | null; brrLeftIn?: number | null
     viable: boolean
+    tooltips?: {
+      maxViable?: string | null
+      atRecOffer?: string | null
+      viable?: string | null
+    }
     // legacy fallback fields
     maxOffer?: number; yield?: number | null
   }> | null
@@ -342,94 +377,136 @@ function StrategyTableRenderer({
   const fmt = (n: number) => `£${Math.round(n).toLocaleString("en-GB")}`
 
   const metricCell = (s: typeof strategies[0]) => {
+    const tip = s.tooltips?.atRecOffer
+
     if (s.key === "BTL" || s.key === "BuyHold") {
       const y = s.yieldAtOffer ?? s.yield
       return y != null ? (
-        <span className={y >= 8 ? "text-green-600 font-semibold" : y >= 6 ? "text-amber-600 font-semibold" : "text-red-500 font-semibold"}>
-          {y.toFixed(1)}% yield
-        </span>
+        <CalcTooltip tip={tip}>
+          <span className={y >= 8 ? "text-green-600 font-semibold" : y >= 6 ? "text-amber-600 font-semibold" : "text-red-500 font-semibold"}>
+            {y.toFixed(1)}% yield
+          </span>
+          <Info className="h-3 w-3 text-gray-400 shrink-0" />
+        </CalcTooltip>
       ) : <span className="text-gray-300">—</span>
     }
+
     if (s.key === "Flip") {
       return s.flipProfit != null ? (
-        <div className="text-right leading-tight">
-          <div className={s.flipProfit > 0 ? "text-green-600 font-semibold" : "text-red-500 font-semibold"}>
-            {fmt(s.flipProfit)} profit
+        <CalcTooltip tip={tip}>
+          <div className="text-right leading-tight">
+            <div className={s.flipProfit > 0 ? "text-green-600 font-semibold" : "text-red-500 font-semibold"}>
+              {fmt(s.flipProfit)} profit
+            </div>
+            {s.flipMargin != null && (
+              <div className="text-[10px] text-gray-400">{s.flipMargin.toFixed(1)}% ROI</div>
+            )}
           </div>
-          {s.flipMargin != null && (
-            <div className="text-[10px] text-gray-400">{s.flipMargin.toFixed(1)}% ROI</div>
-          )}
-        </div>
+          <Info className="h-3 w-3 text-gray-400 shrink-0 self-start mt-0.5" />
+        </CalcTooltip>
       ) : <span className="text-gray-300">—</span>
     }
+
     if (s.key === "BRR") {
       return s.brrLeftIn != null ? (
-        <div className="text-right leading-tight">
-          <div className={s.brrLeftIn === 0 ? "text-green-600 font-semibold" : s.brrLeftIn < 15000 ? "text-amber-600 font-semibold" : "text-gray-700 font-semibold"}>
-            {fmt(s.brrLeftIn)} left in
+        <CalcTooltip tip={tip}>
+          <div className="text-right leading-tight">
+            <div className={s.brrLeftIn === 0 ? "text-green-600 font-semibold" : s.brrLeftIn < 15000 ? "text-amber-600 font-semibold" : "text-gray-700 font-semibold"}>
+              {fmt(s.brrLeftIn)} left in
+            </div>
+            {s.brrProceeds != null && (
+              <div className="text-[10px] text-gray-400">refi: {fmt(s.brrProceeds)}</div>
+            )}
           </div>
-          {s.brrProceeds != null && (
-            <div className="text-[10px] text-gray-400">refi: {fmt(s.brrProceeds)}</div>
-          )}
-        </div>
+          <Info className="h-3 w-3 text-gray-400 shrink-0 self-start mt-0.5" />
+        </CalcTooltip>
       ) : <span className="text-gray-300">—</span>
     }
+
     return <span className="text-gray-300">—</span>
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-gray-200">
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="border-b border-gray-200 bg-gray-50">
-            <th className="px-3 py-1.5 text-left font-semibold text-gray-600">Strategy</th>
-            <th className="px-3 py-1.5 text-right font-semibold text-gray-600">
-              Max Viable Price
-              <div className="text-[9px] font-normal text-gray-400 normal-case">ceiling per strategy</div>
-            </th>
-            <th className="px-3 py-1.5 text-right font-semibold text-gray-600">At Rec. Offer</th>
-            <th className="px-3 py-1.5 text-right font-semibold text-gray-600">Viable</th>
-          </tr>
-        </thead>
-        <tbody>
-          {strategies.map((s, i) => {
-            const ceiling = s.maxViable ?? s.maxOffer ?? null
-            return (
-              <tr key={s.key} className={cn(
-                "border-b border-gray-100 last:border-0",
-                s.key === recommended ? "bg-blue-50" : i % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-              )}>
-                <td className="px-3 py-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-semibold text-gray-800">{s.name}</span>
-                    {s.key === recommended && (
-                      <span className="rounded-full bg-blue-100 border border-blue-200 px-1.5 py-0.5 text-[9px] font-bold text-blue-700">
-                        REC
-                      </span>
+    <TooltipProvider delayDuration={200}>
+      <div className="overflow-hidden rounded-lg border border-gray-200">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="px-3 py-1.5 text-left font-semibold text-gray-600">Strategy</th>
+              <th className="px-3 py-1.5 text-right font-semibold text-gray-600">
+                Max Viable Price
+                <div className="text-[9px] font-normal text-gray-400 normal-case">ceiling per strategy</div>
+              </th>
+              <th className="px-3 py-1.5 text-right font-semibold text-gray-600">
+                At Rec. Offer
+                <div className="text-[9px] font-normal text-gray-400 normal-case">yield/profit if offer accepted</div>
+              </th>
+              <th className="px-3 py-1.5 text-right font-semibold text-gray-600">
+                Viable
+                <div className="text-[9px] font-normal text-gray-400 normal-case">offer ≤ ceiling?</div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {strategies.map((s, i) => {
+              const ceiling = s.maxViable ?? s.maxOffer ?? null
+              return (
+                <tr key={s.key} className={cn(
+                  "border-b border-gray-100 last:border-0",
+                  s.key === recommended ? "bg-blue-50" : i % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                )}>
+                  {/* Strategy name */}
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-gray-800">{s.name}</span>
+                      {s.key === recommended && (
+                        <span className="rounded-full bg-blue-100 border border-blue-200 px-1.5 py-0.5 text-[9px] font-bold text-blue-700">
+                          REC
+                        </span>
+                      )}
+                    </div>
+                  </td>
+
+                  {/* Max Viable Price — with formula tooltip */}
+                  <td className="px-3 py-2 text-right font-bold text-gray-900">
+                    {ceiling != null ? (
+                      <CalcTooltip tip={s.tooltips?.maxViable}>
+                        <span>{fmt(ceiling)}</span>
+                        <Info className="h-3 w-3 text-gray-400 shrink-0" />
+                      </CalcTooltip>
+                    ) : (
+                      <span className="text-gray-300">—</span>
                     )}
-                  </div>
-                </td>
-                <td className="px-3 py-2 text-right font-bold text-gray-900">
-                  {ceiling != null ? fmt(ceiling) : <span className="text-gray-300">—</span>}
-                </td>
-                <td className="px-3 py-2 text-right">
-                  {metricCell(s)}
-                </td>
-                <td className="px-3 py-2 text-right">
-                  {s.viable
-                    ? <span className="text-green-600 font-semibold">✓ Yes</span>
-                    : <span className="text-red-500 font-semibold">✗ No</span>
-                  }
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-      <div className="px-3 py-2 border-t border-gray-100 bg-gray-50/50 text-[10px] text-gray-400">
-        Max Viable Price = most you can pay for each strategy to still work. Rec. offer (left panel) is your opening bid based on the discount formula.
+                  </td>
+
+                  {/* At Rec. Offer metric */}
+                  <td className="px-3 py-2 text-right">
+                    <div className="flex items-center justify-end">
+                      {metricCell(s)}
+                    </div>
+                  </td>
+
+                  {/* Viable — with explanation tooltip */}
+                  <td className="px-3 py-2 text-right">
+                    <CalcTooltip tip={s.tooltips?.viable}>
+                      {s.viable
+                        ? <span className="text-green-600 font-semibold">✓ Yes</span>
+                        : <span className="text-red-500 font-semibold">✗ No</span>
+                      }
+                      <Info className="h-3 w-3 text-gray-400 shrink-0" />
+                    </CalcTooltip>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+        <div className="px-3 py-2 border-t border-gray-100 bg-gray-50/50 text-[10px] text-gray-400 flex items-center gap-1">
+          <Info className="h-3 w-3 shrink-0" />
+          Hover any value to see how it was calculated. Max Viable Price = ceiling per strategy. Viable = rec. offer ≤ ceiling.
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   )
 }
 
