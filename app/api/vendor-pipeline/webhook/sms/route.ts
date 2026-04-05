@@ -23,12 +23,23 @@ export async function POST(request: NextRequest) {
     // Validate Twilio signature (optional but recommended)
     const twilioService = getTwilioService()
     const signature = request.headers.get("x-twilio-signature")
-    const url = request.url
+
+    // Reconstruct the public-facing URL — request.url is often an internal/localhost URL
+    // behind a reverse proxy, but Twilio signed with the real external URL.
+    // Use x-forwarded-proto/host headers set by the proxy, falling back to NEXTAUTH_URL.
+    const forwardedProto = request.headers.get("x-forwarded-proto") || "https"
+    const forwardedHost =
+      request.headers.get("x-forwarded-host") ||
+      request.headers.get("host") ||
+      new URL(process.env.NEXTAUTH_URL || process.env.APP_URL || request.url).host
+    const webhookUrl = `${forwardedProto}://${forwardedHost}/api/vendor-pipeline/webhook/sms`
+
+    console.log(`[Webhook] Validating signature against URL: ${webhookUrl}`)
 
     if (signature && process.env.TWILIO_AUTH_TOKEN && typeof twilioService.validateWebhookSignature === 'function') {
-      const isValid = twilioService.validateWebhookSignature(url, body, signature)
+      const isValid = twilioService.validateWebhookSignature(webhookUrl, body, signature)
       if (!isValid) {
-        console.warn("Invalid Twilio webhook signature")
+        console.warn(`[Webhook] Invalid Twilio signature. URL used: ${webhookUrl}`)
         return NextResponse.json({ error: "Invalid signature" }, { status: 403 })
       }
     }
