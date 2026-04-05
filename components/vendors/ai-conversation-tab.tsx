@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
@@ -162,7 +162,10 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
   const [isStarting, setIsStarting] = useState(false)
   const [showPrompt, setShowPrompt] = useState(false)
   const [promptCopied, setPromptCopied] = useState(false)
+  const [isLive, setIsLive] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const lastMessageCountRef = useRef(lead.smsMessages?.length ?? 0)
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -176,13 +179,50 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
     setMessages(lead.smsMessages || [])
   }, [lead.smsMessages])
 
+  const convState = (lead.conversationState || {}) as ConversationState
+  const isComplete = convState.conversationComplete
+
+  // Silent background refresh — no spinner, just update messages if count changed
+  const silentRefresh = useCallback(async () => {
+    if (document.hidden) return // pause when tab is not visible
+    try {
+      const res = await fetch(`/api/vendor-pipeline/leads/${lead.id}`)
+      if (!res.ok) return
+      const data = await res.json()
+      const incoming: AISMSMessage[] = data.lead?.smsMessages || []
+      if (incoming.length !== lastMessageCountRef.current) {
+        lastMessageCountRef.current = incoming.length
+        setMessages(incoming)
+        onUpdate?.()
+      }
+    } catch {
+      // silent — don't show errors during auto-poll
+    }
+  }, [lead.id, onUpdate])
+
+  // Start / stop live polling based on conversation state
+  useEffect(() => {
+    const conversationActive = lead.conversationStartedAt && !isComplete
+    if (conversationActive) {
+      setIsLive(true)
+      pollRef.current = setInterval(silentRefresh, 3000)
+    } else {
+      setIsLive(false)
+    }
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
+  }, [lead.conversationStartedAt, isComplete, silentRefresh])
+
   const refreshMessages = async () => {
     setIsRefreshing(true)
     try {
       const res = await fetch(`/api/vendor-pipeline/leads/${lead.id}`)
       if (!res.ok) throw new Error("Failed to refresh")
       const data = await res.json()
-      setMessages(data.lead.smsMessages || [])
+      const incoming = data.lead?.smsMessages || []
+      lastMessageCountRef.current = incoming.length
+      setMessages(incoming)
       onUpdate?.()
     } catch {
       toast.error("Failed to refresh messages")
@@ -261,10 +301,8 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
     setTimeout(() => setPromptCopied(false), 2000)
   }
 
-  const convState = (lead.conversationState || {}) as ConversationState
   const inboundCount  = messages.filter(m => m.direction === "inbound").length
   const outboundCount = messages.filter(m => m.direction === "outbound").length
-  const isComplete    = convState.conversationComplete
   const nextQ         = convState.nextQuestionType
 
   return (
@@ -335,15 +373,28 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
               <span className="text-sm font-semibold text-gray-900">SMS Thread</span>
               <span className="text-xs text-gray-400">{lead.vendorPhone}</span>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={refreshMessages}
-              disabled={isRefreshing}
-              className="h-7 w-7 p-0"
-            >
-              <RefreshCw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")} />
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Live indicator when polling is active */}
+              {isLive ? (
+                <div className="flex items-center gap-1.5" title="Auto-updating every 3s">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                  </span>
+                  <span className="text-xs text-green-600 font-medium">Live</span>
+                </div>
+              ) : null}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={refreshMessages}
+                disabled={isRefreshing}
+                className="h-7 w-7 p-0"
+                title="Refresh now"
+              >
+                <RefreshCw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")} />
+              </Button>
+            </div>
           </div>
 
           {/* Bubbles */}
