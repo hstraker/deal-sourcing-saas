@@ -63,6 +63,9 @@ import {
   Bell,
   AlertCircle,
   Clock as ClockIcon,
+  FileText,
+  Send,
+  TrendingDown,
 } from "lucide-react"
 import { PipelineStage } from "@prisma/client"
 import { cn } from "@/lib/utils"
@@ -175,7 +178,7 @@ interface VendorLeadDetailModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onUpdate?: () => void
-  initialTab?: "details" | "comparables" | "activity" | "portal-check" | "ai-conversation"
+  initialTab?: "details" | "portal-check" | "comparables" | "ai-conversation" | "activity"
   alertReason?: string
   alertUrgency?: "high" | "medium" | "low"
 }
@@ -1148,6 +1151,8 @@ export function VendorLeadDetailModal({
           className="w-full"
         >
           <TabsList className="grid w-full grid-cols-5 h-auto p-1 gap-0.5 bg-gray-50">
+
+            {/* 1 — Lead Details */}
             <TabsTrigger
               value="details"
               className="relative flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
@@ -1155,50 +1160,68 @@ export function VendorLeadDetailModal({
                 data-[state=active]:bg-white data-[state=active]:text-[#2563EB] data-[state=active]:shadow-sm"
             >
               <User className="h-3.5 w-3.5" />
-              <span>Contact Info</span>
+              <span>Lead Details</span>
               {currentLead.reservation && (
                 <span className="absolute top-1.5 right-2 inline-block h-1.5 w-1.5 rounded-full bg-violet-500" />
               )}
             </TabsTrigger>
-            <TabsTrigger
-              value="comparables"
-              className="flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
-                hover:bg-gray-50 hover:text-[#2563EB] hover:shadow-sm
-                data-[state=active]:bg-white data-[state=active]:text-[#2563EB] data-[state=active]:shadow-sm"
-            >
-              <BarChart3 className="h-3.5 w-3.5" />
-              <span>Comparables</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="activity"
-              className="flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
-                hover:bg-gray-50 hover:text-[#2563EB] hover:shadow-sm
-                data-[state=active]:bg-white data-[state=active]:text-[#2563EB] data-[state=active]:shadow-sm"
-            >
-              <Clock className="h-3.5 w-3.5" />
-              <span>Activity</span>
-            </TabsTrigger>
+
+            {/* 2 — Due Diligence (portal check promoted) */}
             <TabsTrigger
               value="portal-check"
-              className="flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
+              className="relative flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
                 hover:bg-gray-50 hover:text-[#2563EB] hover:shadow-sm
                 data-[state=active]:bg-white data-[state=active]:text-[#2563EB] data-[state=active]:shadow-sm"
             >
               <ShieldCheck className="h-3.5 w-3.5" />
-              <span>Portal Check</span>
+              <span>Due Diligence</span>
+              {currentLead.latestCheckRisk === "red_flag" && (
+                <span className="absolute top-1.5 right-2 inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
+              )}
             </TabsTrigger>
+
+            {/* 3 — Valuation (comparables + validation summary) */}
+            <TabsTrigger
+              value="comparables"
+              className="relative flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
+                hover:bg-gray-50 hover:text-[#2563EB] hover:shadow-sm
+                data-[state=active]:bg-white data-[state=active]:text-[#2563EB] data-[state=active]:shadow-sm"
+            >
+              <BarChart3 className="h-3.5 w-3.5" />
+              <span>Valuation</span>
+              {currentLead.validationPassed === true && (
+                <span className="absolute top-1.5 right-2 inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
+              )}
+              {currentLead.validationPassed === false && (
+                <span className="absolute top-1.5 right-2 inline-block h-1.5 w-1.5 rounded-full bg-red-400" />
+              )}
+            </TabsTrigger>
+
+            {/* 4 — Outreach (AI conversation) */}
             <TabsTrigger
               value="ai-conversation"
               className="relative flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
                 hover:bg-gray-50 hover:text-[#2563EB] hover:shadow-sm
                 data-[state=active]:bg-white data-[state=active]:text-[#2563EB] data-[state=active]:shadow-sm"
             >
-              <MessageSquare className="h-3.5 w-3.5" />
-              <span>AI Convo</span>
+              <Send className="h-3.5 w-3.5" />
+              <span>Outreach</span>
               {currentLead.smsMessages && currentLead.smsMessages.length > 0 && (
                 <span className="absolute top-1.5 right-2 inline-block h-1.5 w-1.5 rounded-full bg-blue-500" />
               )}
             </TabsTrigger>
+
+            {/* 5 — Deal Log (pipeline audit trail) */}
+            <TabsTrigger
+              value="activity"
+              className="relative flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
+                hover:bg-gray-50 hover:text-[#2563EB] hover:shadow-sm
+                data-[state=active]:bg-white data-[state=active]:text-[#2563EB] data-[state=active]:shadow-sm"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              <span>Deal Log</span>
+            </TabsTrigger>
+
           </TabsList>
 
           <TabsContent value="details" className="space-y-4">
@@ -1965,7 +1988,7 @@ export function VendorLeadDetailModal({
           </TabsContent>
 
 
-          {/* ── Activity Tab ──────────────────────────────────────────────────── */}
+          {/* ── Deal Log Tab ──────────────────────────────────────────────────── */}
           <TabsContent value="activity" className="space-y-4">
             {(() => {
               const STAGE_LABELS: Record<string, string> = {
@@ -2015,9 +2038,9 @@ export function VendorLeadDetailModal({
                   case "offer_rejected":
                     return { title: "Offer Rejected", detail: d.rejectionReason || undefined, color: "bg-red-500" }
                   case "deal_validated":
-                    return { title: "Deal Validated", detail: d.description as string | undefined, color: "bg-green-500" }
+                    return { title: "Deal Validated", detail: "See Valuation tab for full report", color: "bg-green-500" }
                   case "deal_rejected":
-                    return { title: "Deal Failed Validation", detail: d.description as string | undefined, color: "bg-orange-500" }
+                    return { title: "Deal Failed Validation", detail: "See Valuation tab for full report", color: "bg-orange-500" }
                   default:
                     return {
                       title: ev.eventType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
@@ -2032,16 +2055,16 @@ export function VendorLeadDetailModal({
                 <div className="ds-card overflow-hidden">
                   <div className="px-5 py-4 border-b border-[var(--ds-border)]">
                     <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-[#2563EB]" />
-                      Pipeline Activity
+                      <FileText className="h-4 w-4 text-[#2563EB]" />
+                      Deal Log
                     </h3>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {events.length} event{events.length !== 1 ? "s" : ""} recorded
+                      {events.length} event{events.length !== 1 ? "s" : ""} recorded · Full validation report in Valuation tab
                     </p>
                   </div>
                   <div className="p-5">
                     {events.length === 0 ? (
-                      <p className="text-sm text-gray-400 text-center py-8">No activity recorded yet</p>
+                      <p className="text-sm text-gray-400 text-center py-8">No events recorded yet</p>
                     ) : (
                       <ol className="relative border-l border-[var(--ds-border)] ml-3 space-y-5">
                         {events.map((ev: PipelineEvent) => {
@@ -2069,6 +2092,114 @@ export function VendorLeadDetailModal({
           </TabsContent>
 
           <TabsContent value="comparables" className="space-y-4 w-full min-w-0 overflow-hidden">
+
+            {/* ── Validation Summary Card ─────────────────────────────────────── */}
+            {(currentLead.validationPassed !== null && currentLead.validationPassed !== undefined) ? (
+              <div className={cn(
+                "rounded-xl border-2 p-4",
+                currentLead.validationPassed
+                  ? "border-green-200 bg-green-50/60"
+                  : "border-red-200 bg-red-50/60"
+              )}>
+                {/* Header row */}
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    {currentLead.validationPassed
+                      ? <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      : <XCircle className="h-4 w-4 text-red-500" />
+                    }
+                    <span className={cn(
+                      "text-sm font-semibold",
+                      currentLead.validationPassed ? "text-green-800" : "text-red-700"
+                    )}>
+                      {currentLead.validationPassed ? "Deal Validated" : "Failed Validation"}
+                    </span>
+                    {currentLead.validatedAt && (
+                      <span className="text-xs text-gray-400">
+                        · {formatDate(currentLead.validatedAt instanceof Date ? currentLead.validatedAt : new Date(currentLead.validatedAt))}
+                      </span>
+                    )}
+                  </div>
+                  <Badge variant="outline" className={cn(
+                    "text-xs font-semibold",
+                    currentLead.validationPassed
+                      ? "border-green-300 bg-green-100 text-green-700"
+                      : "border-red-300 bg-red-100 text-red-600"
+                  )}>
+                    {currentLead.validationPassed ? "PASS" : "FAIL"}
+                  </Badge>
+                </div>
+
+                {/* Key metrics row */}
+                <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
+                  {currentLead.bmvScore !== null && currentLead.bmvScore !== undefined && (
+                    <div>
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">BMV</p>
+                      <p className={cn(
+                        "text-sm font-bold",
+                        Number(currentLead.bmvScore) >= 15 ? "text-green-700" : "text-red-600"
+                      )}>
+                        {Number(currentLead.bmvScore).toFixed(1)}%
+                      </p>
+                    </div>
+                  )}
+                  {currentLead.offerAmount !== null && currentLead.offerAmount !== undefined && (
+                    <div>
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Recommended Offer</p>
+                      <p className="text-sm font-bold text-gray-800">
+                        £{Number(currentLead.offerAmount).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                  {parsedNotes?.rentalYield?.grossYield !== undefined && (
+                    <div>
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Gross Yield</p>
+                      <p className={cn(
+                        "text-sm font-bold",
+                        parsedNotes.rentalYield.grossYield >= 7 ? "text-green-700" : "text-amber-600"
+                      )}>
+                        {parsedNotes.rentalYield.grossYield.toFixed(1)}%
+                      </p>
+                    </div>
+                  )}
+                  {currentLead.profitPotential !== null && currentLead.profitPotential !== undefined && (
+                    <div>
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Profit Potential</p>
+                      <p className={cn(
+                        "text-sm font-bold",
+                        Number(currentLead.profitPotential) >= 20000 ? "text-green-700" : "text-amber-600"
+                      )}>
+                        £{Number(currentLead.profitPotential).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Failure reasons */}
+                {!currentLead.validationPassed && parsedNotes?.failureReasons && parsedNotes.failureReasons.length > 0 && (
+                  <div className="mt-3 border-t border-red-200 pt-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-red-500 mb-1.5">Reasons for failure</p>
+                    <ul className="space-y-0.5">
+                      {parsedNotes.failureReasons.map((reason, i) => (
+                        <li key={i} className="flex items-start gap-1.5 text-xs text-red-700">
+                          <span className="mt-0.5 shrink-0">·</span>
+                          <span>{reason}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-5 py-4 flex items-center gap-3">
+                <TrendingDown className="h-4 w-4 text-gray-300 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-gray-400">Not yet validated</p>
+                  <p className="text-xs text-gray-400">Run the validation check from the Portal Check tab to see the deal verdict here.</p>
+                </div>
+              </div>
+            )}
+
             <VendorComparablesTab
               vendorLeadId={lead.id}
               askingPrice={typeof currentLead.askingPrice === 'number' ? currentLead.askingPrice : (currentLead.askingPrice ? Number(currentLead.askingPrice) : undefined)}
