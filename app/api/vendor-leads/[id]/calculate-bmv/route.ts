@@ -503,17 +503,67 @@ export async function POST(
         strategyAnalysisBlock += `  ${r.emoji} ${r.label}${rec}\n`
         strategyAnalysisBlock += `     Max Offer: £${r.recommendedOffer.toLocaleString()}${yieldStr} | ${status}\n`
       }
-      // Machine-readable block for UI parsing
+      // Machine-readable block for UI parsing.
+      // "maxViable" = the MOST each strategy would ever let you pay (the ceiling).
+      //   BTL/BuyHold → yield ceiling (annualRent / minYield%)
+      //   Flip        → MV × flipPct% − refurb
+      //   BRR         → MV × brrLtv% − refurb
+      // "recommendedOffer" (same for all) = what we suggest bidding based on the
+      //   discount formula — shown once in the left panel, NOT repeated per strategy.
+      const annualRent = monthlyRent * 12
+      const flipPct   = sConfig.flipMarketValuePct
+      const brrLtv    = sConfig.brrLtvPercent
+      const btlMin    = sConfig.btlMinYield
+      const bhMin     = sConfig.buyHoldMinYield
+
       const strategyJson = JSON.stringify({
         recommended: recommended.key,
-        strategies: stratResults.map(r => ({
-          key: r.key,
-          name: r.label,
-          emoji: r.emoji,
-          maxOffer: r.recommendedOffer,
-          yield: r.achievedGrossYield > 0 ? Math.round(r.achievedGrossYield * 10) / 10 : null,
-          viable: r.passesValidation,
-        })),
+        recommendedOffer: recommended.recommendedOffer,
+        strategies: stratResults.map(r => {
+          // Compute the raw strategy ceiling (always, whether binding or not)
+          let maxViable: number | null = null
+          let yieldAtOffer: number | null = null
+          let flipProfit: number | null = null
+          let flipMargin: number | null = null
+          let brrProceeds: number | null = null
+          let brrLeftIn: number | null = null
+
+          if (r.key === "BTL") {
+            maxViable = annualRent > 0 ? Math.round(annualRent / (btlMin / 100)) : null
+            yieldAtOffer = r.achievedGrossYield > 0 ? Math.round(r.achievedGrossYield * 10) / 10 : null
+          } else if (r.key === "BuyHold") {
+            maxViable = annualRent > 0 ? Math.round(annualRent / (bhMin / 100)) : null
+            yieldAtOffer = r.achievedGrossYield > 0 ? Math.round(r.achievedGrossYield * 10) / 10 : null
+          } else if (r.key === "Flip") {
+            maxViable = Math.round(marketValue * flipPct / 100 - refurbCost)
+            // Profit at recommended offer: sell at MV, subtract offer + refurb + selling costs (~5% MV)
+            flipProfit = Math.round(marketValue - r.recommendedOffer - refurbCost - marketValue * 0.05)
+            flipMargin = r.recommendedOffer > 0 ? Math.round((flipProfit / r.recommendedOffer) * 1000) / 10 : null
+          } else if (r.key === "BRR") {
+            maxViable = Math.round(marketValue * brrLtv / 100 - refurbCost)
+            brrProceeds = Math.round(marketValue * brrLtv / 100)
+            brrLeftIn = Math.max(0, r.recommendedOffer + refurbCost - brrProceeds)
+          }
+
+          return {
+            key: r.key,
+            name: r.label,
+            emoji: r.emoji,
+            // The ceiling — max this strategy allows you to pay
+            maxViable,
+            // The discounted recommended bid (same for all strategies)
+            recommendedOffer: r.recommendedOffer,
+            // Income strategy metrics
+            yieldAtOffer,
+            // Flip metrics
+            flipProfit,
+            flipMargin,
+            // BRR metrics
+            brrProceeds,
+            brrLeftIn,
+            viable: r.passesValidation,
+          }
+        }),
       })
       strategyAnalysisBlock += `[STRATEGY_DATA]${strategyJson}[/STRATEGY_DATA]\n`
     } catch (stratErr) {

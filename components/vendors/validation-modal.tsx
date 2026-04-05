@@ -323,20 +323,59 @@ function StrategyTableRenderer({
   strategies,
   recommended,
 }: {
-  strategies: Array<{ key: string; name: string; emoji: string; maxOffer: number; yield: number; viable: boolean }> | null
+  strategies: Array<{
+    key: string; name: string; emoji: string
+    maxViable?: number | null
+    recommendedOffer?: number
+    yieldAtOffer?: number | null
+    flipProfit?: number | null; flipMargin?: number | null
+    brrProceeds?: number | null; brrLeftIn?: number | null
+    viable: boolean
+    // legacy fallback fields
+    maxOffer?: number; yield?: number | null
+  }> | null
   inlineStrategies: StrategyInline[]
   recommended: string | null
 }) {
-  // Prefer parsed JSON strategies, fall back to inline-parsed
-  const rows = strategies?.map(s => ({
-    name:     s.name,
-    maxOffer: `£${s.maxOffer.toLocaleString("en-GB")}`,
-    yield:    `${s.yield}%`,
-    viable:   s.viable,
-    isRec:    s.key === recommended,
-  })) ?? []
+  if (!strategies?.length) return null
 
-  if (!rows.length) return null
+  const fmt = (n: number) => `£${Math.round(n).toLocaleString("en-GB")}`
+
+  const metricCell = (s: typeof strategies[0]) => {
+    if (s.key === "BTL" || s.key === "BuyHold") {
+      const y = s.yieldAtOffer ?? s.yield
+      return y != null ? (
+        <span className={y >= 8 ? "text-green-600 font-semibold" : y >= 6 ? "text-amber-600 font-semibold" : "text-red-500 font-semibold"}>
+          {y.toFixed(1)}% yield
+        </span>
+      ) : <span className="text-gray-300">—</span>
+    }
+    if (s.key === "Flip") {
+      return s.flipProfit != null ? (
+        <div className="text-right leading-tight">
+          <div className={s.flipProfit > 0 ? "text-green-600 font-semibold" : "text-red-500 font-semibold"}>
+            {fmt(s.flipProfit)} profit
+          </div>
+          {s.flipMargin != null && (
+            <div className="text-[10px] text-gray-400">{s.flipMargin.toFixed(1)}% ROI</div>
+          )}
+        </div>
+      ) : <span className="text-gray-300">—</span>
+    }
+    if (s.key === "BRR") {
+      return s.brrLeftIn != null ? (
+        <div className="text-right leading-tight">
+          <div className={s.brrLeftIn === 0 ? "text-green-600 font-semibold" : s.brrLeftIn < 15000 ? "text-amber-600 font-semibold" : "text-gray-700 font-semibold"}>
+            {fmt(s.brrLeftIn)} left in
+          </div>
+          {s.brrProceeds != null && (
+            <div className="text-[10px] text-gray-400">refi: {fmt(s.brrProceeds)}</div>
+          )}
+        </div>
+      ) : <span className="text-gray-300">—</span>
+    }
+    return <span className="text-gray-300">—</span>
+  }
 
   return (
     <div className="overflow-hidden rounded-lg border border-gray-200">
@@ -344,39 +383,52 @@ function StrategyTableRenderer({
         <thead>
           <tr className="border-b border-gray-200 bg-gray-50">
             <th className="px-3 py-1.5 text-left font-semibold text-gray-600">Strategy</th>
-            <th className="px-3 py-1.5 text-right font-semibold text-gray-600">Max Offer</th>
-            <th className="px-3 py-1.5 text-right font-semibold text-gray-600">Yield</th>
+            <th className="px-3 py-1.5 text-right font-semibold text-gray-600">
+              Max Viable Price
+              <div className="text-[9px] font-normal text-gray-400 normal-case">ceiling per strategy</div>
+            </th>
+            <th className="px-3 py-1.5 text-right font-semibold text-gray-600">At Rec. Offer</th>
             <th className="px-3 py-1.5 text-right font-semibold text-gray-600">Viable</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className={cn(
-              "border-b border-gray-100 last:border-0",
-              r.isRec ? "bg-blue-50" : i % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-            )}>
-              <td className="px-3 py-1.5">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-semibold text-gray-800">{r.name}</span>
-                  {r.isRec && (
-                    <span className="rounded-full bg-blue-100 border border-blue-200 px-1.5 py-0.5 text-[9px] font-bold text-blue-700">
-                      REC
-                    </span>
-                  )}
-                </div>
-              </td>
-              <td className="px-3 py-1.5 text-right font-semibold text-gray-800">{r.maxOffer}</td>
-              <td className="px-3 py-1.5 text-right text-gray-700">{r.yield}</td>
-              <td className="px-3 py-1.5 text-right">
-                {r.viable
-                  ? <span className="text-green-600 font-semibold">✓ Yes</span>
-                  : <span className="text-red-500 font-semibold">✗ No</span>
-                }
-              </td>
-            </tr>
-          ))}
+          {strategies.map((s, i) => {
+            const ceiling = s.maxViable ?? s.maxOffer ?? null
+            return (
+              <tr key={s.key} className={cn(
+                "border-b border-gray-100 last:border-0",
+                s.key === recommended ? "bg-blue-50" : i % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+              )}>
+                <td className="px-3 py-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-semibold text-gray-800">{s.name}</span>
+                    {s.key === recommended && (
+                      <span className="rounded-full bg-blue-100 border border-blue-200 px-1.5 py-0.5 text-[9px] font-bold text-blue-700">
+                        REC
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-3 py-2 text-right font-bold text-gray-900">
+                  {ceiling != null ? fmt(ceiling) : <span className="text-gray-300">—</span>}
+                </td>
+                <td className="px-3 py-2 text-right">
+                  {metricCell(s)}
+                </td>
+                <td className="px-3 py-2 text-right">
+                  {s.viable
+                    ? <span className="text-green-600 font-semibold">✓ Yes</span>
+                    : <span className="text-red-500 font-semibold">✗ No</span>
+                  }
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
+      <div className="px-3 py-2 border-t border-gray-100 bg-gray-50/50 text-[10px] text-gray-400">
+        Max Viable Price = most you can pay for each strategy to still work. Rec. offer (left panel) is your opening bid based on the discount formula.
+      </div>
     </div>
   )
 }
