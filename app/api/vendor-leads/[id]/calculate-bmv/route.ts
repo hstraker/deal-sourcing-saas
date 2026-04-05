@@ -123,14 +123,15 @@ export async function POST(
       console.log(`[BMV Calculator] Using postcode: ${effectivePostcode}${postcodeWasCorrected ? ` (corrected from "${lead.propertyPostcode}" via ${postcodeResolutionSource})` : ""}`)
 
       try {
-        // First, check if we have stored comparables (saves API credits)
+        // First, check if we have stored comparables (saves API credits).
+        // No take() limit — use all stored comparables so validation notes match
+        // the comparables tab exactly.  The comparables tab has no cap either.
         const storedComparables = await prisma.comparableProperty.findMany({
           where: { vendorLeadId: params.id },
           orderBy: [
             { distance: "asc" },
             { saleDate: "desc" },
           ],
-          take: 5, // Top 5 comparables
         })
 
         if (storedComparables.length > 0) {
