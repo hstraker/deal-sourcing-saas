@@ -27,16 +27,18 @@ export async function GET(
     })
     if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 })
 
-    // Most recent completed check
-    const latestCheck = await prisma.vendorPropertyCheck.findFirst({
-      where: {
-        vendorLeadId: params.id,
-        checkStatus: "success",
-      },
+    // Most recent check — prefer a successful one, fall back to most recent of any status
+    const latestSuccess = await prisma.vendorPropertyCheck.findFirst({
+      where: { vendorLeadId: params.id, checkStatus: "success" },
       orderBy: { triggeredAt: "desc" },
     })
+    const latestAny = latestSuccess ?? await prisma.vendorPropertyCheck.findFirst({
+      where: { vendorLeadId: params.id },
+      orderBy: { triggeredAt: "desc" },
+    })
+    const latestCheck = latestAny
 
-    // Full history (summary only)
+    // Full history — include errorMessage so the UI can surface failures
     const history = await prisma.vendorPropertyCheck.findMany({
       where: { vendorLeadId: params.id },
       orderBy: { triggeredAt: "desc" },
@@ -51,6 +53,7 @@ export async function GET(
         isMockData: true,
         mockScenarioId: true,
         durationMs: true,
+        errorMessage: true,
       },
     })
 

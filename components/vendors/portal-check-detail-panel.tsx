@@ -227,6 +227,30 @@ export function PortalCheckDetailPanel({
         <div className="rounded-lg border border-dashed p-8 text-center text-gray-400 text-sm">
           No check has been run yet. Click &quot;Re-run Check&quot; to analyse this property.
         </div>
+      ) : check.checkStatus === "failed" ? (
+        <div className="space-y-3">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+            <div className="flex items-start gap-3">
+              <XCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-red-800">Portal check failed</p>
+                {check.errorMessage && (
+                  <p className="text-xs text-red-700 mt-1 font-mono bg-red-100 rounded px-2 py-1.5 mt-2 break-all">
+                    {check.errorMessage}
+                  </p>
+                )}
+                <p className="text-xs text-red-600 mt-2">
+                  This is usually caused by: a Puppeteer/browser issue on the server, a missing API key, or a network timeout. Check server logs with <code className="bg-red-100 px-1 rounded">pm2 logs dealapp --lines 100</code>
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-4 text-xs text-gray-400">
+            <span>{format(new Date(check.triggeredAt), "d MMM yyyy HH:mm")}</span>
+            <span>Triggered by: {check.triggeredBy}</span>
+            {check.durationMs && <span>{check.durationMs}ms</span>}
+          </div>
+        </div>
       ) : (
         <>
           {/* Recommended action banner */}
@@ -345,15 +369,24 @@ export function PortalCheckDetailPanel({
             <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Check History</h4>
             <div className="space-y-1">
               {history.map((h) => (
-                <div key={h.id} className="flex items-center justify-between text-xs py-1">
-                  <div className="flex items-center gap-2">
-                    <PortalCheckBadge risk={h.overallRisk as any} isMockData={h.isMockData} />
-                    <span className="text-gray-400">
-                      {format(new Date(h.triggeredAt), "d MMM HH:mm")} · {h.triggeredBy}
+                <div key={h.id} className="py-1 space-y-0.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <PortalCheckBadge risk={h.overallRisk as any} isMockData={h.isMockData} />
+                      <span className="text-gray-400">
+                        {format(new Date(h.triggeredAt), "d MMM HH:mm")} · {h.triggeredBy}
+                      </span>
+                      {h.isMockData && <span className="text-purple-500">🧪</span>}
+                    </div>
+                    <span className={h.checkStatus === "failed" ? "text-red-500 font-medium" : "text-gray-400"}>
+                      {h.checkStatus}
                     </span>
-                    {h.isMockData && <span className="text-purple-500">🧪</span>}
                   </div>
-                  <span className="text-gray-400">{h.checkStatus}</span>
+                  {h.checkStatus === "failed" && (h as any).errorMessage && (
+                    <p className="text-[10px] text-red-500 pl-1 truncate max-w-[400px]">
+                      ↳ {(h as any).errorMessage}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
