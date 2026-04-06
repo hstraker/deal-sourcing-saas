@@ -1002,6 +1002,7 @@ model VendorLead {
   chainStatus         String? @map("chain_status")          // "NoChain" | "ShortChain" | "LongChain"
   postcodeDemandScore Int?    @map("postcode_demand_score") // 1-10
   tenureType          String? @map("tenure_type")           // "Freehold" | "Leasehold"
+  leaseholdData       Json?   @map("leasehold_data")         // LeaseholdData JSON object
 
   // Link to Deal
   dealId String? @map("deal_id")

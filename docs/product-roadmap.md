@@ -1,7 +1,7 @@
 # Deal Sourcing SaaS — Product Roadmap
 
 > Living document. Updated as features are implemented.
-> Last reviewed: April 2026
+> Last reviewed: 6 April 2026
 
 ---
 
@@ -21,11 +21,11 @@ Work through features top-to-bottom within each priority band.
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| 1 | **Sourcing Fee & Deal P&L Tracker** | 🔄 In Progress | Sourcing fee, co-sourcing splits, associated costs, net profit per deal |
-| 2 | **SDLT Calculator** | 🔄 In Progress | Built into every deal. Standard, additional dwelling (3%), company, first-time buyer rates |
-| 3 | **All-In Cost of Acquisition** | 🔄 In Progress | Purchase + SDLT + solicitor + survey + bridging + insurance + refurb = total cash required |
+| 1 | **Sourcing Fee & Deal P&L Tracker** | ✅ Done | `SourcingFeePanel` — fee, co-sourcing splits, net profit. Integrated as "Deal P&L" tab in vendor lead modal |
+| 2 | **SDLT Calculator** | ✅ Done | `AcquisitionCostPanel` — standard, additional dwelling (+3%), first-time buyer, company rates. Integrated into validation modal |
+| 3 | **All-In Cost of Acquisition** | ✅ Done | `AcquisitionCostPanel` — purchase + SDLT + solicitor + survey + bridging + insurance + refurb + contingency |
 | 4 | **Conveyancing Pipeline** | 🔲 Planned | Post-offer-accepted tracker: solicitor instruction → searches → exchange → completion |
-| 5 | **Investor Auto-Matching Engine** | 🔲 Planned | Auto-match validated deals to investor criteria, one-click notify matched investors |
+| 5 | **Investor Auto-Matching Engine** | ✅ Done | `InvestorMatchPanel` in Valuation tab — 5-criteria scoring (area/budget/BMV/yield/strategy), one-click notify, bulk notify, delivery tracking via pipeline events |
 
 ---
 
@@ -36,7 +36,7 @@ Work through features top-to-bottom within each priority band.
 | 6 | **Follow-Up Reminder System** | 🔲 Planned | Per-vendor scheduled follow-ups, dormant lead re-engagement queue (30/60/90 days) |
 | 7 | **Refurb Tracker** | 🔲 Planned | Contractor management, room-by-room cost tracking, progress photos, actual vs estimate |
 | 8 | **Deal Velocity & Performance Analytics** | 🔲 Planned | Days per pipeline stage, conversion rates, lead source attribution, cost per acquisition |
-| 9 | **WhatsApp Integration** | 🔲 Planned | WhatsApp channel alongside SMS for AI conversations (Meta Business API) |
+| 9 | **WhatsApp Integration** | ✅ Done | SMS/WA channel toggle in both AI conversation UIs, green WA banner, per-message channel tracking, unified Twilio webhook detects channel from `whatsapp:` prefix, `preferredChannel` stored on lead. Sandbox configured at app.habbits.co.uk |
 | 10 | **Area Intelligence Dashboard** | 🔲 Planned | Crime stats, flood risk, school ratings, planning applications, house price trend per postcode |
 
 ---
@@ -81,9 +81,13 @@ Work through features top-to-bottom within each priority band.
 
 | Feature | Notes |
 |---------|-------|
-| Vendor SMS Pipeline + AI Conversations | Claude AI agent, Twilio SMS, inbound webhook |
+| Vendor SMS Pipeline + AI Conversations | Claude AI agent, Twilio SMS/WhatsApp, inbound webhook, live polling |
+| WhatsApp Channel | SMS/WA toggle on both conversation UIs, per-message channel tracking, sandbox configured |
 | BMV Validation Engine | Comparable sales, rental yield, strategy comparison, sourcer summary |
 | Strategy Comparison (BTL/Flip/BRRR/B&H) | Per-strategy Max Viable Price, viability with tooltips |
+| Sourcing Fee & Deal P&L | `SourcingFeePanel` — fee, co-sourcing splits, net profit, integrated as Deal P&L tab |
+| SDLT + Acquisition Costs | `AcquisitionCostPanel` — all buyer types, all-in cost breakdown, integrated into validation modal |
+| Investor Auto-Matching | `InvestorMatchPanel` — 5-criteria match scoring, one-click notify, bulk notify, delivery log |
 | Portal Check (Rightmove/Zoopla) | Live listing check, risk flags |
 | Property Scraper | Rightmove, Zoopla, OnTheMarket automated scraping |
 | Investor Pack Generation | PDF templates, delivery tracking |
@@ -139,3 +143,30 @@ Work through features top-to-bottom within each priority band.
 6. Buildings insurance (first year)
 7. Refurbishment costs
 8. Contingency (5–10% of refurb)
+
+---
+
+## 📋 Session Changelog
+
+### 6 April 2026 — Session 2
+**Completed:**
+- ✅ Integrated `SourcingFeePanel` into vendor lead detail modal as new "Deal P&L" tab (6th tab)
+- ✅ Integrated `AcquisitionCostPanel` (SDLT + all-in costs) into validation modal right panel
+- ✅ Fixed `sourcing-fee-panel.tsx` API call from PUT → PATCH
+- ✅ Applied 16-column DB migration for sourcing fee + acquisition cost fields (via raw SQL + `prisma migrate resolve`)
+- ✅ Built `InvestorMatchPanel` — lazy-load, 5-criteria scoring, colour-coded badges, one-click notify, bulk notify ≥60%, delivery tracking via pipeline events
+- ✅ Built `/api/vendor-pipeline/leads/[id]/matching-investors` — GET endpoint with strategy parsing from validation notes
+- ✅ Built `/api/vendor-pipeline/leads/[id]/notify-investor` — POST endpoint logging `investor_notified` to pipeline events
+- ✅ Added WhatsApp channel support to Twilio service, AI SMS agent, webhook, send-message and start-conversation APIs
+- ✅ Added SMS/WA toggle to `ai-conversation-tab.tsx` (vendor detail modal — Outreach tab)
+- ✅ Added SMS/WA toggle, start conversation button, and WhatsApp banner to `ai-conversation-modal.tsx` (table row popup)
+- ✅ Applied WhatsApp DB migration (`channel` on sms_messages, `preferred_channel` on vendor_leads)
+- ✅ Configured Twilio WhatsApp sandbox webhook at `https://app.habbits.co.uk/api/vendor-pipeline/webhook/sms`
+- ✅ Ran `prisma generate` to fix "Unknown argument channel" error
+
+**Next up (Priority order):**
+1. **#4 Conveyancing Pipeline** — post-offer-accepted stage tracker
+2. **#6 Follow-Up Reminder System** — scheduled follow-ups, dormant lead re-engagement
+3. **#7 Refurb Tracker** — contractor management, room-by-room costs, actual vs estimate
+4. **#8 Deal Velocity Analytics** — days per stage, conversion rates, lead source attribution
+5. **#10 Area Intelligence Dashboard** — crime, flood risk, schools, planning apps per postcode

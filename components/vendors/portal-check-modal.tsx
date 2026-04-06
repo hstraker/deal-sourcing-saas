@@ -1,9 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { X, Phone, Mail, Building2, AlertTriangle, Shield, CheckCircle, Clock } from "lucide-react"
+import {
+  X, Phone, Mail, Building2, AlertTriangle, Shield, CheckCircle, Clock,
+  ExternalLink, Loader2, Save, Calculator, Key,
+} from "lucide-react"
 import { format, formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { ModalShell } from "./modal-shell"
@@ -13,7 +17,7 @@ import type { VendorLead } from "./vendor-leads-table"
 // ─── types ────────────────────────────────────────────────────────────────────
 
 type RiskLevel = "clear" | "caution" | "red_flag"
-type Tab = "portal" | "ownership" | "history"
+type Tab = "portal" | "ownership" | "history" | "leasehold"
 
 // ─── risk config ──────────────────────────────────────────────────────────────
 
@@ -66,6 +70,458 @@ function fmtCurrency(n: number): string {
     currency: "GBP",
     maximumFractionDigits: 0,
   }).format(n)
+}
+
+function toNum(v: string | number | null | undefined): number | null {
+  if (v === null || v === undefined) return null
+  const n = Number(v)
+  return isNaN(n) ? null : n
+}
+
+// ─── leasehold helpers ────────────────────────────────────────────────────────
+
+interface LeaseholdData {
+  yearsRemaining: number | null
+  groundRent: number | null
+  groundRentReviewYears: number | null
+  serviceCharge: number | null
+  freeholderName: string | null
+  managingAgent: string | null
+  isGroundRentDoubling: boolean
+  isSection20Pending: boolean
+  hasMaintenanceArrears: boolean
+  extensionQuoteReceived: boolean
+  extensionQuoteAmount: number | null
+  notes: string | null
+}
+
+type LeaseUrgency = "ok" | "low" | "caution" | "urgent" | "critical"
+
+function calcExtension(years: number, propValue: number): {
+  low: number; high: number; urgency: LeaseUrgency; tier: string
+} {
+  if (years >= 90) return { low: Math.round(propValue * 0.005), high: Math.round(propValue * 0.015), urgency: "ok",      tier: "Not urgent — standard 90-year statutory extension" }
+  if (years >= 85) return { low: Math.round(propValue * 0.01),  high: Math.round(propValue * 0.025), urgency: "low",     tier: "Low priority — budget time to extend before resale" }
+  if (years >= 80) return { low: Math.round(propValue * 0.025), high: Math.round(propValue * 0.05),  urgency: "caution", tier: "Approaching 80yr marriage value threshold" }
+  if (years >= 70) return { low: Math.round(propValue * 0.05),  high: Math.round(propValue * 0.12),  urgency: "urgent",  tier: "Marriage value applies — extension cost rises steeply below 80yr" }
+  if (years >= 60) return { low: Math.round(propValue * 0.10),  high: Math.round(propValue * 0.20),  urgency: "critical", tier: "High premium — specialist surveyor valuation essential" }
+  return           { low: Math.round(propValue * 0.20),         high: Math.round(propValue * 0.35),  urgency: "critical", tier: "Very expensive — most lenders refuse below 60yr" }
+}
+
+// ─── leasehold tab ────────────────────────────────────────────────────────────
+
+function LeaseholdTab({ lead, onSaved }: {
+  lead: VendorLead
+  onSaved?: () => void
+}) {
+  const saved = (lead.leaseholdData ?? {}) as Partial<LeaseholdData>
+  const tenureRaw = lead.tenureType ?? ((lead.latestPortalCheck?.ownershipCheckRaw as any)?.tenure as string | null)
+  const tenure = tenureRaw?.toLowerCase() ?? null
+  const isFreehold  = !!(tenure?.includes("freehold") && !tenure?.includes("leasehold"))
+  const isLeasehold = !!(tenure?.includes("leasehold"))
+
+  const [years,           setYears]           = useState(saved.yearsRemaining?.toString() ?? "")
+  const [groundRent,      setGroundRent]      = useState(saved.groundRent?.toString() ?? "")
+  const [grReview,        setGrReview]        = useState(saved.groundRentReviewYears?.toString() ?? "")
+  const [serviceCharge,   setServiceCharge]   = useState(saved.serviceCharge?.toString() ?? "")
+  const [freeholder,      setFreeholder]      = useState(saved.freeholderName ?? "")
+  const [managingAgent,   setManagingAgent]   = useState(saved.managingAgent ?? "")
+  const [doubling,        setDoubling]        = useState(saved.isGroundRentDoubling ?? false)
+  const [section20,       setSection20]       = useState(saved.isSection20Pending ?? false)
+  const [arrears,         setArrears]         = useState(saved.hasMaintenanceArrears ?? false)
+  const [quoteReceived,   setQuoteReceived]   = useState(saved.extensionQuoteReceived ?? false)
+  const [quoteAmount,     setQuoteAmount]     = useState(saved.extensionQuoteAmount?.toString() ?? "")
+  const [notes,           setNotes]           = useState(saved.notes ?? "")
+  const [isSaving,        setIsSaving]        = useState(false)
+
+  const yearsNum       = years       ? parseInt(years)          : null
+  const groundRentNum  = groundRent  ? parseFloat(groundRent)   : null
+  const serviceChargeNum = serviceCharge ? parseFloat(serviceCharge) : null
+  const flagCount = [doubling, section20, arrears].filter(Boolean).length
+
+  const leaseUrgency: LeaseUrgency | null = !yearsNum ? null :
+    yearsNum < 70 ? "critical" :
+    yearsNum < 80 ? "urgent"   :
+    yearsNum < 85 ? "caution"  :
+    yearsNum < 90 ? "low"      : "ok"
+
+  const propValue = toNum(lead.estimatedMarketValue ?? lead.askingPrice)
+  const extension = (yearsNum && propValue) ? calcExtension(yearsNum, propValue) : null
+
+  const hmlrUrl = `https://search-property-information.service.gov.uk/${lead.propertyPostcode ? `?postcode=${encodeURIComponent(lead.propertyPostcode)}` : ""}`
+
+  const urgencyColors: Record<LeaseUrgency, { border: string; bg: string; text: string; badge: string }> = {
+    ok:       { border: "border-green-200",  bg: "bg-green-50",   text: "text-green-700",  badge: "bg-green-100 text-green-700"  },
+    low:      { border: "border-blue-200",   bg: "bg-blue-50",    text: "text-blue-700",   badge: "bg-blue-100 text-blue-700"    },
+    caution:  { border: "border-amber-200",  bg: "bg-amber-50",   text: "text-amber-700",  badge: "bg-amber-100 text-amber-700"  },
+    urgent:   { border: "border-orange-200", bg: "bg-orange-50",  text: "text-orange-700", badge: "bg-orange-100 text-orange-700"},
+    critical: { border: "border-red-200",    bg: "bg-red-50",     text: "text-red-700",    badge: "bg-red-100 text-red-700"      },
+  }
+
+  const save = async () => {
+    setIsSaving(true)
+    try {
+      const res = await fetch(`/api/vendor-pipeline/leads/${lead.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leaseholdData: {
+            yearsRemaining:        yearsNum,
+            groundRent:            groundRentNum,
+            groundRentReviewYears: grReview ? parseInt(grReview) : null,
+            serviceCharge:         serviceChargeNum,
+            freeholderName:        freeholder || null,
+            managingAgent:         managingAgent || null,
+            isGroundRentDoubling:  doubling,
+            isSection20Pending:    section20,
+            hasMaintenanceArrears: arrears,
+            extensionQuoteReceived: quoteReceived,
+            extensionQuoteAmount:  quoteAmount ? parseFloat(quoteAmount) : null,
+            notes:                 notes || null,
+          },
+        }),
+      })
+      if (!res.ok) throw new Error("Save failed")
+      toast.success("Leasehold data saved")
+      onSaved?.()
+    } catch {
+      toast.error("Failed to save leasehold data")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // ── Freehold state ──────────────────────────────────────────────────────────
+  if (isFreehold && !saved.yearsRemaining) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="rounded-xl border border-green-200 bg-green-50 p-6 text-center">
+          <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
+          <p className="text-xl font-extrabold text-green-700">FREEHOLD</p>
+          <p className="text-sm text-green-600 mt-1">No leasehold risk</p>
+        </div>
+        <p className="text-xs text-gray-500 text-center leading-relaxed">
+          Property recorded as freehold — you own the land outright. No lease term, ground rent, service charge, or extension costs to consider.
+        </p>
+        <div className="flex justify-center gap-3">
+          <a
+            href={hmlrUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 rounded-lg border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Verify on HMLR Title Register
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Leasehold / unknown tenure form ────────────────────────────────────────
+  return (
+    <div className="p-5 space-y-4 overflow-y-auto">
+
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-bold text-gray-900 mb-0.5">Leasehold Details</h3>
+          <p className="text-xs text-gray-500">
+            {isLeasehold ? "Property recorded as leasehold — enter details below" : "Tenure not confirmed — enter details manually or run a portal check"}
+          </p>
+        </div>
+        <a
+          href={hmlrUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-[11px] font-semibold text-blue-600 hover:bg-blue-50 transition-colors shrink-0"
+        >
+          <ExternalLink className="h-3 w-3" />
+          HMLR Title
+        </a>
+      </div>
+
+      {/* ── Lease years hero card ── */}
+      <div className={cn(
+        "rounded-xl border p-4",
+        leaseUrgency ? urgencyColors[leaseUrgency].border + " " + urgencyColors[leaseUrgency].bg : "border-gray-200 bg-gray-50"
+      )}>
+        <div className="flex items-end gap-3">
+          <div className="flex-1">
+            <label className="block text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">
+              Lease Years Remaining
+            </label>
+            <input
+              type="number"
+              value={years}
+              onChange={e => setYears(e.target.value)}
+              placeholder="e.g. 85"
+              min="0"
+              max="999"
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+            />
+          </div>
+          {leaseUrgency && (
+            <div className="text-right shrink-0 pb-0.5">
+              <span className={cn("text-2xl font-extrabold", urgencyColors[leaseUrgency].text)}>
+                {yearsNum}yr
+              </span>
+              <span className={cn(
+                "ml-2 rounded-full px-2 py-0.5 text-[10px] font-bold",
+                urgencyColors[leaseUrgency].badge
+              )}>
+                {leaseUrgency === "critical" ? "⛔ Critical" :
+                 leaseUrgency === "urgent"   ? "🔴 Urgent"   :
+                 leaseUrgency === "caution"  ? "⚠ Caution"  :
+                 leaseUrgency === "low"      ? "ℹ Low"      : "✓ OK"}
+              </span>
+            </div>
+          )}
+        </div>
+        {yearsNum && (
+          <p className={cn("mt-2 text-xs font-medium", leaseUrgency ? urgencyColors[leaseUrgency].text : "text-gray-600")}>
+            {yearsNum < 70 ? "⛔ Most mortgage lenders refuse below 70yr — extension essential before purchase." :
+             yearsNum < 80 ? "🔴 Marriage value applies below 80yr — extension cost increases significantly." :
+             yearsNum < 85 ? "⚠ Extension strongly advised — affects resale and remortgage ability." :
+             yearsNum < 90 ? "ℹ No immediate risk but monitor — budget time to extend before dropping below 85yr." :
+                              "✓ Acceptable for purchase and mortgage purposes."}
+          </p>
+        )}
+      </div>
+
+      {/* ── 2-col grid: ground rent / service charge / freeholder ── */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">
+            Ground Rent (£/yr)
+          </label>
+          <input
+            type="number"
+            value={groundRent}
+            onChange={e => setGroundRent(e.target.value)}
+            placeholder="e.g. 250"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+          />
+          {groundRentNum !== null && groundRentNum > 1000 && (
+            <p className="mt-1 text-[10px] text-red-600">⛔ High ground rent — likely mortgage difficulty</p>
+          )}
+          {groundRentNum !== null && groundRentNum > 250 && groundRentNum <= 1000 && (
+            <p className="mt-1 text-[10px] text-amber-600">⚠ Review ground rent terms carefully</p>
+          )}
+        </div>
+        <div>
+          <label className="block text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">
+            GR Review Frequency (yrs)
+          </label>
+          <input
+            type="number"
+            value={grReview}
+            onChange={e => setGrReview(e.target.value)}
+            placeholder="e.g. 10"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">
+            Service Charge (£/yr)
+          </label>
+          <input
+            type="number"
+            value={serviceCharge}
+            onChange={e => setServiceCharge(e.target.value)}
+            placeholder="e.g. 1,200"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">
+            Freeholder Name
+          </label>
+          <input
+            type="text"
+            value={freeholder}
+            onChange={e => setFreeholder(e.target.value)}
+            placeholder="e.g. XYZ Estates Ltd"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+          />
+        </div>
+      </div>
+
+      {/* Managing agent */}
+      <div>
+        <label className="block text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">
+          Managing Agent
+        </label>
+        <input
+          type="text"
+          value={managingAgent}
+          onChange={e => setManagingAgent(e.target.value)}
+          placeholder="e.g. Rendall &amp; Rittner"
+          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+        />
+      </div>
+
+      {/* ── Risk flags ── */}
+      <div className={cn(
+        "rounded-xl border p-4 space-y-3",
+        flagCount >= 2 ? "border-red-200 bg-red-50" :
+        flagCount === 1 ? "border-amber-200 bg-amber-50" :
+        "border-gray-200 bg-gray-50"
+      )}>
+        <div className="flex items-center gap-2">
+          <AlertTriangle className={cn(
+            "h-4 w-4 shrink-0",
+            flagCount >= 2 ? "text-red-500" : flagCount === 1 ? "text-amber-500" : "text-gray-400"
+          )} />
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-700">Risk Flags</p>
+          {flagCount > 0 && (
+            <span className={cn(
+              "ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold",
+              flagCount >= 2 ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
+            )}>
+              {flagCount} flag{flagCount !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+        {[
+          {
+            val: doubling, set: setDoubling,
+            label: "Ground rent doubles (escalating clause)",
+            sub: "Post-2022 Act — doubling clauses cause mortgage refusals and affect resale",
+          },
+          {
+            val: section20, set: setSection20,
+            label: "Section 20 notice pending",
+            sub: "Major works liability — buyer inherits cost obligation on completion",
+          },
+          {
+            val: arrears, set: setArrears,
+            label: "Maintenance / service charge arrears",
+            sub: "Seller liable — can delay or block completion if unresolved",
+          },
+        ].map(({ val, set, label, sub }) => (
+          <label key={label} className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={val}
+              onChange={e => set(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-blue-600"
+            />
+            <div>
+              <p className="text-xs font-semibold text-gray-800">{label}</p>
+              <p className="text-[10px] text-gray-500 leading-relaxed">{sub}</p>
+            </div>
+          </label>
+        ))}
+      </div>
+
+      {/* ── Extension cost estimator ── */}
+      {(yearsNum !== null) && (
+        <div className={cn(
+          "rounded-xl border p-4",
+          extension
+            ? urgencyColors[extension.urgency].border + " " + urgencyColors[extension.urgency].bg
+            : "border-gray-200 bg-gray-50"
+        )}>
+          <div className="flex items-start gap-2 mb-3">
+            <Calculator className="h-4 w-4 mt-0.5 text-gray-500 shrink-0" />
+            <div>
+              <p className="text-xs font-bold text-gray-800">Lease Extension Cost Estimator</p>
+              {extension && (
+                <p className="text-[10px] text-gray-500 mt-0.5">{extension.tier}</p>
+              )}
+            </div>
+          </div>
+
+          {quoteReceived && quoteAmount ? (
+            <p className="text-base font-bold text-gray-900">
+              Actual quote: {fmtCurrency(parseFloat(quoteAmount))}
+            </p>
+          ) : extension ? (
+            <p className="text-base font-bold text-gray-900">
+              {fmtCurrency(extension.low)} – {fmtCurrency(extension.high)}
+              <span className="ml-2 text-[10px] font-normal text-gray-400">estimated range</span>
+            </p>
+          ) : (
+            <p className="text-xs text-gray-500 italic">
+              Enter property value and lease years to calculate estimate
+            </p>
+          )}
+
+          {extension && (
+            <p className="text-[10px] text-gray-400 mt-1">
+              Based on {propValue ? fmtCurrency(propValue) : "estimated"} property value · rule-of-thumb only — get a formal valuation from a RICS chartered surveyor
+            </p>
+          )}
+
+          <div className="mt-3 pt-3 border-t border-white/60 flex items-center gap-3">
+            <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={quoteReceived}
+                onChange={e => setQuoteReceived(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-gray-300 accent-blue-600"
+              />
+              Formal quote received
+            </label>
+            {quoteReceived && (
+              <input
+                type="number"
+                value={quoteAmount}
+                onChange={e => setQuoteAmount(e.target.value)}
+                placeholder="Quote amount £"
+                className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Notes */}
+      <div>
+        <label className="block text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">
+          Notes
+        </label>
+        <textarea
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          placeholder="Any additional leasehold notes, title issues, or solicitor observations..."
+          rows={2}
+          className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+        />
+      </div>
+
+      {/* ── Action buttons ── */}
+      <div className="flex items-center gap-3 pt-1 border-t border-gray-100">
+        <button
+          onClick={save}
+          disabled={isSaving}
+          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+        >
+          {isSaving
+            ? <Loader2 className="h-4 w-4 animate-spin" />
+            : <Save className="h-4 w-4" />
+          }
+          {isSaving ? "Saving…" : "Save Leasehold Data"}
+        </button>
+        <a
+          href={hmlrUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 transition-colors"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+          Check HMLR Title Register
+        </a>
+        {flagCount > 0 && (
+          <span className="ml-auto flex items-center gap-1.5 rounded-full bg-red-100 border border-red-200 px-2.5 py-1 text-[11px] font-bold text-red-700">
+            <AlertTriangle className="h-3 w-3" />
+            {flagCount} active risk flag{flagCount !== 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function InfoRow({
@@ -463,6 +919,49 @@ export function PortalCheckModal({
           <span className="text-[10px] text-slate-400">Last checked</span>
           <span className="text-[11px] font-bold text-slate-300">{lastChecked}</span>
         </div>
+
+        {/* Tenure / Leasehold */}
+        {(() => {
+          const t = (lead.tenureType ?? (lead.latestPortalCheck?.ownershipCheckRaw as any)?.tenure as string | null ?? null)?.toLowerCase()
+          const ld = lead.leaseholdData as any
+          const yr = ld?.yearsRemaining as number | null
+          const isFH = t?.includes("freehold") && !t?.includes("leasehold")
+          const isLH = t?.includes("leasehold")
+          const lhColor =
+            !isLH           ? null :
+            !yr             ? "bg-amber-500/10 border-amber-500/20 text-amber-400" :
+            yr < 70         ? "bg-red-500/10 border-red-500/20 text-red-400" :
+            yr < 85         ? "bg-amber-500/10 border-amber-500/20 text-amber-400" :
+                              "bg-green-500/10 border-green-500/20 text-green-400"
+          const lhLabel =
+            isFH            ? "Freehold ✓" :
+            isLH && yr      ? `Leasehold ${yr}yr${yr < 70 ? " ⛔" : yr < 85 ? " ⚠" : " ✓"}` :
+            isLH            ? "Leasehold ?" :
+                              "Tenure unknown"
+          return (
+            <div
+              className={cn(
+                "flex items-center justify-between rounded-lg border px-3 py-2 cursor-pointer",
+                isFH ? "bg-green-500/10 border-green-500/20" :
+                lhColor || "bg-white/5 border-white/10"
+              )}
+              onClick={() => {}}
+              title="Click Leasehold tab for full details"
+            >
+              <span className="text-[10px] text-slate-400">Tenure</span>
+              <span className={cn(
+                "text-[11px] font-bold",
+                isFH ? "text-green-400" :
+                lhColor?.includes("red") ? "text-red-400" :
+                lhColor?.includes("amber") ? "text-amber-400" :
+                lhColor?.includes("green") ? "text-green-400" :
+                "text-slate-400"
+              )}>
+                {t ? lhLabel : "—"}
+              </span>
+            </div>
+          )
+        })()}
       </div>
 
       <div className="mb-4 h-px bg-white/10" />
@@ -535,10 +1034,18 @@ export function PortalCheckModal({
   )
 
   // ── Tab content ────────────────────────────────────────────────────────────
-  const tabs: { id: Tab; label: string }[] = [
+  // Leasehold tab badge — show warning dot when leasehold with short lease or flags
+  const ld = lead.leaseholdData as any
+  const lhYears = ld?.yearsRemaining as number | null
+  const lhFlagCount = [ld?.isGroundRentDoubling, ld?.isSection20Pending, ld?.hasMaintenanceArrears].filter(Boolean).length
+  const tenureLower = (lead.tenureType ?? (lead.latestPortalCheck?.ownershipCheckRaw as any)?.tenure as string | null ?? "").toLowerCase()
+  const showLeaseholdWarning = tenureLower.includes("leasehold") && (!lhYears || lhYears < 85 || lhFlagCount > 0)
+
+  const tabs: { id: Tab; label: string; dot?: string }[] = [
     { id: "portal",    label: "Portal" },
     { id: "ownership", label: "Ownership" },
     { id: "history",   label: "History" },
+    { id: "leasehold", label: "Leasehold", dot: showLeaseholdWarning ? (lhYears && lhYears < 70 ? "bg-red-500" : "bg-amber-400") : undefined },
   ]
 
   return (
@@ -551,13 +1058,16 @@ export function PortalCheckModal({
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "px-4 pb-3 text-sm font-semibold transition-colors border-b-2 -mb-px",
+                "relative px-4 pb-3 text-sm font-semibold transition-colors border-b-2 -mb-px flex items-center gap-1.5",
                 activeTab === tab.id
                   ? "border-blue-600 text-blue-600"
                   : "border-transparent text-gray-400 hover:text-gray-600"
               )}
             >
               {tab.label}
+              {tab.dot && (
+                <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", tab.dot)} />
+              )}
             </button>
           ))}
         </div>
@@ -587,6 +1097,9 @@ export function PortalCheckModal({
         )}
         {activeTab === "history" && (
           <HistoryTab lead={lead} />
+        )}
+        {activeTab === "leasehold" && (
+          <LeaseholdTab lead={lead} onSaved={onRiskUpdated ? () => onRiskUpdated(lead.latestCheckRisk, lead.latestCheckedAt ?? null) : undefined} />
         )}
       </div>
     </ModalShell>

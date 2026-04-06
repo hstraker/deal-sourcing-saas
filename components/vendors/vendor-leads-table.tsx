@@ -129,6 +129,20 @@ export interface VendorLead {
   askingPrice: string | number | null
   propertyType: string | null
   tenureType: string | null
+  leaseholdData?: {
+    yearsRemaining: number | null
+    groundRent: number | null
+    groundRentReviewYears: number | null
+    serviceCharge: number | null
+    freeholderName: string | null
+    managingAgent: string | null
+    isGroundRentDoubling: boolean
+    isSection20Pending: boolean
+    hasMaintenanceArrears: boolean
+    extensionQuoteReceived: boolean
+    extensionQuoteAmount: number | null
+    notes: string | null
+  } | null
   bedrooms: number | null
   bathrooms: number | null
   squareFeet: number | null
