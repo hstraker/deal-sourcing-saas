@@ -14,6 +14,7 @@ import {
   fetchDetailedComparables,
   DetailedComparableProperty,
 } from "@/lib/propertydata"
+import { normaliseAddress } from "@/lib/vendor-checks/address-normaliser"
 
 /**
  * Calculate confidence score for a comparable property
@@ -122,6 +123,7 @@ export async function POST(
       select: {
         id: true,
         propertyPostcode: true,
+        propertyAddress: true,
         bedrooms: true,
         propertyType: true,
         askingPrice: true,
@@ -133,8 +135,22 @@ export async function POST(
       return NextResponse.json({ error: "Vendor lead not found" }, { status: 404 })
     }
 
-    // Check if postcode is available
-    if (!lead.propertyPostcode) {
+    // Resolve postcode — use stored field first, fall back to extracting from address string
+    let postcode = lead.propertyPostcode
+    if (!postcode && lead.propertyAddress) {
+      const norm = normaliseAddress(lead.propertyAddress)
+      if (norm.postcode) {
+        postcode = norm.postcode
+        // Persist so future calls don't need to re-extract
+        await prisma.vendorLead.update({
+          where: { id: params.id },
+          data: { propertyPostcode: postcode },
+        })
+        console.log(`[Fetch Comparables] Extracted postcode from address: ${postcode}`)
+      }
+    }
+
+    if (!postcode) {
       return NextResponse.json(
         { error: "Property postcode is required to fetch comparables" },
         { status: 400 }
@@ -190,7 +206,7 @@ export async function POST(
     const bedroomTolerance = userConfig?.bedroomTolerance ?? 1
 
     console.log(`[Fetch Comparables] Fetching detailed comparables for lead ${params.id}:`, {
-      postcode: lead.propertyPostcode,
+      postcode,
       bedrooms: lead.bedrooms,
       propertyType: lead.propertyType,
       searchRadius,
@@ -200,7 +216,7 @@ export async function POST(
 
     // Fetch detailed comparables with rental data from PropertyData API
     const detailedResult = await fetchDetailedComparables(
-      lead.propertyPostcode,
+      postcode,
       lead.bedrooms || undefined,
       lead.propertyType || undefined,
       searchRadius,
@@ -270,7 +286,7 @@ export async function POST(
           data: {
             vendorLeadId: params.id,
             address: comp.address,
-            postcode: comp.postcode || lead.propertyPostcode,
+            postcode: comp.postcode || postcode,
             salePrice: comp.salePrice,
             saleDate: new Date(comp.saleDate),
             bedrooms: comp.bedrooms,
