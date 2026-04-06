@@ -1131,14 +1131,14 @@ export function PortalCheckModal({
           const isLH = t?.includes("leasehold")
           const lhColor =
             !isLH           ? null :
-            !yr             ? "bg-amber-500/10 border-amber-500/20 text-amber-400" :
+            !yr             ? "bg-green-500/10 border-green-500/20 text-green-400" :  // confirmed leasehold, years TBC
             yr < 70         ? "bg-red-500/10 border-red-500/20 text-red-400" :
             yr < 85         ? "bg-amber-500/10 border-amber-500/20 text-amber-400" :
                               "bg-green-500/10 border-green-500/20 text-green-400"
           const lhLabel =
             isFH            ? "Freehold ✓" :
             isLH && yr      ? `Leasehold ${yr}yr${yr < 70 ? " ⛔" : yr < 85 ? " ⚠" : " ✓"}` :
-            isLH            ? "Leasehold ?" :
+            isLH            ? "Leasehold (enter terms)" :
                               "Tenure unknown"
           return (
             <div
