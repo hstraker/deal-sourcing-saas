@@ -501,6 +501,8 @@ function LivePortalSection({
                 <span>
                   {hasMatch
                     ? `${r.matchedListings.length} match${r.matchedListings.length > 1 ? "es" : ""}`
+                    : r.status === "success"
+                    ? "Not listed"
                     : cfg.label}
                 </span>
               </div>

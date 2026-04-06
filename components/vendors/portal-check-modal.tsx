@@ -865,7 +865,13 @@ export function PortalCheckModal({
               <AlertTriangle className={cn("h-7 w-7 mx-auto mb-1.5", config.iconClass)} />
             )}
             <p className={config.textClass}>{config.label}</p>
-            <p className={config.subClass}>{config.subtitle}</p>
+            <p className={config.subClass}>
+              {risk === "clear"
+                ? flagCount > 0
+                  ? `${flagCount} info flag${flagCount > 1 ? "s" : ""}`
+                  : "No flags found"
+                : config.subtitle}
+            </p>
           </div>
         ) : (
           <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
