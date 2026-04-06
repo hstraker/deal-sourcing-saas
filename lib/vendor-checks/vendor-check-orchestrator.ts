@@ -18,6 +18,8 @@ import { runScrapedListingsCheck } from './scraped-listings-check'
 import type { ScrapedPortalListing } from './scraped-listings-check'
 import { runLivePortalCheck } from './live-portal-check'
 import type { LivePortalResult } from './live-portal-check'
+import { runFreeholdsCheck } from './freeholds-check'
+import type { FreeholdsTitle } from './freeholds-check'
 import { shouldUseMockData, getTestScenario } from './test-mode'
 import type { PortalFlag, FlagSeverity } from './portal-listing-check'
 
@@ -89,8 +91,8 @@ export async function runVendorCheck(
     const useMock = shouldUseMockData(lead)
     const mockScenario = useMock ? getTestScenario(lead) : null
 
-    // --- 5. Run all four checks in parallel ---
-    const [portalResult, ownershipResult, scrapedResult, liveResult] = await Promise.all([
+    // --- 5. Run all five checks in parallel ---
+    const [portalResult, ownershipResult, scrapedResult, liveResult, freeholdsResult] = await Promise.all([
       runPortalListingCheck({
         postcode,
         vendorAskingPrice,
@@ -119,6 +121,10 @@ export async function runVendorCheck(
         isMock: useMock,
         mockScenario: mockScenario ?? undefined,
       }),
+      runFreeholdsCheck({
+        postcode,
+        isMock: useMock,
+      }),
     ])
 
     // --- 6. Combine results ---
@@ -127,6 +133,7 @@ export async function runVendorCheck(
       ...ownershipResult.flags,
       ...scrapedResult.flags,
       ...liveResult.flags,
+      ...freeholdsResult.flags,
     ]
 
     const overallRisk = deriveOverallRisk([
@@ -134,6 +141,7 @@ export async function runVendorCheck(
       ...ownershipResult.flags.map((f) => f.severity),
       ...scrapedResult.flags.map((f) => f.severity),
       ...liveResult.flags.map((f) => f.severity),
+      ...freeholdsResult.flags.map((f) => f.severity),
     ])
     const riskScore = computeRiskScore(allFlags)
     const durationMs = Date.now() - startMs
@@ -164,8 +172,15 @@ export async function runVendorCheck(
           companyName: ownershipResult.companyName,
           lastSalePrice: ownershipResult.lastSalePrice,
           lastSaleDate: ownershipResult.lastSaleDate,
-          tenure: ownershipResult.tenure,
+          tenure: ownershipResult.tenure ?? freeholdsResult.inferredTenure,
           equityEstimate: ownershipResult.equityEstimate,
+          // Freehold title data from PropertyData /freeholds
+          freeholds: {
+            inferredTenure: freeholdsResult.inferredTenure,
+            resultCount: freeholdsResult.resultCount,
+            nearestTitle: freeholdsResult.nearestTitle,
+            allTitles: freeholdsResult.allTitles,
+          },
         } as any,
         overallRisk,
         riskScore,

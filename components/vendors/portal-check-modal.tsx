@@ -555,6 +555,12 @@ function OwnershipTab({ ownership, lead }: {
     isOverseasOwned?: boolean
     isPortfolioOwner?: boolean
     companyName?: string | null
+    freeholds?: {
+      inferredTenure: 'freehold' | 'leasehold' | 'unknown'
+      resultCount: number
+      nearestTitle: { titleNumber: string; titleClass: string; leaseholds: number; distance: string } | null
+      allTitles: Array<{ titleNumber: string; titleClass: string; leaseholds: number; distance: string; polygonId: number }>
+    }
   } | null | undefined
   lead: VendorLead
 }) {
@@ -575,24 +581,41 @@ function OwnershipTab({ ownership, lead }: {
   const isOverseas     = ownership.isOverseasOwned
   const isPortfolio    = ownership.isPortfolioOwner
   const companyName    = ownership.companyName
+  const fh             = ownership.freeholds
 
   const yearsOwned = lastSaleDate
     ? Math.floor((Date.now() - new Date(lastSaleDate).getTime()) / (1000 * 60 * 60 * 24 * 365))
     : null
 
+  // Effective tenure: Land Registry data takes priority, fallback to PropertyData inferred tenure
+  const effectiveTenure = ownership.tenure ?? (
+    fh?.inferredTenure === 'freehold' ? 'Freehold (inferred)'
+    : fh?.inferredTenure === 'leasehold' ? 'Leasehold (inferred)'
+    : null
+  )
+
+  const hmlrTitleUrl = (tn: string) =>
+    `https://eservices.land-registry.gov.uk/eservices/FindAProperty/view/QuickEnquiryInit.do?title_no=${tn}`
+
   return (
-    <div className="p-5 space-y-4">
+    <div className="p-5 space-y-4 overflow-y-auto">
       <div>
         <h3 className="text-sm font-bold text-gray-900 mb-0.5">Ownership Intelligence</h3>
-        <p className="text-xs text-gray-500">Data sourced from Land Registry &amp; Companies House</p>
+        <p className="text-xs text-gray-500">Land Registry, Companies House &amp; PropertyData /freeholds</p>
       </div>
 
       {/* Key ownership stats */}
       <div className="grid grid-cols-2 gap-3">
-        {ownership.tenure && (
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+        {effectiveTenure && (
+          <div className={cn(
+            "rounded-xl border p-3",
+            effectiveTenure.toLowerCase().includes('leasehold') ? "border-amber-200 bg-amber-50" : "border-green-200 bg-green-50"
+          )}>
             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1">Tenure</p>
-            <p className="text-sm font-bold text-gray-900 capitalize">{ownership.tenure}</p>
+            <p className={cn(
+              "text-sm font-bold capitalize",
+              effectiveTenure.toLowerCase().includes('leasehold') ? "text-amber-800" : "text-green-800"
+            )}>{effectiveTenure}</p>
           </div>
         )}
         {yearsOwned !== null && (
@@ -709,6 +732,92 @@ function OwnershipTab({ ownership, lead }: {
           )}
         </div>
       </div>
+
+      {/* Freehold Titles section */}
+      {fh && fh.allTitles.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+              Freehold Titles at Postcode
+            </p>
+            <span className="text-[10px] text-gray-400">
+              {fh.resultCount} found · showing {fh.allTitles.length}
+            </span>
+          </div>
+
+          {/* Tenure inference */}
+          {fh.inferredTenure !== 'unknown' && (
+            <div className={cn(
+              "rounded-lg border px-3 py-2 text-xs flex items-center gap-2",
+              fh.inferredTenure === 'leasehold'
+                ? "border-amber-200 bg-amber-50 text-amber-800"
+                : "border-green-200 bg-green-50 text-green-800"
+            )}>
+              <Building2 className="h-3.5 w-3.5 flex-shrink-0" />
+              <span>
+                <span className="font-semibold capitalize">{fh.inferredTenure}</span>
+                {fh.inferredTenure === 'leasehold'
+                  ? ` — ${fh.nearestTitle?.leaseholds} leasehold unit${(fh.nearestTitle?.leaseholds ?? 0) !== 1 ? 's' : ''} under nearest freehold`
+                  : ' — nearest freehold has no sub-leases'}
+              </span>
+            </div>
+          )}
+
+          {/* Nearest title card */}
+          {fh.nearestTitle && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-1 text-xs">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="font-bold text-blue-800">{fh.nearestTitle.titleNumber}</span>
+                  <span className="ml-2 text-blue-600">{fh.nearestTitle.titleClass.replace('Absolute ', '')}</span>
+                </div>
+                <a
+                  href={hmlrTitleUrl(fh.nearestTitle.titleNumber)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-700 hover:underline flex items-center gap-1 font-medium"
+                >
+                  <ExternalLink className="h-3 w-3" />HMLR
+                </a>
+              </div>
+              <p className="text-blue-600">
+                {fh.nearestTitle.leaseholds > 0
+                  ? `${fh.nearestTitle.leaseholds} leaseholds registered`
+                  : 'No sub-leases'}
+                {' · '}{fh.nearestTitle.distance === '0.00' ? 'At postcode' : `${fh.nearestTitle.distance}km`}
+              </p>
+            </div>
+          )}
+
+          {/* Other nearby titles */}
+          {fh.allTitles.length > 1 && (
+            <div className="divide-y divide-gray-100">
+              {fh.allTitles.slice(1, 8).map((t) => (
+                <div key={t.polygonId} className="flex items-center justify-between py-1.5 text-xs">
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={hmlrTitleUrl(t.titleNumber)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-blue-600 hover:underline"
+                    >
+                      {t.titleNumber}
+                    </a>
+                    <span className="text-gray-400">{t.titleClass.replace('Absolute ', '').replace(' title', '')}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-400">
+                    {t.leaseholds > 0 && <span className="text-amber-600">{t.leaseholds} LH</span>}
+                    <span>{t.distance === '0.00' ? '~0km' : `${t.distance}km`}</span>
+                  </div>
+                </div>
+              ))}
+              {fh.allTitles.length > 8 && (
+                <p className="text-[10px] text-gray-400 pt-2">+{fh.allTitles.length - 8} more titles</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -812,13 +921,34 @@ export function PortalCheckModal({
     isOverseasOwned?: boolean
     isPortfolioOwner?: boolean
     companyName?: string | null
+    freeholds?: {
+      inferredTenure: 'freehold' | 'leasehold' | 'unknown'
+      resultCount: number
+      nearestTitle: {
+        titleNumber: string
+        titleClass: string
+        leaseholds: number
+        distance: string
+      } | null
+      allTitles: Array<{
+        titleNumber: string
+        titleClass: string
+        leaseholds: number
+        distance: string
+        polygonId: number
+      }>
+    }
   } | null | undefined
 
   // ── Portal listing status ─────────────────────────────────────────────────
-  const portalRaw = lead.latestPortalCheck?.portalCheckRaw as any
-  const isListed  = !!(portalRaw?.activeListing)
-  const flagCount = (lead.latestPortalCheck?.summaryFlags as unknown[])?.length ?? 0
-  const hasFlags  = flagCount > 0
+  const portalRaw    = lead.latestPortalCheck?.portalCheckRaw as any
+  const isListed     = !!(portalRaw?.activeListing)
+  const allFlags     = (lead.latestPortalCheck?.summaryFlags as Array<{ severity: string }>) ?? []
+  const riskFlags    = allFlags.filter(f => f.severity === "caution" || f.severity === "red_flag")
+  const infoFlags    = allFlags.filter(f => f.severity === "clear")
+  const flagCount    = allFlags.length
+  const riskFlagCount = riskFlags.length
+  const hasFlags     = riskFlagCount > 0   // amber only for actual risk flags
 
   // ── Left panel ────────────────────────────────────────────────────────────
   const leftPanel = (
@@ -867,9 +997,11 @@ export function PortalCheckModal({
             <p className={config.textClass}>{config.label}</p>
             <p className={config.subClass}>
               {risk === "clear"
-                ? flagCount > 0
-                  ? `${flagCount} info flag${flagCount > 1 ? "s" : ""}`
-                  : "No flags found"
+                ? riskFlagCount > 0
+                  ? `${riskFlagCount} risk flag${riskFlagCount > 1 ? "s" : ""}`
+                  : infoFlags.length > 0
+                    ? `${infoFlags.length} info flag${infoFlags.length > 1 ? "s" : ""}`
+                    : "No flags found"
                 : config.subtitle}
             </p>
           </div>
@@ -916,7 +1048,13 @@ export function PortalCheckModal({
               ? hasFlags ? "text-amber-400" : "text-green-400"
               : "text-slate-500"
           )}>
-            {lead.latestPortalCheck ? (hasFlags ? `${flagCount} flag${flagCount > 1 ? "s" : ""}` : "None ✓") : "—"}
+            {lead.latestPortalCheck
+              ? hasFlags
+                ? `${riskFlagCount} risk flag${riskFlagCount > 1 ? "s" : ""}`
+                : infoFlags.length > 0
+                  ? `${infoFlags.length} info ✓`
+                  : "None ✓"
+              : "—"}
           </span>
         </div>
 

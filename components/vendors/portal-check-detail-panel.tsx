@@ -75,6 +75,16 @@ interface LivePortalResult {
   errorMessage?: string
 }
 
+interface FreeholdsTitle {
+  titleNumber: string
+  titleClass: string
+  leaseholds: number
+  distance: string
+  lat: number
+  lng: number
+  polygonId: number
+}
+
 interface CheckRecord {
   id: string
   triggeredBy: string
@@ -105,6 +115,12 @@ interface CheckRecord {
     lastSaleDate?: string | null
     tenure?: string | null
     equityEstimate?: number | null
+    freeholds?: {
+      inferredTenure: 'freehold' | 'leasehold' | 'unknown'
+      resultCount: number
+      nearestTitle: FreeholdsTitle | null
+      allTitles: FreeholdsTitle[]
+    }
   }
   recommendedAction?: string
   errorMessage?: string
@@ -642,9 +658,19 @@ function ScrapedListingCard({ listing }: { listing: ScrapedPortalListing }) {
 
 function OwnershipSection({ data }: { data: CheckRecord["ownershipCheckRaw"] }) {
   if (!data) return null
-  const hasInfo = data.isCorporateOwned || data.lastSalePrice || data.tenure || data.lastSaleDate
+  const hasOwnershipInfo = data.isCorporateOwned || data.lastSalePrice || data.tenure || data.lastSaleDate
+  const fh = data.freeholds
+  const hasFreehold = fh && (fh.nearestTitle || fh.resultCount > 0)
 
-  if (!hasInfo) {
+  const tenureDisplay = data.tenure
+    ? data.tenure
+    : fh?.inferredTenure === 'freehold'
+    ? 'Freehold (inferred)'
+    : fh?.inferredTenure === 'leasehold'
+    ? 'Leasehold (inferred)'
+    : null
+
+  if (!hasOwnershipInfo && !hasFreehold) {
     return (
       <div className="space-y-2">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1">
@@ -656,49 +682,150 @@ function OwnershipSection({ data }: { data: CheckRecord["ownershipCheckRaw"] }) 
     )
   }
 
+  const hmlrTitleUrl = (titleNumber: string) =>
+    `https://eservices.land-registry.gov.uk/eservices/FindAProperty/view/QuickEnquiryInit.do?title_no=${titleNumber}`
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1">
         <Building2 className="h-3.5 w-3.5" />
         Ownership
       </h4>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-        {data.tenure && (
-          <>
-            <span className="text-gray-400">Tenure</span>
-            <span className="font-medium">{data.tenure}</span>
-          </>
-        )}
-        {data.isCorporateOwned && (
-          <>
-            <span className="text-gray-400">Owner type</span>
-            <span className="font-medium text-amber-700">Corporate{data.isOverseasOwned ? " (overseas)" : ""}</span>
-          </>
-        )}
-        {data.companyName && (
-          <>
-            <span className="text-gray-400">Company</span>
-            <span className="font-medium">{data.companyName}</span>
-          </>
-        )}
-        {data.lastSalePrice && (
-          <>
-            <span className="text-gray-400">Last sale</span>
-            <span className="font-medium">
-              £{data.lastSalePrice.toLocaleString()}
-              {data.lastSaleDate ? ` (${format(new Date(data.lastSaleDate), "MMM yyyy")})` : ""}
+
+      {/* Land Registry / PPD data */}
+      {hasOwnershipInfo && (
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+          {tenureDisplay && (
+            <>
+              <span className="text-gray-400">Tenure</span>
+              <span className={`font-medium ${
+                tenureDisplay.toLowerCase().includes('leasehold') ? 'text-amber-700' : 'text-green-700'
+              }`}>{tenureDisplay}</span>
+            </>
+          )}
+          {data.isCorporateOwned && (
+            <>
+              <span className="text-gray-400">Owner type</span>
+              <span className="font-medium text-amber-700">Corporate{data.isOverseasOwned ? " (overseas)" : ""}</span>
+            </>
+          )}
+          {data.companyName && (
+            <>
+              <span className="text-gray-400">Company</span>
+              <span className="font-medium">{data.companyName}</span>
+            </>
+          )}
+          {data.lastSalePrice && (
+            <>
+              <span className="text-gray-400">Last sale</span>
+              <span className="font-medium">
+                £{data.lastSalePrice.toLocaleString()}
+                {data.lastSaleDate ? ` (${format(new Date(data.lastSaleDate), "MMM yyyy")})` : ""}
+              </span>
+            </>
+          )}
+          {data.equityEstimate !== undefined && data.equityEstimate !== null && (
+            <>
+              <span className="text-gray-400">Est. equity</span>
+              <span className={`font-medium ${data.equityEstimate >= 0 ? "text-green-700" : "text-red-700"}`}>
+                £{data.equityEstimate.toLocaleString()}
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Freehold titles from PropertyData /freeholds */}
+      {hasFreehold && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-1.5">
+            <h5 className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+              Freehold Titles at Postcode
+            </h5>
+            <span className="text-[10px] text-gray-400">
+              ({fh!.resultCount} found · showing nearest {fh!.allTitles.length})
             </span>
-          </>
-        )}
-        {data.equityEstimate !== undefined && data.equityEstimate !== null && (
-          <>
-            <span className="text-gray-400">Est. equity</span>
-            <span className={`font-medium ${data.equityEstimate >= 0 ? "text-green-700" : "text-red-700"}`}>
-              £{data.equityEstimate.toLocaleString()}
-            </span>
-          </>
-        )}
-      </div>
+          </div>
+
+          {/* Tenure inference banner */}
+          {fh!.inferredTenure !== 'unknown' && (
+            <div className={`rounded-lg border px-3 py-2 text-xs flex items-center gap-2 ${
+              fh!.inferredTenure === 'leasehold'
+                ? 'border-amber-200 bg-amber-50 text-amber-800'
+                : 'border-green-200 bg-green-50 text-green-800'
+            }`}>
+              <Building2 className="h-3.5 w-3.5 flex-shrink-0" />
+              <span>
+                <span className="font-semibold capitalize">{fh!.inferredTenure}</span>
+                {fh!.inferredTenure === 'leasehold'
+                  ? ` — nearest freehold has ${fh!.nearestTitle?.leaseholds} leasehold unit${(fh!.nearestTitle?.leaseholds ?? 0) !== 1 ? 's' : ''}`
+                  : ' — nearest freehold has no sub-leases (likely a house)'}
+              </span>
+            </div>
+          )}
+
+          {/* Nearest title highlight */}
+          {fh!.nearestTitle && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-1.5 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="font-semibold text-blue-800">
+                    {fh!.nearestTitle.titleNumber}
+                    <span className="ml-2 font-normal text-blue-600">{fh!.nearestTitle.titleClass}</span>
+                  </p>
+                  <p className="text-blue-600 mt-0.5">
+                    {fh!.nearestTitle.leaseholds > 0
+                      ? `${fh!.nearestTitle.leaseholds} leasehold${fh!.nearestTitle.leaseholds !== 1 ? 's' : ''} registered`
+                      : 'No sub-leases'}
+                    {' · '}{fh!.nearestTitle.distance === '0.00' ? 'At postcode centre' : `${fh!.nearestTitle.distance}km away`}
+                  </p>
+                </div>
+                <a
+                  href={hmlrTitleUrl(fh!.nearestTitle.titleNumber)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-blue-700 hover:text-blue-900 font-medium whitespace-nowrap"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  HMLR
+                </a>
+              </div>
+            </div>
+          )}
+
+          {/* All other titles */}
+          {fh!.allTitles.length > 1 && (
+            <div className="space-y-1">
+              {fh!.allTitles.slice(1, 6).map((t) => (
+                <div key={t.polygonId} className="flex items-center justify-between text-xs py-1 border-b border-gray-100 last:border-0">
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={hmlrTitleUrl(t.titleNumber)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-blue-600 hover:underline"
+                    >
+                      {t.titleNumber}
+                    </a>
+                    <span className="text-gray-400">{t.titleClass.replace('Absolute ', '').replace(' title', '')}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-400">
+                    {t.leaseholds > 0 && (
+                      <span className="text-amber-600">{t.leaseholds} LH</span>
+                    )}
+                    <span>{t.distance === '0.00' ? '~0km' : `${t.distance}km`}</span>
+                  </div>
+                </div>
+              ))}
+              {fh!.allTitles.length > 6 && (
+                <p className="text-[10px] text-gray-400 pt-1">
+                  + {fh!.allTitles.length - 6} more titles at this postcode
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
