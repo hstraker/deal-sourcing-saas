@@ -8,7 +8,16 @@
 const POSTCODE_RE = /\b([A-Z]{1,2}\d{1,2}[A-Z]?)\s*(\d[A-Z]{2})\b/i
 
 // House / flat number at the start of the address string
-const HOUSE_NUMBER_RE = /^(?:flat\s+\d+[a-z]?,?\s+)?(\d+[a-z]?)/i
+// Handles: "42 High St", "Flat 30 Bamboo Court", "Apartment 4B Tower", "Ground Floor, 12 Main St"
+const HOUSE_NUMBER_RE = /^(?:(?:flat|apartment|unit|room|floor|suite|plot)\s+)?(\d+[a-z]?)/i
+
+// Generic words that appear in UK addresses but don't identify a specific street
+const ADDRESS_STOPWORDS = new Set([
+  'flat', 'apartment', 'unit', 'suite', 'room', 'floor', 'house', 'cottage',
+  'ground', 'first', 'second', 'third', 'upper', 'lower', 'rear', 'front',
+  'left', 'right', 'north', 'south', 'east', 'west', 'new', 'old', 'plot',
+  'building', 'block', 'wing', 'annexe', 'annex', 'studio', 'mews', 'rise',
+])
 
 export interface NormalisedAddress {
   raw: string
@@ -26,14 +35,19 @@ export interface NormalisedAddress {
 // ---------------------------------------------------------------------------
 
 export function extractHouseNumber(address: string): string | null {
-  const m = address.match(/^\s*(\d+[a-zA-Z]?)[\s,]/)
+  const m = address.trim().match(HOUSE_NUMBER_RE)
   return m ? m[1].toLowerCase() : null
 }
 
 export function extractStreetToken(address: string): string | null {
-  const cleaned = address.replace(/^\s*\d+[a-zA-Z]?\s*,?\s*/, "").trim()
+  // Strip leading flat/unit prefix and any leading number
+  const cleaned = address
+    .replace(/^\s*(?:flat|apartment|unit|room|floor|suite|plot)\s+\d+[a-zA-Z]?\s*,?\s*/i, "")
+    .replace(/^\s*\d+[a-zA-Z]?\s*,?\s*/, "")
+    .trim()
   const parts = cleaned.split(/[\s,]+/)
-  return parts.find((p) => p.length >= 4)?.toLowerCase() ?? null
+  // Return first token that is ≥4 chars AND not a generic stopword
+  return parts.find((p) => p.length >= 4 && !ADDRESS_STOPWORDS.has(p.toLowerCase()))?.toLowerCase() ?? null
 }
 
 /**

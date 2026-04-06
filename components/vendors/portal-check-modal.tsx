@@ -120,11 +120,17 @@ function LeaseholdTab({ lead, onSaved }: {
   const isFreehold  = !!(tenure?.includes("freehold") && !tenure?.includes("leasehold"))
   const isLeasehold = !!(tenure?.includes("leasehold"))
 
+  // Pre-seed freeholder name from PropertyData /title if not already saved
+  const fhDetail = (lead.latestPortalCheck?.ownershipCheckRaw as any)?.freeholds?.nearestTitleDetail
+  const inferredFreeholder = fhDetail?.ownerName ?? (
+    fhDetail?.ownershipType?.toLowerCase().includes('corporate') ? fhDetail.ownershipType : ""
+  )
+
   const [years,           setYears]           = useState(saved.yearsRemaining?.toString() ?? "")
   const [groundRent,      setGroundRent]      = useState(saved.groundRent?.toString() ?? "")
   const [grReview,        setGrReview]        = useState(saved.groundRentReviewYears?.toString() ?? "")
   const [serviceCharge,   setServiceCharge]   = useState(saved.serviceCharge?.toString() ?? "")
-  const [freeholder,      setFreeholder]      = useState(saved.freeholderName ?? "")
+  const [freeholder,      setFreeholder]      = useState(saved.freeholderName || inferredFreeholder || "")
   const [managingAgent,   setManagingAgent]   = useState(saved.managingAgent ?? "")
   const [doubling,        setDoubling]        = useState(saved.isGroundRentDoubling ?? false)
   const [section20,       setSection20]       = useState(saved.isSection20Pending ?? false)
@@ -344,6 +350,9 @@ function LeaseholdTab({ lead, onSaved }: {
             placeholder="e.g. XYZ Estates Ltd"
             className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
           />
+          {!saved.freeholderName && inferredFreeholder && (
+            <p className="text-[10px] text-blue-500 mt-1">↑ Auto-filled from HMLR title data — verify and save</p>
+          )}
         </div>
       </div>
 
