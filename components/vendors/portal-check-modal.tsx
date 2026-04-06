@@ -559,6 +559,7 @@ function OwnershipTab({ ownership, lead }: {
       inferredTenure: 'freehold' | 'leasehold' | 'unknown'
       resultCount: number
       nearestTitle: { titleNumber: string; titleClass: string; leaseholds: number; distance: string } | null
+      nearestTitleDetail?: { ownershipType: string; ownerName?: string; plotSizeAcres: string | null; leaseholdTitleNumbers: string[]; uprns: number[] } | null
       allTitles: Array<{ titleNumber: string; titleClass: string; leaseholds: number; distance: string; polygonId: number }>
     }
   } | null | undefined
@@ -765,7 +766,7 @@ function OwnershipTab({ ownership, lead }: {
 
           {/* Nearest title card */}
           {fh.nearestTitle && (
-            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-1 text-xs">
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2 text-xs">
               <div className="flex items-center justify-between">
                 <div>
                   <span className="font-bold text-blue-800">{fh.nearestTitle.titleNumber}</span>
@@ -786,6 +787,47 @@ function OwnershipTab({ ownership, lead }: {
                   : 'No sub-leases'}
                 {' · '}{fh.nearestTitle.distance === '0.00' ? 'At postcode' : `${fh.nearestTitle.distance}km`}
               </p>
+              {/* /title enrichment data */}
+              {fh.nearestTitleDetail && (
+                <div className="border-t border-blue-200 pt-2 space-y-1.5">
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                    <span className="text-blue-500">Freeholder</span>
+                    <span className="font-medium text-blue-800">
+                      {fh.nearestTitleDetail.ownershipType}
+                      {fh.nearestTitleDetail.ownerName && ` — ${fh.nearestTitleDetail.ownerName}`}
+                    </span>
+                    {fh.nearestTitleDetail.plotSizeAcres && (
+                      <>
+                        <span className="text-blue-500">Plot</span>
+                        <span className="font-medium text-blue-800">{fh.nearestTitleDetail.plotSizeAcres} acres</span>
+                      </>
+                    )}
+                  </div>
+                  {fh.nearestTitleDetail.leaseholdTitleNumbers.length > 0 && (
+                    <div>
+                      <p className="text-blue-500 mb-1">Leasehold titles in building ({fh.nearestTitleDetail.leaseholdTitleNumbers.length}):</p>
+                      <div className="flex flex-wrap gap-1">
+                        {fh.nearestTitleDetail.leaseholdTitleNumbers.slice(0, 10).map((tn) => (
+                          <a
+                            key={tn}
+                            href={hmlrTitleUrl(tn)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 px-1.5 py-0.5 rounded"
+                          >
+                            {tn}
+                          </a>
+                        ))}
+                        {fh.nearestTitleDetail.leaseholdTitleNumbers.length > 10 && (
+                          <span className="text-[10px] text-blue-500 self-center">
+                            +{fh.nearestTitleDetail.leaseholdTitleNumbers.length - 10} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -929,6 +971,13 @@ export function PortalCheckModal({
         titleClass: string
         leaseholds: number
         distance: string
+      } | null
+      nearestTitleDetail?: {
+        ownershipType: string
+        ownerName?: string
+        plotSizeAcres: string | null
+        leaseholdTitleNumbers: string[]
+        uprns: number[]
       } | null
       allTitles: Array<{
         titleNumber: string

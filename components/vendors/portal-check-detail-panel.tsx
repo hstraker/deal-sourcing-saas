@@ -119,6 +119,13 @@ interface CheckRecord {
       inferredTenure: 'freehold' | 'leasehold' | 'unknown'
       resultCount: number
       nearestTitle: FreeholdsTitle | null
+      nearestTitleDetail?: {
+        ownershipType: string
+        ownerName?: string
+        plotSizeAcres: string | null
+        leaseholdTitleNumbers: string[]
+        uprns: number[]
+      } | null
       allTitles: FreeholdsTitle[]
     }
   }
@@ -766,7 +773,7 @@ function OwnershipSection({ data }: { data: CheckRecord["ownershipCheckRaw"] }) 
 
           {/* Nearest title highlight */}
           {fh!.nearestTitle && (
-            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-1.5 text-xs">
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2 text-xs">
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <p className="font-semibold text-blue-800">
@@ -790,6 +797,57 @@ function OwnershipSection({ data }: { data: CheckRecord["ownershipCheckRaw"] }) 
                   HMLR
                 </a>
               </div>
+              {/* /title enrichment */}
+              {fh!.nearestTitleDetail && (
+                <div className="space-y-1.5 border-t border-blue-200 pt-2">
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                    <span className="text-blue-500">Freeholder type</span>
+                    <span className="font-medium text-blue-800">
+                      {fh!.nearestTitleDetail.ownershipType}
+                      {fh!.nearestTitleDetail.ownerName && ` — ${fh!.nearestTitleDetail.ownerName}`}
+                    </span>
+                    {fh!.nearestTitleDetail.plotSizeAcres && (
+                      <>
+                        <span className="text-blue-500">Plot size</span>
+                        <span className="font-medium text-blue-800">{fh!.nearestTitleDetail.plotSizeAcres} acres</span>
+                      </>
+                    )}
+                    {fh!.nearestTitleDetail.uprns.length > 0 && (
+                      <>
+                        <span className="text-blue-500">UPRNs</span>
+                        <span className="font-medium text-blue-800 font-mono text-[10px]">
+                          {fh!.nearestTitleDetail.uprns.slice(0, 3).join(', ')}
+                          {fh!.nearestTitleDetail.uprns.length > 3 && ` +${fh!.nearestTitleDetail.uprns.length - 3}`}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  {/* Leasehold title numbers in this building */}
+                  {fh!.nearestTitleDetail.leaseholdTitleNumbers.length > 0 && (
+                    <div>
+                      <p className="text-blue-500 mb-1">Leasehold titles in building:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {fh!.nearestTitleDetail.leaseholdTitleNumbers.slice(0, 12).map((tn) => (
+                          <a
+                            key={tn}
+                            href={hmlrTitleUrl(tn)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 px-1.5 py-0.5 rounded"
+                          >
+                            {tn}
+                          </a>
+                        ))}
+                        {fh!.nearestTitleDetail.leaseholdTitleNumbers.length > 12 && (
+                          <span className="text-[10px] text-blue-500 self-center">
+                            +{fh!.nearestTitleDetail.leaseholdTitleNumbers.length - 12} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

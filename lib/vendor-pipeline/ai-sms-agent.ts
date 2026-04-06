@@ -14,6 +14,7 @@ import {
   ConversationState,
 } from "@/types/vendor-pipeline"
 import { SMSDirection, PipelineStage, UrgencyLevel, PropertyCondition, ReasonForSale } from "@prisma/client"
+import { normaliseAddress } from "@/lib/vendor-checks/address-normaliser"
 
 const CONVERSATION_SYSTEM_PROMPT = `You are a property buyer's representative at a cash buying company, conducting SMS conversations with potential sellers in the UK. Be warm, friendly, and professional — like a helpful advisor, not a salesperson.
 
@@ -312,6 +313,12 @@ export class AISMSAgent {
     if (aiResponse.extractedData && validation.isValid) {
       if (aiResponse.extractedData.propertyAddress) {
         updateData.propertyAddress = aiResponse.extractedData.propertyAddress
+        // Also extract and save postcode from the address string if not already stored
+        const norm = normaliseAddress(aiResponse.extractedData.propertyAddress)
+        if (norm.postcode && !lead.propertyPostcode) {
+          updateData.propertyPostcode = norm.postcode
+          console.log(`[AI SMS Agent] Extracted postcode from conversation: ${norm.postcode}`)
+        }
       }
       if (aiResponse.extractedData.askingPrice) {
         updateData.askingPrice = aiResponse.extractedData.askingPrice

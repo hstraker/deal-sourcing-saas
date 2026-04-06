@@ -179,6 +179,7 @@ export async function runVendorCheck(
             inferredTenure: freeholdsResult.inferredTenure,
             resultCount: freeholdsResult.resultCount,
             nearestTitle: freeholdsResult.nearestTitle,
+            nearestTitleDetail: freeholdsResult.nearestTitleDetail,
             allTitles: freeholdsResult.allTitles,
           },
         } as any,
