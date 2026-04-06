@@ -213,6 +213,19 @@ export async function runFreeholdsCheck({
 // Flag builder
 // ---------------------------------------------------------------------------
 
+// Known predatory freeholder patterns (partial name matches)
+const PREDATORY_FREEHOLDER_PATTERNS = [
+  'ground rents', 'ground rent', 'annington', 'adriatic land', 'consensus',
+  'home ground', 'aberdare', 'fair hold', 'fairhold', 'proxima', 'telereal',
+  'wallace partnership', 'countryside', 'vistry', 'barratt', 'persimmon',
+  'taylor wimpey', 'bellway',
+]
+
+function isPredatoryFreeholder(name: string): boolean {
+  const lower = name.toLowerCase()
+  return PREDATORY_FREEHOLDER_PATTERNS.some(p => lower.includes(p))
+}
+
 function buildFreeholdsFlags(
   tenure: FreeholdsResult['inferredTenure'],
   nearest: FreeholdsTitle | null,
@@ -223,22 +236,35 @@ function buildFreeholdsFlags(
   if (tenure === 'leasehold') {
     const count = nearest?.leaseholds ?? 0
     const titleRef = nearest?.titleNumber ?? 'unknown'
+    // Leasehold is EXPECTED for flats — flag as informational (clear), not caution.
+    // Caution only warranted once we know lease terms (handled in leasehold tab).
     flags.push({
       code: 'LIKELY_LEASEHOLD',
-      severity: 'caution',
-      label: 'Likely Leasehold Property',
-      detail: `Freehold title ${titleRef} has ${count} leasehold${count !== 1 ? 's' : ''} — confirm lease years, ground rent and service charge before proceeding.`,
+      severity: 'clear',
+      label: 'Leasehold Property',
+      detail: `HMLR freehold title ${titleRef} has ${count} registered leasehold${count !== 1 ? 's' : ''}. Enter lease years, ground rent and service charge in the Leasehold tab.`,
     })
   }
 
-  // Flag corporate freehold ownership (can affect management quality)
-  if (detail?.ownershipType?.toLowerCase().includes('corporate')) {
-    flags.push({
-      code: 'CORPORATE_FREEHOLDER',
-      severity: 'caution',
-      label: 'Corporate Freeholder',
-      detail: `Freehold owned by ${detail.ownerName ?? 'a corporate body'} — check for escalating ground rent, service charge disputes or Section 20 notices.`,
-    })
+  // Only flag corporate freeholder if it looks like a predatory investment company.
+  // Residents Management Companies (RMC) are actually positive — don't alarm unnecessarily.
+  if (detail?.ownershipType?.toLowerCase().includes('corporate') && detail.ownerName) {
+    if (isPredatoryFreeholder(detail.ownerName)) {
+      flags.push({
+        code: 'CORPORATE_FREEHOLDER',
+        severity: 'caution',
+        label: 'Institutional Freeholder',
+        detail: `Freehold owned by ${detail.ownerName} — likely an investment freeholder. Check for escalating ground rent clauses, high service charges and Section 20 notices.`,
+      })
+    } else {
+      // Could be RMC (good) or unknown corporate — show as info only
+      flags.push({
+        code: 'CORPORATE_FREEHOLDER',
+        severity: 'clear',
+        label: 'Corporate Freeholder',
+        detail: `Freehold owned by ${detail.ownerName}. This may be a Residents Management Company (positive) or third-party freeholder — confirm with vendor.`,
+      })
+    }
   }
 
   return flags
