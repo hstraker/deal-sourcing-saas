@@ -330,6 +330,23 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
   return (
     <div className="space-y-4">
 
+      {/* ── Channel banner (when WhatsApp active) ─────────────────────── */}
+      {selectedChannel === "whatsapp" && (
+        <div className="flex items-center gap-2 rounded-xl border border-[#25D366]/30 bg-[#25D366]/5 px-4 py-2">
+          <WhatsAppIcon className="h-4 w-4 text-[#25D366] shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-[#128C7E]">WhatsApp channel active</p>
+            <p className="text-[10px] text-gray-400">Replies sent via WhatsApp · requires TWILIO_WHATSAPP_NUMBER in env</p>
+          </div>
+          <button
+            onClick={() => setSelectedChannel("sms")}
+            className="text-[10px] text-gray-400 hover:text-gray-600 shrink-0"
+          >
+            Switch to SMS
+          </button>
+        </div>
+      )}
+
       {/* ── Stats row ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-4 gap-3">
         <div className="ds-card p-3 text-center">
@@ -571,31 +588,67 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
 
           {/* Send panel */}
           <div className="border-t border-[var(--ds-border)] p-3 shrink-0 space-y-2 bg-white">
-            {/* Mode toggle */}
-            <div className="flex gap-0.5 p-0.5 bg-gray-100 rounded-lg w-fit">
-              <button
-                onClick={() => setSendMode("manual")}
-                className={cn(
-                  "text-xs px-3 py-1 rounded-md font-medium transition-all",
-                  sendMode === "manual"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                )}
-              >
-                Send SMS
-              </button>
-              <button
-                onClick={() => setSendMode("simulate")}
-                className={cn(
-                  "text-xs px-3 py-1 rounded-md font-medium transition-all flex items-center gap-1",
-                  sendMode === "simulate"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                )}
-              >
-                <Zap className="h-3 w-3" />
-                Simulate Reply
-              </button>
+            {/* Mode toggle + channel selector row */}
+            <div className="flex items-center justify-between gap-2">
+              {/* Mode toggle */}
+              <div className="flex gap-0.5 p-0.5 bg-gray-100 rounded-lg">
+                <button
+                  onClick={() => setSendMode("manual")}
+                  className={cn(
+                    "text-xs px-3 py-1 rounded-md font-medium transition-all flex items-center gap-1",
+                    sendMode === "manual"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  )}
+                >
+                  {selectedChannel === "whatsapp"
+                    ? <><WhatsAppIcon className="h-3 w-3 text-[#25D366]" /> Send WhatsApp</>
+                    : <><MessageSquare className="h-3 w-3" /> Send SMS</>
+                  }
+                </button>
+                <button
+                  onClick={() => setSendMode("simulate")}
+                  className={cn(
+                    "text-xs px-3 py-1 rounded-md font-medium transition-all flex items-center gap-1",
+                    sendMode === "simulate"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  )}
+                >
+                  <Zap className="h-3 w-3" />
+                  Simulate Reply
+                </button>
+              </div>
+
+              {/* Channel toggle — only shown in manual mode */}
+              {sendMode === "manual" && (
+                <div className="flex items-center gap-1 rounded-lg border border-gray-200 p-0.5 bg-gray-50 shrink-0">
+                  <button
+                    onClick={() => setSelectedChannel("sms")}
+                    title="Send via SMS"
+                    className={cn(
+                      "flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors",
+                      selectedChannel === "sms"
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "text-gray-400 hover:text-gray-600 hover:bg-white"
+                    )}
+                  >
+                    <MessageSquare className="h-3 w-3" /> SMS
+                  </button>
+                  <button
+                    onClick={() => setSelectedChannel("whatsapp")}
+                    title="Send via WhatsApp"
+                    className={cn(
+                      "flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors",
+                      selectedChannel === "whatsapp"
+                        ? "bg-[#25D366] text-white shadow-sm"
+                        : "text-gray-400 hover:text-gray-600 hover:bg-white"
+                    )}
+                  >
+                    <WhatsAppIcon className="h-3 w-3" /> WA
+                  </button>
+                </div>
+              )}
             </div>
 
             {sendMode === "manual" ? (
@@ -603,7 +656,7 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
                 <Textarea
                   value={manualMessage}
                   onChange={(e) => setManualMessage(e.target.value)}
-                  placeholder={`Message ${lead.vendorName}...`}
+                  placeholder={`Message ${lead.vendorName} via ${selectedChannel === "whatsapp" ? "WhatsApp" : "SMS"}…`}
                   className="text-sm resize-none"
                   rows={2}
                   onKeyDown={(e) => {
@@ -617,10 +670,17 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
                   onClick={sendManualMessage}
                   disabled={isSending || !manualMessage.trim()}
                   size="sm"
-                  className="self-end h-9 px-3"
+                  className={cn(
+                    "self-end h-9 px-3 border-0",
+                    selectedChannel === "whatsapp"
+                      ? "bg-[#25D366] hover:bg-[#128C7E] text-white"
+                      : ""
+                  )}
                 >
                   {isSending
                     ? <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    : selectedChannel === "whatsapp"
+                    ? <WhatsAppIcon className="h-3.5 w-3.5" />
                     : <Send className="h-3.5 w-3.5" />
                   }
                 </Button>
