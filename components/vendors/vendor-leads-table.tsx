@@ -1103,6 +1103,19 @@ function ActionBtn({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Postcode helper — extracts UK postcode from address string when field is null
+// ─────────────────────────────────────────────────────────────────────────────
+
+const UK_POSTCODE_RE = /\b([A-Z]{1,2}\d{1,2}[A-Z]?)\s*(\d[A-Z]{2})\b/i
+
+function resolvePostcode(lead: { propertyPostcode: string | null; propertyAddress: string | null }): string | null {
+  if (lead.propertyPostcode) return lead.propertyPostcode
+  if (!lead.propertyAddress) return null
+  const m = lead.propertyAddress.match(UK_POSTCODE_RE)
+  return m ? `${m[1].toUpperCase()} ${m[2].toUpperCase()}` : null
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Per-tab Row renderers
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1111,10 +1124,11 @@ function MapViewRow({ lead, onRowClick, onView, onDelete, isSelected, onToggleSe
   const leadAgeDays = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24))
 
   // Build external map URLs from property address / postcode
-  const encoded = encodeURIComponent(lead.propertyAddress ?? lead.propertyPostcode ?? "")
+  const resolvedPostcode = resolvePostcode(lead)
+  const encoded = encodeURIComponent(lead.propertyAddress ?? resolvedPostcode ?? "")
   const googleMapsUrl  = `https://www.google.com/maps/search/?api=1&query=${encoded}`
   const streetViewUrl  = `https://www.google.com/maps?q=${encoded}&layer=c`
-  const postcodeSlug   = (lead.propertyPostcode ?? "").replace(/\s/g, "").toUpperCase()
+  const postcodeSlug   = (resolvedPostcode ?? "").replace(/\s/g, "").toUpperCase()
   const rightmoveUrl   = postcodeSlug
     ? `https://www.rightmove.co.uk/property-for-sale/find.html?searchType=SALE&locationIdentifier=POSTCODE%5E${postcodeSlug}`
     : `https://www.rightmove.co.uk/property-for-sale/search.html?searchLocation=${encoded}`
@@ -1130,7 +1144,7 @@ function MapViewRow({ lead, onRowClick, onView, onDelete, isSelected, onToggleSe
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
       <VendorAddressCell lead={lead} isSelected={isSelected} />
-      <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
+      <Td><span className="font-mono text-xs">{resolvePostcode(lead) ?? "—"}</span></Td>
       <Td><span className="text-xs text-gray-700">{lead.propertyType ?? <span className="text-gray-400">—</span>}</span></Td>
       <Td><span className="font-mono text-xs">{lead.bedrooms !== null ? `${lead.bedrooms}bd` : "—"}</span></Td>
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
@@ -1242,7 +1256,7 @@ function PropertyDetailsRow({ lead, onRowClick, onView, onEdit, onArchive, onDel
       </td>
       <VendorAddressCell lead={lead} isSelected={isSelected} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
-      <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
+      <Td><span className="font-mono text-xs">{resolvePostcode(lead) ?? "—"}</span></Td>
       <Td><span className="text-xs text-gray-700">{lead.propertyType ?? <span className="text-gray-400">—</span>}</span></Td>
       <Td><span className="text-xs text-gray-700">{tenure ?? <span className="text-gray-400">—</span>}</span></Td>
       <Td><span className="font-mono text-xs">{lead.squareFeet ? `${lead.squareFeet.toLocaleString()} ft²` : "—"}</span></Td>
@@ -1287,7 +1301,7 @@ function PortalCheckRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete,
       <VendorAddressCell lead={lead} isSelected={isSelected} />
       <Td><OverallRiskBadge risk={lead.latestCheckRisk} /></Td>
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
-      <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
+      <Td><span className="font-mono text-xs">{resolvePostcode(lead) ?? "—"}</span></Td>
       <Td><span className="text-xs text-gray-700">{lead.propertyType ?? <span className="text-gray-400">—</span>}</span></Td>
       <Td><span className="font-mono text-xs">{lead.bedrooms !== null ? `${lead.bedrooms}bd` : "—"}</span></Td>
       <Td><ActiveListingBadge lead={lead} /></Td>
@@ -1323,7 +1337,7 @@ function ValidationRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, 
       <VendorAddressCell lead={lead} isSelected={isSelected} />
       <Td><ValidationResultBadge passed={lead.validationPassed} /></Td>
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
-      <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
+      <Td><span className="font-mono text-xs">{resolvePostcode(lead) ?? "—"}</span></Td>
       <Td><span className="text-xs text-gray-700">{lead.propertyType ?? <span className="text-gray-400">—</span>}</span></Td>
       <Td><span className="font-mono text-xs">{lead.bedrooms !== null ? `${lead.bedrooms}bd` : "—"}</span></Td>
       <Td><span className="font-mono text-xs">{fmtCurrency(lead.askingPrice)}</span></Td>
@@ -1377,7 +1391,7 @@ function ComparableRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, 
       </td>
       <VendorAddressCell lead={lead} isSelected={isSelected} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
-      <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
+      <Td><span className="font-mono text-xs">{resolvePostcode(lead) ?? "—"}</span></Td>
       <Td><span className="text-xs text-gray-700">{lead.propertyType ?? <span className="text-gray-400">—</span>}</span></Td>
       <Td><span className="font-mono text-xs">{lead.bedrooms !== null ? `${lead.bedrooms}bd` : "—"}</span></Td>
       <Td>
@@ -1461,7 +1475,7 @@ function OfferAnalysisRow({ lead, onRowClick, onView, onEdit, onArchive, onDelet
       </td>
       <VendorAddressCell lead={lead} isSelected={isSelected} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
-      <Td><span className="font-mono text-xs">{lead.propertyPostcode ?? "—"}</span></Td>
+      <Td><span className="font-mono text-xs">{resolvePostcode(lead) ?? "—"}</span></Td>
       <Td><span className="text-xs text-gray-700">{lead.propertyType ?? <span className="text-gray-400">—</span>}</span></Td>
       <Td><span className="font-mono text-xs">{lead.bedrooms !== null ? `${lead.bedrooms}bd` : "—"}</span></Td>
       <Td><span className="font-mono text-xs">{fmtCurrency(lead.askingPrice)}</span></Td>
