@@ -130,6 +130,10 @@ export interface AIConversationContext {
   conversationHistory: AIConversationMessage[]
   extractedData: ConversationState["extractedData"]
   motivationScore?: number
+  // Extra lead fields for personalisation and skip-logic
+  propertyType?: string
+  bedrooms?: number
+  postcode?: string
 }
 
 // ============================================================================

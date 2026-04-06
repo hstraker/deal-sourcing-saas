@@ -101,7 +101,11 @@ export class AISMSAgent {
       await prisma.vendorLead.update({ where: { id: lead.id }, data: { vendorPhone: toNumber } })
     }
 
-    const initialMessage = this.generateInitialMessage(lead.vendorName, lead.propertyAddress || "your property")
+    const initialMessage = this.generateInitialMessage(
+      lead.vendorName,
+      lead.propertyAddress || "your property",
+      lead
+    )
 
     // Send via Twilio (or mock) on the right channel
     const twilioService = getTwilioService()
@@ -198,11 +202,37 @@ export class AISMSAgent {
     }))
 
     const existingState = (lead.conversationState || {}) as ConversationState
+
+    // ── Pre-populate extractedData from known lead fields ──────────────────
+    // This prevents the AI re-asking for information we already have (e.g.
+    // address/postcode/price captured at lead creation or from the portal).
+    const fullAddress = lead.propertyAddress
+      ? lead.propertyPostcode
+        ? `${lead.propertyAddress}, ${lead.propertyPostcode}`
+        : lead.propertyAddress
+      : undefined
+
+    const seedData: Record<string, any> = {}
+    if (fullAddress)          seedData.propertyAddress = fullAddress
+    if (lead.askingPrice)     seedData.askingPrice     = Number(lead.askingPrice)
+    if (lead.condition)       seedData.condition       = lead.condition
+    if (lead.reasonForSelling) seedData.reasonForSelling = lead.reasonForSelling
+    if (lead.urgencyLevel)    seedData.timeline        = lead.urgencyLevel
+    if (lead.timelineDays)    seedData.timelineDays    = lead.timelineDays
+    if (typeof lead.competingOffers === "boolean") seedData.competingOffers = lead.competingOffers
+
+    // Merge: conversation-state data wins over seed (never overwrite confirmed AI extractions)
+    const mergedExtractedData = { ...seedData, ...(existingState.extractedData || {}) }
+
     const context: AIConversationContext = {
-      vendorName: lead.vendorName,
-      propertyAddress: lead.propertyAddress || undefined,
+      vendorName:  lead.vendorName,
+      propertyAddress: fullAddress || lead.propertyAddress || undefined,
       conversationHistory,
-      extractedData: existingState.extractedData || {},
+      extractedData: mergedExtractedData,
+      // Extra context fields for richer AI personalisation
+      propertyType: lead.propertyType || undefined,
+      bedrooms:     lead.bedrooms     ?? undefined,
+      postcode:     lead.propertyPostcode || undefined,
     }
 
     // Generate AI response
@@ -332,13 +362,56 @@ export class AISMSAgent {
     rateLimitInfo?: any
   }> {
     try {
-      // Build system prompt - conversation history sent as messages, not duplicated here
+      // ── Build a structured context block ─────────────────────────────────
+      // Explicitly list what is already known and what still needs extracting
+      // so the AI never wastes messages re-asking confirmed facts.
+      const FIELD_META: { key: string; label: string; priority: number }[] = [
+        { key: "propertyAddress",  label: "Full address with postcode", priority: 3 },
+        { key: "askingPrice",      label: "Asking price",               priority: 5 },
+        { key: "condition",        label: "Property condition",          priority: 4 },
+        { key: "reasonForSelling", label: "Reason for selling",          priority: 1 },
+        { key: "timeline",         label: "Timeline / urgency",          priority: 2 },
+        { key: "competingOffers",  label: "Competing offers",            priority: 6 },
+      ]
+
+      const known: string[]   = []
+      const needed: string[]  = []
+
+      for (const { key, label } of FIELD_META) {
+        const val = (context.extractedData as any)?.[key]
+        if (val !== undefined && val !== null && val !== "") {
+          known.push(`  • ${label}: ${val}`)
+        } else {
+          needed.push(`  • ${label}`)
+        }
+      }
+
+      // Sort needed by priority (lower = ask sooner)
+      const neededSorted = FIELD_META
+        .filter(f => {
+          const val = (context.extractedData as any)?.[f.key]
+          return val === undefined || val === null || val === ""
+        })
+        .sort((a, b) => a.priority - b.priority)
+        .map(f => `  • ${f.label}`)
+
+      const propertyDesc = [
+        context.propertyAddress,
+        context.bedrooms ? `${context.bedrooms}-bed` : null,
+        (context as any).propertyType || null,
+        (context as any).postcode || null,
+      ].filter(Boolean).join(", ")
+
       const systemPrompt = `${CONVERSATION_SYSTEM_PROMPT}
 
-Context:
+--- LEAD CONTEXT ---
 Vendor: ${context.vendorName}
-Property: ${context.propertyAddress || "Not specified"}
-Data: ${JSON.stringify(context.extractedData)}`
+Property: ${propertyDesc || "Not specified"}
+
+${known.length > 0 ? `ALREADY CONFIRMED — DO NOT ask about these again:\n${known.join("\n")}` : "No data confirmed yet."}
+
+${neededSorted.length > 0 ? `STILL NEEDED — ask in this order of priority:\n${neededSorted.join("\n")}` : "All data collected — wrap up the conversation."}
+---`
 
       // Build conversation messages
       const messages: Array<{ role: "user" | "assistant" | "system"; content: string }> = [
@@ -395,15 +468,57 @@ Data: ${JSON.stringify(context.extractedData)}`
 
   /**
    * Generate the opening message to the vendor.
-   * Warm, natural, and personal — no restrictions now we're on a paid Twilio account.
+   * Personalised based on what we already know — skips straight to the most
+   * important unknown rather than giving a generic opener.
    */
-  private generateInitialMessage(vendorName: string, propertyAddress: string): string {
-    const firstName = vendorName.split(" ")[0]
-    // If we have an address, reference it; otherwise keep it generic
-    if (propertyAddress && propertyAddress !== "your property") {
-      return `Hi ${firstName}, thanks for reaching out about your property on ${propertyAddress}. We specialise in fast, hassle-free sales - no viewings, no chains. What's prompting the move?`
+  private generateInitialMessage(
+    vendorName: string,
+    propertyAddress: string,
+    lead?: {
+      askingPrice?: any
+      propertyType?: string | null
+      bedrooms?: number | null
+      propertyPostcode?: string | null
+      reasonForSelling?: string | null
+      urgencyLevel?: string | null
     }
-    return `Hi ${firstName}, thanks for reaching out. We specialise in fast, hassle-free property sales - no viewings, no chains, and we can move as quickly as you need. What's prompting the sale?`
+  ): string {
+    const firstName = vendorName.split(" ")[0]
+    const hasAddress   = propertyAddress && propertyAddress !== "your property"
+    const hasPrice     = !!lead?.askingPrice
+    const hasReason    = !!lead?.reasonForSelling
+    const hasTimeline  = !!lead?.urgencyLevel
+
+    // Build a short property descriptor
+    const propDesc = hasAddress
+      ? (() => {
+          const parts = propertyAddress.split(",")
+          // Use "your flat on Clifden Road" rather than full address
+          const streetPart = parts[1]?.trim() || parts[0]?.trim()
+          const type = lead?.bedrooms && lead?.propertyType
+            ? `${lead.bedrooms}-bed ${lead.propertyType.toLowerCase()}`
+            : lead?.propertyType?.toLowerCase() || "property"
+          return streetPart ? `your ${type} on ${streetPart}` : "your property"
+        })()
+      : "your property"
+
+    // If we're missing both reason and timeline — ask reason first (highest priority)
+    if (!hasReason) {
+      return `Hi ${firstName}, thanks for getting in touch about ${propDesc}. We buy fast, no viewings or chains needed. What's prompting the move?`
+    }
+
+    // Have reason, missing timeline
+    if (!hasTimeline) {
+      return `Hi ${firstName}, thanks for reaching out about ${propDesc}. We buy fast with no fuss. How soon are you looking to sell?`
+    }
+
+    // Have reason + timeline, missing price
+    if (!hasPrice) {
+      return `Hi ${firstName}, thanks for getting in touch about ${propDesc}. We buy quickly and without the usual hassle. What are you hoping to get for it?`
+    }
+
+    // Have most data — open warmly and move to condition
+    return `Hi ${firstName}, thanks for reaching out about ${propDesc}. We specialise in fast, hassle-free sales. Could you tell me a bit about the condition of the property?`
   }
 
   /**
