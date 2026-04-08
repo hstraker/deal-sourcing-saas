@@ -406,42 +406,71 @@ function parseValidationNotes(notes: string | null): ParsedNotes | null {
 }
 
 // ── Deal Setup Section ────────────────────────────────────────────────────────
-// Shown inside Deal P&L tab when stage is OFFER_ACCEPTED or PAPERWORK_SENT.
-// Lets the sourcer complete all post-acceptance steps in one place.
+// Shown inside the Completion Setup tab when stage is OFFER_ACCEPTED or PAPERWORK_SENT.
+
+// Reusable step row — consistent layout: number | title+subtitle | action (far right)
+function SetupStep({
+  number, done, title, subtitle, action,
+}: {
+  number: number
+  done: boolean
+  title: string
+  subtitle: string
+  action: React.ReactNode
+}) {
+  return (
+    <div className={cn(
+      "flex items-center justify-between gap-3 rounded-md border p-3",
+      done ? "border-green-200 bg-green-100" : "border-gray-200 bg-white"
+    )}>
+      {/* Left: number circle + text */}
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className={cn(
+          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+          done ? "bg-green-500 text-white" : "bg-gray-100 text-gray-600 border border-gray-300"
+        )}>
+          {done ? "✓" : number}
+        </span>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-gray-800">{title}</p>
+          <p className="text-[11px] text-gray-500">{subtitle}</p>
+        </div>
+      </div>
+      {/* Right: action always pinned far right */}
+      <div className="shrink-0">
+        {done
+          ? <span className="text-[11px] font-semibold text-green-700">Done ✓</span>
+          : action
+        }
+      </div>
+    </div>
+  )
+}
+
+function MarkDoneButton({ onClick, loading }: { onClick: () => void; loading: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      className="rounded-md bg-green-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-green-700 disabled:opacity-50 whitespace-nowrap"
+    >
+      {loading ? "Saving…" : "Mark Done →"}
+    </button>
+  )
+}
 
 function DealSetupSection({ lead, onUpdate }: { lead: VendorLead; onUpdate: (patch: Partial<VendorLead>) => void }) {
   const isPaperwork = lead.pipelineStage === "PAPERWORK_SENT"
 
-  const [exchangeDate, setExchangeDate]   = useState(lead.targetExchangeDate?.split("T")[0] ?? "")
-  const [completionDate, setCompletionDate] = useState(lead.targetCompletionDate?.split("T")[0] ?? "")
-  const [savingDates, setSavingDates]     = useState(false)
-  const [movingStage, setMovingStage]     = useState(false)
+  const [exchangeDate,    setExchangeDate]    = useState(lead.targetExchangeDate?.split("T")[0] ?? "")
+  const [completionDate,  setCompletionDate]  = useState(lead.targetCompletionDate?.split("T")[0] ?? "")
+  const [savingDates,     setSavingDates]     = useState(false)
+  const [movingStage,     setMovingStage]     = useState(false)
   const [markingInstructed, setMarkingInstructed] = useState(false)
 
   const solicitorName = lead.solicitor
     ? `${lead.solicitor.firstName ?? ""} ${lead.solicitor.lastName ?? ""}`.trim() || lead.solicitor.company || "Assigned"
     : null
-
-  const handleSaveDates = async () => {
-    setSavingDates(true)
-    try {
-      const res = await fetch(`/api/vendor-pipeline/leads/${lead.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          targetExchangeDate: exchangeDate ? new Date(exchangeDate).toISOString() : null,
-          targetCompletionDate: completionDate ? new Date(completionDate).toISOString() : null,
-        }),
-      })
-      if (!res.ok) throw new Error("Failed")
-      onUpdate({ targetExchangeDate: exchangeDate || null, targetCompletionDate: completionDate || null })
-      toast.success("Dates saved")
-    } catch {
-      toast.error("Failed to save dates")
-    } finally {
-      setSavingDates(false)
-    }
-  }
 
   const handleMoveToPaperwork = async () => {
     setMovingStage(true)
@@ -454,11 +483,8 @@ function DealSetupSection({ lead, onUpdate }: { lead: VendorLead; onUpdate: (pat
       if (!res.ok) throw new Error("Failed")
       onUpdate({ pipelineStage: "PAPERWORK_SENT" })
       toast.success("Stage moved to Paperwork Sent")
-    } catch {
-      toast.error("Failed to update stage")
-    } finally {
-      setMovingStage(false)
-    }
+    } catch { toast.error("Failed to update stage") }
+    finally { setMovingStage(false) }
   }
 
   const handleMarkInstructed = async () => {
@@ -473,174 +499,139 @@ function DealSetupSection({ lead, onUpdate }: { lead: VendorLead; onUpdate: (pat
       if (!res.ok) throw new Error("Failed")
       onUpdate({ solicitorInstructedAt: now })
       toast.success("Solicitor marked as instructed")
-    } catch {
-      toast.error("Failed to update")
-    } finally {
-      setMarkingInstructed(false)
-    }
+    } catch { toast.error("Failed to update") }
+    finally { setMarkingInstructed(false) }
   }
 
-  // Checklist items
-  const hasSolicitor    = !!lead.solicitorId
-  const isInstructed    = !!lead.solicitorInstructedAt
-  const hasExchange     = !!exchangeDate || !!lead.targetExchangeDate
-  const hasCompletion   = !!completionDate || !!lead.targetCompletionDate
-  const doneCount       = [isPaperwork, hasSolicitor, isInstructed, hasExchange, hasCompletion].filter(Boolean).length
+  const handleSaveDates = async () => {
+    setSavingDates(true)
+    try {
+      const res = await fetch(`/api/vendor-pipeline/leads/${lead.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetExchangeDate:   exchangeDate   ? new Date(exchangeDate).toISOString()   : null,
+          targetCompletionDate: completionDate ? new Date(completionDate).toISOString() : null,
+        }),
+      })
+      if (!res.ok) throw new Error("Failed")
+      onUpdate({ targetExchangeDate: exchangeDate || null, targetCompletionDate: completionDate || null })
+      toast.success("Dates saved")
+    } catch { toast.error("Failed to save dates") }
+    finally { setSavingDates(false) }
+  }
+
+  const hasSolicitor  = !!lead.solicitorId
+  const isInstructed  = !!lead.solicitorInstructedAt
+  const hasDates      = !!(lead.targetExchangeDate || exchangeDate) && !!(lead.targetCompletionDate || completionDate)
+  const hasFee        = !!lead.sourcingFee
+  const doneCount     = [isPaperwork, hasSolicitor, isInstructed, hasDates, hasFee].filter(Boolean).length
 
   return (
-    <div className="rounded-lg border border-green-200 bg-green-50 p-4 space-y-4">
+    <div className="rounded-lg border border-green-200 bg-green-50 p-4 space-y-3">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-2">
-          <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600 mt-0.5" />
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
           <div>
             <p className="text-sm font-semibold text-green-900">
               {isPaperwork ? "Deal Setup in Progress" : "Offer Accepted — Complete Your Deal Setup"}
             </p>
-            <p className="text-xs text-green-700 mt-0.5">
-              {doneCount} of 5 steps completed
-            </p>
+            <p className="text-xs text-green-700">{doneCount} of 5 steps completed</p>
           </div>
         </div>
         <span className={cn(
-          "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold",
-          doneCount >= 5 ? "bg-green-200 text-green-900" : "bg-amber-100 text-amber-800"
+          "rounded-full px-2.5 py-0.5 text-[11px] font-bold",
+          doneCount >= 5 ? "bg-green-500 text-white" : "bg-amber-100 text-amber-800"
         )}>
           {doneCount}/5
         </span>
       </div>
 
-      {/* Step 1 — Move to Paperwork Sent */}
-      <div className={cn("flex items-center justify-between gap-3 rounded-md p-2.5", isPaperwork ? "bg-green-100" : "bg-white border border-green-200")}>
-        <div className="flex items-center gap-2 min-w-0">
-          <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold", isPaperwork ? "bg-green-500 text-white" : "bg-green-200 text-green-900")}>
-            {isPaperwork ? "✓" : "1"}
-          </span>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold text-gray-800">Send paperwork to vendor</p>
-            <p className="text-[11px] text-gray-500">Sign the heads of terms / lockout agreement</p>
+      {/* Step 1 */}
+      <SetupStep
+        number={1} done={isPaperwork}
+        title="Send paperwork to vendor"
+        subtitle={isPaperwork ? "Paperwork sent — stage updated" : "Send heads of terms / lockout agreement to the vendor"}
+        action={<MarkDoneButton onClick={handleMoveToPaperwork} loading={movingStage} />}
+      />
+
+      {/* Step 2 */}
+      <SetupStep
+        number={2} done={hasSolicitor}
+        title="Assign your solicitor"
+        subtitle={solicitorName ? `Assigned: ${solicitorName}` : "Go to the Details tab and assign a solicitor from your contacts"}
+        action={<span className="text-[11px] font-medium text-blue-600">→ Details tab</span>}
+      />
+
+      {/* Step 3 */}
+      <SetupStep
+        number={3} done={isInstructed}
+        title="Instruct solicitor"
+        subtitle={isInstructed
+          ? `Instructed on ${new Date(lead.solicitorInstructedAt!).toLocaleDateString("en-GB")}`
+          : "Call or email your solicitor with the accepted offer details and vendor contact"}
+        action={<MarkDoneButton onClick={handleMarkInstructed} loading={markingInstructed} />}
+      />
+
+      {/* Step 4 — dates expand inline, Save button pinned right on its own row */}
+      <div className={cn(
+        "rounded-md border p-3 space-y-2.5",
+        hasDates ? "border-green-200 bg-green-100" : "border-gray-200 bg-white"
+      )}>
+        {/* Header row */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className={cn(
+              "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+              hasDates ? "bg-green-500 text-white" : "bg-gray-100 text-gray-600 border border-gray-300"
+            )}>
+              {hasDates ? "✓" : "4"}
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-gray-800">Set exchange &amp; completion dates</p>
+              <p className="text-[11px] text-gray-500">Agree target dates with vendor and solicitor</p>
+            </div>
+          </div>
+          <div className="shrink-0">
+            {hasDates
+              ? <span className="text-[11px] font-semibold text-green-700">Done ✓</span>
+              : (
+                <button
+                  onClick={handleSaveDates}
+                  disabled={savingDates || (!exchangeDate && !completionDate)}
+                  className="rounded-md bg-green-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-green-700 disabled:opacity-50 whitespace-nowrap"
+                >
+                  {savingDates ? "Saving…" : "Save Dates →"}
+                </button>
+              )
+            }
           </div>
         </div>
-        {!isPaperwork && (
-          <button
-            onClick={handleMoveToPaperwork}
-            disabled={movingStage}
-            className="shrink-0 rounded-md bg-green-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-green-700 disabled:opacity-50"
-          >
-            {movingStage ? "Saving…" : "Mark Done →"}
-          </button>
-        )}
-        {isPaperwork && <span className="text-[11px] text-green-700 font-medium shrink-0">Done ✓</span>}
-      </div>
-
-      {/* Step 2 — Solicitor */}
-      <div className={cn("flex items-center justify-between gap-3 rounded-md p-2.5", hasSolicitor ? "bg-green-100" : "bg-white border border-green-200")}>
-        <div className="flex items-center gap-2 min-w-0">
-          <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold", hasSolicitor ? "bg-green-500 text-white" : "bg-green-200 text-green-900")}>
-            {hasSolicitor ? "✓" : "2"}
-          </span>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold text-gray-800">Assign solicitor</p>
-            <p className="text-[11px] text-gray-500">
-              {solicitorName ? `Assigned: ${solicitorName}` : "Go to Details tab → Solicitor section"}
-            </p>
-          </div>
-        </div>
-        {hasSolicitor
-          ? <span className="text-[11px] text-green-700 font-medium shrink-0">Done ✓</span>
-          : <span className="text-[11px] text-amber-700 shrink-0">→ Details tab</span>
-        }
-      </div>
-
-      {/* Step 3 — Mark solicitor instructed */}
-      <div className={cn("flex items-center justify-between gap-3 rounded-md p-2.5", isInstructed ? "bg-green-100" : "bg-white border border-green-200")}>
-        <div className="flex items-center gap-2 min-w-0">
-          <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold", isInstructed ? "bg-green-500 text-white" : "bg-green-200 text-green-900")}>
-            {isInstructed ? "✓" : "3"}
-          </span>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold text-gray-800">Instruct solicitor</p>
-            <p className="text-[11px] text-gray-500">
-              {isInstructed
-                ? `Instructed ${new Date(lead.solicitorInstructedAt!).toLocaleDateString("en-GB")}`
-                : "Confirm you have sent the accepted offer details to your solicitor"}
-            </p>
-          </div>
-        </div>
-        {!isInstructed ? (
-          <button
-            onClick={handleMarkInstructed}
-            disabled={markingInstructed}
-            className="shrink-0 rounded-md bg-green-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-green-700 disabled:opacity-50"
-          >
-            {markingInstructed ? "Saving…" : "Mark Done →"}
-          </button>
-        ) : (
-          <span className="text-[11px] text-green-700 font-medium shrink-0">Done ✓</span>
-        )}
-      </div>
-
-      {/* Steps 4 & 5 — Dates */}
-      <div className={cn("rounded-md p-2.5 space-y-2", (hasExchange && hasCompletion) ? "bg-green-100" : "bg-white border border-green-200")}>
-        <div className="flex items-center gap-2">
-          <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
-            (hasExchange && hasCompletion) ? "bg-green-500 text-white" : "bg-green-200 text-green-900"
-          )}>
-            {(hasExchange && hasCompletion) ? "✓" : "4"}
-          </span>
-          <p className="text-xs font-semibold text-gray-800">Set target exchange &amp; completion dates</p>
-        </div>
-        <div className="grid grid-cols-2 gap-2 pl-7">
+        {/* Date inputs always visible */}
+        <div className="grid grid-cols-2 gap-2 pl-[34px]">
           <div>
-            <label className="block text-[11px] font-semibold text-gray-600 mb-1">Target Exchange</label>
-            <input
-              type="date"
-              value={exchangeDate}
-              onChange={(e) => setExchangeDate(e.target.value)}
-              className="w-full rounded-md border border-gray-200 px-2 py-1.5 text-xs focus:border-green-400 focus:outline-none"
-            />
+            <label className="block text-[11px] font-semibold text-gray-500 mb-1">Target Exchange Date</label>
+            <input type="date" value={exchangeDate} onChange={(e) => setExchangeDate(e.target.value)}
+              className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs focus:border-green-400 focus:outline-none" />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-gray-600 mb-1">Target Completion</label>
-            <input
-              type="date"
-              value={completionDate}
-              onChange={(e) => setCompletionDate(e.target.value)}
-              className="w-full rounded-md border border-gray-200 px-2 py-1.5 text-xs focus:border-green-400 focus:outline-none"
-            />
+            <label className="block text-[11px] font-semibold text-gray-500 mb-1">Target Completion Date</label>
+            <input type="date" value={completionDate} onChange={(e) => setCompletionDate(e.target.value)}
+              className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs focus:border-green-400 focus:outline-none" />
           </div>
-        </div>
-        <div className="pl-7">
-          <button
-            onClick={handleSaveDates}
-            disabled={savingDates || (!exchangeDate && !completionDate)}
-            className="rounded-md bg-green-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-green-700 disabled:opacity-50"
-          >
-            {savingDates ? "Saving…" : "Save Dates"}
-          </button>
         </div>
       </div>
 
-      {/* Step 5 — Sourcing fee */}
-      <div className={cn("flex items-center gap-2 rounded-md p-2.5", lead.sourcingFee ? "bg-green-100" : "bg-white border border-green-200")}>
-        <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
-          lead.sourcingFee ? "bg-green-500 text-white" : "bg-green-200 text-green-900"
-        )}>
-          {lead.sourcingFee ? "✓" : "5"}
-        </span>
-        <div className="min-w-0">
-          <p className="text-xs font-semibold text-gray-800">Log your sourcing fee</p>
-          <p className="text-[11px] text-gray-500">
-            {lead.sourcingFee
-              ? `Fee logged: £${Number(lead.sourcingFee).toLocaleString()}`
-              : "Enter your fee in the Sourcing Fee & Deal P&L section below"}
-          </p>
-        </div>
-        {lead.sourcingFee
-          ? <span className="text-[11px] text-green-700 font-medium shrink-0 ml-auto">Done ✓</span>
-          : <span className="text-[11px] text-gray-400 shrink-0 ml-auto">↓ below</span>
-        }
-      </div>
+      {/* Step 5 */}
+      <SetupStep
+        number={5} done={hasFee}
+        title="Log your sourcing fee"
+        subtitle={hasFee
+          ? `Fee logged: £${Number(lead.sourcingFee).toLocaleString()}`
+          : "Enter your fee in the Sourcing Fee section below"}
+        action={<span className="text-[11px] font-medium text-gray-400">↓ below</span>}
+      />
     </div>
   )
 }
@@ -1434,7 +1425,7 @@ export function VendorLeadDetailModal({
               <span>Deal Log</span>
             </TabsTrigger>
 
-            {/* 6 — Deal P&L (sourcing fee + profit) */}
+            {/* 6 — Completion Setup (deal setup checklist + sourcing fee + profit) */}
             <TabsTrigger
               value="deal-pl"
               className="relative flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
@@ -1442,7 +1433,7 @@ export function VendorLeadDetailModal({
                 data-[state=active]:bg-white data-[state=active]:text-[#2563EB] data-[state=active]:shadow-sm"
             >
               <PoundSterling className="h-3.5 w-3.5" />
-              <span>Deal P&L</span>
+              <span>Completion</span>
               {currentLead.sourcingFee && (
                 <span className="absolute top-1.5 right-2 inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
               )}
@@ -2528,7 +2519,7 @@ export function VendorLeadDetailModal({
             />
           </TabsContent>
 
-          {/* ── Deal P&L Tab ──────────────────────────────────────────────────── */}
+          {/* ── Completion Setup Tab ─────────────────────────────────────────── */}
           <TabsContent value="deal-pl" className="flex-1 overflow-y-auto min-h-0 pt-2 pb-6 px-0.5">
             <div className="space-y-4">
 
@@ -2541,9 +2532,9 @@ export function VendorLeadDetailModal({
               )}
 
               <div>
-                <h3 className="text-sm font-semibold text-gray-800 mb-1">Sourcing Fee & Deal P&L</h3>
+                <h3 className="text-sm font-semibold text-gray-800 mb-1">Sourcing Fee & Profit</h3>
                 <p className="text-xs text-gray-400">
-                  Track your sourcing fee, partner split and deal costs to see your net profit.
+                  Log your sourcing fee, any co-sourcing partner split, and deal costs to calculate your net profit.
                 </p>
               </div>
               <SourcingFeePanel
