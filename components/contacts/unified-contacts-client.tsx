@@ -9,9 +9,18 @@ import { VendorLeadDetailModal } from "@/components/vendors/vendor-lead-detail-m
 import { PageHeader } from "@/components/ui/page-header"
 import type { ContactWithCounts } from "@/types/contacts"
 import type { VendorLead } from "@/components/vendors/vendor-lead-detail-modal"
-import { Plus, Search, Phone, Mail, Building2, MapPin } from "lucide-react"
+import {
+  Plus, Search, Phone, Mail, Building2, MapPin,
+  Pencil, Trash2, Eye, AlertTriangle, Loader2,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDistanceToNow } from "date-fns"
+import { toast } from "sonner"
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -125,16 +134,25 @@ export function UnifiedContactsClient({ initialContacts, vendorLeads }: Props) {
   const [chip, setChip] = useState("ALL")
   const [search, setSearch] = useState("")
 
+  // Selection
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+
   // Modal state
   const [selectedContact, setSelectedContact] = useState<ContactWithCounts | null>(null)
-  const [selectedVendor, setSelectedVendor] = useState<VendorLead | null>(null)
-  const [newContactOpen, setNewContactOpen] = useState(false)
-  const [editingContact, setEditingContact] = useState<ContactWithCounts | null>(null)
+  const [selectedVendor, setSelectedVendor]   = useState<VendorLead | null>(null)
+  const [newContactOpen, setNewContactOpen]   = useState(false)
+  const [editingContact, setEditingContact]   = useState<ContactWithCounts | null>(null)
+
+  // Delete state
+  const [deleteTarget, setDeleteTarget]       = useState<UnifiedRow | null>(null)
+  const [isDeleting, setIsDeleting]           = useState(false)
+  const [isBulkDeleting, setIsBulkDeleting]   = useState(false)
+  const [bulkDeleteOpen, setBulkDeleteOpen]   = useState(false)
 
   // Normalise all rows
   const allRows = useMemo<UnifiedRow[]>(() => {
     const contactRows = contacts.map(normaliseContact)
-    const vendorRows = vendorLeads.map(normaliseVendor)
+    const vendorRows  = vendorLeads.map(normaliseVendor)
     return [...contactRows, ...vendorRows]
   }, [contacts, vendorLeads])
 
@@ -162,7 +180,43 @@ export function UnifiedContactsClient({ initialContacts, vendorLeads }: Props) {
     })
   }, [allRows, chip, search])
 
-  // Contact CRUD handlers
+  // Only contact-kind rows can be bulk deleted (vendor leads managed in their own page)
+  const selectedContactIds = [...selected].filter((id) =>
+    filtered.find((r) => r.id === id && r.kind === "contact")
+  )
+  const allContactsInView  = filtered.filter((r) => r.kind === "contact")
+  const allFilteredSelected =
+    allContactsInView.length > 0 &&
+    allContactsInView.every((r) => selected.has(r.id))
+
+  // ── Selection helpers ──────────────────────────────────────────────────────
+
+  const toggleRow = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const toggleAll = () => {
+    if (allFilteredSelected) {
+      setSelected((prev) => {
+        const next = new Set(prev)
+        allContactsInView.forEach((r) => next.delete(r.id))
+        return next
+      })
+    } else {
+      setSelected((prev) => {
+        const next = new Set(prev)
+        allContactsInView.forEach((r) => next.add(r.id))
+        return next
+      })
+    }
+  }
+
+  // ── CRUD handlers ──────────────────────────────────────────────────────────
+
   const handleContactSave = (saved: ContactWithCounts) => {
     setContacts((prev) => {
       const exists = prev.find((c) => c.id === saved.id)
@@ -181,7 +235,55 @@ export function UnifiedContactsClient({ initialContacts, vendorLeads }: Props) {
 
   const handleContactDeleted = (id: string) => {
     setContacts((prev) => prev.filter((c) => c.id !== id))
+    setSelected((prev) => { const n = new Set(prev); n.delete(id); return n })
     setSelectedContact(null)
+  }
+
+  // Single delete
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return
+    setIsDeleting(true)
+    try {
+      const endpoint =
+        deleteTarget.kind === "contact"
+          ? `/api/contacts/${deleteTarget.id}`
+          : `/api/vendor-pipeline/leads/${deleteTarget.id}`
+      const res = await fetch(endpoint, { method: "DELETE" })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error ?? "Delete failed")
+      }
+      if (deleteTarget.kind === "contact") {
+        setContacts((prev) => prev.filter((c) => c.id !== deleteTarget.id))
+      }
+      setSelected((prev) => { const n = new Set(prev); n.delete(deleteTarget.id); return n })
+      toast.success(`${deleteTarget.name} deleted`)
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to delete")
+    } finally {
+      setIsDeleting(false)
+      setDeleteTarget(null)
+    }
+  }
+
+  // Bulk delete (contacts only)
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true)
+    const ids = [...selectedContactIds]
+    let deleted = 0
+    for (const id of ids) {
+      try {
+        const res = await fetch(`/api/contacts/${id}`, { method: "DELETE" })
+        if (res.ok) {
+          deleted++
+          setContacts((prev) => prev.filter((c) => c.id !== id))
+          setSelected((prev) => { const n = new Set(prev); n.delete(id); return n })
+        }
+      } catch {}
+    }
+    setIsBulkDeleting(false)
+    setBulkDeleteOpen(false)
+    toast.success(`${deleted} contact${deleted !== 1 ? "s" : ""} deleted`)
   }
 
   // Row click
@@ -195,6 +297,8 @@ export function UnifiedContactsClient({ initialContacts, vendorLeads }: Props) {
     }
   }
 
+  // ── Render ─────────────────────────────────────────────────────────────────
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -204,10 +308,7 @@ export function UnifiedContactsClient({ initialContacts, vendorLeads }: Props) {
           <Button
             size="sm"
             className="btn-primary h-9"
-            onClick={() => {
-              setEditingContact(null)
-              setNewContactOpen(true)
-            }}
+            onClick={() => { setEditingContact(null); setNewContactOpen(true) }}
           >
             <Plus className="mr-2 h-4 w-4" />
             Add Contact
@@ -218,7 +319,7 @@ export function UnifiedContactsClient({ initialContacts, vendorLeads }: Props) {
       {/* Filter chips */}
       <div className="flex flex-wrap gap-2">
         {CHIPS.map(({ key, label }) => {
-          const count = chipCounts[key] ?? 0
+          const count  = chipCounts[key] ?? 0
           const active = chip === key
           return (
             <button
@@ -232,12 +333,10 @@ export function UnifiedContactsClient({ initialContacts, vendorLeads }: Props) {
               )}
             >
               {label}
-              <span
-                className={cn(
-                  "rounded-full px-1.5 py-0.5 text-xs font-semibold",
-                  active ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
-                )}
-              >
+              <span className={cn(
+                "rounded-full px-1.5 py-0.5 text-xs font-semibold",
+                active ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
+              )}>
                 {count}
               </span>
             </button>
@@ -245,15 +344,42 @@ export function UnifiedContactsClient({ initialContacts, vendorLeads }: Props) {
         })}
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <Input
-          placeholder="Search name, phone, email…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      {/* Search + bulk toolbar */}
+      <div className="flex items-center gap-3">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search name, phone, email…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
+        {/* Bulk actions bar */}
+        {selected.size > 0 && (
+          <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5">
+            <span className="text-xs font-medium text-red-700">
+              {selectedContactIds.length} contact{selectedContactIds.length !== 1 ? "s" : ""} selected
+            </span>
+            <Button
+              size="sm"
+              variant="destructive"
+              className="h-7 px-2 text-xs"
+              onClick={() => setBulkDeleteOpen(true)}
+              disabled={selectedContactIds.length === 0}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" />
+              Delete selected
+            </Button>
+            <button
+              onClick={() => setSelected(new Set())}
+              className="text-xs text-red-500 hover:text-red-700 underline"
+            >
+              Clear
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -264,118 +390,182 @@ export function UnifiedContactsClient({ initialContacts, vendorLeads }: Props) {
       ) : (
         <div className="ds-card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[700px] text-sm">
+            <table className="w-full min-w-[800px] text-sm">
               <thead>
                 <tr>
+                  {/* Select-all checkbox — only selects contacts, not vendor leads */}
+                  <th className="table-header w-10 px-3">
+                    <input
+                      type="checkbox"
+                      className="h-3.5 w-3.5 cursor-pointer accent-blue-600"
+                      checked={allFilteredSelected}
+                      onChange={toggleAll}
+                      title="Select all contacts"
+                    />
+                  </th>
                   <th className="table-header text-left">Name</th>
                   <th className="table-header text-left">Type</th>
                   <th className="table-header text-left">Contact</th>
                   <th className="table-header text-left">Associated</th>
                   <th className="table-header text-left">Stage</th>
                   <th className="table-header text-left">Last Contact</th>
+                  <th className="table-header w-24 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filtered.map((row) => (
-                  <tr
-                    key={`${row.kind}-${row.id}`}
-                    className="table-row group cursor-pointer"
-                    onClick={() => handleRowClick(row)}
-                  >
-                    {/* Name */}
-                    <td className="table-cell">
-                      <div className="flex items-center gap-2.5">
-                        <div className="h-8 w-8 flex-shrink-0 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-600">
-                          {row.name.charAt(0).toUpperCase()}
-                        </div>
-                        <span className="font-medium text-gray-900">{row.name}</span>
-                      </div>
-                    </td>
+                {filtered.map((row) => {
+                  const isSelected = selected.has(row.id)
+                  const isContact  = row.kind === "contact"
+                  return (
+                    <tr
+                      key={`${row.kind}-${row.id}`}
+                      className={cn(
+                        "group cursor-pointer transition-colors",
+                        isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-gray-50"
+                      )}
+                      onClick={() => handleRowClick(row)}
+                    >
+                      {/* Checkbox */}
+                      <td className="px-3 py-[11px]" onClick={(e) => e.stopPropagation()}>
+                        {isContact ? (
+                          <input
+                            type="checkbox"
+                            className="h-3.5 w-3.5 cursor-pointer accent-blue-600"
+                            checked={isSelected}
+                            onChange={() => toggleRow(row.id)}
+                          />
+                        ) : (
+                          <span className="block h-3.5 w-3.5" />
+                        )}
+                      </td>
 
-                    {/* Type badge */}
-                    <td className="table-cell">
-                      <span
-                        className={cn(
+                      {/* Name */}
+                      <td className="table-cell">
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-8 w-8 flex-shrink-0 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-600">
+                            {row.name.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="font-medium text-gray-900">{row.name}</span>
+                        </div>
+                      </td>
+
+                      {/* Type badge */}
+                      <td className="table-cell">
+                        <span className={cn(
                           "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
                           TYPE_COLORS[row.typeKey] ?? "bg-gray-100 text-gray-600 border-gray-200"
-                        )}
-                      >
-                        {TYPE_LABELS[row.typeKey] ?? row.typeKey}
-                      </span>
-                    </td>
+                        )}>
+                          {TYPE_LABELS[row.typeKey] ?? row.typeKey}
+                        </span>
+                      </td>
 
-                    {/* Phone + Email */}
-                    <td className="table-cell">
-                      <div className="space-y-0.5">
-                        {row.phone && (
-                          <a
-                            href={`tel:${row.phone}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="flex items-center gap-1.5 text-gray-600 hover:text-blue-600 transition-colors"
-                          >
-                            <Phone className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-                            {row.phone}
-                          </a>
-                        )}
-                        {row.email && (
-                          <a
-                            href={`mailto:${row.email}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="flex items-center gap-1.5 text-gray-500 hover:text-blue-600 transition-colors truncate max-w-[180px]"
-                          >
-                            <Mail className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-                            <span className="truncate">{row.email}</span>
-                          </a>
-                        )}
-                        {!row.phone && !row.email && (
+                      {/* Phone + Email */}
+                      <td className="table-cell">
+                        <div className="space-y-0.5">
+                          {row.phone && (
+                            <a
+                              href={`tel:${row.phone}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center gap-1.5 text-gray-600 hover:text-blue-600 transition-colors"
+                            >
+                              <Phone className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                              {row.phone}
+                            </a>
+                          )}
+                          {row.email && (
+                            <a
+                              href={`mailto:${row.email}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center gap-1.5 text-gray-500 hover:text-blue-600 transition-colors truncate max-w-[180px]"
+                            >
+                              <Mail className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                              <span className="truncate">{row.email}</span>
+                            </a>
+                          )}
+                          {!row.phone && !row.email && <span className="text-gray-300">—</span>}
+                        </div>
+                      </td>
+
+                      {/* Associated */}
+                      <td className="table-cell">
+                        {row.associated ? (
+                          <div className="flex items-start gap-1.5 text-gray-600">
+                            {row.kind === "vendor"
+                              ? <MapPin    className="h-3.5 w-3.5 text-gray-400 flex-shrink-0 mt-0.5" />
+                              : <Building2 className="h-3.5 w-3.5 text-gray-400 flex-shrink-0 mt-0.5" />
+                            }
+                            <span className="line-clamp-2">{row.associated}</span>
+                          </div>
+                        ) : (
                           <span className="text-gray-300">—</span>
                         )}
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Associated */}
-                    <td className="table-cell">
-                      {row.associated ? (
-                        <div className="flex items-start gap-1.5 text-gray-600">
-                          {row.kind === "vendor" ? (
-                            <MapPin className="h-3.5 w-3.5 text-gray-400 flex-shrink-0 mt-0.5" />
-                          ) : (
-                            <Building2 className="h-3.5 w-3.5 text-gray-400 flex-shrink-0 mt-0.5" />
+                      {/* Stage */}
+                      <td className="table-cell">
+                        {row.stage ? (
+                          <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+                            {row.stage}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
+                      </td>
+
+                      {/* Last Contact */}
+                      <td className="table-cell text-gray-500">
+                        {row.lastContact
+                          ? formatDistanceToNow(new Date(row.lastContact), { addSuffix: true })
+                          : <span className="text-gray-300">—</span>
+                        }
+                      </td>
+
+                      {/* Actions */}
+                      <td className="table-cell text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {/* View */}
+                          <button
+                            onClick={() => handleRowClick(row)}
+                            title="View"
+                            className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
+
+                          {/* Edit — contacts only */}
+                          {isContact && (
+                            <button
+                              onClick={() => {
+                                const c = contacts.find((c) => c.id === row.id)
+                                if (c) setEditingContact(c)
+                              }}
+                              title="Edit"
+                              className="rounded p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
                           )}
-                          <span className="line-clamp-2">{row.associated}</span>
+
+                          {/* Delete */}
+                          <button
+                            onClick={() => setDeleteTarget(row)}
+                            title="Delete"
+                            className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
                         </div>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
-
-                    {/* Stage */}
-                    <td className="table-cell">
-                      {row.stage ? (
-                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
-                          {row.stage}
-                        </span>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
-
-                    {/* Last Contact */}
-                    <td className="table-cell text-gray-500">
-                      {row.lastContact
-                        ? formatDistanceToNow(new Date(row.lastContact), { addSuffix: true })
-                        : <span className="text-gray-300">—</span>
-                      }
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {/* Modals */}
+      {/* ── Modals ── */}
       {selectedContact && (
         <ContactDetailModal
           contact={selectedContact}
@@ -398,13 +588,69 @@ export function UnifiedContactsClient({ initialContacts, vendorLeads }: Props) {
         open={newContactOpen || !!editingContact}
         contact={editingContact ?? undefined}
         onOpenChange={(open) => {
-          if (!open) {
-            setNewContactOpen(false)
-            setEditingContact(null)
-          }
+          if (!open) { setNewContactOpen(false); setEditingContact(null) }
         }}
         onSave={handleContactSave}
       />
+
+      {/* Single delete confirm */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              Delete {deleteTarget?.name}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.kind === "contact"
+                ? "This will permanently delete the contact. This cannot be undone."
+                : "This will permanently delete this vendor lead and all associated data. This cannot be undone."
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk delete confirm */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              Delete {selectedContactIds.length} contact{selectedContactIds.length !== 1 ? "s" : ""}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the selected contacts. Vendor leads are not affected.
+              This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBulkDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              disabled={isBulkDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isBulkDeleting
+                ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                : <Trash2 className="h-4 w-4 mr-2" />
+              }
+              Delete {selectedContactIds.length} contact{selectedContactIds.length !== 1 ? "s" : ""}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
