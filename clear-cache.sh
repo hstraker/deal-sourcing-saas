@@ -1,9 +1,9 @@
 #!/bin/bash
 # Clear Next.js cache and restart dev server
 
-echo "Starting Cloudflare Tunnel"
-cloudflared tunnel run deals-app &
-sleep 3
+#echo "Starting Cloudflare Tunnel"
+#cloudflared tunnel run deals-app &
+#sleep 3
 
 echo "Clearing Next.js cache..."
 rm -rf .next
@@ -14,5 +14,4 @@ echo "Clearing - Scraper cards"
 npx tsx scripts/run-scraper.ts --reset-db
 
 echo "Starting application"
-npm run dev
-
+pm2 restart dealapp
