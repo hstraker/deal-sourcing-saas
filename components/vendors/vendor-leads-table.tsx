@@ -820,16 +820,16 @@ function NeedsActionBanner({ leads, onNavigate, onOpenDetail, onCompleteSetup }:
                       {item.action} →
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="left" className="max-w-[260px] text-xs">
+                  <TooltipContent side="left" className="max-w-[260px] text-xs p-3">
                     {item.action === "Complete Setup" ? (
-                      <div className="space-y-1">
-                        <p className="font-semibold text-white">What does Complete Setup mean?</p>
-                        <p className="text-slate-300">The vendor has accepted your offer. You now need to:</p>
-                        <ol className="list-decimal list-inside space-y-0.5 text-slate-300">
-                          <li>Move the pipeline stage to <strong className="text-white">Paperwork Sent</strong></li>
-                          <li>Instruct your <strong className="text-white">solicitor</strong></li>
-                          <li>Log your <strong className="text-white">sourcing fee</strong> and deal P&L</li>
-                          <li>Set target <strong className="text-white">exchange &amp; completion dates</strong></li>
+                      <div className="space-y-1.5">
+                        <p className="font-semibold">What does &quot;Complete Setup&quot; mean?</p>
+                        <p className="opacity-80">The vendor accepted your offer. Next steps:</p>
+                        <ol className="list-decimal list-inside space-y-1">
+                          <li>Move stage to <strong>Paperwork Sent</strong></li>
+                          <li>Instruct your <strong>solicitor</strong></li>
+                          <li>Log your <strong>sourcing fee</strong> &amp; deal P&L</li>
+                          <li>Set <strong>exchange &amp; completion dates</strong></li>
                         </ol>
                       </div>
                     ) : item.reason}
