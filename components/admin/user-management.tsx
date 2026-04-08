@@ -257,8 +257,7 @@ function InviteLinkDialog({
         <DialogHeader>
           <DialogTitle>User invited</DialogTitle>
           <DialogDescription>
-            SMTP isn't configured — copy the link below and share it with{" "}
-            <strong>{email}</strong> directly.
+            Copy the link below and share it directly with <strong>{email}</strong>. The link expires in 48 hours.
           </DialogDescription>
         </DialogHeader>
         <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
@@ -396,11 +395,12 @@ function UserFormDialog({
           throw new Error(data.error || "Failed to create user")
         }
         const data = await res.json()
-        onCreated(data.inviteUrl, data.emailSent, form.email)
+        // Always show the invite link — useful for demos and when email goes to spam
+        onCreated(data.inviteUrl, false, form.email)
         onSaved()
         onOpenChange(false)
         if (data.emailSent) {
-          toast.success(`Invite sent to ${form.email}`)
+          toast.success(`Invite email sent to ${form.email} — link also copied below`)
         }
       }
     } catch (err) {
