@@ -2287,6 +2287,40 @@ export function VendorLeadDetailModal({
           {/* ── Deal P&L Tab ──────────────────────────────────────────────────── */}
           <TabsContent value="deal-pl" className="flex-1 overflow-y-auto min-h-0 pt-2 pb-6 px-0.5">
             <div className="space-y-4">
+
+              {/* ── Complete Setup checklist — shown only when offer just accepted ── */}
+              {currentLead.pipelineStage === "OFFER_ACCEPTED" && (
+                <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600 mt-0.5" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-green-900">Offer Accepted — Complete Your Deal Setup</p>
+                      <p className="mt-0.5 text-xs text-green-700">
+                        The vendor has agreed to your offer. Work through these steps to progress the deal to completion:
+                      </p>
+                      <ol className="mt-2 space-y-1.5 text-xs text-green-800">
+                        <li className="flex items-start gap-2">
+                          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green-200 text-[10px] font-bold text-green-900">1</span>
+                          <span><strong>Log your sourcing fee</strong> below — set your fee amount and any co-sourcing partner split</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green-200 text-[10px] font-bold text-green-900">2</span>
+                          <span><strong>Instruct your solicitor</strong> — send them the accepted offer details and vendor contact</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green-200 text-[10px] font-bold text-green-900">3</span>
+                          <span><strong>Send paperwork to the vendor</strong> — then move the pipeline stage to <em>Paperwork Sent</em> in the Details tab</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green-200 text-[10px] font-bold text-green-900">4</span>
+                          <span><strong>Set target exchange &amp; completion dates</strong> — agree timelines with the vendor and solicitor</span>
+                        </li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <h3 className="text-sm font-semibold text-gray-800 mb-1">Sourcing Fee & Deal P&L</h3>
                 <p className="text-xs text-gray-400">

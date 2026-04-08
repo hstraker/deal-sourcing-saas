@@ -748,7 +748,7 @@ function getNeedsActionItems(leads: VendorLead[]): NeedsActionItem[] {
   })
 }
 
-function NeedsActionBanner({ leads, onNavigate, onOpenDetail }: { leads: VendorLead[]; onNavigate: (tab: TabId) => void; onOpenDetail: (lead: VendorLead, reason: string, urgency: "high" | "medium" | "low") => void }) {
+function NeedsActionBanner({ leads, onNavigate, onOpenDetail, onCompleteSetup }: { leads: VendorLead[]; onNavigate: (tab: TabId) => void; onOpenDetail: (lead: VendorLead, reason: string, urgency: "high" | "medium" | "low") => void; onCompleteSetup: (lead: VendorLead) => void }) {
   const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
   const items = getNeedsActionItems(leads)
@@ -812,7 +812,7 @@ function NeedsActionBanner({ leads, onNavigate, onOpenDetail }: { leads: VendorL
                         const lead = leads.find((l) => l.id === item.leadId)
                         if (!lead) return
                         if (item.action === "Make Offer" || item.action === "Send Offer") onNavigate("offer-analysis")
-                        else if (item.action === "Complete Setup") onNavigate("offer-analysis")
+                        else if (item.action === "Complete Setup") onCompleteSetup(lead)
                         else onOpenDetail(lead, item.reason, item.urgency)
                       }}
                       className="shrink-0 rounded-md bg-white border border-amber-300 px-2.5 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
@@ -820,8 +820,19 @@ function NeedsActionBanner({ leads, onNavigate, onOpenDetail }: { leads: VendorL
                       {item.action} →
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="left" className="max-w-[220px] text-xs">
-                    {item.reason}
+                  <TooltipContent side="left" className="max-w-[260px] text-xs">
+                    {item.action === "Complete Setup" ? (
+                      <div className="space-y-1">
+                        <p className="font-semibold text-white">What does Complete Setup mean?</p>
+                        <p className="text-slate-300">The vendor has accepted your offer. You now need to:</p>
+                        <ol className="list-decimal list-inside space-y-0.5 text-slate-300">
+                          <li>Move the pipeline stage to <strong className="text-white">Paperwork Sent</strong></li>
+                          <li>Instruct your <strong className="text-white">solicitor</strong></li>
+                          <li>Log your <strong className="text-white">sourcing fee</strong> and deal P&L</li>
+                          <li>Set target <strong className="text-white">exchange &amp; completion dates</strong></li>
+                        </ol>
+                      </div>
+                    ) : item.reason}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -1918,6 +1929,7 @@ export function VendorLeadsTable() {
   const [validationModalLead, setValidationModalLead] = useState<VendorLead | null>(null)
   const [comparableModalLead, setComparableModalLead] = useState<VendorLead | null>(null)
   const [offerModalLead, setOfferModalLead] = useState<VendorLead | null>(null)
+  const [setupLead, setSetupLead] = useState<VendorLead | null>(null)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkRunning, setBulkRunning] = useState(false)
@@ -2294,7 +2306,7 @@ export function VendorLeadsTable() {
     <TooltipProvider>
       <div className="flex flex-col gap-0">
       {/* Needs-Action Banner */}
-      <NeedsActionBanner leads={leads} onNavigate={setActiveTab} onOpenDetail={(lead, reason, urgency) => setDetailModal({ lead, reason, urgency })} />
+      <NeedsActionBanner leads={leads} onNavigate={setActiveTab} onOpenDetail={(lead, reason, urgency) => setDetailModal({ lead, reason, urgency })} onCompleteSetup={(lead) => setSetupLead(lead)} />
 
       {/* KPI Bar */}
       <div className="mb-4">
@@ -2541,6 +2553,17 @@ export function VendorLeadsTable() {
           onOpenChange={(open) => { if (!open) setEditLead(null) }}
           onUpdate={() => { fetchLeads(); setEditLead(null) }}
           initialTab="details"
+        />
+      )}
+
+      {/* Complete Setup Modal — opens at Deal P&L tab after offer accepted */}
+      {setupLead && (
+        <VendorLeadDetailModal
+          lead={setupLead}
+          open={!!setupLead}
+          onOpenChange={(open) => { if (!open) setSetupLead(null) }}
+          onUpdate={() => { fetchLeads(); setSetupLead(null) }}
+          initialTab="deal-pl"
         />
       )}
 
