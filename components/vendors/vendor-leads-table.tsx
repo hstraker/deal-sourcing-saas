@@ -210,6 +210,10 @@ export interface VendorLead {
   acquisitionCostOther?: string | number | null
   sourcingFeeInvoicedAt?: string | null
   sourcingFeePaidAt?: string | null
+  // Completion Timeline
+  targetExchangeDate?: string | null
+  targetCompletionDate?: string | null
+  solicitorInstructedAt?: string | null
   // Acquisition Cost Overrides
   sdltBuyerType?: string | null
   solicitorFeesOverride?: string | number | null

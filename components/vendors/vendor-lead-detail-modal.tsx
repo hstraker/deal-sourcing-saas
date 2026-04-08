@@ -186,6 +186,10 @@ export interface VendorLead {
   acquisitionCostOther?: string | number | null
   sourcingFeeInvoicedAt?: string | null
   sourcingFeePaidAt?: string | null
+  // Completion Timeline
+  targetExchangeDate?: string | null
+  targetCompletionDate?: string | null
+  solicitorInstructedAt?: string | null
   // Acquisition Cost Overrides
   sdltBuyerType?: string | null
   solicitorFeesOverride?: string | number | null
@@ -399,6 +403,246 @@ function parseValidationNotes(notes: string | null): ParsedNotes | null {
   }
 
   return { comparables, rentalYield, marketValueSource, creditsUsed, failureReasons, strategyData }
+}
+
+// ── Deal Setup Section ────────────────────────────────────────────────────────
+// Shown inside Deal P&L tab when stage is OFFER_ACCEPTED or PAPERWORK_SENT.
+// Lets the sourcer complete all post-acceptance steps in one place.
+
+function DealSetupSection({ lead, onUpdate }: { lead: VendorLead; onUpdate: (patch: Partial<VendorLead>) => void }) {
+  const isPaperwork = lead.pipelineStage === "PAPERWORK_SENT"
+
+  const [exchangeDate, setExchangeDate]   = useState(lead.targetExchangeDate?.split("T")[0] ?? "")
+  const [completionDate, setCompletionDate] = useState(lead.targetCompletionDate?.split("T")[0] ?? "")
+  const [savingDates, setSavingDates]     = useState(false)
+  const [movingStage, setMovingStage]     = useState(false)
+  const [markingInstructed, setMarkingInstructed] = useState(false)
+
+  const solicitorName = lead.solicitor
+    ? `${lead.solicitor.firstName ?? ""} ${lead.solicitor.lastName ?? ""}`.trim() || lead.solicitor.company || "Assigned"
+    : null
+
+  const handleSaveDates = async () => {
+    setSavingDates(true)
+    try {
+      const res = await fetch(`/api/vendor-pipeline/leads/${lead.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetExchangeDate: exchangeDate ? new Date(exchangeDate).toISOString() : null,
+          targetCompletionDate: completionDate ? new Date(completionDate).toISOString() : null,
+        }),
+      })
+      if (!res.ok) throw new Error("Failed")
+      onUpdate({ targetExchangeDate: exchangeDate || null, targetCompletionDate: completionDate || null })
+      toast.success("Dates saved")
+    } catch {
+      toast.error("Failed to save dates")
+    } finally {
+      setSavingDates(false)
+    }
+  }
+
+  const handleMoveToPaperwork = async () => {
+    setMovingStage(true)
+    try {
+      const res = await fetch(`/api/vendor-pipeline/leads/${lead.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pipelineStage: "PAPERWORK_SENT" }),
+      })
+      if (!res.ok) throw new Error("Failed")
+      onUpdate({ pipelineStage: "PAPERWORK_SENT" })
+      toast.success("Stage moved to Paperwork Sent")
+    } catch {
+      toast.error("Failed to update stage")
+    } finally {
+      setMovingStage(false)
+    }
+  }
+
+  const handleMarkInstructed = async () => {
+    setMarkingInstructed(true)
+    try {
+      const now = new Date().toISOString()
+      const res = await fetch(`/api/vendor-pipeline/leads/${lead.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ solicitorInstructedAt: now }),
+      })
+      if (!res.ok) throw new Error("Failed")
+      onUpdate({ solicitorInstructedAt: now })
+      toast.success("Solicitor marked as instructed")
+    } catch {
+      toast.error("Failed to update")
+    } finally {
+      setMarkingInstructed(false)
+    }
+  }
+
+  // Checklist items
+  const hasSolicitor    = !!lead.solicitorId
+  const isInstructed    = !!lead.solicitorInstructedAt
+  const hasExchange     = !!exchangeDate || !!lead.targetExchangeDate
+  const hasCompletion   = !!completionDate || !!lead.targetCompletionDate
+  const doneCount       = [isPaperwork, hasSolicitor, isInstructed, hasExchange, hasCompletion].filter(Boolean).length
+
+  return (
+    <div className="rounded-lg border border-green-200 bg-green-50 p-4 space-y-4">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2">
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-green-900">
+              {isPaperwork ? "Deal Setup in Progress" : "Offer Accepted — Complete Your Deal Setup"}
+            </p>
+            <p className="text-xs text-green-700 mt-0.5">
+              {doneCount} of 5 steps completed
+            </p>
+          </div>
+        </div>
+        <span className={cn(
+          "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+          doneCount >= 5 ? "bg-green-200 text-green-900" : "bg-amber-100 text-amber-800"
+        )}>
+          {doneCount}/5
+        </span>
+      </div>
+
+      {/* Step 1 — Move to Paperwork Sent */}
+      <div className={cn("flex items-center justify-between gap-3 rounded-md p-2.5", isPaperwork ? "bg-green-100" : "bg-white border border-green-200")}>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold", isPaperwork ? "bg-green-500 text-white" : "bg-green-200 text-green-900")}>
+            {isPaperwork ? "✓" : "1"}
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-gray-800">Send paperwork to vendor</p>
+            <p className="text-[11px] text-gray-500">Sign the heads of terms / lockout agreement</p>
+          </div>
+        </div>
+        {!isPaperwork && (
+          <button
+            onClick={handleMoveToPaperwork}
+            disabled={movingStage}
+            className="shrink-0 rounded-md bg-green-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+          >
+            {movingStage ? "Saving…" : "Mark Done →"}
+          </button>
+        )}
+        {isPaperwork && <span className="text-[11px] text-green-700 font-medium shrink-0">Done ✓</span>}
+      </div>
+
+      {/* Step 2 — Solicitor */}
+      <div className={cn("flex items-center justify-between gap-3 rounded-md p-2.5", hasSolicitor ? "bg-green-100" : "bg-white border border-green-200")}>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold", hasSolicitor ? "bg-green-500 text-white" : "bg-green-200 text-green-900")}>
+            {hasSolicitor ? "✓" : "2"}
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-gray-800">Assign solicitor</p>
+            <p className="text-[11px] text-gray-500">
+              {solicitorName ? `Assigned: ${solicitorName}` : "Go to Details tab → Solicitor section"}
+            </p>
+          </div>
+        </div>
+        {hasSolicitor
+          ? <span className="text-[11px] text-green-700 font-medium shrink-0">Done ✓</span>
+          : <span className="text-[11px] text-amber-700 shrink-0">→ Details tab</span>
+        }
+      </div>
+
+      {/* Step 3 — Mark solicitor instructed */}
+      <div className={cn("flex items-center justify-between gap-3 rounded-md p-2.5", isInstructed ? "bg-green-100" : "bg-white border border-green-200")}>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold", isInstructed ? "bg-green-500 text-white" : "bg-green-200 text-green-900")}>
+            {isInstructed ? "✓" : "3"}
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-gray-800">Instruct solicitor</p>
+            <p className="text-[11px] text-gray-500">
+              {isInstructed
+                ? `Instructed ${new Date(lead.solicitorInstructedAt!).toLocaleDateString("en-GB")}`
+                : "Confirm you have sent the accepted offer details to your solicitor"}
+            </p>
+          </div>
+        </div>
+        {!isInstructed ? (
+          <button
+            onClick={handleMarkInstructed}
+            disabled={markingInstructed}
+            className="shrink-0 rounded-md bg-green-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+          >
+            {markingInstructed ? "Saving…" : "Mark Done →"}
+          </button>
+        ) : (
+          <span className="text-[11px] text-green-700 font-medium shrink-0">Done ✓</span>
+        )}
+      </div>
+
+      {/* Steps 4 & 5 — Dates */}
+      <div className={cn("rounded-md p-2.5 space-y-2", (hasExchange && hasCompletion) ? "bg-green-100" : "bg-white border border-green-200")}>
+        <div className="flex items-center gap-2">
+          <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
+            (hasExchange && hasCompletion) ? "bg-green-500 text-white" : "bg-green-200 text-green-900"
+          )}>
+            {(hasExchange && hasCompletion) ? "✓" : "4"}
+          </span>
+          <p className="text-xs font-semibold text-gray-800">Set target exchange &amp; completion dates</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 pl-7">
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-600 mb-1">Target Exchange</label>
+            <input
+              type="date"
+              value={exchangeDate}
+              onChange={(e) => setExchangeDate(e.target.value)}
+              className="w-full rounded-md border border-gray-200 px-2 py-1.5 text-xs focus:border-green-400 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-600 mb-1">Target Completion</label>
+            <input
+              type="date"
+              value={completionDate}
+              onChange={(e) => setCompletionDate(e.target.value)}
+              className="w-full rounded-md border border-gray-200 px-2 py-1.5 text-xs focus:border-green-400 focus:outline-none"
+            />
+          </div>
+        </div>
+        <div className="pl-7">
+          <button
+            onClick={handleSaveDates}
+            disabled={savingDates || (!exchangeDate && !completionDate)}
+            className="rounded-md bg-green-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+          >
+            {savingDates ? "Saving…" : "Save Dates"}
+          </button>
+        </div>
+      </div>
+
+      {/* Step 5 — Sourcing fee */}
+      <div className={cn("flex items-center gap-2 rounded-md p-2.5", lead.sourcingFee ? "bg-green-100" : "bg-white border border-green-200")}>
+        <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
+          lead.sourcingFee ? "bg-green-500 text-white" : "bg-green-200 text-green-900"
+        )}>
+          {lead.sourcingFee ? "✓" : "5"}
+        </span>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-gray-800">Log your sourcing fee</p>
+          <p className="text-[11px] text-gray-500">
+            {lead.sourcingFee
+              ? `Fee logged: £${Number(lead.sourcingFee).toLocaleString()}`
+              : "Enter your fee in the Sourcing Fee & Deal P&L section below"}
+          </p>
+        </div>
+        {lead.sourcingFee
+          ? <span className="text-[11px] text-green-700 font-medium shrink-0 ml-auto">Done ✓</span>
+          : <span className="text-[11px] text-gray-400 shrink-0 ml-auto">↓ below</span>
+        }
+      </div>
+    </div>
+  )
 }
 
 export function VendorLeadDetailModal({
@@ -2288,37 +2532,12 @@ export function VendorLeadDetailModal({
           <TabsContent value="deal-pl" className="flex-1 overflow-y-auto min-h-0 pt-2 pb-6 px-0.5">
             <div className="space-y-4">
 
-              {/* ── Complete Setup checklist — shown only when offer just accepted ── */}
-              {currentLead.pipelineStage === "OFFER_ACCEPTED" && (
-                <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-                  <div className="flex items-start gap-3">
-                    <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600 mt-0.5" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-green-900">Offer Accepted — Complete Your Deal Setup</p>
-                      <p className="mt-0.5 text-xs text-green-700">
-                        The vendor has agreed to your offer. Work through these steps to progress the deal to completion:
-                      </p>
-                      <ol className="mt-2 space-y-1.5 text-xs text-green-800">
-                        <li className="flex items-start gap-2">
-                          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green-200 text-[10px] font-bold text-green-900">1</span>
-                          <span><strong>Log your sourcing fee</strong> below — set your fee amount and any co-sourcing partner split</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green-200 text-[10px] font-bold text-green-900">2</span>
-                          <span><strong>Instruct your solicitor</strong> — send them the accepted offer details and vendor contact</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green-200 text-[10px] font-bold text-green-900">3</span>
-                          <span><strong>Send paperwork to the vendor</strong> — then move the pipeline stage to <em>Paperwork Sent</em> in the Details tab</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green-200 text-[10px] font-bold text-green-900">4</span>
-                          <span><strong>Set target exchange &amp; completion dates</strong> — agree timelines with the vendor and solicitor</span>
-                        </li>
-                      </ol>
-                    </div>
-                  </div>
-                </div>
+              {/* ── Deal Setup section — active controls when offer accepted ────── */}
+              {(currentLead.pipelineStage === "OFFER_ACCEPTED" || currentLead.pipelineStage === "PAPERWORK_SENT") && (
+                <DealSetupSection lead={currentLead} onUpdate={(patch) => {
+                  setFullLead((prev) => prev ? { ...prev, ...patch } : prev)
+                  onUpdate?.()
+                }} />
               )}
 
               <div>

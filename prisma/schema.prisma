@@ -993,6 +993,11 @@ model VendorLead {
   lockoutAgreementSignedAt DateTime? @map("lockout_agreement_signed_at")
   lockoutAgreementS3Key    String?   @map("lockout_agreement_s3_key")
 
+  // Completion Timeline (set after offer accepted)
+  targetExchangeDate    DateTime? @map("target_exchange_date")
+  targetCompletionDate  DateTime? @map("target_completion_date")
+  solicitorInstructedAt DateTime? @map("solicitor_instructed_at")
+
   // Postcode resolution tracking
   propertyPostcodeSource String? @map("property_postcode_source") // "land_registry" | "postcodes_io" | "manual"
   propertyPostcodeFixed  Boolean @default(false) @map("property_postcode_fixed") // true = was corrected automatically
