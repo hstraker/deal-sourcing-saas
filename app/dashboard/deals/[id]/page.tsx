@@ -215,6 +215,107 @@ export default async function DealDetailPage({ params }: DealDetailPageProps) {
         />
       </div>
 
+      {/* ── Investor Readiness Banner ─────────────────────────────────────────
+           Only shown for deals that aren't sold/archived AND have incomplete
+           investor setup steps. Disappears automatically once all 4 are done. */}
+      {deal.status !== "sold" && deal.status !== "archived" && (() => {
+        const steps = [
+          {
+            id: "photos",
+            label: "Add property photos",
+            hint: "Investors need to see the property",
+            done: (deal._count?.photos ?? 0) > 0,
+            anchor: `/dashboard/deals/${deal.id}/edit`,
+            action: "Upload photos",
+          },
+          {
+            id: "pack-price",
+            label: "Set investor pack price",
+            hint: "The fee you charge investors for this deal",
+            done: deal.packPrice != null && Number(deal.packPrice) > 0,
+            anchor: `/dashboard/deals/${deal.id}/edit#pack-price`,
+            action: "Edit deal",
+          },
+          {
+            id: "assigned",
+            label: "Assign a team member",
+            hint: "Someone must own this deal",
+            done: deal.assignedTo != null,
+            anchor: `#deal-information`,
+            action: "Assign now",
+          },
+          {
+            id: "listed",
+            label: "List for investors",
+            hint: "Publish so investors can view and reserve",
+            done: deal.status === "listed" || deal.status === "reserved",
+            anchor: `/dashboard/deals/${deal.id}/edit#status`,
+            action: "Edit deal",
+          },
+        ]
+        const incomplete = steps.filter((s) => !s.done)
+        if (incomplete.length === 0) return null
+        const doneCount = steps.length - incomplete.length
+
+        return (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <div className="flex items-start justify-between gap-4 mb-3">
+              <div className="flex items-start gap-2.5">
+                <span className="mt-0.5 text-amber-500">⚠</span>
+                <div>
+                  <p className="text-sm font-semibold text-amber-900">
+                    This deal isn&apos;t ready for investors yet
+                  </p>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    Complete the steps below to list it on the investor portal.
+                  </p>
+                </div>
+              </div>
+              <span className="shrink-0 rounded-full bg-amber-100 border border-amber-300 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">
+                {doneCount}/{steps.length} done
+              </span>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {steps.map((step) => (
+                <div
+                  key={step.id}
+                  className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${
+                    step.done
+                      ? "border-green-200 bg-green-50"
+                      : "border-amber-200 bg-white"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                      step.done ? "bg-green-500 text-white" : "bg-amber-200 text-amber-900"
+                    }`}>
+                      {step.done ? "✓" : "!"}
+                    </span>
+                    <div className="min-w-0">
+                      <p className={`text-xs font-semibold truncate ${step.done ? "text-green-800" : "text-gray-800"}`}>
+                        {step.label}
+                      </p>
+                      <p className="text-[11px] text-gray-400 truncate">{step.hint}</p>
+                    </div>
+                  </div>
+                  {!step.done && (
+                    <a
+                      href={step.anchor}
+                      className="shrink-0 rounded-md bg-amber-500 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-amber-600 whitespace-nowrap"
+                    >
+                      {step.action} →
+                    </a>
+                  )}
+                  {step.done && (
+                    <span className="shrink-0 text-[11px] font-semibold text-green-700">Done ✓</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
+
       <ToggleProvider>
         <div className="grid gap-6 md:grid-cols-3">
           {/* ── Main Column ── */}
@@ -654,7 +755,7 @@ export default async function DealDetailPage({ params }: DealDetailPageProps) {
           {/* ── Sidebar ── */}
           <div className="space-y-6">
             {/* Deal Information */}
-            <div className="ds-card overflow-hidden">
+            <div id="deal-information" className="ds-card overflow-hidden">
               <div className="px-5 py-4 border-b border-[var(--ds-border)]">
                 <h2 className="text-sm font-semibold text-gray-900">Deal Information</h2>
               </div>
