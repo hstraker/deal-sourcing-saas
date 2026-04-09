@@ -216,6 +216,7 @@ function DealKpiBar({ deals }: { deals: DealWithRelations[] }) {
 // ── Main DealList ──────────────────────────────────────────────────────────────
 
 export function DealList({ deals: initialDeals, teamMembers = [] }: DealListProps) {
+  const router = useRouter()
   const [deals, setDeals] = useState(initialDeals)
   const [searchQuery, setSearchQuery] = useState("")
   const [filters, setFilters] = useState<DealFilters>({
@@ -236,7 +237,6 @@ export function DealList({ deals: initialDeals, teamMembers = [] }: DealListProp
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [investorCriteria, setInvestorCriteria] = useState<InvestorCriteria[]>([])
-  const [selectedDeal, setSelectedDeal] = useState<DealWithRelations | null>(null)
   const [archivingId, setArchivingId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkArchiving, setBulkArchiving] = useState(false)
@@ -588,7 +588,7 @@ export function DealList({ deals: initialDeals, teamMembers = [] }: DealListProp
             deals={paginatedDeals}
             matchesByDealId={matchesByDealId}
             actionDealIds={actionDealIds}
-            onViewDeal={setSelectedDeal}
+            onViewDeal={(deal) => router.push(`/dashboard/deals/${deal.id}`)}
             onArchiveDeal={handleArchiveDeal}
             archivingId={archivingId}
             selectedIds={selectedIds}
@@ -618,13 +618,6 @@ export function DealList({ deals: initialDeals, teamMembers = [] }: DealListProp
             />
           )}
         </>
-      )}
-
-      {selectedDeal && (
-        <DealDetailModal
-          deal={selectedDeal}
-          onClose={() => setSelectedDeal(null)}
-        />
       )}
 
       <ConfirmDialog
