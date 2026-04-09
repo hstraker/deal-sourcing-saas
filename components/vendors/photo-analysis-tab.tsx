@@ -14,6 +14,9 @@ import {
   Sparkles,
   ImageIcon,
   Shield,
+  ArrowUpDown,
+  X,
+  ZoomIn,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -234,11 +237,26 @@ export function PhotoAnalysisTab({
     ? new Date(leadData.photoUploadExpiresAt) < new Date()
     : false
 
+  const [sortWorstFirst, setSortWorstFirst] = useState(true)
+  const [lightboxPhoto, setLightboxPhoto] = useState<PropertyPhoto | null>(null)
+
   const aiConditionLabel = conditionFromScore(leadData?.photoConditionScore ?? null)
   const effectiveCondition = leadData?.photoConditionOverride ?? aiConditionLabel
   const hasUnanalysed = photos.some((p) => !p.aiAnalysedAt)
   const isRunning = leadData?.photoAnalysisStatus === "running"
   const isComplete = leadData?.photoAnalysisStatus === "complete"
+
+  // Sort: worst-first (lowest score first), unanalysed at end
+  const sortedPhotos = [...photos].sort((a, b) => {
+    if (!sortWorstFirst) return 0
+    const aScore = a.aiConditionScore ?? 999
+    const bScore = b.aiConditionScore ?? 999
+    return aScore - bScore
+  })
+
+  const lowestScoringId = photos
+    .filter((p) => p.aiConditionScore != null)
+    .sort((a, b) => (a.aiConditionScore ?? 0) - (b.aiConditionScore ?? 0))[0]?.id
 
   return (
     <div className="space-y-4">
@@ -339,18 +357,33 @@ export function PhotoAnalysisTab({
                   : "All analysed"}
               </p>
             </div>
-            <Button
-              size="sm"
-              onClick={triggerAnalysis}
-              disabled={analysing || isRunning || !hasUnanalysed}
-              className="text-xs"
-            >
-              {isRunning ? (
-                <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Analysing…</>
-              ) : (
-                <><Sparkles className="mr-1.5 h-3.5 w-3.5" />Analyse Photos</>
-              )}
-            </Button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSortWorstFirst((v) => !v)}
+                title={sortWorstFirst ? "Sorted: worst first" : "Sorted: upload order"}
+                className={cn(
+                  "flex items-center gap-1 rounded px-2 py-1 text-[11px] border transition-colors",
+                  sortWorstFirst
+                    ? "bg-red-50 border-red-200 text-red-600"
+                    : "bg-gray-50 border-gray-200 text-gray-500"
+                )}
+              >
+                <ArrowUpDown className="h-3 w-3" />
+                {sortWorstFirst ? "Worst first" : "Upload order"}
+              </button>
+              <Button
+                size="sm"
+                onClick={triggerAnalysis}
+                disabled={analysing || isRunning || !hasUnanalysed}
+                className="text-xs"
+              >
+                {isRunning ? (
+                  <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Analysing…</>
+                ) : (
+                  <><Sparkles className="mr-1.5 h-3.5 w-3.5" />Analyse Photos</>
+                )}
+              </Button>
+            </div>
           </div>
           {isRunning && (
             <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
@@ -372,57 +405,121 @@ export function PhotoAnalysisTab({
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {photos.map((photo) => (
-            <div
-              key={photo.id}
-              className={cn(
-                "relative group rounded-lg overflow-hidden border cursor-pointer",
-                selectedPhoto?.id === photo.id ? "ring-2 ring-blue-500" : ""
-              )}
-              onClick={() => setSelectedPhoto(selectedPhoto?.id === photo.id ? null : photo)}
-            >
-              <img
-                src={photo.url}
-                alt={photo.aiRoomType ?? "property photo"}
-                className="w-full aspect-square object-cover"
-              />
-              {/* Room type label bottom */}
-              {photo.aiRoomType && (
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1.5">
-                  <span className="text-[10px] text-white/90 capitalize">
-                    {photo.aiRoomType.replace(/_/g, " ")}
-                  </span>
-                </div>
-              )}
-              {/* Score badge top-right */}
-              {photo.aiConditionScore != null ? (
-                <div
-                  title={`${CONDITION_LABELS[photo.aiCondition ?? ""] ?? "Unknown"} — ${photo.aiConditionScore}/100. Scores: 80–100 Excellent, 65–79 Good, 50–64 Needs Work, 30–49 Needs Modernisation, 0–29 Poor.`}
-                  className={cn(
-                    "absolute top-1 right-1 text-[10px] font-bold px-1.5 py-0.5 rounded shadow cursor-help",
-                    CONDITION_COLOURS[photo.aiCondition ?? ""] ?? "bg-gray-100 text-gray-700"
-                  )}
-                >
-                  {photo.aiConditionScore}
-                </div>
-              ) : isComplete ? (
-                <div title="Analysis failed for this photo — click Analyse Photos to retry" className="absolute top-1 right-1 bg-red-500 rounded-full p-0.5">
-                  <AlertTriangle className="h-3 w-3 text-white" />
-                </div>
-              ) : (
-                <div title="Not yet analysed" className="absolute top-1 right-1 bg-amber-400 rounded-full p-0.5">
-                  <AlertTriangle className="h-3 w-3 text-white" />
-                </div>
-              )}
-              {/* Delete button on hover */}
-              <button
-                onClick={(e) => { e.stopPropagation(); deletePhoto(photo.id) }}
-                className="absolute top-1 left-1 h-6 w-6 rounded-full bg-black/60 items-center justify-center hidden group-hover:flex"
+          {sortedPhotos.map((photo) => {
+            const isWorst = photo.id === lowestScoringId && photos.filter(p => p.aiConditionScore != null).length > 1
+            return (
+              <div
+                key={photo.id}
+                className={cn(
+                  "relative group rounded-lg overflow-hidden border cursor-pointer transition-all",
+                  selectedPhoto?.id === photo.id ? "ring-2 ring-blue-500" :
+                  isWorst ? "ring-2 ring-red-400" : ""
+                )}
+                onClick={() => setSelectedPhoto(selectedPhoto?.id === photo.id ? null : photo)}
               >
-                <Trash2 className="h-3 w-3 text-white" />
-              </button>
+                <img
+                  src={photo.url}
+                  alt={photo.aiRoomType ?? "property photo"}
+                  className="w-full aspect-square object-cover"
+                />
+                {/* Bottom label: room type + expand icon */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1.5 flex items-end justify-between">
+                  {photo.aiRoomType && (
+                    <span className="text-[10px] text-white/90 capitalize">
+                      {photo.aiRoomType.replace(/_/g, " ")}
+                      {isWorst && <span className="ml-1 text-red-300 font-semibold">· worst</span>}
+                    </span>
+                  )}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setLightboxPhoto(photo) }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <ZoomIn className="h-3.5 w-3.5 text-white/80" />
+                  </button>
+                </div>
+                {/* Score badge top-right */}
+                {photo.aiConditionScore != null ? (
+                  <div
+                    title={`${CONDITION_LABELS[photo.aiCondition ?? ""] ?? "Unknown"} — ${photo.aiConditionScore}/100. Scores: 80–100 Excellent, 65–79 Good, 50–64 Needs Work, 30–49 Needs Modernisation, 0–29 Poor.`}
+                    className={cn(
+                      "absolute top-1 right-1 text-[10px] font-bold px-1.5 py-0.5 rounded shadow cursor-help",
+                      CONDITION_COLOURS[photo.aiCondition ?? ""] ?? "bg-gray-100 text-gray-700"
+                    )}
+                  >
+                    {photo.aiConditionScore}
+                  </div>
+                ) : isComplete ? (
+                  <div title="Analysis failed — click Analyse Photos to retry" className="absolute top-1 right-1 bg-red-500 rounded-full p-0.5">
+                    <AlertTriangle className="h-3 w-3 text-white" />
+                  </div>
+                ) : (
+                  <div title="Not yet analysed" className="absolute top-1 right-1 bg-amber-400 rounded-full p-0.5">
+                    <AlertTriangle className="h-3 w-3 text-white" />
+                  </div>
+                )}
+                {/* Delete button on hover */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); deletePhoto(photo.id) }}
+                  className="absolute top-1 left-1 h-6 w-6 rounded-full bg-black/60 items-center justify-center hidden group-hover:flex"
+                >
+                  <Trash2 className="h-3 w-3 text-white" />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── Lightbox ─────────────────────────────────────────────────────── */}
+      {lightboxPhoto && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setLightboxPhoto(null)}
+        >
+          <div
+            className="relative max-w-3xl w-full rounded-xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={lightboxPhoto.url}
+              alt={lightboxPhoto.aiRoomType ?? "photo"}
+              className="w-full max-h-[80vh] object-contain bg-black"
+            />
+            {/* Overlay info bar */}
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-4 py-3 flex items-end justify-between">
+              <div>
+                <p className="text-sm font-semibold text-white capitalize">
+                  {lightboxPhoto.aiRoomType?.replace(/_/g, " ") ?? "Photo"}
+                </p>
+                {lightboxPhoto.aiDescription && (
+                  <p className="text-xs text-white/70 mt-0.5 max-w-lg">{lightboxPhoto.aiDescription}</p>
+                )}
+                {lightboxPhoto.aiIssues?.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {lightboxPhoto.aiIssues.map((issue) => (
+                      <span key={issue} className="text-[10px] bg-red-500/70 text-white rounded px-1.5 py-0.5">
+                        {issue.replace(/_/g, " ")}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {lightboxPhoto.aiConditionScore != null && (
+                <div className={cn(
+                  "text-sm font-bold px-2 py-1 rounded",
+                  CONDITION_COLOURS[lightboxPhoto.aiCondition ?? ""] ?? "bg-gray-200 text-gray-700"
+                )}>
+                  {lightboxPhoto.aiConditionScore}/100
+                </div>
+              )}
             </div>
-          ))}
+            <button
+              onClick={() => setLightboxPhoto(null)}
+              className="absolute top-2 right-2 h-8 w-8 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       )}
 

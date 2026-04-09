@@ -97,6 +97,27 @@ const SUMMARY_STYLES: Record<string, SummaryBox["colorClass"]> = {
   },
 }
 
+// Rough UK refurb cost ranges per room by condition
+function estimateRefurbCost(photos: LivePhoto[]): { low: number; high: number } | null {
+  const analysed = photos.filter((p) => p.aiConditionScore != null)
+  if (analysed.length === 0) return null
+
+  const RANGES: Record<string, [number, number]> = {
+    poor:                [8000, 15000],
+    needs_modernisation: [4000,  8000],
+    needs_work:          [1500,  4000],
+    good:                [   0,   500],
+    excellent:           [   0,     0],
+  }
+
+  let low = 0, high = 0
+  for (const p of analysed) {
+    const [l, h] = RANGES[p.aiCondition ?? "needs_work"] ?? [1500, 4000]
+    low += l; high += h
+  }
+  return low === 0 && high === 0 ? null : { low, high }
+}
+
 function buildSummaryBox(photos: LivePhoto[], conditionKey: string): SummaryBox | null {
   const analysed = photos.filter((p) => p.aiAnalysedAt && p.aiCondition)
   if (analysed.length === 0) return null
@@ -371,6 +392,63 @@ export function PhotoAnalysisModal({
           </div>
         )}
       </div>
+
+      {/* Room Scorecard */}
+      {livePhotos.filter((p) => p.aiAnalysedAt && p.aiConditionScore != null).length > 0 && (() => {
+        const analysed = livePhotos
+          .filter((p) => p.aiAnalysedAt && p.aiConditionScore != null)
+          .sort((a, b) => (a.aiConditionScore ?? 0) - (b.aiConditionScore ?? 0))
+        const refurb = estimateRefurbCost(livePhotos)
+        return (
+          <>
+            <div className="mb-3 h-px bg-white/10" />
+            <div className="mb-3 space-y-2">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Room Scores</p>
+              {analysed.map((p, i) => (
+                <div key={i} className="space-y-0.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-300 capitalize">
+                      {p.aiRoomType?.replace(/_/g, " ") ?? "Room"}
+                    </span>
+                    <span className={cn(
+                      "text-[10px] font-bold",
+                      p.aiCondition === "excellent" ? "text-green-400" :
+                      p.aiCondition === "good"      ? "text-blue-400" :
+                      p.aiCondition === "needs_work" ? "text-amber-400" :
+                      p.aiCondition === "needs_modernisation" ? "text-orange-400" :
+                      "text-red-400"
+                    )}>
+                      {p.aiConditionScore}/100
+                    </span>
+                  </div>
+                  <div className="w-full bg-white/10 rounded-full h-1">
+                    <div
+                      className={cn(
+                        "h-1 rounded-full transition-all",
+                        p.aiCondition === "excellent" ? "bg-green-400" :
+                        p.aiCondition === "good"      ? "bg-blue-400" :
+                        p.aiCondition === "needs_work" ? "bg-amber-400" :
+                        p.aiCondition === "needs_modernisation" ? "bg-orange-400" :
+                        "bg-red-400"
+                      )}
+                      style={{ width: `${p.aiConditionScore ?? 0}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+              {refurb && (
+                <div className="mt-2 rounded-md border border-white/10 bg-white/5 px-2.5 py-2">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-0.5">Est. Refurb Cost</p>
+                  <p className="text-sm font-bold text-slate-100">
+                    £{refurb.low.toLocaleString()} – £{refurb.high.toLocaleString()}
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Based on rooms assessed</p>
+                </div>
+              )}
+            </div>
+          </>
+        )
+      })()}
 
       {/* AI Summary Box */}
       {(() => {
