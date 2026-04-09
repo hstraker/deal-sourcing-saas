@@ -91,6 +91,8 @@ export function PhotoAnalysisTab({
   const [generatingLink, setGeneratingLink] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const [selectedPhoto, setSelectedPhoto] = useState<PropertyPhoto | null>(null)
+  const [sortWorstFirst, setSortWorstFirst] = useState(true)
+  const [lightboxPhoto, setLightboxPhoto] = useState<PropertyPhoto | null>(null)
 
   const fetchData = useCallback(async (showLoader = false) => {
     if (showLoader) setLoading(true)
@@ -236,9 +238,6 @@ export function PhotoAnalysisTab({
   const linkExpired = leadData?.photoUploadExpiresAt
     ? new Date(leadData.photoUploadExpiresAt) < new Date()
     : false
-
-  const [sortWorstFirst, setSortWorstFirst] = useState(true)
-  const [lightboxPhoto, setLightboxPhoto] = useState<PropertyPhoto | null>(null)
 
   const aiConditionLabel = conditionFromScore(leadData?.photoConditionScore ?? null)
   const effectiveCondition = leadData?.photoConditionOverride ?? aiConditionLabel

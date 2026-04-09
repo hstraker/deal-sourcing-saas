@@ -2690,7 +2690,7 @@ export function VendorLeadsTable() {
       {photoModalLead && (
         <PhotoAnalysisModal
           lead={photoModalLead}
-          onClose={() => setPhotoModalLead(null)}
+          onClose={() => { setPhotoModalLead(null); fetchLeads() }}
         />
       )}
 
