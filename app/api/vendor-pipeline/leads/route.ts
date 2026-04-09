@@ -96,9 +96,6 @@ export async function GET(request: NextRequest) {
               pipelineEvents: true,
             },
           },
-          photos: {
-            select: { id: true },
-          },
         },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,

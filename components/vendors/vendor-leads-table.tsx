@@ -198,7 +198,6 @@ export interface VendorLead {
     confidenceScore?: number | null
   }>
   _count?: { smsMessages: number; pipelineEvents: number }
-  photos?: { id: string }[]
   photoAnalysisStatus?: string | null
   photoConditionScore?: number | null
   photoConditionOverride?: string | null
@@ -1672,11 +1671,10 @@ function conditionFromPhotoScore(score: number | null): string {
 }
 
 function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
-  const photoCount  = lead.photos?.length ?? 0
-  const status      = lead.photoAnalysisStatus ?? "pending"
+  const status       = lead.photoAnalysisStatus ?? "pending"
   const conditionKey = lead.photoConditionOverride
     ?? conditionFromPhotoScore(lead.photoConditionScore ?? null)
-  const analysedAt  = lead.photoAnalysisCompletedAt
+  const analysedAt   = lead.photoAnalysisCompletedAt
     ? (() => {
         const days = Math.floor((Date.now() - new Date(lead.photoAnalysisCompletedAt!).getTime()) / 86400000)
         return days === 0 ? "Today" : days === 1 ? "Yesterday" : `${days}d ago`
@@ -1686,13 +1684,11 @@ function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, isSelecte
   const actionLabel =
     status === "running"   ? "Analysing…" :
     status === "completed" ? "View Analysis" :
-    photoCount > 0         ? "Analyse Photos" :
                              "Upload Photos"
 
   const actionColour =
     status === "running"   ? "bg-amber-100 text-amber-700 border-amber-300" :
     status === "completed" ? "bg-green-100 text-green-700 border-green-300" :
-    photoCount > 0         ? "bg-blue-100 text-blue-700 border-blue-300" :
                              "bg-gray-100 text-gray-600 border-gray-300"
 
   return (
@@ -1707,14 +1703,6 @@ function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, isSelecte
 
       {/* Pipeline stage */}
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
-
-      {/* # Photos */}
-      <Td>
-        <span className={cn("inline-flex items-center gap-1 font-mono text-xs font-semibold", photoCount > 0 ? "text-gray-900" : "text-gray-400")}>
-          <Camera className="h-3 w-3 shrink-0" />
-          {photoCount > 0 ? photoCount : "—"}
-        </span>
-      </Td>
 
       {/* Condition */}
       <Td>
@@ -1920,7 +1908,6 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
         {selectAllTh}
         {vendorAddressHeader}
         <Th>Status</Th>
-        <Th><Tip text="Number of photos uploaded by the vendor"># Photos</Tip></Th>
         <Th><Tip text="AI-assessed property condition from photo analysis">Condition</Tip></Th>
         <Th><Tip text="When AI photo analysis was last completed">Last Analysed</Tip></Th>
         <Th><Tip text="Start or view photo analysis">Action</Tip></Th>
