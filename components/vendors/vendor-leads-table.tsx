@@ -1702,7 +1702,7 @@ function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, isSelecte
 
       {/* Condition */}
       <Td>
-        {status === "completed" || lead.photoConditionOverride ? (
+        {status === "complete" || lead.photoConditionOverride ? (
           <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium", PHOTO_CONDITION_COLOURS[conditionKey] ?? "bg-gray-100 text-gray-600 border-gray-200")}>
             {PHOTO_CONDITION_LABELS[conditionKey] ?? "Unknown"}
             {lead.photoConditionScore != null && !lead.photoConditionOverride && (
