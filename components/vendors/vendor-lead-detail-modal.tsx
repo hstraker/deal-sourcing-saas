@@ -1355,7 +1355,7 @@ export function VendorLeadDetailModal({
           onValueChange={setActiveTab}
           className="flex flex-col flex-1 min-h-0 w-full"
         >
-          <TabsList className="grid w-full grid-cols-6 h-auto p-1 gap-0.5 bg-gray-50 flex-shrink-0">
+          <TabsList className="grid w-full grid-cols-7 h-auto p-1 gap-0.5 bg-gray-50 flex-shrink-0">
 
             {/* 1 — Lead Details */}
             <TabsTrigger
@@ -1444,7 +1444,9 @@ export function VendorLeadDetailModal({
             {/* 7 — Photo Analysis */}
             <TabsTrigger
               value="photo-analysis"
-              className="flex items-center gap-1 text-xs px-2.5 py-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm"
+              className="relative flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
+                hover:bg-gray-50 hover:text-[#2563EB] hover:shadow-sm
+                data-[state=active]:bg-white data-[state=active]:text-[#2563EB] data-[state=active]:shadow-sm"
             >
               <Camera className="h-3.5 w-3.5" />
               <span>Photos</span>
