@@ -52,6 +52,7 @@ import {
   Navigation,
   Search,
   X,
+  Camera,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { VendorPipelineKanbanBoard } from "./vendor-pipeline-kanban-board"
@@ -222,7 +223,7 @@ export interface VendorLead {
   insuranceOverride?: string | number | null
 }
 
-type TabId = "map-view" | "property-details" | "portal-check" | "validation" | "comparable" | "offer-analysis" | "ai-conversation"
+type TabId = "map-view" | "property-details" | "portal-check" | "validation" | "comparable" | "offer-analysis" | "ai-conversation" | "photo-analysis"
 
 type PortalSource = "RIGHTMOVE" | "ZOOPLA" | "ONTHEMARKET" | "PRIMELOCATION"
 
@@ -929,6 +930,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "comparable", label: "Comparable" },
   { id: "offer-analysis", label: "Offer Analysis" },
   { id: "ai-conversation", label: "AI Conversation" },
+  { id: "photo-analysis", label: "Photo Analysis" },
 ]
 
 function TabBar({ active, onChange }: { active: TabId; onChange: (t: TabId) => void }) {
@@ -1641,6 +1643,27 @@ function AiConversationRow({ lead, onView, onEdit, onArchive, onDelete, isSelect
   )
 }
 
+function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
+  return (
+    <tr
+      className={cn("group cursor-pointer border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}
+      onClick={onView}
+    >
+      <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
+        <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
+      </td>
+      <VendorAddressCell lead={lead} isSelected={isSelected} />
+      <Td><StageBadge stage={lead.pipelineStage} /></Td>
+      <Td>
+        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-500">
+          Click to analyse
+        </span>
+      </Td>
+      <ActionsCell lead={lead} onView={onView} onEdit={onEdit} onArchive={onArchive} onDelete={onDelete} />
+    </tr>
+  )
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Table headers per tab
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1803,6 +1826,15 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
         {stickyRight}
       </tr>
 
+    case "photo-analysis":
+      return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
+        {selectAllTh}
+        {vendorAddressHeader}
+        <Th>Status</Th>
+        <Th><Tip text="Open to upload photos and run AI condition analysis">Photos</Tip></Th>
+        {stickyRight}
+      </tr>
+
     default:
       return null
   }
@@ -1927,6 +1959,7 @@ export function VendorLeadsTable() {
   const [checkingIds, setCheckingIds] = useState<Set<string>>(new Set())
   const [detailModal, setDetailModal] = useState<{ lead: VendorLead; reason: string; urgency: "high" | "medium" | "low" } | null>(null)
   const [aiConvoModalLead, setAiConvoModalLead] = useState<VendorLead | null>(null)
+  const [photoModalLead, setPhotoModalLead] = useState<VendorLead | null>(null)
   const [editLead, setEditLead] = useState<VendorLead | null>(null)
   const [propertyDetailsModalLead, setPropertyDetailsModalLead] = useState<VendorLead | null>(null)
   const [portalCheckModalLead, setPortalCheckModalLead] = useState<VendorLead | null>(null)
@@ -2446,6 +2479,8 @@ export function VendorLeadsTable() {
                       setOfferModalLead(lead)
                     } else if (activeTab === "ai-conversation") {
                       setAiConvoModalLead(lead)
+                    } else if (activeTab === "photo-analysis") {
+                      setPhotoModalLead(lead)
                     } else {
                       router.push(`/dashboard/vendors/${lead.id}/contact`)
                     }
@@ -2469,6 +2504,7 @@ export function VendorLeadsTable() {
                   case "comparable":       return <ComparableRow key={lead.id} {...rowProps} />
                   case "offer-analysis":   return <OfferAnalysisRow key={lead.id} {...rowProps} />
                   case "ai-conversation":  return <AiConversationRow key={lead.id} {...rowProps} />
+                  case "photo-analysis":   return <PhotoAnalysisRow key={lead.id} {...rowProps} />
                   default:                 return null
                 }
               })}
@@ -2576,6 +2612,17 @@ export function VendorLeadsTable() {
         <AiConversationModal
           lead={aiConvoModalLead}
           onClose={() => setAiConvoModalLead(null)}
+        />
+      )}
+
+      {/* Photo Analysis Modal */}
+      {photoModalLead && (
+        <VendorLeadDetailModal
+          lead={photoModalLead}
+          open={!!photoModalLead}
+          onOpenChange={(open) => { if (!open) setPhotoModalLead(null) }}
+          onUpdate={() => { fetchLeads(); setPhotoModalLead(null) }}
+          initialTab="photo-analysis"
         />
       )}
 
