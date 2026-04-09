@@ -48,11 +48,13 @@ async function analyseImageBase64(base64: string, mediaType: string): Promise<Ph
     ],
   })
 
-  const text = response.content.find((c) => c.type === "text")?.text ?? ""
+  const raw = response.content.find((c) => c.type === "text")?.text ?? ""
+  // Strip markdown code fences if present (e.g. ```json ... ```)
+  const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim()
   try {
     return JSON.parse(text) as PhotoAnalysisResult
   } catch {
-    throw new Error(`Failed to parse AI response: ${text}`)
+    throw new Error(`Failed to parse AI response: ${raw}`)
   }
 }
 
