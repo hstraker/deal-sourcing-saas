@@ -31,18 +31,23 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   if (body.action === "confirm") {
     const { s3Key, filename, contentType, sizeBytes } = body
     if (!s3Key) return NextResponse.json({ error: "Missing s3Key" }, { status: 400 })
-    const photo = await prisma.propertyPhoto.create({
-      data: {
-        vendorLeadId: lead.id,
-        source: "vendor_upload",
-        s3Key,
-        url: getPublicUrl(s3Key),
-        filename,
-        mimeType: contentType,
-        sizeBytes,
-      },
-    })
-    return NextResponse.json({ success: true, photo })
+    try {
+      const photo = await prisma.propertyPhoto.create({
+        data: {
+          vendorLeadId: lead.id,
+          source: "vendor_upload",
+          s3Key,
+          url: getPublicUrl(s3Key),
+          filename,
+          mimeType: contentType,
+          sizeBytes,
+        },
+      })
+      return NextResponse.json({ success: true, photo })
+    } catch (err: any) {
+      console.error("[sourcer-upload confirm]", err)
+      return NextResponse.json({ error: "Failed to save photo record", detail: err?.message ?? String(err) }, { status: 500 })
+    }
   }
 
   return NextResponse.json({ error: "Unknown action" }, { status: 400 })
