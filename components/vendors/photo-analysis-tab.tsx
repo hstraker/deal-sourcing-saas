@@ -90,8 +90,25 @@ export function PhotoAnalysisTab({ leadId }: { leadId: string }) {
         fetch(`/api/vendor-leads/${leadId}/photos`),
         fetch(`/api/vendor-leads/${leadId}`),
       ])
+
+      // Photos
+      if (!photosRes.ok) {
+        const text = await photosRes.text()
+        console.error("[PhotoAnalysisTab] photos fetch failed:", photosRes.status, text)
+        toast.error(`Photos API error (${photosRes.status})`)
+        return
+      }
       const photosData = await photosRes.json()
-      const leadFull = await leadRes.json()
+
+      // Lead data — non-fatal: if it fails, fall back to defaults so photos still show
+      let leadFull: Record<string, any> = {}
+      if (leadRes.ok) {
+        leadFull = await leadRes.json()
+      } else {
+        const text = await leadRes.text()
+        console.error("[PhotoAnalysisTab] lead fetch failed:", leadRes.status, text)
+      }
+
       setPhotos(photosData.photos ?? [])
       setLeadData({
         photoConditionScore: leadFull.photoConditionScore ?? null,
@@ -102,6 +119,7 @@ export function PhotoAnalysisTab({ leadId }: { leadId: string }) {
         photoUploadExpiresAt: leadFull.photoUploadExpiresAt ?? null,
       })
     } catch (err) {
+      console.error("[PhotoAnalysisTab] fetchData error:", err)
       toast.error("Failed to load photos")
     } finally {
       setLoading(false)
