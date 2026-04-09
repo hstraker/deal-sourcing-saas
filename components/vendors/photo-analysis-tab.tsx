@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Camera,
@@ -83,21 +83,19 @@ export function PhotoAnalysisTab({ leadId }: { leadId: string }) {
   const [linkCopied, setLinkCopied] = useState(false)
   const [selectedPhoto, setSelectedPhoto] = useState<PropertyPhoto | null>(null)
 
-  const fetchData = useCallback(async () => {
-    setLoading(true)
+  const fetchData = useCallback(async (showLoader = false) => {
+    if (showLoader) setLoading(true)
     try {
       const [photosRes, leadRes] = await Promise.all([
         fetch(`/api/vendor-leads/${leadId}/photos`),
         fetch(`/api/vendor-leads/${leadId}`),
       ])
 
-      // Photos — always parse JSON (route now returns { photos: [] } even on error)
       const photosData = await photosRes.json().catch(() => ({ photos: [] }))
       if (!photosRes.ok) {
         console.error("[PhotoAnalysisTab] photos fetch failed:", photosRes.status, photosData)
       }
 
-      // Lead data — non-fatal: if it fails, fall back to defaults so photos still show
       let leadFull: Record<string, any> = {}
       if (leadRes.ok) {
         leadFull = await leadRes.json()
@@ -106,7 +104,19 @@ export function PhotoAnalysisTab({ leadId }: { leadId: string }) {
         console.error("[PhotoAnalysisTab] lead fetch failed:", leadRes.status, text)
       }
 
-      setPhotos(photosData.photos ?? [])
+      // Preserve existing signed URLs to prevent image flicker on polls —
+      // only replace the URL when a photo is newly analysed or newly added.
+      setPhotos((prev) => {
+        const prevMap = Object.fromEntries(prev.map((p) => [p.id, p]))
+        return (photosData.photos ?? []).map((p: PropertyPhoto) => {
+          const existing = prevMap[p.id]
+          if (existing && existing.aiAnalysedAt === p.aiAnalysedAt && existing.url) {
+            return { ...p, url: existing.url }
+          }
+          return p
+        })
+      })
+
       setLeadData({
         photoConditionScore: leadFull.photoConditionScore ?? null,
         photoConditionOverride: leadFull.photoConditionOverride ?? null,
@@ -117,18 +127,27 @@ export function PhotoAnalysisTab({ leadId }: { leadId: string }) {
       })
     } catch (err) {
       console.error("[PhotoAnalysisTab] fetchData error:", err)
-      toast.error("Failed to load photos")
+      if (showLoader) toast.error("Failed to load photos")
     } finally {
-      setLoading(false)
+      if (showLoader) setLoading(false)
     }
   }, [leadId])
 
-  useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => { fetchData(true) }, [fetchData])
 
-  // Poll while analysis is running
+  // Poll while analysis is running — no loader, no image flicker
+  const prevStatusRef = useRef<string | null>(null)
+  useEffect(() => {
+    const status = leadData?.photoAnalysisStatus ?? null
+    if (prevStatusRef.current === "running" && status === "complete") {
+      toast.success("Analysis complete!")
+    }
+    prevStatusRef.current = status
+  }, [leadData?.photoAnalysisStatus])
+
   useEffect(() => {
     if (leadData?.photoAnalysisStatus !== "running") return
-    const interval = setInterval(fetchData, 5000)
+    const interval = setInterval(() => fetchData(false), 3000)
     return () => clearInterval(interval)
   }, [leadData?.photoAnalysisStatus, fetchData])
 
@@ -164,7 +183,7 @@ export function PhotoAnalysisTab({ leadId }: { leadId: string }) {
       await fetch(`/api/vendor-leads/${leadId}/photos/analyse`, { method: "POST" })
       toast.success("Analysis started — this may take a minute")
       setLeadData((prev) => prev ? { ...prev, photoAnalysisStatus: "running" } : prev)
-      setTimeout(fetchData, 3000)
+      setTimeout(() => fetchData(false), 3000)
     } catch {
       toast.error("Failed to start analysis")
     } finally {
