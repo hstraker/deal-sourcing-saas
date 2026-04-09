@@ -67,6 +67,7 @@ import { invalidateComparablesCache } from "./vendor-comparables-tab"
 import { OfferAnalysisModal } from "./offer-analysis-modal"
 import { VendorLeadDetailModal } from "./vendor-lead-detail-modal"
 import { AiConversationModal } from "./ai-conversation-modal"
+import { PhotoAnalysisModal } from "./photo-analysis-modal"
 import {
   Tooltip,
   TooltipContent,
@@ -2687,12 +2688,9 @@ export function VendorLeadsTable() {
 
       {/* Photo Analysis Modal */}
       {photoModalLead && (
-        <VendorLeadDetailModal
+        <PhotoAnalysisModal
           lead={photoModalLead}
-          open={!!photoModalLead}
-          onOpenChange={(open) => { if (!open) setPhotoModalLead(null) }}
-          onUpdate={() => { fetchLeads(); setPhotoModalLead(null) }}
-          initialTab="photo-analysis"
+          onClose={() => setPhotoModalLead(null)}
         />
       )}
 
