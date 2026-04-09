@@ -9,6 +9,10 @@ import {
   CheckCircle2,
   Shield,
   Sparkles,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -29,7 +33,71 @@ interface LivePhoto {
   aiAnalysedAt: string | null
 }
 
-function buildSummary(photos: LivePhoto[]): string | null {
+interface SummaryBox {
+  conditionKey: string
+  title: string
+  body: string
+  action: string
+  colorClass: {
+    border: string
+    bg: string
+    title: string
+    body: string
+    actionLabel: string
+    actionText: string
+    icon: string
+  }
+}
+
+const SUMMARY_STYLES: Record<string, SummaryBox["colorClass"]> = {
+  excellent: {
+    border: "border-green-500/40",
+    bg: "bg-green-950/30",
+    title: "text-green-400",
+    body: "text-green-100/80",
+    actionLabel: "text-green-500/70",
+    actionText: "text-green-300 font-semibold",
+    icon: "text-green-400",
+  },
+  good: {
+    border: "border-blue-500/40",
+    bg: "bg-blue-950/30",
+    title: "text-blue-400",
+    body: "text-blue-100/80",
+    actionLabel: "text-blue-500/70",
+    actionText: "text-blue-300 font-semibold",
+    icon: "text-blue-400",
+  },
+  needs_work: {
+    border: "border-amber-500/40",
+    bg: "bg-amber-950/30",
+    title: "text-amber-400",
+    body: "text-amber-100/80",
+    actionLabel: "text-amber-500/70",
+    actionText: "text-amber-300 font-semibold",
+    icon: "text-amber-400",
+  },
+  needs_modernisation: {
+    border: "border-orange-500/40",
+    bg: "bg-orange-950/30",
+    title: "text-orange-400",
+    body: "text-orange-100/80",
+    actionLabel: "text-orange-500/70",
+    actionText: "text-orange-300 font-semibold",
+    icon: "text-orange-400",
+  },
+  poor: {
+    border: "border-red-500/40",
+    bg: "bg-red-950/30",
+    title: "text-red-400",
+    body: "text-red-100/80",
+    actionLabel: "text-red-500/70",
+    actionText: "text-red-300 font-semibold",
+    icon: "text-red-400",
+  },
+}
+
+function buildSummaryBox(photos: LivePhoto[], conditionKey: string): SummaryBox | null {
   const analysed = photos.filter((p) => p.aiAnalysedAt && p.aiCondition)
   if (analysed.length === 0) return null
 
@@ -38,37 +106,51 @@ function buildSummary(photos: LivePhoto[]): string | null {
   const worstPhotos = analysed.filter(
     (p) => p.aiCondition === "poor" || p.aiCondition === "needs_modernisation"
   )
-  const goodPhotos = analysed.filter(
-    (p) => p.aiCondition === "excellent" || p.aiCondition === "good"
+  const avgScore = Math.round(
+    analysed.reduce((s, p) => s + (p.aiConditionScore ?? 0), 0) / analysed.length
   )
 
-  const parts: string[] = []
+  const roomList = rooms.map((r) => r.replace(/_/g, " ")).join(", ")
+  const issueList = allIssues.slice(0, 5).map((i) => i.replace(/_/g, " ")).join(", ")
 
-  if (rooms.length > 0) {
-    parts.push(
-      `${analysed.length} room${analysed.length !== 1 ? "s" : ""} assessed: ${rooms.map((r) => r.replace(/_/g, " ")).join(", ")}.`
-    )
+  const styles = SUMMARY_STYLES[conditionKey] ?? SUMMARY_STYLES["needs_work"]
+
+  const TITLES: Record<string, string> = {
+    excellent:           "EXCELLENT CONDITION — MOVE QUICKLY",
+    good:                "GOOD CONDITION — SOLID OPPORTUNITY",
+    needs_work:          "WORK NEEDED — NEGOTIATE DISCOUNT",
+    needs_modernisation: "MODERNISATION REQUIRED — PRICE ACCORDINGLY",
+    poor:                "POOR CONDITION — DEEP DISCOUNT REQUIRED",
   }
 
-  if (worstPhotos.length === 0 && goodPhotos.length > 0) {
-    parts.push("Property appears to be in generally good condition throughout.")
-  } else if (worstPhotos.length > 0) {
-    const worstRooms = worstPhotos
-      .map((p) => p.aiRoomType?.replace(/_/g, " "))
-      .filter(Boolean)
-      .join(", ")
-    parts.push(`Significant work required in: ${worstRooms}.`)
+  const ACTIONS: Record<string, string> = {
+    excellent:           "Property is well presented. Justify your offer with condition data and move fast.",
+    good:                "Good condition supports the asking price. Minor negotiation room only.",
+    needs_work:          "Factor in refurb costs when negotiating. Aim for a discount reflecting works required.",
+    needs_modernisation: "Full modernisation needed. Secure a significant discount to make numbers work.",
+    poor:                "Structural or cosmetic issues identified. Insist on a deep discount or walk away.",
   }
 
-  if (allIssues.length > 0) {
-    parts.push(
-      `Issues noted: ${allIssues.slice(0, 5).map((i) => i.replace(/_/g, " ")).join(", ")}.`
-    )
-  } else if (analysed.length > 0) {
-    parts.push("No major issues identified from the photos provided.")
+  let body = `${analysed.length} room${analysed.length !== 1 ? "s" : ""} assessed`
+  if (roomList) body += ` (${roomList})`
+  body += `. Average score: ${avgScore}/100.`
+  if (worstPhotos.length > 0) {
+    const worstRooms = worstPhotos.map((p) => p.aiRoomType?.replace(/_/g, " ")).filter(Boolean).join(", ")
+    body += ` Work required in: ${worstRooms}.`
+  }
+  if (issueList) {
+    body += ` Issues noted: ${issueList}.`
+  } else {
+    body += " No major issues identified."
   }
 
-  return parts.join(" ") || null
+  return {
+    conditionKey,
+    title: TITLES[conditionKey] ?? "CONDITION ASSESSED",
+    body,
+    action: ACTIONS[conditionKey] ?? "",
+    colorClass: styles,
+  }
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -108,16 +190,16 @@ function conditionFromScore(score: number | null): string {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  pending:   "Not started",
-  running:   "Analysing…",
-  completed: "Complete",
-  failed:    "Failed",
+  pending:  "Not started",
+  running:  "Analysing…",
+  complete: "Complete",
+  failed:   "Failed",
 }
 const STATUS_COLOURS: Record<string, string> = {
-  pending:   "text-slate-400",
-  running:   "text-amber-400",
-  completed: "text-green-400",
-  failed:    "text-red-400",
+  pending:  "text-slate-400",
+  running:  "text-amber-400",
+  complete: "text-green-400",
+  failed:   "text-red-400",
 }
 
 // ─── component ───────────────────────────────────────────────────────────────
@@ -290,21 +372,39 @@ export function PhotoAnalysisModal({
         )}
       </div>
 
-      {/* AI Summary */}
+      {/* AI Summary Box */}
       {(() => {
-        const summary = buildSummary(livePhotos)
-        if (!summary) return null
+        const box = buildSummaryBox(livePhotos, conditionKey)
+        if (!box) return null
+        const c = box.colorClass
+        const Icon =
+          conditionKey === "excellent" ? CheckCircle
+          : conditionKey === "good"    ? CheckCircle
+          : conditionKey === "poor"    ? XCircle
+          : AlertTriangle
         return (
           <>
-            <div className="mb-4 h-px bg-white/10" />
-            <div className="mb-4 space-y-2">
-              <div className="flex items-center gap-1.5">
-                <Sparkles className="h-3 w-3 text-slate-500" />
-                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
-                  Sourcer Summary
+            <div className="mb-3 h-px bg-white/10" />
+            <p className="mb-2 text-[9px] font-bold uppercase tracking-widest text-slate-500">
+              Sourcer Summary
+            </p>
+            <div className={cn("rounded-lg border p-3 space-y-2.5", c.border, c.bg)}>
+              {/* Title row */}
+              <div className="flex items-start gap-2">
+                <Icon className={cn("h-4 w-4 shrink-0 mt-0.5", c.icon)} />
+                <p className={cn("text-[11px] font-bold leading-snug", c.title)}>
+                  {box.title}
                 </p>
               </div>
-              <p className="text-[11px] leading-relaxed text-slate-300">{summary}</p>
+              {/* Body */}
+              <p className={cn("text-[11px] leading-relaxed", c.body)}>{box.body}</p>
+              {/* Action */}
+              <div className="pt-1 border-t border-white/10">
+                <p className={cn("text-[9px] font-bold uppercase tracking-widest mb-1", c.actionLabel)}>
+                  Action
+                </p>
+                <p className={cn("text-[11px] leading-snug", c.actionText)}>{box.action}</p>
+              </div>
             </div>
           </>
         )
