@@ -1062,6 +1062,7 @@ function ActionsCell({
   onArchive,
   onDelete,
   checkAction,
+  extraActions,
 }: {
   lead: VendorLead
   onView: () => void
@@ -1069,6 +1070,7 @@ function ActionsCell({
   onArchive: () => void
   onDelete: () => void
   checkAction?: CheckAction
+  extraActions?: CheckAction[]
 }) {
   return (
     <td className="sticky right-0 z-10 bg-white px-4 py-[11px] group-hover:bg-[#f3f4f6]">
@@ -1082,6 +1084,9 @@ function ActionsCell({
             spinning={checkAction.loading}
           />
         )}
+        {extraActions?.map((a, i) => (
+          <ActionBtn key={i} icon={a.loading ? Loader2 : a.icon} title={a.title} onClick={a.onClick} primary spinning={a.loading} />
+        ))}
         <ActionBtn icon={Eye} title="View" onClick={onView} />
         <ActionBtn icon={Pencil} title="Edit" onClick={onEdit} />
         <ActionBtn icon={Archive} title="Mark Dead & Archive" onClick={onArchive} />
@@ -1681,16 +1686,6 @@ function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, isSelecte
       })()
     : null
 
-  const actionLabel =
-    status === "running"   ? "Analysing…" :
-    status === "completed" ? "View Analysis" :
-                             "Upload Photos"
-
-  const actionColour =
-    status === "running"   ? "bg-amber-100 text-amber-700 border-amber-300" :
-    status === "completed" ? "bg-green-100 text-green-700 border-green-300" :
-                             "bg-gray-100 text-gray-600 border-gray-300"
-
   return (
     <tr
       className={cn("group cursor-pointer border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}
@@ -1723,20 +1718,17 @@ function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, isSelecte
         <span className="text-xs text-gray-500">{analysedAt ?? <span className="text-gray-400">—</span>}</span>
       </Td>
 
-      {/* Action button */}
-      <Td>
-        <button
-          onClick={(e) => { e.stopPropagation(); onView() }}
-          className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-opacity hover:opacity-80", actionColour)}
-        >
-          {status === "running" && <Loader2 className="h-3 w-3 animate-spin" />}
-          {status === "completed" && <Sparkles className="h-3 w-3" />}
-          {status !== "running" && status !== "completed" && <Camera className="h-3 w-3" />}
-          {actionLabel}
-        </button>
-      </Td>
-
-      <ActionsCell lead={lead} onView={onView} onEdit={onEdit} onArchive={onArchive} onDelete={onDelete} />
+      <ActionsCell
+        lead={lead}
+        onView={onView}
+        onEdit={onEdit}
+        onArchive={onArchive}
+        onDelete={onDelete}
+        extraActions={[
+          { icon: Camera,   title: "Upload Photos",  onClick: onView },
+          { icon: Sparkles, title: "Run Analysis",   onClick: onView },
+        ]}
+      />
     </tr>
   )
 }
@@ -1910,7 +1902,6 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
         <Th>Status</Th>
         <Th><Tip text="AI-assessed property condition from photo analysis">Condition</Tip></Th>
         <Th><Tip text="When AI photo analysis was last completed">Last Analysed</Tip></Th>
-        <Th><Tip text="Start or view photo analysis">Action</Tip></Th>
         {stickyRight}
       </tr>
 
