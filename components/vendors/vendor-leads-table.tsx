@@ -1702,21 +1702,39 @@ function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, isSelecte
 
       {/* Condition */}
       <Td>
-        {status === "complete" || lead.photoConditionOverride ? (
-          <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium", PHOTO_CONDITION_COLOURS[conditionKey] ?? "bg-gray-100 text-gray-600 border-gray-200")}>
-            {PHOTO_CONDITION_LABELS[conditionKey] ?? "Unknown"}
-            {lead.photoConditionScore != null && !lead.photoConditionOverride && (
-              <span className="ml-1 opacity-60">{lead.photoConditionScore}</span>
-            )}
-          </span>
-        ) : (
+        {status === "complete" || lead.photoConditionOverride ? (() => {
+          const scoreExplain =
+            conditionKey === "excellent"           ? "80–100: Move-in ready, no work needed" :
+            conditionKey === "good"                ? "65–79: Minor cosmetic work only" :
+            conditionKey === "needs_work"          ? "50–64: Refurb required — negotiate a discount" :
+            conditionKey === "needs_modernisation" ? "30–49: Full modernisation needed — significant discount required" :
+            conditionKey === "poor"                ? "0–29: Major works or structural issues — deep discount essential" :
+            ""
+          const tooltip = lead.photoConditionScore != null
+            ? `AI score: ${lead.photoConditionScore}/100. ${scoreExplain}${lead.photoConditionOverride ? " (manually overridden)" : ""}`
+            : scoreExplain
+          return (
+            <span
+              title={tooltip}
+              className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium cursor-help", PHOTO_CONDITION_COLOURS[conditionKey] ?? "bg-gray-100 text-gray-600 border-gray-200")}
+            >
+              {PHOTO_CONDITION_LABELS[conditionKey] ?? "Unknown"}
+              {lead.photoConditionScore != null && !lead.photoConditionOverride && (
+                <span className="ml-1 opacity-60">{lead.photoConditionScore}</span>
+              )}
+            </span>
+          )
+        })() : (
           <span className="text-xs text-gray-400">—</span>
         )}
       </Td>
 
       {/* Last Analysed */}
       <Td>
-        <span className="text-xs text-gray-500">{analysedAt ?? <span className="text-gray-400">—</span>}</span>
+        <span
+          title={lead.photoAnalysisCompletedAt ? `Analysis completed: ${new Date(lead.photoAnalysisCompletedAt).toLocaleString()}` : undefined}
+          className="text-xs text-gray-500 cursor-help"
+        >{analysedAt ?? <span className="text-gray-400">—</span>}</span>
       </Td>
 
       <ActionsCell
