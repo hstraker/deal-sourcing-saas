@@ -34,7 +34,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const photo = await prisma.propertyPhoto.create({
       data: {
         vendorLeadId: lead.id,
-        source: "sourcer_upload",
+        source: "vendor_upload",
         s3Key,
         url: getPublicUrl(s3Key),
         filename,
