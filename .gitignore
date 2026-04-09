@@ -40,7 +40,8 @@ yarn-error.log*
 next-env.d.ts
 
 # prisma
-/prisma/migrations
+# migrations are tracked in git so the server can run prisma migrate deploy
+# /prisma/migrations
 
 .superpowers/
 push.sh
