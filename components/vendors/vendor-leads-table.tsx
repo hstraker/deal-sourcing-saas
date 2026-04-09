@@ -197,7 +197,8 @@ export interface VendorLead {
     aiResponseMetadata?: Record<string, any> | null
     confidenceScore?: number | null
   }>
-  _count?: { smsMessages: number; pipelineEvents: number; photos: number }
+  _count?: { smsMessages: number; pipelineEvents: number }
+  photos?: { id: string }[]
   photoAnalysisStatus?: string | null
   photoConditionScore?: number | null
   photoConditionOverride?: string | null
@@ -1671,7 +1672,7 @@ function conditionFromPhotoScore(score: number | null): string {
 }
 
 function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
-  const photoCount  = lead._count?.photos ?? 0
+  const photoCount  = lead.photos?.length ?? 0
   const status      = lead.photoAnalysisStatus ?? "pending"
   const conditionKey = lead.photoConditionOverride
     ?? conditionFromPhotoScore(lead.photoConditionScore ?? null)

@@ -94,8 +94,10 @@ export async function GET(request: NextRequest) {
             select: {
               smsMessages: true,
               pipelineEvents: true,
-              photos: true,
             },
+          },
+          photos: {
+            select: { id: true },
           },
         },
         orderBy: { createdAt: "desc" },
