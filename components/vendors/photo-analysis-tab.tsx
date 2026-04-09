@@ -74,7 +74,13 @@ function conditionFromScore(score: number | null): string {
   return "poor"
 }
 
-export function PhotoAnalysisTab({ leadId }: { leadId: string }) {
+export function PhotoAnalysisTab({
+  leadId,
+  onDataLoaded,
+}: {
+  leadId: string
+  onDataLoaded?: (photos: PropertyPhoto[], leadData: LeadPhotoData) => void
+}) {
   const [photos, setPhotos] = useState<PropertyPhoto[]>([])
   const [leadData, setLeadData] = useState<LeadPhotoData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -117,14 +123,18 @@ export function PhotoAnalysisTab({ leadId }: { leadId: string }) {
         })
       })
 
-      setLeadData({
+      const newLeadData: LeadPhotoData = {
         photoConditionScore: leadFull.photoConditionScore ?? null,
         photoConditionOverride: leadFull.photoConditionOverride ?? null,
         photoAnalysisStatus: leadFull.photoAnalysisStatus ?? "pending",
         photoAnalysisCompletedAt: leadFull.photoAnalysisCompletedAt ?? null,
         photoUploadToken: leadFull.photoUploadToken ?? null,
         photoUploadExpiresAt: leadFull.photoUploadExpiresAt ?? null,
-      })
+      }
+      setLeadData(newLeadData)
+      if (onDataLoaded) {
+        onDataLoaded(photosData.photos ?? [], newLeadData)
+      }
     } catch (err) {
       console.error("[PhotoAnalysisTab] fetchData error:", err)
       if (showLoader) toast.error("Failed to load photos")
@@ -228,6 +238,7 @@ export function PhotoAnalysisTab({ leadId }: { leadId: string }) {
   const effectiveCondition = leadData?.photoConditionOverride ?? aiConditionLabel
   const hasUnanalysed = photos.some((p) => !p.aiAnalysedAt)
   const isRunning = leadData?.photoAnalysisStatus === "running"
+  const isComplete = leadData?.photoAnalysisStatus === "complete"
 
   return (
     <div className="space-y-4">
@@ -385,14 +396,21 @@ export function PhotoAnalysisTab({ leadId }: { leadId: string }) {
               )}
               {/* Score badge top-right */}
               {photo.aiConditionScore != null ? (
-                <div className={cn(
-                  "absolute top-1 right-1 text-[10px] font-bold px-1.5 py-0.5 rounded shadow",
-                  CONDITION_COLOURS[photo.aiCondition ?? ""] ?? "bg-gray-100 text-gray-700"
-                )}>
+                <div
+                  title={`${CONDITION_LABELS[photo.aiCondition ?? ""] ?? "Unknown"} — ${photo.aiConditionScore}/100. Scores: 80–100 Excellent, 65–79 Good, 50–64 Needs Work, 30–49 Needs Modernisation, 0–29 Poor.`}
+                  className={cn(
+                    "absolute top-1 right-1 text-[10px] font-bold px-1.5 py-0.5 rounded shadow cursor-help",
+                    CONDITION_COLOURS[photo.aiCondition ?? ""] ?? "bg-gray-100 text-gray-700"
+                  )}
+                >
                   {photo.aiConditionScore}
                 </div>
+              ) : isComplete ? (
+                <div title="Analysis failed for this photo — click Analyse Photos to retry" className="absolute top-1 right-1 bg-red-500 rounded-full p-0.5">
+                  <AlertTriangle className="h-3 w-3 text-white" />
+                </div>
               ) : (
-                <div className="absolute top-1 right-1 bg-amber-400 rounded-full p-0.5">
+                <div title="Not yet analysed" className="absolute top-1 right-1 bg-amber-400 rounded-full p-0.5">
                   <AlertTriangle className="h-3 w-3 text-white" />
                 </div>
               )}
@@ -439,9 +457,11 @@ export function PhotoAnalysisTab({ leadId }: { leadId: string }) {
             </div>
           )}
           {!selectedPhoto.aiAnalysedAt && (
-            <p className="text-xs text-amber-600 flex items-center gap-1">
+            <p className={cn("text-xs flex items-center gap-1", isComplete ? "text-red-600" : "text-amber-600")}>
               <AlertTriangle className="h-3.5 w-3.5" />
-              Not yet analysed — click "Analyse Photos" to run AI analysis
+              {isComplete
+                ? "Analysis failed for this photo — click \"Analyse Photos\" to retry"
+                : "Not yet analysed — click \"Analyse Photos\" to run AI analysis"}
             </p>
           )}
         </div>

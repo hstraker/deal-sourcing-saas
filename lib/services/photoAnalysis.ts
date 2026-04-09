@@ -122,7 +122,10 @@ export async function analyseVendorLeadPhotos(vendorLeadId: string): Promise<voi
       try {
         await analysePropertyPhoto(photo.id)
       } catch (err) {
-        console.error(`Failed to analyse photo ${photo.id}:`, err)
+        console.error(
+          `[photoAnalysis] Failed to analyse photo ${photo.id} (s3Key: ${photo.s3Key}):`,
+          err instanceof Error ? err.message : err
+        )
       }
     }
 

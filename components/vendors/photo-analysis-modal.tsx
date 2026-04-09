@@ -18,6 +18,59 @@ import { ModalShell } from "./modal-shell"
 import { PhotoAnalysisTab } from "./photo-analysis-tab"
 import type { VendorLead } from "./vendor-leads-table"
 
+// ─── summary helper ───────────────────────────────────────────────────────────
+
+interface LivePhoto {
+  aiRoomType: string | null
+  aiCondition: string | null
+  aiConditionScore: number | null
+  aiIssues: string[]
+  aiDescription: string | null
+  aiAnalysedAt: string | null
+}
+
+function buildSummary(photos: LivePhoto[]): string | null {
+  const analysed = photos.filter((p) => p.aiAnalysedAt && p.aiCondition)
+  if (analysed.length === 0) return null
+
+  const rooms = [...new Set(analysed.map((p) => p.aiRoomType).filter(Boolean))] as string[]
+  const allIssues = [...new Set(analysed.flatMap((p) => p.aiIssues ?? []))]
+  const worstPhotos = analysed.filter(
+    (p) => p.aiCondition === "poor" || p.aiCondition === "needs_modernisation"
+  )
+  const goodPhotos = analysed.filter(
+    (p) => p.aiCondition === "excellent" || p.aiCondition === "good"
+  )
+
+  const parts: string[] = []
+
+  if (rooms.length > 0) {
+    parts.push(
+      `${analysed.length} room${analysed.length !== 1 ? "s" : ""} assessed: ${rooms.map((r) => r.replace(/_/g, " ")).join(", ")}.`
+    )
+  }
+
+  if (worstPhotos.length === 0 && goodPhotos.length > 0) {
+    parts.push("Property appears to be in generally good condition throughout.")
+  } else if (worstPhotos.length > 0) {
+    const worstRooms = worstPhotos
+      .map((p) => p.aiRoomType?.replace(/_/g, " "))
+      .filter(Boolean)
+      .join(", ")
+    parts.push(`Significant work required in: ${worstRooms}.`)
+  }
+
+  if (allIssues.length > 0) {
+    parts.push(
+      `Issues noted: ${allIssues.slice(0, 5).map((i) => i.replace(/_/g, " ")).join(", ")}.`
+    )
+  } else if (analysed.length > 0) {
+    parts.push("No major issues identified from the photos provided.")
+  }
+
+  return parts.join(" ") || null
+}
+
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 function InfoRow({ label, value, valueClass }: { label: string; value: React.ReactNode; valueClass?: string }) {
@@ -79,11 +132,20 @@ export function PhotoAnalysisModal({
   const [refreshKey, setRefreshKey]   = useState(0)
   const [uploading, setUploading]     = useState(false)
   const [uploadCount, setUploadCount] = useState(0)
+  const [livePhotos, setLivePhotos]   = useState<LivePhoto[]>([])
+  const [liveStatus, setLiveStatus]   = useState<string>(lead.photoAnalysisStatus ?? "pending")
+  const [liveScore, setLiveScore]     = useState<number | null>(lead.photoConditionScore ?? null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const status       = lead.photoAnalysisStatus ?? "pending"
+  const handleDataLoaded = useCallback((photos: LivePhoto[], leadData: { photoAnalysisStatus: string; photoConditionScore: number | null; photoConditionOverride: string | null; photoAnalysisCompletedAt: string | null }) => {
+    setLivePhotos(photos)
+    setLiveStatus(leadData.photoAnalysisStatus)
+    setLiveScore(leadData.photoConditionScore)
+  }, [])
+
+  const status       = liveStatus
   const conditionKey = lead.photoConditionOverride
-    ?? conditionFromScore(lead.photoConditionScore ?? null)
+    ?? conditionFromScore(liveScore ?? lead.photoConditionScore ?? null)
   const analysedAt   = lead.photoAnalysisCompletedAt
     ? (() => {
         const days = Math.floor((Date.now() - new Date(lead.photoAnalysisCompletedAt!).getTime()) / 86400000)
@@ -220,13 +282,33 @@ export function PhotoAnalysisModal({
             <span className="text-[10px] text-amber-400">Override</span>
           )}
         </div>
-        {status === "completed" && (
+        {status === "complete" && (
           <div className="flex items-center gap-1 text-[10px] text-slate-500">
             <Sparkles className="h-3 w-3" />
             AI assessed from photos
           </div>
         )}
       </div>
+
+      {/* AI Summary */}
+      {(() => {
+        const summary = buildSummary(livePhotos)
+        if (!summary) return null
+        return (
+          <>
+            <div className="mb-4 h-px bg-white/10" />
+            <div className="mb-4 space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="h-3 w-3 text-slate-500" />
+                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                  Sourcer Summary
+                </p>
+              </div>
+              <p className="text-[11px] leading-relaxed text-slate-300">{summary}</p>
+            </div>
+          </>
+        )
+      })()}
 
       {/* Pipeline stage — pinned to bottom */}
       <div className="mt-auto border-t border-white/10 pt-3">
@@ -286,7 +368,7 @@ export function PhotoAnalysisModal({
 
       {/* Right panel body — PhotoAnalysisTab handles everything else */}
       <div className="flex-1 overflow-y-auto p-4">
-        <PhotoAnalysisTab key={refreshKey} leadId={lead.id} />
+        <PhotoAnalysisTab key={refreshKey} leadId={lead.id} onDataLoaded={handleDataLoaded} />
       </div>
 
     </ModalShell>
