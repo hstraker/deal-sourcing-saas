@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { X, Phone, Mail, TrendingUp, Home, AlertTriangle } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { X, Phone, Mail, TrendingUp, Home, AlertTriangle, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -90,6 +91,7 @@ export function OfferAnalysisModal({
   lead: VendorLead
   onClose: () => void
 }) {
+  const router = useRouter()
   const [offerResult, setOfferResult] = useState<OfferCalculationResult | null>(null)
 
   // Stable callback — won't trigger useCallback re-runs in the panel
@@ -401,6 +403,22 @@ export function OfferAnalysisModal({
 
   return (
     <ModalShell onClose={onClose} leftPanel={leftPanel} maxWidth="5xl">
+      {/* Full deal page banner — shown when a deal record exists */}
+      {lead.dealId && (
+        <div className="flex items-center justify-between gap-3 border-b border-blue-100 bg-blue-50 px-5 py-2.5">
+          <p className="text-xs text-blue-700">
+            This lead has a linked deal with full financial analysis, investor matching and more.
+          </p>
+          <button
+            onClick={() => { onClose(); router.push(`/dashboard/deals/${lead.dealId}`) }}
+            className="flex shrink-0 items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-blue-700"
+          >
+            <ExternalLink className="h-3 w-3" />
+            View Full Deal Page
+          </button>
+        </div>
+      )}
+
       {/* Close button */}
       <div className="-mr-1 -mt-1 flex justify-end p-4 pb-0">
         <button

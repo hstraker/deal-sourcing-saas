@@ -2443,7 +2443,12 @@ export function VendorLeadsTable() {
                     } else if (activeTab === "comparable") {
                       setComparableModalLead(lead)
                     } else if (activeTab === "offer-analysis") {
-                      setOfferModalLead(lead)
+                      // If a deal has been created, go to the full deal page — it has all the data
+                      if (lead.dealId) {
+                        router.push(`/dashboard/deals/${lead.dealId}`)
+                      } else {
+                        setOfferModalLead(lead)
+                      }
                     } else if (activeTab === "ai-conversation") {
                       setAiConvoModalLead(lead)
                     } else {
