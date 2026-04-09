@@ -66,6 +66,7 @@ import {
   FileText,
   Send,
   TrendingDown,
+  Camera,
 } from "lucide-react"
 import { PipelineStage } from "@prisma/client"
 import { cn } from "@/lib/utils"
@@ -78,6 +79,7 @@ import { SolicitorSelector, type Solicitor as SolicitorType } from "@/components
 import { PortalCheckDetailPanel } from "./portal-check-detail-panel"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { AiConversationTab } from "./ai-conversation-tab"
+import { PhotoAnalysisTab } from "./photo-analysis-tab"
 import { SourcingFeePanel } from "./sourcing-fee-panel"
 import { InvestorMatchPanel } from "./investor-match-panel"
 
@@ -205,7 +207,7 @@ interface VendorLeadDetailModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onUpdate?: () => void
-  initialTab?: "details" | "portal-check" | "comparables" | "ai-conversation" | "activity" | "deal-pl"
+  initialTab?: "details" | "portal-check" | "comparables" | "ai-conversation" | "activity" | "deal-pl" | "photo-analysis"
   alertReason?: string
   alertUrgency?: "high" | "medium" | "low"
 }
@@ -1439,6 +1441,15 @@ export function VendorLeadDetailModal({
               )}
             </TabsTrigger>
 
+            {/* 7 — Photo Analysis */}
+            <TabsTrigger
+              value="photo-analysis"
+              className="flex items-center gap-1 text-xs px-2.5 py-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm"
+            >
+              <Camera className="h-3.5 w-3.5" />
+              <span>Photos</span>
+            </TabsTrigger>
+
           </TabsList>
 
           <TabsContent value="details" className="flex-1 overflow-y-auto min-h-0 space-y-4 pt-2 pb-6 px-0.5">
@@ -2559,6 +2570,11 @@ export function VendorLeadDetailModal({
                 }}
               />
             </div>
+          </TabsContent>
+
+          {/* ── Photo Analysis Tab ───────────────────────────────────────────── */}
+          <TabsContent value="photo-analysis" className="flex-1 overflow-y-auto min-h-0 pt-2 pb-6 px-0.5">
+            <PhotoAnalysisTab leadId={lead.id} />
           </TabsContent>
         </Tabs>
       </DialogContent>

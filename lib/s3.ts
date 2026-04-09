@@ -118,4 +118,30 @@ export async function getSignedUploadUrl(
   }
 }
 
+/**
+ * Fetch an S3 object and return it as a base64 string (for AI vision APIs).
+ */
+export async function fetchS3ObjectAsBase64(key: string): Promise<{ base64: string; contentType: string }> {
+  const command = new GetObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: key,
+  })
+  const response = await s3Client.send(command)
+  if (!response.Body) throw new Error(`No body returned for S3 key: ${key}`)
+  const bytes = await response.Body.transformToByteArray()
+  const base64 = Buffer.from(bytes).toString("base64")
+  const contentType = response.ContentType ?? "image/jpeg"
+  return { base64, contentType }
+}
 
+/**
+ * Fetch a public URL and return it as a base64 string (for AI vision APIs).
+ */
+export async function fetchUrlAsBase64(url: string): Promise<{ base64: string; contentType: string }> {
+  const response = await fetch(url)
+  if (!response.ok) throw new Error(`Failed to fetch URL: ${url} (${response.status})`)
+  const contentType = response.headers.get("content-type") ?? "image/jpeg"
+  const arrayBuffer = await response.arrayBuffer()
+  const base64 = Buffer.from(arrayBuffer).toString("base64")
+  return { base64, contentType }
+}

@@ -186,6 +186,18 @@ enum ReasonForSale {
   other
 }
 
+enum PhotoSource {
+  vendor_upload
+  portal_scrape
+}
+
+enum PhotoAnalysisStatus {
+  pending
+  running
+  complete
+  failed
+}
+
 // ============================================================================
 // PROPERTY SCRAPING ENUMS
 // ============================================================================
@@ -1067,6 +1079,15 @@ model VendorLead {
   bridgingCostOverride     Decimal?  @db.Decimal(10, 2) @map("bridging_cost_override")
   insuranceOverride        Decimal?  @db.Decimal(10, 2) @map("insurance_override")
 
+  // Photo Analysis
+  photoUploadToken        String?             @unique @map("photo_upload_token")
+  photoUploadExpiresAt    DateTime?           @map("photo_upload_expires_at")
+  photoConditionScore     Int?                @map("photo_condition_score")
+  photoConditionOverride  PropertyCondition?  @map("photo_condition_override")
+  photoAnalysisStatus     PhotoAnalysisStatus @default(pending) @map("photo_analysis_status")
+  photoAnalysisCompletedAt DateTime?          @map("photo_analysis_completed_at")
+  photoAnalysisNotes      String?             @map("photo_analysis_notes") @db.Text
+
   // Relations
   smsMessages          SMSMessage[]
   pipelineEvents       PipelineEvent[]
@@ -1074,6 +1095,7 @@ model VendorLead {
   comparableProperties ComparableProperty[]
   comparablesSnapshots ComparablesSnapshot[]
   portalChecks         VendorPropertyCheck[]
+  photos               PropertyPhoto[]
 
   @@index([pipelineStage])
   @@index([createdAt])
@@ -1619,6 +1641,7 @@ model PropertyListing {
   exports          PropertyExport[]
   alertMatches     AlertMatch[]
   watchlistEntries WatchlistProperty[]
+  scrapedPhotos    ScrapedPhoto[]
 
   @@unique([source, sourceId])
   @@index([category])
@@ -1975,4 +1998,59 @@ model UserTheme {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("user_themes")
+}
+
+// ============================================================================
+// PHOTO ANALYSIS MODELS
+// ============================================================================
+
+model PropertyPhoto {
+  id           String      @id @default(cuid())
+  vendorLeadId String      @map("vendor_lead_id")
+  vendorLead   VendorLead  @relation(fields: [vendorLeadId], references: [id], onDelete: Cascade)
+
+  source       PhotoSource
+  s3Key        String      @map("s3_key")
+  url          String      @db.Text
+  filename     String?
+  mimeType     String?     @map("mime_type")
+  sizeBytes    Int?        @map("size_bytes")
+
+  // AI Analysis
+  aiRoomType       String?  @map("ai_room_type")
+  aiCondition      String?  @map("ai_condition")
+  aiConditionScore Int?     @map("ai_condition_score")
+  aiIssues         String[] @map("ai_issues")
+  aiDescription    String?  @map("ai_description") @db.Text
+  aiAnalysedAt     DateTime? @map("ai_analysed_at")
+  aiRawResponse    Json?    @map("ai_raw_response")
+
+  sortOrder    Int      @default(0) @map("sort_order")
+  isDeleted    Boolean  @default(false) @map("is_deleted")
+  uploadedAt   DateTime @default(now()) @map("uploaded_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([vendorLeadId])
+  @@index([source])
+  @@map("property_photos")
+}
+
+model ScrapedPhoto {
+  id                 String          @id @default(cuid())
+  propertyListingId  String          @map("property_listing_id")
+  propertyListing    PropertyListing @relation(fields: [propertyListingId], references: [id], onDelete: Cascade)
+
+  url              String   @db.Text
+  sortOrder        Int      @default(0) @map("sort_order")
+
+  // AI Analysis
+  aiRoomType       String?  @map("ai_room_type")
+  aiCondition      String?  @map("ai_condition")
+  aiConditionScore Int?     @map("ai_condition_score")
+  aiIssues         String[] @map("ai_issues")
+  aiDescription    String?  @map("ai_description") @db.Text
+  aiAnalysedAt     DateTime? @map("ai_analysed_at")
+
+  @@index([propertyListingId])
+  @@map("scraped_photos")
 }
