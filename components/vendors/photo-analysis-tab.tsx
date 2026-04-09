@@ -295,31 +295,41 @@ export function PhotoAnalysisTab({ leadId }: { leadId: string }) {
 
       {/* ── Analyse Button ──────────────────────────────────────────────── */}
       {photos.length > 0 && (
-        <div className="flex items-center justify-between rounded-lg border bg-white px-4 py-3">
-          <div>
-            <p className="text-sm font-medium text-gray-800">
-              {photos.length} photo{photos.length !== 1 ? "s" : ""}
-            </p>
-            <p className="text-xs text-gray-500">
-              {isRunning
-                ? "Analysing…"
-                : hasUnanalysed
-                ? `${photos.filter((p) => !p.aiAnalysedAt).length} not yet analysed`
-                : "All analysed"}
-            </p>
+        <div className="rounded-lg border bg-white px-4 py-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-800">
+                {photos.length} photo{photos.length !== 1 ? "s" : ""}
+              </p>
+              <p className="text-xs text-gray-500">
+                {isRunning
+                  ? `Analysing… ${photos.filter((p) => p.aiAnalysedAt).length} of ${photos.length} done`
+                  : hasUnanalysed
+                  ? `${photos.filter((p) => !p.aiAnalysedAt).length} not yet analysed`
+                  : "All analysed"}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={triggerAnalysis}
+              disabled={analysing || isRunning || !hasUnanalysed}
+              className="text-xs"
+            >
+              {isRunning ? (
+                <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Analysing…</>
+              ) : (
+                <><Sparkles className="mr-1.5 h-3.5 w-3.5" />Analyse Photos</>
+              )}
+            </Button>
           </div>
-          <Button
-            size="sm"
-            onClick={triggerAnalysis}
-            disabled={analysing || isRunning || !hasUnanalysed}
-            className="text-xs"
-          >
-            {isRunning ? (
-              <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Analysing…</>
-            ) : (
-              <><Sparkles className="mr-1.5 h-3.5 w-3.5" />Analyse Photos</>
-            )}
-          </Button>
+          {isRunning && (
+            <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+              <div
+                className="bg-blue-500 h-1.5 rounded-full transition-all duration-500"
+                style={{ width: `${Math.round((photos.filter((p) => p.aiAnalysedAt).length / photos.length) * 100)}%` }}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -346,23 +356,23 @@ export function PhotoAnalysisTab({ leadId }: { leadId: string }) {
                 alt={photo.aiRoomType ?? "property photo"}
                 className="w-full aspect-square object-cover"
               />
-              {/* Overlay */}
-              {photo.aiCondition && (
+              {/* Room type label bottom */}
+              {photo.aiRoomType && (
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-white/90 capitalize">
-                      {photo.aiRoomType?.replace("_", " ") ?? ""}
-                    </span>
-                    <span className={cn(
-                      "text-[10px] px-1.5 py-0.5 rounded font-medium",
-                      CONDITION_COLOURS[photo.aiCondition] ?? "bg-gray-100 text-gray-700"
-                    )}>
-                      {photo.aiConditionScore}
-                    </span>
-                  </div>
+                  <span className="text-[10px] text-white/90 capitalize">
+                    {photo.aiRoomType.replace(/_/g, " ")}
+                  </span>
                 </div>
               )}
-              {!photo.aiAnalysedAt && (
+              {/* Score badge top-right */}
+              {photo.aiConditionScore != null ? (
+                <div className={cn(
+                  "absolute top-1 right-1 text-[10px] font-bold px-1.5 py-0.5 rounded shadow",
+                  CONDITION_COLOURS[photo.aiCondition ?? ""] ?? "bg-gray-100 text-gray-700"
+                )}>
+                  {photo.aiConditionScore}
+                </div>
+              ) : (
                 <div className="absolute top-1 right-1 bg-amber-400 rounded-full p-0.5">
                   <AlertTriangle className="h-3 w-3 text-white" />
                 </div>
