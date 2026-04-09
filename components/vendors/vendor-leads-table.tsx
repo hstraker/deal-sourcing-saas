@@ -197,7 +197,11 @@ export interface VendorLead {
     aiResponseMetadata?: Record<string, any> | null
     confidenceScore?: number | null
   }>
-  _count?: { smsMessages: number; pipelineEvents: number }
+  _count?: { smsMessages: number; pipelineEvents: number; photos: number }
+  photoAnalysisStatus?: string | null
+  photoConditionScore?: number | null
+  photoConditionOverride?: string | null
+  photoAnalysisCompletedAt?: string | null
   preferredChannel?: string | null  // "sms" | "whatsapp"
   // Sourcing Fee & Deal P&L
   sourcingFee?: string | number | null
@@ -1643,7 +1647,53 @@ function AiConversationRow({ lead, onView, onEdit, onArchive, onDelete, isSelect
   )
 }
 
+const PHOTO_CONDITION_COLOURS: Record<string, string> = {
+  excellent:           "bg-green-100 text-green-800 border-green-200",
+  good:                "bg-blue-100 text-blue-800 border-blue-200",
+  needs_work:          "bg-amber-100 text-amber-800 border-amber-200",
+  needs_modernisation: "bg-orange-100 text-orange-800 border-orange-200",
+  poor:                "bg-red-100 text-red-800 border-red-200",
+}
+const PHOTO_CONDITION_LABELS: Record<string, string> = {
+  excellent:           "Excellent",
+  good:                "Good",
+  needs_work:          "Needs Work",
+  needs_modernisation: "Needs Modernisation",
+  poor:                "Poor",
+}
+function conditionFromPhotoScore(score: number | null): string {
+  if (score === null) return "unknown"
+  if (score >= 80) return "excellent"
+  if (score >= 65) return "good"
+  if (score >= 50) return "needs_work"
+  if (score >= 30) return "needs_modernisation"
+  return "poor"
+}
+
 function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
+  const photoCount  = lead._count?.photos ?? 0
+  const status      = lead.photoAnalysisStatus ?? "pending"
+  const conditionKey = lead.photoConditionOverride
+    ?? conditionFromPhotoScore(lead.photoConditionScore ?? null)
+  const analysedAt  = lead.photoAnalysisCompletedAt
+    ? (() => {
+        const days = Math.floor((Date.now() - new Date(lead.photoAnalysisCompletedAt!).getTime()) / 86400000)
+        return days === 0 ? "Today" : days === 1 ? "Yesterday" : `${days}d ago`
+      })()
+    : null
+
+  const actionLabel =
+    status === "running"   ? "Analysing…" :
+    status === "completed" ? "View Analysis" :
+    photoCount > 0         ? "Analyse Photos" :
+                             "Upload Photos"
+
+  const actionColour =
+    status === "running"   ? "bg-amber-100 text-amber-700 border-amber-300" :
+    status === "completed" ? "bg-green-100 text-green-700 border-green-300" :
+    photoCount > 0         ? "bg-blue-100 text-blue-700 border-blue-300" :
+                             "bg-gray-100 text-gray-600 border-gray-300"
+
   return (
     <tr
       className={cn("group cursor-pointer border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}
@@ -1653,12 +1703,50 @@ function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, isSelecte
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
       <VendorAddressCell lead={lead} isSelected={isSelected} />
+
+      {/* Pipeline stage */}
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
+
+      {/* # Photos */}
       <Td>
-        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-500">
-          Click to analyse
+        <span className={cn("inline-flex items-center gap-1 font-mono text-xs font-semibold", photoCount > 0 ? "text-gray-900" : "text-gray-400")}>
+          <Camera className="h-3 w-3 shrink-0" />
+          {photoCount > 0 ? photoCount : "—"}
         </span>
       </Td>
+
+      {/* Condition */}
+      <Td>
+        {status === "completed" || lead.photoConditionOverride ? (
+          <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium", PHOTO_CONDITION_COLOURS[conditionKey] ?? "bg-gray-100 text-gray-600 border-gray-200")}>
+            {PHOTO_CONDITION_LABELS[conditionKey] ?? "Unknown"}
+            {lead.photoConditionScore != null && !lead.photoConditionOverride && (
+              <span className="ml-1 opacity-60">{lead.photoConditionScore}</span>
+            )}
+          </span>
+        ) : (
+          <span className="text-xs text-gray-400">—</span>
+        )}
+      </Td>
+
+      {/* Last Analysed */}
+      <Td>
+        <span className="text-xs text-gray-500">{analysedAt ?? <span className="text-gray-400">—</span>}</span>
+      </Td>
+
+      {/* Action button */}
+      <Td>
+        <button
+          onClick={(e) => { e.stopPropagation(); onView() }}
+          className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-opacity hover:opacity-80", actionColour)}
+        >
+          {status === "running" && <Loader2 className="h-3 w-3 animate-spin" />}
+          {status === "completed" && <Sparkles className="h-3 w-3" />}
+          {status !== "running" && status !== "completed" && <Camera className="h-3 w-3" />}
+          {actionLabel}
+        </button>
+      </Td>
+
       <ActionsCell lead={lead} onView={onView} onEdit={onEdit} onArchive={onArchive} onDelete={onDelete} />
     </tr>
   )
@@ -1831,7 +1919,10 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
         {selectAllTh}
         {vendorAddressHeader}
         <Th>Status</Th>
-        <Th><Tip text="Open to upload photos and run AI condition analysis">Photos</Tip></Th>
+        <Th><Tip text="Number of photos uploaded by the vendor"># Photos</Tip></Th>
+        <Th><Tip text="AI-assessed property condition from photo analysis">Condition</Tip></Th>
+        <Th><Tip text="When AI photo analysis was last completed">Last Analysed</Tip></Th>
+        <Th><Tip text="Start or view photo analysis">Action</Tip></Th>
         {stickyRight}
       </tr>
 
