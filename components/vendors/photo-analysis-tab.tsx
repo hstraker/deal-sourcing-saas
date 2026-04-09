@@ -91,14 +91,11 @@ export function PhotoAnalysisTab({ leadId }: { leadId: string }) {
         fetch(`/api/vendor-leads/${leadId}`),
       ])
 
-      // Photos
+      // Photos — always parse JSON (route now returns { photos: [] } even on error)
+      const photosData = await photosRes.json().catch(() => ({ photos: [] }))
       if (!photosRes.ok) {
-        const text = await photosRes.text()
-        console.error("[PhotoAnalysisTab] photos fetch failed:", photosRes.status, text)
-        toast.error(`Photos API error (${photosRes.status})`)
-        return
+        console.error("[PhotoAnalysisTab] photos fetch failed:", photosRes.status, photosData)
       }
-      const photosData = await photosRes.json()
 
       // Lead data — non-fatal: if it fails, fall back to defaults so photos still show
       let leadFull: Record<string, any> = {}
