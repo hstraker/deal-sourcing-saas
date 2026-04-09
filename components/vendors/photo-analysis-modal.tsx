@@ -100,7 +100,7 @@ export function PhotoAnalysisModal({
     for (const file of Array.from(files)) {
       try {
         // 1. Get presigned URL
-        const presignRes = await fetch(`/api/vendor-leads/${lead.id}/photos`, {
+        const presignRes = await fetch(`/api/vendor-leads/${lead.id}/photos/sourcer-upload`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -122,7 +122,7 @@ export function PhotoAnalysisModal({
         if (!putRes.ok) throw new Error("Failed to upload to storage")
 
         // 3. Confirm record creation
-        const confirmRes = await fetch(`/api/vendor-leads/${lead.id}/photos`, {
+        const confirmRes = await fetch(`/api/vendor-leads/${lead.id}/photos/sourcer-upload`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
