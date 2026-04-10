@@ -989,11 +989,37 @@ function TabBar({
                   : "border-transparent text-gray-400 hover:text-gray-600",
               )}
             >
-              {/* ① Step numeral — plain text, not a bubble, so it never adds height */}
+              {/*
+               * ① Coloured step-number circle — the number IS the status indicator.
+               *
+               * States (priority order):
+               *   No leads yet  → grey   bg-gray-200  text-gray-500
+               *   Needs action  → amber  bg-amber-400  text-white   (count > 0)
+               *   All complete  → green  bg-green-500  text-white   (count === 0 && hasLeads)
+               *
+               * Tooltip carries the full human-readable status + count so the colour
+               * alone is never the only source of truth (accessibility).
+               */}
               <span
+                title={
+                  !hasLeads
+                    ? `Step ${tab.step} · ${tab.label} — no leads yet`
+                    : count > 0
+                      ? `Step ${tab.step} · ${tab.label} — ${count} lead${count !== 1 ? "s" : ""} need${count === 1 ? "s" : ""} action`
+                      : `Step ${tab.step} · ${tab.label} — all complete ✓`
+                }
                 className={cn(
-                  "shrink-0 text-[11px] font-semibold tabular-nums",
-                  isActive ? "text-blue-400" : "text-gray-300",
+                  "flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
+                  "text-[10px] font-bold tabular-nums leading-none transition-colors",
+                  !hasLeads
+                    ? "bg-gray-200 text-gray-500"                          // no leads
+                    : count > 0
+                      ? isActive
+                        ? "bg-amber-500 text-white"                        // amber — active tab
+                        : "bg-amber-400 text-white"                        // amber — inactive tab
+                      : isActive
+                        ? "bg-green-600 text-white"                        // green — active tab
+                        : "bg-green-500 text-white",                       // green — inactive tab
                 )}
               >
                 {tab.step}
@@ -1001,30 +1027,6 @@ function TabBar({
 
               {/* Label */}
               <span>{tab.label}</span>
-
-              {/*
-               * Fixed-width 20 × 20 indicator slot — EVERY tab has this slot so
-               * the label text always ends at the same distance from the right edge.
-               * Content: amber count  |  green ✓  |  invisible placeholder
-               */}
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-                {count > 0 ? (
-                  <span
-                    title={`${count} lead${count !== 1 ? "s" : ""} need${count === 1 ? "s" : ""} action here`}
-                    className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-amber-100 px-1 text-[10px] font-bold text-amber-700"
-                  >
-                    {count > 99 ? "99+" : count}
-                  </span>
-                ) : allDone ? (
-                  <CheckCircle2
-                    className="h-3.5 w-3.5 text-green-500"
-                    title="All leads complete for this step"
-                  />
-                ) : (
-                  // Empty placeholder — keeps the slot width consistent when there are no leads yet
-                  <span className="h-1.5 w-1.5 rounded-full bg-gray-100" />
-                )}
-              </span>
             </button>
           )
         })}
