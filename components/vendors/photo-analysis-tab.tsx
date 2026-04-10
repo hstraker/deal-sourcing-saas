@@ -302,16 +302,20 @@ export function PhotoAnalysisTab({
         <div className="flex-1" />
 
         {/* Photo count + status */}
-        {photos.length > 0 && (
-          <span className="text-[11px] text-gray-500 shrink-0">
-            {photos.length} photo{photos.length !== 1 ? "s" : ""} ·{" "}
-            {isRunning
-              ? `${photos.filter((p) => p.aiAnalysedAt).length}/${photos.length} analysed`
-              : hasUnanalysed
-              ? `${photos.filter((p) => !p.aiAnalysedAt).length} pending`
-              : "all analysed"}
-          </span>
-        )}
+        {photos.length > 0 && (() => {
+          const unanalysedCount = photos.filter((p) => !p.aiAnalysedAt).length
+          const analysedCount = photos.filter((p) => p.aiAnalysedAt).length
+          return (
+            <span className="text-[11px] text-gray-500 shrink-0">
+              {photos.length} photo{photos.length !== 1 ? "s" : ""} ·{" "}
+              {isRunning
+                ? `analysing ${unanalysedCount} new…`
+                : hasUnanalysed
+                ? <span className="text-amber-600">{unanalysedCount} new, not yet analysed</span>
+                : "all analysed"}
+            </span>
+          )
+        })()}
 
         {/* Sort toggle */}
         <button
@@ -327,27 +331,38 @@ export function PhotoAnalysisTab({
         </button>
 
         {/* Analyse button */}
-        <Button
-          size="sm"
-          onClick={triggerAnalysis}
-          disabled={analysing || isRunning || !hasUnanalysed}
-          className="text-xs h-7 shrink-0"
-        >
-          {isRunning
-            ? <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" />Analysing…</>
-            : <><Sparkles className="mr-1.5 h-3 w-3" />Analyse</>}
-        </Button>
+        {(() => {
+          const unanalysedCount = photos.filter((p) => !p.aiAnalysedAt).length
+          return (
+            <Button
+              size="sm"
+              onClick={triggerAnalysis}
+              disabled={analysing || isRunning || !hasUnanalysed}
+              className="text-xs h-7 shrink-0"
+              title={unanalysedCount > 0 ? `Will analyse ${unanalysedCount} new photo${unanalysedCount !== 1 ? "s" : ""} only — already-analysed photos are skipped` : "All photos already analysed"}
+            >
+              {isRunning
+                ? <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" />Analysing…</>
+                : <><Sparkles className="mr-1.5 h-3 w-3" />Analyse {unanalysedCount > 0 ? `${unanalysedCount} new` : "Photos"}</>}
+            </Button>
+          )
+        })()}
       </div>
 
       {/* Progress bar — only while running */}
-      {isRunning && (
-        <div className="w-full bg-gray-100 rounded-full h-1 overflow-hidden -mt-2">
-          <div
-            className="bg-blue-500 h-1 rounded-full transition-all duration-500"
-            style={{ width: `${Math.round((photos.filter((p) => p.aiAnalysedAt).length / photos.length) * 100)}%` }}
-          />
-        </div>
-      )}
+      {isRunning && (() => {
+        // Track progress only for the batch being analysed (photos without a score when run started)
+        const total = photos.length
+        const done = photos.filter((p) => p.aiAnalysedAt).length
+        return (
+          <div className="w-full bg-gray-100 rounded-full h-1 overflow-hidden -mt-2">
+            <div
+              className="bg-blue-500 h-1 rounded-full transition-all duration-500"
+              style={{ width: `${Math.round((done / total) * 100)}%` }}
+            />
+          </div>
+        )
+      })()}
 
       {/* ── Photo Grid ──────────────────────────────────────────────────── */}
       {photos.length === 0 ? (
