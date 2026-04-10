@@ -197,9 +197,12 @@ export function LeadPhotoStrip({
 
   if (photos.length === 0) {
     return (
-      <div className={cn("flex items-center gap-1.5 text-xs text-gray-400 py-1", className)}>
-        <Camera className="h-3.5 w-3.5 shrink-0" />
-        No photos uploaded yet
+      <div className={cn("flex items-center gap-2 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-2.5", className)}>
+        <Camera className="h-4 w-4 shrink-0 text-gray-300" />
+        <div>
+          <p className="text-xs font-medium text-gray-400">No photos uploaded yet</p>
+          <p className="text-[10px] text-gray-300">Open the Photos tab to upload property photos</p>
+        </div>
       </div>
     )
   }
@@ -330,8 +333,6 @@ export function LeftPanelPhotoThumbs({
     )
   }
 
-  if (photos.length === 0 && displayScore == null) return null
-
   const withUrl = photos.filter((p) => !!p.url)
   const shown = withUrl.slice(0, maxPhotos)
   const remaining = withUrl.length - shown.length
@@ -428,7 +429,10 @@ export function LeftPanelPhotoThumbs({
         )}
 
         {photos.length === 0 && (
-          <p className="text-[10px] text-slate-600">No photos uploaded</p>
+          <div className="rounded-md border border-dashed border-white/10 bg-white/5 px-2.5 py-2">
+            <p className="text-[10px] text-slate-500">No photos uploaded yet</p>
+            <p className="text-[9px] text-slate-600 mt-0.5">Open the Photos tab to add</p>
+          </div>
         )}
       </div>
 
@@ -470,17 +474,22 @@ export function PhotoConditionCard({
   const refurbEst = estimateRefurbFromScore(score)
 
   if (analysisStatus !== "complete" && !effectiveCondition) {
-    // Nothing meaningful to show
-    if (photoCount === 0) return null
+    // No analysis yet — show a helpful prompt
     return (
-      <div className={cn("rounded-lg border border-gray-200 bg-gray-50 p-3", className)}>
+      <div className={cn("rounded-lg border border-dashed border-gray-200 bg-gray-50 p-3", className)}>
         <div className="flex items-center gap-2 mb-1">
-          <Camera className="h-4 w-4 text-gray-400 shrink-0" />
-          <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Photo Condition</p>
+          <Camera className="h-4 w-4 text-gray-300 shrink-0" />
+          <p className="text-xs font-semibold text-gray-400">No photo analysis yet</p>
         </div>
-        <p className="text-xs text-gray-400">
-          {photoCount} photo{photoCount !== 1 ? "s" : ""} uploaded — analysis not yet run.
-        </p>
+        {photoCount > 0 ? (
+          <p className="text-[11px] text-gray-400">
+            {photoCount} photo{photoCount !== 1 ? "s" : ""} uploaded — open the Photos tab and click <strong>Analyse</strong> to get a condition score.
+          </p>
+        ) : (
+          <p className="text-[11px] text-gray-400">
+            Upload photos via the <strong>Photos tab</strong> then run AI analysis to see condition scores here.
+          </p>
+        )}
       </div>
     )
   }

@@ -42,6 +42,13 @@ export async function GET(
         offerRetries: {
           orderBy: { createdAt: "desc" },
         },
+        _count: {
+          select: {
+            smsMessages: true,
+            pipelineEvents: true,
+            photos: true,
+          },
+        },
       },
     })
 

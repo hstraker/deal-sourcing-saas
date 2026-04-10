@@ -518,18 +518,14 @@ export function PropertyDetailsModal({
             />
           </div>
 
-          {/* Photo thumbnails */}
-          {(lead._count?.photos ?? 0) > 0 && (
-            <>
-              <div className="h-px bg-white/10" />
-              <LeftPanelPhotoThumbs
-                leadId={lead.id}
-                conditionScore={lead.photoConditionScore}
-                conditionOverride={lead.photoConditionOverride}
-                analysisStatus={lead.photoAnalysisStatus}
-              />
-            </>
-          )}
+          {/* Photo thumbnails — always shown; handles empty state internally */}
+          <div className="h-px bg-white/10" />
+          <LeftPanelPhotoThumbs
+            leadId={lead.id}
+            conditionScore={lead.photoConditionScore}
+            conditionOverride={lead.photoConditionOverride}
+            analysisStatus={lead.photoAnalysisStatus}
+          />
 
           {/* Pipeline stage — pinned to bottom */}
           <div className="mt-auto border-t border-white/10 pt-3">
@@ -561,13 +557,11 @@ export function PropertyDetailsModal({
             </button>
           </div>
 
-          {/* Photo Strip */}
-          {(lead._count?.photos ?? 0) > 0 && (
-            <LeadPhotoStrip
-              leadId={lead.id}
-              thumbHeight={90}
-            />
-          )}
+          {/* Photo Strip — always shown; shows empty state if no photos */}
+          <LeadPhotoStrip
+            leadId={lead.id}
+            thumbHeight={90}
+          />
 
           {/* Property Specs */}
           <div>

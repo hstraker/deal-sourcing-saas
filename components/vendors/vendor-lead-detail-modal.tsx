@@ -1462,15 +1462,13 @@ export function VendorLeadDetailModal({
           </TabsList>
 
           <TabsContent value="details" className="flex-1 overflow-y-auto min-h-0 space-y-4 pt-2 pb-6 px-0.5">
-            {/* ── Photo Strip (if photos uploaded) ───────────────────────────────── */}
-            {(currentLead._count?.photos ?? 0) > 0 && (
-              <div className="ds-card overflow-hidden p-4">
-                <LeadPhotoStrip
-                  leadId={currentLead.id}
-                  thumbHeight={90}
-                />
-              </div>
-            )}
+            {/* ── Photo Strip — always shown ─────────────────────────────────────── */}
+            <div className="ds-card overflow-hidden p-4">
+              <LeadPhotoStrip
+                leadId={currentLead.id}
+                thumbHeight={90}
+              />
+            </div>
 
             {/* ── Row 1: Contact + Property ──────────────────────────────────────── */}
             <div className="grid grid-cols-2 gap-4">

@@ -384,11 +384,10 @@ export function OfferAnalysisModal({
         )}
       </div>
 
-      {/* Photo condition + thumbnails */}
-      {((lead._count?.photos ?? 0) > 0 || lead.photoConditionScore != null) && (
-        <>
-          <div className="mb-4 h-px bg-white/10" />
-          <div className="mb-4">
+      {/* Photo condition + thumbnails — always shown */}
+      <>
+        <div className="mb-4 h-px bg-white/10" />
+        <div className="mb-4">
             {/* Condition summary */}
             {(lead.photoAnalysisStatus === "complete" || lead.photoConditionOverride) && (
               <div className="mb-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 space-y-1.5">
@@ -446,8 +445,7 @@ export function OfferAnalysisModal({
               leadId={lead.id}
             />
           </div>
-        </>
-      )}
+      </>
 
       {/* Pipeline stage — pinned to bottom */}
       <div className="mt-auto border-t border-white/10 pt-3">

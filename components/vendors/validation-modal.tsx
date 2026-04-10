@@ -1144,20 +1144,16 @@ export function ValidationModal({
         </div>
       )}
 
-      {/* Photo thumbnails */}
-      {((lead._count?.photos ?? 0) > 0 || lead.photoConditionScore != null) && (
-        <>
-          <div className="mb-4 h-px bg-white/10" />
-          <div className="mb-4">
-            <LeftPanelPhotoThumbs
-              leadId={lead.id}
-              conditionScore={lead.photoConditionScore}
-              conditionOverride={lead.photoConditionOverride}
-              analysisStatus={lead.photoAnalysisStatus}
-            />
-          </div>
-        </>
-      )}
+      {/* Photo thumbnails — always shown */}
+      <div className="mb-4 h-px bg-white/10" />
+      <div className="mb-4">
+        <LeftPanelPhotoThumbs
+          leadId={lead.id}
+          conditionScore={lead.photoConditionScore}
+          conditionOverride={lead.photoConditionOverride}
+          analysisStatus={lead.photoAnalysisStatus}
+        />
+      </div>
 
       {/* Pipeline stage */}
       <div className="mt-auto border-t border-white/10 pt-3">
@@ -1231,21 +1227,19 @@ export function ValidationModal({
           </div>
         )}
 
-        {/* ── Photo Condition ──────────────────────────────────────────── */}
-        {(lead.photoAnalysisStatus === "complete" || lead.photoConditionOverride || (lead._count?.photos ?? 0) > 0) && (
-          <div>
-            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200">
-              <Camera className="h-4 w-4 text-blue-500" />
-              <p className="text-sm font-bold text-gray-800">Photo Condition</p>
-            </div>
-            <PhotoConditionCard
-              conditionScore={lead.photoConditionScore}
-              conditionOverride={lead.photoConditionOverride}
-              analysisStatus={lead.photoAnalysisStatus}
-              photoCount={lead._count?.photos ?? 0}
-            />
+        {/* ── Photo Condition — always shown ───────────────────────────── */}
+        <div>
+          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200">
+            <Camera className="h-4 w-4 text-blue-500" />
+            <p className="text-sm font-bold text-gray-800">Photo Condition</p>
           </div>
-        )}
+          <PhotoConditionCard
+            conditionScore={lead.photoConditionScore}
+            conditionOverride={lead.photoConditionOverride}
+            analysisStatus={lead.photoAnalysisStatus}
+            photoCount={lead._count?.photos ?? 0}
+          />
+        </div>
 
         {/* ── Acquisition Costs & SDLT ─────────────────────────────────── */}
         <div>
