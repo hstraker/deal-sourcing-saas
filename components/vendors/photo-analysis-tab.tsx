@@ -262,140 +262,90 @@ export function PhotoAnalysisTab({
     .sort((a, b) => (a.aiConditionScore ?? 0) - (b.aiConditionScore ?? 0))[0]?.id
 
   return (
-    <div className="space-y-4">
-      {/* ── Condition Summary ───────────────────────────────────────────── */}
-      <div className="rounded-lg border bg-white p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-            <Shield className="h-4 w-4 text-gray-400" />
-            Property Condition
-          </h3>
-          {leadData?.photoConditionScore != null && (
-            <span className="text-xs text-gray-500">
-              AI score: <strong>{leadData.photoConditionScore}/100</strong>
-            </span>
-          )}
-        </div>
+    <div className="space-y-3">
 
-        <div className="flex items-center gap-3">
-          <Badge className={cn("text-xs border", CONDITION_COLOURS[effectiveCondition] ?? "bg-gray-100 text-gray-600")}>
-            {CONDITION_LABELS[effectiveCondition] ?? "Unknown"}
-          </Badge>
-          {leadData?.photoConditionOverride && (
-            <span className="text-[11px] text-amber-600 font-medium">Manual override</span>
-          )}
-        </div>
-
-        <div>
-          <label className="text-[11px] text-gray-500 block mb-1">Override condition</label>
-          <Select
-            value={leadData?.photoConditionOverride ?? "none"}
-            onValueChange={updateConditionOverride}
-          >
-            <SelectTrigger className="h-8 text-xs w-48">
-              <SelectValue placeholder="Use AI score" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Use AI score</SelectItem>
-              <SelectItem value="excellent">Excellent</SelectItem>
-              <SelectItem value="good">Good</SelectItem>
-              <SelectItem value="needs_work">Needs Work</SelectItem>
-              <SelectItem value="needs_modernisation">Needs Modernisation</SelectItem>
-              <SelectItem value="poor">Poor</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* ── Upload Link ─────────────────────────────────────────────────── */}
-      <div className="rounded-lg border bg-white p-4 space-y-2">
-        <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-          <Camera className="h-4 w-4 text-gray-400" />
-          Vendor Upload Link
-        </h3>
-        <p className="text-xs text-gray-500">
-          Share this link with the vendor so they can upload photos from their phone.
-        </p>
-        {uploadLinkUrl && !linkExpired ? (
-          <div className="flex items-center gap-2">
-            <code className="flex-1 truncate rounded bg-gray-100 px-2 py-1.5 text-[11px] text-gray-700">
-              {uploadLinkUrl}
-            </code>
-            <Button size="sm" variant="outline" onClick={copyUploadLink} className="shrink-0 h-7 text-xs">
-              {linkCopied ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
-            </Button>
-            <a href={uploadLinkUrl} target="_blank" rel="noopener noreferrer">
-              <Button size="sm" variant="outline" className="shrink-0 h-7 text-xs">
-                <ExternalLink className="h-3.5 w-3.5" />
-              </Button>
-            </a>
-          </div>
-        ) : (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={generateUploadLink}
-            disabled={generatingLink}
-            className="text-xs"
-          >
-            {generatingLink ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Camera className="mr-1.5 h-3.5 w-3.5" />}
-            {uploadLinkUrl && linkExpired ? "Refresh Link" : "Generate Upload Link"}
-          </Button>
+      {/* ── Compact Toolbar ─────────────────────────────────────────────── */}
+      <div className="flex items-center gap-2 flex-wrap rounded-lg border bg-white px-3 py-2">
+        {/* Condition badge */}
+        <Badge className={cn("text-xs border shrink-0", CONDITION_COLOURS[effectiveCondition] ?? "bg-gray-100 text-gray-600")}>
+          {CONDITION_LABELS[effectiveCondition] ?? "Not assessed"}
+        </Badge>
+        {leadData?.photoConditionOverride && (
+          <span className="text-[10px] text-amber-600 font-medium shrink-0">Override active</span>
         )}
+
+        {/* Override dropdown */}
+        <Select
+          value={leadData?.photoConditionOverride ?? "none"}
+          onValueChange={updateConditionOverride}
+        >
+          <SelectTrigger className="h-7 text-[11px] w-36 border-dashed">
+            <SelectValue placeholder="Use AI score" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Use AI score</SelectItem>
+            <SelectItem value="excellent">Excellent</SelectItem>
+            <SelectItem value="good">Good</SelectItem>
+            <SelectItem value="needs_work">Needs Work</SelectItem>
+            <SelectItem value="needs_modernisation">Needs Modernisation</SelectItem>
+            <SelectItem value="poor">Poor</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {leadData?.photoConditionScore != null && (
+          <span className="text-[11px] text-gray-400 shrink-0">
+            AI: <strong className="text-gray-600">{leadData.photoConditionScore}/100</strong>
+          </span>
+        )}
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Photo count + status */}
+        {photos.length > 0 && (
+          <span className="text-[11px] text-gray-500 shrink-0">
+            {photos.length} photo{photos.length !== 1 ? "s" : ""} ·{" "}
+            {isRunning
+              ? `${photos.filter((p) => p.aiAnalysedAt).length}/${photos.length} analysed`
+              : hasUnanalysed
+              ? `${photos.filter((p) => !p.aiAnalysedAt).length} pending`
+              : "all analysed"}
+          </span>
+        )}
+
+        {/* Sort toggle */}
+        <button
+          onClick={() => setSortWorstFirst((v) => !v)}
+          title={sortWorstFirst ? "Sorted: worst first" : "Sorted: upload order"}
+          className={cn(
+            "flex items-center gap-1 rounded px-2 py-1 text-[11px] border transition-colors shrink-0",
+            sortWorstFirst ? "bg-red-50 border-red-200 text-red-600" : "bg-gray-50 border-gray-200 text-gray-500"
+          )}
+        >
+          <ArrowUpDown className="h-3 w-3" />
+          {sortWorstFirst ? "Worst first" : "Upload order"}
+        </button>
+
+        {/* Analyse button */}
+        <Button
+          size="sm"
+          onClick={triggerAnalysis}
+          disabled={analysing || isRunning || !hasUnanalysed}
+          className="text-xs h-7 shrink-0"
+        >
+          {isRunning
+            ? <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" />Analysing…</>
+            : <><Sparkles className="mr-1.5 h-3 w-3" />Analyse</>}
+        </Button>
       </div>
 
-      {/* ── Analyse Button ──────────────────────────────────────────────── */}
-      {photos.length > 0 && (
-        <div className="rounded-lg border bg-white px-4 py-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-800">
-                {photos.length} photo{photos.length !== 1 ? "s" : ""}
-              </p>
-              <p className="text-xs text-gray-500">
-                {isRunning
-                  ? `Analysing… ${photos.filter((p) => p.aiAnalysedAt).length} of ${photos.length} done`
-                  : hasUnanalysed
-                  ? `${photos.filter((p) => !p.aiAnalysedAt).length} not yet analysed`
-                  : "All analysed"}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setSortWorstFirst((v) => !v)}
-                title={sortWorstFirst ? "Sorted: worst first" : "Sorted: upload order"}
-                className={cn(
-                  "flex items-center gap-1 rounded px-2 py-1 text-[11px] border transition-colors",
-                  sortWorstFirst
-                    ? "bg-red-50 border-red-200 text-red-600"
-                    : "bg-gray-50 border-gray-200 text-gray-500"
-                )}
-              >
-                <ArrowUpDown className="h-3 w-3" />
-                {sortWorstFirst ? "Worst first" : "Upload order"}
-              </button>
-              <Button
-                size="sm"
-                onClick={triggerAnalysis}
-                disabled={analysing || isRunning || !hasUnanalysed}
-                className="text-xs"
-              >
-                {isRunning ? (
-                  <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Analysing…</>
-                ) : (
-                  <><Sparkles className="mr-1.5 h-3.5 w-3.5" />Analyse Photos</>
-                )}
-              </Button>
-            </div>
-          </div>
-          {isRunning && (
-            <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-              <div
-                className="bg-blue-500 h-1.5 rounded-full transition-all duration-500"
-                style={{ width: `${Math.round((photos.filter((p) => p.aiAnalysedAt).length / photos.length) * 100)}%` }}
-              />
-            </div>
-          )}
+      {/* Progress bar — only while running */}
+      {isRunning && (
+        <div className="w-full bg-gray-100 rounded-full h-1 overflow-hidden -mt-2">
+          <div
+            className="bg-blue-500 h-1 rounded-full transition-all duration-500"
+            style={{ width: `${Math.round((photos.filter((p) => p.aiAnalysedAt).length / photos.length) * 100)}%` }}
+          />
         </div>
       )}
 
@@ -566,6 +516,38 @@ export function PhotoAnalysisTab({
           )}
         </div>
       )}
+
+      {/* ── Vendor Upload Link — compact footer ──────────────────────────── */}
+      <div className="flex items-center gap-2 rounded-lg border bg-gray-50 px-3 py-2">
+        <Camera className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+        <span className="text-[11px] text-gray-500 shrink-0">Vendor link:</span>
+        {uploadLinkUrl && !linkExpired ? (
+          <>
+            <code className="flex-1 truncate text-[11px] text-gray-600 min-w-0">{uploadLinkUrl}</code>
+            <Button size="sm" variant="ghost" onClick={copyUploadLink} className="h-6 w-6 p-0 shrink-0">
+              {linkCopied ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5 text-gray-400" />}
+            </Button>
+            <a href={uploadLinkUrl} target="_blank" rel="noopener noreferrer">
+              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 shrink-0">
+                <ExternalLink className="h-3.5 w-3.5 text-gray-400" />
+              </Button>
+            </a>
+            {linkExpired && <span className="text-[10px] text-red-500 shrink-0">Expired</span>}
+          </>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={generateUploadLink}
+            disabled={generatingLink}
+            className="text-[11px] h-6 px-2"
+          >
+            {generatingLink ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Camera className="mr-1 h-3 w-3" />}
+            {uploadLinkUrl && linkExpired ? "Refresh" : "Generate link"}
+          </Button>
+        )}
+      </div>
+
     </div>
   )
 }
