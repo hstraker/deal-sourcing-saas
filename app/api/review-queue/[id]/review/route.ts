@@ -35,7 +35,7 @@ export async function POST(
 
     const { action, notes } = validationResult.data
 
-    // Fetch full listing for deal creation
+    // Fetch full listing
     const listing = await prisma.propertyListing.findUnique({
       where: { id: params.id },
     })
@@ -47,7 +47,7 @@ export async function POST(
       )
     }
 
-    // Update review status
+    // Mark the listing as reviewed
     const updated = await prisma.propertyListing.update({
       where: { id: params.id },
       data: {
@@ -64,9 +64,8 @@ export async function POST(
       },
     })
 
-    let dealId: string | null = null
+    let vendorLeadId: string | null = null
 
-    // Create Deal when approved — enrich with PropertyData API (comparables + rental + valuation)
     if (action === "APPROVED") {
       const address = listing.address as any
       const agent = listing.agent as any
@@ -74,8 +73,6 @@ export async function POST(
       const postcode = address?.postcode || null
 
       // Build a proper address string — never fall back to listing.title
-      // which is often "3 bedroom property for sale" rather than an address.
-      // Append the full postcode if not already in the display address.
       const baseAddress =
         address?.displayAddress ||
         [address?.street, address?.town, address?.county]
@@ -92,7 +89,8 @@ export async function POST(
         return value
       }
 
-      // Run full enrichment: comparables, valuation, rental data
+      // Enrich with comparables, valuation and rental data so the
+      // Vendor Lead workflow tabs (Comparables, Validation, etc.) are pre-populated
       const enrichment = await enrichDealData({
         askingPrice,
         postcode,
@@ -113,89 +111,47 @@ export async function POST(
         postcode: cleanValue(postcode),
       })
 
-      const now = new Date()
       const enrichmentNote = enrichment.marketValueSource === "comparable_sales"
         ? `Enriched with ${enrichment.comparablesCount} comparables (avg £${enrichment.avgComparablePrice?.toLocaleString()})`
         : enrichment.marketValueSource === "valuation_api"
           ? "Enriched with PropertyData valuation API"
           : "Enriched with estimated values"
 
-      const statusHistoryEntry = {
-        status: "new",
-        changedAt: now.toISOString(),
-        changedBy: session.user.id,
-        note: `Created from approved scraper listing. ${enrichmentNote}`,
-      }
-
-      const deal = await prisma.deal.create({
-        data: {
-          address: propertyAddress,
-          postcode: cleanValue(postcode),
-          propertyType: cleanValue(listing.propertyType),
-          bedrooms: cleanValue(listing.bedrooms),
-          bathrooms: cleanValue(listing.bathrooms),
-          squareFeet: cleanValue(listing.squareFeet),
-          askingPrice,
-          marketValue: enrichment.marketValue,
-          estimatedRefurbCost: enrichment.estimatedRefurbCost,
-          afterRefurbValue: enrichment.afterRefurbValue,
-          estimatedMonthlyRent: enrichment.estimatedMonthlyRent,
-          bmvPercentage: calculatedMetrics.bmvPercentage,
-          grossYield: calculatedMetrics.grossYield,
-          netYield: calculatedMetrics.netYield,
-          roi: calculatedMetrics.roi,
-          roce: calculatedMetrics.roce,
-          dealScore: calculatedMetrics.dealScore,
-          dealScoreBreakdown: calculatedMetrics.dealScoreBreakdown as any,
-          status: "new",
-          statusUpdatedAt: now,
-          statusHistory: [statusHistoryEntry],
-          packTier: calculatedMetrics.packTier,
-          packPrice: calculatedMetrics.packPrice,
-          dataSource: listing.source.toLowerCase(),
-          externalId: cleanValue(listing.sourceId),
-          agentName: cleanValue(agent?.name),
-          agentPhone: cleanValue(agent?.phone),
-          listingUrl: cleanValue(listing.listingUrl),
-          createdById: session.user.id,
-        },
-      })
-
-      dealId = deal.id
-
-      // Link the listing to the new deal
-      await prisma.propertyListing.update({
-        where: { id: params.id },
-        data: { dealId: deal.id },
-      })
-
-      // Create VendorLead so it appears on the Vendor page
       const sourceLabels: Record<string, string> = {
-        RIGHTMOVE: "Scraper: RM",
-        ZOOPLA: "Scraper: Z",
-        ONTHEMARKET: "Scraper: OTM",
+        RIGHTMOVE:     "Scraper: RM",
+        ZOOPLA:        "Scraper: Z",
+        ONTHEMARKET:   "Scraper: OTM",
         PRIMELOCATION: "Scraper: PL",
       }
 
-      await prisma.vendorLead.create({
+      // Create Vendor Lead only — no Deal.
+      // The lead goes through the full workflow (Property Details → Comparables →
+      // Validation → Offer Analysis). A Deal is created only when the investor
+      // decides to make an offer at the Offer Analysis step.
+      const vendorLead = await prisma.vendorLead.create({
         data: {
-          vendorName: agent?.name || `${listing.source} Listing`,
-          vendorPhone: agent?.phone || "N/A",
-          leadSource: sourceLabels[listing.source] || `Scraper: ${listing.source}`,
-          propertyAddress: propertyAddress,
-          propertyPostcode: cleanValue(postcode),
-          askingPrice: askingPrice > 0 ? askingPrice : null,
-          propertyType: cleanValue(listing.propertyType),
-          bedrooms: cleanValue(listing.bedrooms),
-          bathrooms: cleanValue(listing.bathrooms),
-          squareFeet: cleanValue(listing.squareFeet),
-          estimatedMarketValue: enrichment.marketValue,
-          estimatedMonthlyRent: enrichment.estimatedMonthlyRent,
-          pipelineStage: "NEW_LEAD",
-          dealId: deal.id,
-          validationNotes: `Scraped from ${listing.source}. ${enrichmentNote}`,
+          vendorName:            agent?.name || `${listing.source} Listing`,
+          vendorPhone:           agent?.phone || "N/A",
+          leadSource:            sourceLabels[listing.source] || `Scraper: ${listing.source}`,
+          propertyAddress:       propertyAddress,
+          propertyPostcode:      cleanValue(postcode),
+          askingPrice:           askingPrice > 0 ? askingPrice : null,
+          propertyType:          cleanValue(listing.propertyType),
+          bedrooms:              cleanValue(listing.bedrooms),
+          bathrooms:             cleanValue(listing.bathrooms),
+          squareFeet:            cleanValue(listing.squareFeet),
+          estimatedMarketValue:  enrichment.marketValue,
+          estimatedMonthlyRent:  enrichment.estimatedMonthlyRent,
+          estimatedRefurbCost:   enrichment.estimatedRefurbCost,
+          bmvScore:              calculatedMetrics.bmvPercentage,
+          comparablesCount:      enrichment.comparablesCount ?? null,
+          avgComparablePrice:    enrichment.avgComparablePrice ?? null,
+          pipelineStage:         "NEW_LEAD",
+          validationNotes:       `Scraped from ${listing.source}. ${enrichmentNote}`,
         },
       })
+
+      vendorLeadId = vendorLead.id
     }
 
     return NextResponse.json({
@@ -204,7 +160,7 @@ export async function POST(
         ...updated,
         reviewedAt: updated.reviewedAt?.toISOString(),
       },
-      dealId,
+      vendorLeadId,
     })
   } catch (error) {
     console.error("[Review Queue API] Error reviewing property:", error)

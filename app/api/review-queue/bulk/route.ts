@@ -32,10 +32,9 @@ export async function POST(request: NextRequest) {
     }
 
     const { action, ids, notes } = validationResult.data
-    const dealIds: string[] = []
+    const vendorLeadIds: string[] = []
 
     if (action === "APPROVED") {
-      // Fetch all listings for deal creation
       const listings = await prisma.propertyListing.findMany({
         where: { id: { in: ids } },
       })
@@ -46,6 +45,13 @@ export async function POST(request: NextRequest) {
       }
 
       const now = new Date()
+
+      const sourceLabels: Record<string, string> = {
+        RIGHTMOVE:     "Scraper: RM",
+        ZOOPLA:        "Scraper: Z",
+        ONTHEMARKET:   "Scraper: OTM",
+        PRIMELOCATION: "Scraper: PL",
+      }
 
       for (const listing of listings) {
         const address = listing.address as any
@@ -65,7 +71,8 @@ export async function POST(request: NextRequest) {
             ? `${baseAddress}, ${postcode}`
             : baseAddress
 
-        // Run full enrichment: comparables, valuation, rental data
+        // Enrich with comparables, valuation and rental data so the
+        // Vendor Lead workflow tabs (Comparables, Validation, etc.) are pre-populated
         const enrichment = await enrichDealData({
           askingPrice,
           postcode,
@@ -92,98 +99,55 @@ export async function POST(request: NextRequest) {
             ? "Enriched with PropertyData valuation"
             : "Enriched with estimated values"
 
-        const statusHistoryEntry = {
-          status: "new",
-          changedAt: now.toISOString(),
-          changedBy: session.user.id,
-          note: `Created from approved scraper listing. ${enrichmentNote}`,
-        }
-
-        const deal = await prisma.deal.create({
-          data: {
-            address: propertyAddress,
-            postcode: cleanValue(postcode),
-            propertyType: cleanValue(listing.propertyType),
-            bedrooms: cleanValue(listing.bedrooms),
-            bathrooms: cleanValue(listing.bathrooms),
-            squareFeet: cleanValue(listing.squareFeet),
-            askingPrice,
-            marketValue: enrichment.marketValue,
-            estimatedRefurbCost: enrichment.estimatedRefurbCost,
-            afterRefurbValue: enrichment.afterRefurbValue,
-            estimatedMonthlyRent: enrichment.estimatedMonthlyRent,
-            bmvPercentage: calculatedMetrics.bmvPercentage,
-            grossYield: calculatedMetrics.grossYield,
-            netYield: calculatedMetrics.netYield,
-            roi: calculatedMetrics.roi,
-            roce: calculatedMetrics.roce,
-            dealScore: calculatedMetrics.dealScore,
-            dealScoreBreakdown: calculatedMetrics.dealScoreBreakdown as any,
-            status: "new",
-            statusUpdatedAt: now,
-            statusHistory: [statusHistoryEntry],
-            packTier: calculatedMetrics.packTier,
-            packPrice: calculatedMetrics.packPrice,
-            dataSource: listing.source.toLowerCase(),
-            externalId: cleanValue(listing.sourceId),
-            agentName: cleanValue(agent?.name),
-            agentPhone: cleanValue(agent?.phone),
-            listingUrl: cleanValue(listing.listingUrl),
-            createdById: session.user.id,
-          },
-        })
-
-        dealIds.push(deal.id)
-
-        // Update listing: set review status and link to deal
+        // Mark listing as reviewed
         await prisma.propertyListing.update({
           where: { id: listing.id },
           data: {
             reviewStatus: action,
-            reviewNotes: notes || null,
-            reviewedBy: session.user.id,
-            reviewedAt: now,
-            dealId: deal.id,
+            reviewNotes:  notes || null,
+            reviewedBy:   session.user.id,
+            reviewedAt:   now,
           },
         })
 
-        // Create VendorLead so it appears on the Vendor page
-        const sourceLabels: Record<string, string> = {
-          RIGHTMOVE: "Scraper: RM",
-          ZOOPLA: "Scraper: Z",
-          ONTHEMARKET: "Scraper: OTM",
-          PRIMELOCATION: "Scraper: PL",
-        }
-
-        await prisma.vendorLead.create({
+        // Create Vendor Lead only — no Deal.
+        // The lead goes through the full workflow (Property Details → Comparables →
+        // Validation → Offer Analysis). A Deal is created only when the investor
+        // decides to make an offer at the Offer Analysis step.
+        const vendorLead = await prisma.vendorLead.create({
           data: {
-            vendorName: agent?.name || `${listing.source} Listing`,
-            vendorPhone: agent?.phone || "N/A",
-            leadSource: sourceLabels[listing.source] || `Scraper: ${listing.source}`,
-            propertyAddress: propertyAddress,
-            propertyPostcode: cleanValue(postcode),
-            askingPrice: askingPrice > 0 ? askingPrice : null,
-            propertyType: cleanValue(listing.propertyType),
-            bedrooms: cleanValue(listing.bedrooms),
-            bathrooms: cleanValue(listing.bathrooms),
-            squareFeet: cleanValue(listing.squareFeet),
+            vendorName:           agent?.name || `${listing.source} Listing`,
+            vendorPhone:          agent?.phone || "N/A",
+            leadSource:           sourceLabels[listing.source] || `Scraper: ${listing.source}`,
+            propertyAddress:      propertyAddress,
+            propertyPostcode:     cleanValue(postcode),
+            askingPrice:          askingPrice > 0 ? askingPrice : null,
+            propertyType:         cleanValue(listing.propertyType),
+            bedrooms:             cleanValue(listing.bedrooms),
+            bathrooms:            cleanValue(listing.bathrooms),
+            squareFeet:           cleanValue(listing.squareFeet),
             estimatedMarketValue: enrichment.marketValue,
             estimatedMonthlyRent: enrichment.estimatedMonthlyRent,
-            pipelineStage: "NEW_LEAD",
-            dealId: deal.id,
-            validationNotes: `Scraped from ${listing.source}. ${enrichmentNote}`,
+            estimatedRefurbCost:  enrichment.estimatedRefurbCost,
+            bmvScore:             calculatedMetrics.bmvPercentage,
+            comparablesCount:     enrichment.comparablesCount ?? null,
+            avgComparablePrice:   enrichment.avgComparablePrice ?? null,
+            pipelineStage:        "NEW_LEAD",
+            validationNotes:      `Scraped from ${listing.source}. ${enrichmentNote}`,
           },
         })
+
+        vendorLeadIds.push(vendorLead.id)
       }
     } else {
-      // Rejection: bulk update as before
+      // Rejection: bulk update listings only
       await prisma.propertyListing.updateMany({
         where: { id: { in: ids } },
         data: {
           reviewStatus: action,
-          reviewNotes: notes || null,
-          reviewedBy: session.user.id,
-          reviewedAt: new Date(),
+          reviewNotes:  notes || null,
+          reviewedBy:   session.user.id,
+          reviewedAt:   new Date(),
         },
       })
     }
@@ -191,7 +155,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       updatedCount: ids.length,
-      dealIds: dealIds.length > 0 ? dealIds : undefined,
+      vendorLeadIds: vendorLeadIds.length > 0 ? vendorLeadIds : undefined,
     })
   } catch (error) {
     console.error("[Review Queue API] Error bulk reviewing:", error)
