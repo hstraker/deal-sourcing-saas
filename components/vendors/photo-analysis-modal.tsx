@@ -235,21 +235,24 @@ export function PhotoAnalysisModal({
   const [refreshKey, setRefreshKey]   = useState(0)
   const [uploading, setUploading]     = useState(false)
   const [uploadCount, setUploadCount] = useState(0)
-  const [livePhotos, setLivePhotos]   = useState<LivePhoto[]>([])
-  const [liveStatus, setLiveStatus]   = useState<string>(lead.photoAnalysisStatus ?? "pending")
-  const [liveScore, setLiveScore]     = useState<number | null>(lead.photoConditionScore ?? null)
+  const [livePhotos, setLivePhotos]     = useState<LivePhoto[]>([])
+  const [liveStatus, setLiveStatus]     = useState<string>(lead.photoAnalysisStatus ?? "pending")
+  const [liveScore, setLiveScore]       = useState<number | null>(lead.photoConditionScore ?? null)
+  const [liveOverride, setLiveOverride] = useState<string | null>(lead.photoConditionOverride ?? null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleDataLoaded = useCallback((photos: LivePhoto[], leadData: { photoAnalysisStatus: string; photoConditionScore: number | null; photoConditionOverride: string | null; photoAnalysisCompletedAt: string | null }) => {
     setLivePhotos(photos)
     setLiveStatus(leadData.photoAnalysisStatus)
     setLiveScore(leadData.photoConditionScore)
+    setLiveOverride(leadData.photoConditionOverride)
   }, [])
 
-  const status       = liveStatus
-  const conditionKey = lead.photoConditionOverride
-    ?? conditionFromScore(liveScore ?? lead.photoConditionScore ?? null)
-  const analysedAt   = lead.photoAnalysisCompletedAt
+  const status          = liveStatus
+  const aiConditionKey  = conditionFromScore(liveScore ?? lead.photoConditionScore ?? null)
+  const conditionKey    = liveOverride ?? aiConditionKey
+  const isOverridden    = !!liveOverride
+  const analysedAt      = lead.photoAnalysisCompletedAt
     ? (() => {
         const days = Math.floor((Date.now() - new Date(lead.photoAnalysisCompletedAt!).getTime()) / 86400000)
         return days === 0 ? "Today" : days === 1 ? "Yesterday" : `${days}d ago`
@@ -358,11 +361,11 @@ export function PhotoAnalysisModal({
           label="Last Analysed"
           value={analysedAt ?? "—"}
         />
-        {lead.photoConditionScore != null && (
+        {liveScore != null && (
           <InfoRow
-            label="AI Score"
-            value={`${lead.photoConditionScore}/100`}
-            valueClass={CONDITION_COLOURS[conditionFromScore(lead.photoConditionScore)] ?? "text-slate-300"}
+            label="AI Raw Score"
+            value={`${liveScore}/100`}
+            valueClass={CONDITION_COLOURS[aiConditionKey] ?? "text-slate-300"}
           />
         )}
       </div>
@@ -381,16 +384,25 @@ export function PhotoAnalysisModal({
           <span className={cn("text-sm font-bold", CONDITION_COLOURS[conditionKey] ?? "text-slate-400")}>
             {CONDITION_LABELS[conditionKey] ?? "Unknown"}
           </span>
-          {lead.photoConditionOverride && (
-            <span className="text-[10px] text-amber-400">Override</span>
+          {isOverridden && (
+            <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
+              Overridden
+            </span>
           )}
         </div>
-        {status === "complete" && (
+        {isOverridden && liveScore != null ? (
+          <div className="rounded border border-amber-500/20 bg-amber-500/10 px-2 py-1.5 space-y-0.5">
+            <p className="text-[10px] text-amber-300 font-semibold">Manual override active</p>
+            <p className="text-[10px] text-slate-400">
+              AI scored {liveScore}/100 ({CONDITION_LABELS[aiConditionKey]}). Sourcer has overridden to {CONDITION_LABELS[liveOverride!]}.
+            </p>
+          </div>
+        ) : status === "complete" ? (
           <div className="flex items-center gap-1 text-[10px] text-slate-500">
             <Sparkles className="h-3 w-3" />
             AI assessed from photos
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Room Scorecard */}
@@ -471,9 +483,15 @@ export function PhotoAnalysisModal({
               <div className="flex items-start gap-2">
                 <Icon className={cn("h-4 w-4 shrink-0 mt-0.5", c.icon)} />
                 <p className={cn("text-[11px] font-bold leading-snug", c.title)}>
-                  {box.title}
+                  {isOverridden ? `${box.title} ★ OVERRIDDEN` : box.title}
                 </p>
               </div>
+              {/* Override note */}
+              {isOverridden && liveScore != null && (
+                <p className="text-[10px] italic text-white/50">
+                  Note: AI photo score was {liveScore}/100 ({CONDITION_LABELS[aiConditionKey]}). This summary reflects the sourcer's manual override.
+                </p>
+              )}
               {/* Body */}
               <p className={cn("text-[11px] leading-relaxed", c.body)}>{box.body}</p>
               {/* Action */}
