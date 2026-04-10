@@ -28,6 +28,10 @@ interface Photo {
   aiCondition?: string | null
   aiConditionScore?: number | null
   aiAnalysedAt?: string | null
+  /** AI-generated description of the room/area */
+  aiDescription?: string | null
+  /** Detected issues e.g. ["damp", "cracked_plaster"] */
+  aiIssues?: string[] | null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -492,6 +496,27 @@ function Lightbox({
         </div>
       )}
 
+      {/* ── AI description + issues strip ───────────────────────────────────── */}
+      {(photo.aiDescription || (photo.aiIssues && photo.aiIssues.length > 0)) && (
+        <div className="shrink-0 border-t border-white/10 bg-black/60 px-5 py-2.5">
+          {photo.aiDescription && (
+            <p className="text-xs leading-snug text-white/65">{photo.aiDescription}</p>
+          )}
+          {photo.aiIssues && photo.aiIssues.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {photo.aiIssues.map((issue, i) => (
+                <span
+                  key={i}
+                  className="rounded bg-red-500/70 px-1.5 py-0.5 text-[10px] capitalize text-white"
+                >
+                  {issue.replace(/_/g, " ")}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Bottom filmstrip ─────────────────────────────────────────────────── */}
       {photos.length > 1 && (
         <div className="flex items-center justify-center gap-1.5 overflow-x-auto border-t border-white/10 bg-black/70 px-4 py-2 shrink-0">
@@ -521,6 +546,10 @@ function Lightbox({
     </div>
   )
 }
+
+/** Exported alias — use this anywhere you need the full Pro Viewer outside this module */
+export { Lightbox as ProPhotoViewer }
+export type { Photo as ProPhotoViewerPhoto }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LeadPhotoStrip — light-bg horizontal scrollable strip (right panels)

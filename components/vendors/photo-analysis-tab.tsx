@@ -15,9 +15,9 @@ import {
   ImageIcon,
   Shield,
   ArrowUpDown,
-  X,
   ZoomIn,
 } from "lucide-react"
+import { ProPhotoViewer } from "./lead-photo-strip"
 import { Badge } from "@/components/ui/badge"
 import {
   Select,
@@ -92,7 +92,7 @@ export function PhotoAnalysisTab({
   const [linkCopied, setLinkCopied] = useState(false)
   const [selectedPhoto, setSelectedPhoto] = useState<PropertyPhoto | null>(null)
   const [sortWorstFirst, setSortWorstFirst] = useState(true)
-  const [lightboxPhoto, setLightboxPhoto] = useState<PropertyPhoto | null>(null)
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
 
   const fetchData = useCallback(async (showLoader = false) => {
     if (showLoader) setLoading(true)
@@ -373,7 +373,7 @@ export function PhotoAnalysisTab({
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {sortedPhotos.map((photo) => {
+          {sortedPhotos.map((photo, sortedIdx) => {
             const isWorst = photo.id === lowestScoringId && photos.filter(p => p.aiConditionScore != null).length > 1
             return (
               <div
@@ -399,8 +399,9 @@ export function PhotoAnalysisTab({
                     </span>
                   )}
                   <button
-                    onClick={(e) => { e.stopPropagation(); setLightboxPhoto(photo) }}
+                    onClick={(e) => { e.stopPropagation(); setLightboxIdx(sortedIdx) }}
                     className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Open Pro Viewer"
                   >
                     <ZoomIn className="h-3.5 w-3.5 text-white/80" />
                   </button>
@@ -438,57 +439,13 @@ export function PhotoAnalysisTab({
         </div>
       )}
 
-      {/* ── Lightbox ─────────────────────────────────────────────────────── */}
-      {lightboxPhoto && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-          onClick={() => setLightboxPhoto(null)}
-        >
-          <div
-            className="relative max-w-3xl w-full rounded-xl overflow-hidden shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <img
-              src={lightboxPhoto.url}
-              alt={lightboxPhoto.aiRoomType ?? "photo"}
-              className="w-full max-h-[80vh] object-contain bg-black"
-            />
-            {/* Overlay info bar */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-4 py-3 flex items-end justify-between">
-              <div>
-                <p className="text-sm font-semibold text-white capitalize">
-                  {lightboxPhoto.aiRoomType?.replace(/_/g, " ") ?? "Photo"}
-                </p>
-                {lightboxPhoto.aiDescription && (
-                  <p className="text-xs text-white/70 mt-0.5 max-w-lg">{lightboxPhoto.aiDescription}</p>
-                )}
-                {lightboxPhoto.aiIssues?.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1.5">
-                    {lightboxPhoto.aiIssues.map((issue) => (
-                      <span key={issue} className="text-[10px] bg-red-500/70 text-white rounded px-1.5 py-0.5">
-                        {issue.replace(/_/g, " ")}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {lightboxPhoto.aiConditionScore != null && (
-                <div className={cn(
-                  "text-sm font-bold px-2 py-1 rounded",
-                  CONDITION_COLOURS[lightboxPhoto.aiCondition ?? ""] ?? "bg-gray-200 text-gray-700"
-                )}>
-                  {lightboxPhoto.aiConditionScore}/100
-                </div>
-              )}
-            </div>
-            <button
-              onClick={() => setLightboxPhoto(null)}
-              className="absolute top-2 right-2 h-8 w-8 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
+      {/* ── Pro Photo Viewer ─────────────────────────────────────────────── */}
+      {lightboxIdx !== null && (
+        <ProPhotoViewer
+          photos={sortedPhotos}
+          startIndex={lightboxIdx}
+          onClose={() => setLightboxIdx(null)}
+        />
       )}
 
       {/* ── Selected Photo Detail ────────────────────────────────────────── */}
