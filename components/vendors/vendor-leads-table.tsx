@@ -198,7 +198,7 @@ export interface VendorLead {
     aiResponseMetadata?: Record<string, any> | null
     confidenceScore?: number | null
   }>
-  _count?: { smsMessages: number; pipelineEvents: number }
+  _count?: { smsMessages: number; pipelineEvents: number; photos: number }
   photoAnalysisStatus?: string | null
   photoConditionScore?: number | null
   photoConditionOverride?: string | null
@@ -1676,6 +1676,35 @@ function conditionFromPhotoScore(score: number | null): string {
   return "poor"
 }
 
+function refurbEstimate(score: number | null): string | null {
+  if (score === null) return null
+  if (score >= 80) return "Minimal"
+  if (score >= 65) return "~£2k–5k"
+  if (score >= 50) return "~£8k–20k"
+  if (score >= 30) return "~£20k–50k"
+  return "£50k+"
+}
+
+const PHOTO_STATUS_LABELS: Record<string, string> = {
+  pending:  "Not started",
+  running:  "Analysing…",
+  complete: "Complete",
+  failed:   "Failed",
+}
+const PHOTO_STATUS_COLOURS: Record<string, string> = {
+  pending:  "text-gray-400",
+  running:  "text-blue-500",
+  complete: "text-green-600",
+  failed:   "text-red-500",
+}
+const PHOTO_SCORE_COLOURS: Record<string, string> = {
+  excellent:           "bg-green-100 text-green-800",
+  good:                "bg-blue-100 text-blue-800",
+  needs_work:          "bg-amber-100 text-amber-800",
+  needs_modernisation: "bg-orange-100 text-orange-800",
+  poor:                "bg-red-100 text-red-800",
+}
+
 function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
   const status       = lead.photoAnalysisStatus ?? "pending"
   const conditionKey = lead.photoConditionOverride
@@ -1687,6 +1716,10 @@ function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, isSelecte
       })()
     : null
 
+  const photoCount  = lead._count?.photos ?? 0
+  const scoreKey    = conditionFromPhotoScore(lead.photoConditionScore ?? null)
+  const refurb      = refurbEstimate(lead.photoConditionScore ?? null)
+
   return (
     <tr
       className={cn("group cursor-pointer border-b border-[#f3f4f6] transition-colors", isSelected ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-[#f3f4f6]")}
@@ -1697,34 +1730,68 @@ function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, isSelecte
       </td>
       <VendorAddressCell lead={lead} isSelected={isSelected} />
 
-      {/* Pipeline stage */}
-      <Td><StageBadge stage={lead.pipelineStage} /></Td>
+      {/* Photos — count + analysis status */}
+      <Td>
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700"
+              title={`${photoCount} photo${photoCount !== 1 ? "s" : ""} uploaded`}>
+              <Camera className="h-3 w-3" />{photoCount}
+            </span>
+          </div>
+          <p className={cn("text-[11px] font-medium", PHOTO_STATUS_COLOURS[status] ?? "text-gray-400")}
+            title={`Photo analysis status: ${PHOTO_STATUS_LABELS[status] ?? status}`}>
+            {PHOTO_STATUS_LABELS[status] ?? status}
+          </p>
+        </div>
+      </Td>
+
+      {/* AI Score */}
+      <Td>
+        {lead.photoConditionScore != null ? (
+          <div className="space-y-1" title={`AI score: ${lead.photoConditionScore}/100. Scale: 80+ Excellent, 65–79 Good, 50–64 Needs Work, 30–49 Needs Modernisation, <30 Poor`}>
+            <div className="flex items-center gap-1.5">
+              <span className={cn("text-xs font-bold px-1.5 py-0.5 rounded cursor-help", PHOTO_SCORE_COLOURS[scoreKey] ?? "bg-gray-100 text-gray-700")}>
+                {lead.photoConditionScore}/100
+              </span>
+            </div>
+            <div className="w-16 bg-gray-100 rounded-full h-1">
+              <div className={cn("h-1 rounded-full", PHOTO_SCORE_COLOURS[scoreKey]?.split(" ")[0]?.replace("bg-", "bg-") ?? "bg-gray-300")}
+                style={{ width: `${lead.photoConditionScore}%` }} />
+            </div>
+          </div>
+        ) : (
+          <span className="text-xs text-gray-400">—</span>
+        )}
+      </Td>
 
       {/* Condition */}
       <Td>
-        {status === "complete" || lead.photoConditionOverride ? (() => {
-          const scoreExplain =
-            conditionKey === "excellent"           ? "80–100: Move-in ready, no work needed" :
-            conditionKey === "good"                ? "65–79: Minor cosmetic work only" :
-            conditionKey === "needs_work"          ? "50–64: Refurb required — negotiate a discount" :
-            conditionKey === "needs_modernisation" ? "30–49: Full modernisation needed — significant discount required" :
-            conditionKey === "poor"                ? "0–29: Major works or structural issues — deep discount essential" :
-            ""
-          const tooltip = lead.photoConditionScore != null
-            ? `AI score: ${lead.photoConditionScore}/100. ${scoreExplain}${lead.photoConditionOverride ? " (manually overridden)" : ""}`
-            : scoreExplain
-          return (
+        {status === "complete" || lead.photoConditionOverride ? (
+          <div className="space-y-0.5">
             <span
-              title={tooltip}
-              className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium cursor-help", PHOTO_CONDITION_COLOURS[conditionKey] ?? "bg-gray-100 text-gray-600 border-gray-200")}
+              title={`${PHOTO_CONDITION_LABELS[conditionKey] ?? conditionKey}${lead.photoConditionOverride ? " — manually overridden" : " — AI assessed"}`}
+              className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium cursor-help", PHOTO_CONDITION_COLOURS[conditionKey] ?? "bg-gray-100 text-gray-600 border-gray-200")}
             >
               {PHOTO_CONDITION_LABELS[conditionKey] ?? "Unknown"}
-              {lead.photoConditionScore != null && !lead.photoConditionOverride && (
-                <span className="ml-1 opacity-60">{lead.photoConditionScore}</span>
-              )}
+              {lead.photoConditionOverride && <span title="Manually overridden" className="text-[9px]">★</span>}
             </span>
-          )
-        })() : (
+          </div>
+        ) : (
+          <span className="text-xs text-gray-400">—</span>
+        )}
+      </Td>
+
+      {/* Est. Refurb */}
+      <Td>
+        {refurb ? (
+          <span
+            title={`Estimated refurb cost based on AI score of ${lead.photoConditionScore}/100`}
+            className="text-xs font-medium text-gray-700 cursor-help"
+          >
+            {refurb}
+          </span>
+        ) : (
           <span className="text-xs text-gray-400">—</span>
         )}
       </Td>
@@ -1918,8 +1985,10 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
       return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
         {selectAllTh}
         {vendorAddressHeader}
-        <Th>Status</Th>
-        <Th><Tip text="AI-assessed property condition from photo analysis">Condition</Tip></Th>
+        <Th><Tip text="Number of photos uploaded and analysis status">Photos</Tip></Th>
+        <Th><Tip text="AI condition score out of 100 — higher is better">AI Score</Tip></Th>
+        <Th><Tip text="Overall property condition — AI assessed or manually overridden (★)">Condition</Tip></Th>
+        <Th><Tip text="Rough refurb cost estimate based on AI score">Est. Refurb</Tip></Th>
         <Th><Tip text="When AI photo analysis was last completed">Last Analysed</Tip></Th>
         {stickyRight}
       </tr>

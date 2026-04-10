@@ -94,6 +94,7 @@ export async function GET(request: NextRequest) {
             select: {
               smsMessages: true,
               pipelineEvents: true,
+              photos: true,
             },
           },
         },
