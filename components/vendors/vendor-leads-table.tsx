@@ -927,37 +927,97 @@ function VendorLeadsKpiBar({ kpis }: { kpis: Kpis }) {
 // Tab Bar
 // ─────────────────────────────────────────────────────────────────────────────
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: "map-view", label: "Map View" },
-  { id: "property-details", label: "Property Details" },
-  { id: "portal-check", label: "Portal Check" },
-  { id: "validation", label: "Validation" },
-  { id: "comparable", label: "Comparable" },
-  { id: "offer-analysis", label: "Offer Analysis" },
-  { id: "ai-conversation", label: "AI Conversation" },
-  { id: "photo-analysis", label: "Photo Analysis" },
+// Workflow tabs — ordered to match the natural deal evaluation pipeline.
+// Map View is a reference tool, not a workflow step; it lives in the toolbar instead.
+const TABS: { id: TabId; label: string; step: number }[] = [
+  { id: "ai-conversation",  label: "AI Conversation",  step: 1 },
+  { id: "property-details", label: "Property Details", step: 2 },
+  { id: "photo-analysis",   label: "Photo Analysis",   step: 3 },
+  { id: "portal-check",     label: "Portal Check",     step: 4 },
+  { id: "comparable",       label: "Comparables",      step: 5 },
+  { id: "validation",       label: "Validation",       step: 6 },
+  { id: "offer-analysis",   label: "Offer Analysis",   step: 7 },
 ]
 
-function TabBar({ active, onChange }: { active: TabId; onChange: (t: TabId) => void }) {
+/** Per-tab: how many active leads still need action at this workflow step */
+function useTabBadgeCounts(leads: VendorLead[]): Partial<Record<TabId, number>> {
+  const active = leads.filter((l) => !l.archivedAt)
+  if (active.length === 0) return {}
+  return {
+    "ai-conversation":  active.filter((l) => (l._count?.smsMessages ?? 0) === 0).length,
+    "property-details": active.filter((l) => l.estimatedMarketValue == null || l.propertyType == null).length,
+    "photo-analysis":   active.filter((l) => (l._count?.photos ?? 0) === 0 || l.photoAnalysisStatus !== "complete").length,
+    "portal-check":     active.filter((l) => !l.latestCheckedAt && !l.portalCheckedAt).length,
+    "comparable":       active.filter((l) => !l.comparablesCount || l.comparablesCount === 0).length,
+    "validation":       active.filter((l) => !l.bmvValidatedAt).length,
+    "offer-analysis":   active.filter((l) => !l.offerAmount && !l.offerSentAt).length,
+  }
+}
+
+function TabBar({
+  active,
+  onChange,
+  leads,
+}: {
+  active: TabId
+  onChange: (t: TabId) => void
+  leads: VendorLead[]
+}) {
+  const counts = useTabBadgeCounts(leads)
+  const hasLeads = leads.length > 0
+
   return (
     <div className="overflow-x-auto border-b border-gray-200 bg-white">
       <div className="flex min-w-max">
         {TABS.map((tab) => {
           const isActive = tab.id === active
+          const count = counts[tab.id] ?? 0
+          const allDone = hasLeads && count === 0
+
           return (
             <button
               key={tab.id}
               onClick={() => onChange(tab.id)}
+              style={{ marginBottom: "-1px" }}
               className={cn(
-                "whitespace-nowrap px-4 py-3 text-[13px] font-medium transition-colors",
+                "group relative flex items-center gap-1.5 whitespace-nowrap px-4 py-3 text-[13px] font-medium transition-colors -mb-px",
                 isActive
                   ? "border-b-2 border-blue-600 text-blue-600"
                   : "border-b-2 border-transparent text-gray-400 hover:text-gray-600",
-                "-mb-px" // overlap tab bar bottom border
               )}
-              style={{ marginBottom: "-1px" }}
             >
+              {/* Step number bubble */}
+              <span
+                className={cn(
+                  "flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold",
+                  isActive
+                    ? "bg-blue-100 text-blue-600"
+                    : "bg-gray-100 text-gray-400 group-hover:bg-gray-200",
+                )}
+              >
+                {tab.step}
+              </span>
+
+              {/* Label */}
               {tab.label}
+
+              {/* Action-needed badge — amber count */}
+              {count > 0 && (
+                <span
+                  title={`${count} lead${count !== 1 ? "s" : ""} need action here`}
+                  className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-amber-100 px-1 py-px text-[10px] font-bold text-amber-700"
+                >
+                  {count}
+                </span>
+              )}
+
+              {/* All-done indicator — green tick */}
+              {allDone && (
+                <CheckCircle2
+                  className="h-3.5 w-3.5 shrink-0 text-green-500"
+                  title="All leads complete for this step"
+                />
+              )}
             </button>
           )
         })}
@@ -2113,7 +2173,7 @@ export function VendorLeadsTable() {
   const [leads, setLeads] = useState<VendorLead[]>([])
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<"table" | "board">("table")
-  const [activeTab, setActiveTab] = useState<TabId>("map-view")
+  const [activeTab, setActiveTab] = useState<TabId>("ai-conversation")
   const [mapLead, setMapLead] = useState<VendorLead | null>(null)
   const [checkingIds, setCheckingIds] = useState<Set<string>>(new Set())
   const [detailModal, setDetailModal] = useState<{ lead: VendorLead; reason: string; urgency: "high" | "medium" | "low" } | null>(null)
@@ -2518,6 +2578,21 @@ export function VendorLeadsTable() {
             {visibleLeads.length} lead{visibleLeads.length !== 1 ? "s" : ""}
           </p>
           <div className="flex items-center gap-2">
+            {/* Map View — reference tool, not a workflow step */}
+            <button
+              onClick={() => setActiveTab("map-view")}
+              title="Map View — click a lead row to see it on the map"
+              className={cn(
+                "flex h-7 items-center gap-1.5 rounded-md border px-3 text-xs font-medium transition-colors",
+                activeTab === "map-view"
+                  ? "border-blue-300 bg-blue-50 text-blue-600"
+                  : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+              )}
+            >
+              <MapPin className="h-3.5 w-3.5" />
+              Map
+            </button>
+
             {/* Board / Table toggle */}
             <div className="flex items-center gap-0.5 rounded-md border border-gray-200 bg-gray-50 p-0.5">
               <button
@@ -2579,7 +2654,7 @@ export function VendorLeadsTable() {
         )}
 
         {/* Tab Bar — only shown in table view */}
-        {viewMode === "table" && <TabBar active={activeTab} onChange={setActiveTab} />}
+        {viewMode === "table" && <TabBar active={activeTab} onChange={setActiveTab} leads={leads} />}
 
         {/* Table — only shown in table view */}
         {viewMode === "table" && <div className="overflow-x-auto">
