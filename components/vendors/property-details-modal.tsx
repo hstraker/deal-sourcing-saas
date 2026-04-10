@@ -7,6 +7,7 @@ import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type { VendorLead } from "./vendor-leads-table"
+import { LeadPhotoStrip, LeftPanelPhotoThumbs } from "./lead-photo-strip"
 
 // ── Helpers (local — no external dependency) ──────────────────────────────────
 
@@ -517,6 +518,19 @@ export function PropertyDetailsModal({
             />
           </div>
 
+          {/* Photo thumbnails */}
+          {(lead._count?.photos ?? 0) > 0 && (
+            <>
+              <div className="h-px bg-white/10" />
+              <LeftPanelPhotoThumbs
+                leadId={lead.id}
+                conditionScore={lead.photoConditionScore}
+                conditionOverride={lead.photoConditionOverride}
+                analysisStatus={lead.photoAnalysisStatus}
+              />
+            </>
+          )}
+
           {/* Pipeline stage — pinned to bottom */}
           <div className="mt-auto border-t border-white/10 pt-3">
             <div className="flex items-center justify-between">
@@ -546,6 +560,14 @@ export function PropertyDetailsModal({
               <X className="h-4 w-4" />
             </button>
           </div>
+
+          {/* Photo Strip */}
+          {(lead._count?.photos ?? 0) > 0 && (
+            <LeadPhotoStrip
+              leadId={lead.id}
+              thumbHeight={90}
+            />
+          )}
 
           {/* Property Specs */}
           <div>

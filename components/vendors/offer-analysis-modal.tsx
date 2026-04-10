@@ -1,13 +1,14 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { X, Phone, Mail, TrendingUp, Home, AlertTriangle } from "lucide-react"
+import { X, Phone, Mail, TrendingUp, Home, AlertTriangle, Camera } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { ModalShell } from "./modal-shell"
 import { OfferAnalysisPanel } from "../deals/offer-analysis-panel"
 import type { OfferCalculationResult } from "@/lib/offer-engine/property-offer-calculator"
+import { LeftPanelPhotoThumbs, CONDITION_LABELS, CONDITION_COLOURS, estimateRefurbFromScore } from "./lead-photo-strip"
 import type { VendorLead } from "./vendor-leads-table"
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -383,6 +384,71 @@ export function OfferAnalysisModal({
         )}
       </div>
 
+      {/* Photo condition + thumbnails */}
+      {((lead._count?.photos ?? 0) > 0 || lead.photoConditionScore != null) && (
+        <>
+          <div className="mb-4 h-px bg-white/10" />
+          <div className="mb-4">
+            {/* Condition summary */}
+            {(lead.photoAnalysisStatus === "complete" || lead.photoConditionOverride) && (
+              <div className="mb-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 space-y-1.5">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-1">
+                  <Camera className="h-3 w-3" />
+                  Photo Condition
+                </p>
+                <div className="flex items-center justify-between gap-2">
+                  {(lead.photoConditionOverride || lead.photoConditionScore != null) && (
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-[10px] font-bold capitalize",
+                        lead.photoConditionOverride
+                          ? CONDITION_COLOURS[lead.photoConditionOverride] ?? "bg-slate-600 text-white"
+                          : "bg-slate-600 text-white"
+                      )}
+                    >
+                      {lead.photoConditionOverride
+                        ? CONDITION_LABELS[lead.photoConditionOverride] ?? lead.photoConditionOverride.replace(/_/g, " ")
+                        : "Analysed"}
+                    </span>
+                  )}
+                  {lead.photoConditionScore != null && (
+                    <span className="text-xs font-extrabold text-slate-200">
+                      {lead.photoConditionScore}/100
+                    </span>
+                  )}
+                </div>
+                {lead.photoConditionScore != null && (
+                  <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full rounded-full",
+                        lead.photoConditionScore >= 70 ? "bg-green-500"
+                          : lead.photoConditionScore >= 40 ? "bg-amber-400"
+                          : "bg-red-500"
+                      )}
+                      style={{ width: `${lead.photoConditionScore}%` }}
+                    />
+                  </div>
+                )}
+                {estimateRefurbFromScore(lead.photoConditionScore) && (
+                  <p className="text-[9px] text-slate-400">
+                    Refurb est: {estimateRefurbFromScore(lead.photoConditionScore)}
+                  </p>
+                )}
+                {lead.photoConditionOverride && (
+                  <p className="text-[9px] text-amber-400">★ Manually overridden</p>
+                )}
+              </div>
+            )}
+
+            {/* Thumbnails only — condition already shown above */}
+            <LeftPanelPhotoThumbs
+              leadId={lead.id}
+            />
+          </div>
+        </>
+      )}
+
       {/* Pipeline stage — pinned to bottom */}
       <div className="mt-auto border-t border-white/10 pt-3">
         <div className="flex items-center justify-between">
@@ -413,6 +479,40 @@ export function OfferAnalysisModal({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 pt-2">
+        {/* Photo condition warning */}
+        {lead.photoAnalysisStatus === "complete" && lead.photoConditionScore != null && lead.photoConditionScore < 50 && (
+          <div className={cn(
+            "mb-4 flex items-start gap-2 rounded-lg border p-3",
+            lead.photoConditionScore < 30
+              ? "border-red-200 bg-red-50"
+              : "border-amber-200 bg-amber-50"
+          )}>
+            <AlertTriangle className={cn(
+              "h-4 w-4 shrink-0 mt-0.5",
+              lead.photoConditionScore < 30 ? "text-red-500" : "text-amber-500"
+            )} />
+            <div>
+              <p className={cn(
+                "text-xs font-bold",
+                lead.photoConditionScore < 30 ? "text-red-700" : "text-amber-700"
+              )}>
+                {lead.photoConditionScore < 30
+                  ? "Poor condition — heavy refurb required"
+                  : "Condition needs work — factor in refurb costs"}
+              </p>
+              <p className={cn(
+                "text-[11px] mt-0.5",
+                lead.photoConditionScore < 30 ? "text-red-600" : "text-amber-600"
+              )}>
+                Photo analysis score: {lead.photoConditionScore}/100
+                {estimateRefurbFromScore(lead.photoConditionScore)
+                  ? ` · Est. refurb: ${estimateRefurbFromScore(lead.photoConditionScore)}`
+                  : ""}
+              </p>
+            </div>
+          </div>
+        )}
+
         <OfferAnalysisPanel
           vendorLeadId={lead.id}
           dealId={lead.dealId}

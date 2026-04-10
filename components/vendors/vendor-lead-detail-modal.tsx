@@ -80,6 +80,7 @@ import { PortalCheckDetailPanel } from "./portal-check-detail-panel"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { AiConversationTab } from "./ai-conversation-tab"
 import { PhotoAnalysisTab } from "./photo-analysis-tab"
+import { LeadPhotoStrip } from "./lead-photo-strip"
 import { SourcingFeePanel } from "./sourcing-fee-panel"
 import { InvestorMatchPanel } from "./investor-match-panel"
 
@@ -200,6 +201,12 @@ export interface VendorLead {
   insuranceOverride?: string | number | null
   // Outreach channel
   preferredChannel?: string | null  // "sms" | "whatsapp"
+  // Photo analysis
+  _count?: { smsMessages: number; pipelineEvents: number; photos: number }
+  photoAnalysisStatus?: string | null
+  photoConditionScore?: number | null
+  photoConditionOverride?: string | null
+  photoAnalysisCompletedAt?: string | null
 }
 
 interface VendorLeadDetailModalProps {
@@ -1455,6 +1462,16 @@ export function VendorLeadDetailModal({
           </TabsList>
 
           <TabsContent value="details" className="flex-1 overflow-y-auto min-h-0 space-y-4 pt-2 pb-6 px-0.5">
+            {/* ── Photo Strip (if photos uploaded) ───────────────────────────────── */}
+            {(currentLead._count?.photos ?? 0) > 0 && (
+              <div className="ds-card overflow-hidden p-4">
+                <LeadPhotoStrip
+                  leadId={currentLead.id}
+                  thumbHeight={90}
+                />
+              </div>
+            )}
+
             {/* ── Row 1: Contact + Property ──────────────────────────────────────── */}
             <div className="grid grid-cols-2 gap-4">
               {/* Contact */}

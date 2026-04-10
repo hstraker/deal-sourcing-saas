@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { X, Loader2, Calculator, CheckCircle, XCircle, Home, ChevronDown, ChevronRight, Info } from "lucide-react"
+import { X, Loader2, Calculator, CheckCircle, XCircle, Home, ChevronDown, ChevronRight, Info, Camera } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -9,6 +9,7 @@ import { ModalShell } from "./modal-shell"
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 import type { VendorLead } from "./vendor-leads-table"
 import { AcquisitionCostPanel } from "./acquisition-cost-panel"
+import { LeftPanelPhotoThumbs, PhotoConditionCard } from "./lead-photo-strip"
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -1143,6 +1144,21 @@ export function ValidationModal({
         </div>
       )}
 
+      {/* Photo thumbnails */}
+      {((lead._count?.photos ?? 0) > 0 || lead.photoConditionScore != null) && (
+        <>
+          <div className="mb-4 h-px bg-white/10" />
+          <div className="mb-4">
+            <LeftPanelPhotoThumbs
+              leadId={lead.id}
+              conditionScore={lead.photoConditionScore}
+              conditionOverride={lead.photoConditionOverride}
+              analysisStatus={lead.photoAnalysisStatus}
+            />
+          </div>
+        </>
+      )}
+
       {/* Pipeline stage */}
       <div className="mt-auto border-t border-white/10 pt-3">
         <div className="flex items-center justify-between">
@@ -1212,6 +1228,22 @@ export function ValidationModal({
                 {checking ? "Calculating…" : "Calculate BMV"}
               </button>
             )}
+          </div>
+        )}
+
+        {/* ── Photo Condition ──────────────────────────────────────────── */}
+        {(lead.photoAnalysisStatus === "complete" || lead.photoConditionOverride || (lead._count?.photos ?? 0) > 0) && (
+          <div>
+            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200">
+              <Camera className="h-4 w-4 text-blue-500" />
+              <p className="text-sm font-bold text-gray-800">Photo Condition</p>
+            </div>
+            <PhotoConditionCard
+              conditionScore={lead.photoConditionScore}
+              conditionOverride={lead.photoConditionOverride}
+              analysisStatus={lead.photoAnalysisStatus}
+              photoCount={lead._count?.photos ?? 0}
+            />
           </div>
         )}
 
