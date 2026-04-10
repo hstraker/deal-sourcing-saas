@@ -939,18 +939,48 @@ const TABS: { id: TabId; label: string; step: number }[] = [
   { id: "offer-analysis",   label: "Offer Analysis",   step: 7 },
 ]
 
-/** Per-tab count of active leads still needing action at that workflow step */
-function getTabBadgeCounts(leads: VendorLead[]): Partial<Record<TabId, number>> {
+interface TabCounts {
+  /** Amber: step not yet started or still outstanding */
+  action: Partial<Record<TabId, number>>
+  /** Red: step completed but outcome was a failure — needs a decision */
+  failed: Partial<Record<TabId, number>>
+}
+
+/**
+ * Computes per-tab counts for the two "needs attention" states:
+ *  action  → amber circle  (not started / still outstanding)
+ *  failed  → red circle    (completed but result is bad — requires a decision)
+ *
+ * Priority in TabBar: red > amber > green > grey
+ */
+function getTabCounts(leads: VendorLead[]): TabCounts {
   const active = leads.filter((l) => !l.archivedAt)
-  if (active.length === 0) return {}
+  if (active.length === 0) return { action: {}, failed: {} }
+
   return {
-    "ai-conversation":  active.filter((l) => (l._count?.smsMessages ?? 0) === 0).length,
-    "property-details": active.filter((l) => l.estimatedMarketValue == null || l.propertyType == null).length,
-    "photo-analysis":   active.filter((l) => (l._count?.photos ?? 0) === 0 || l.photoAnalysisStatus !== "complete").length,
-    "portal-check":     active.filter((l) => !l.latestCheckedAt && !l.portalCheckedAt).length,
-    "comparable":       active.filter((l) => !l.comparablesCount || l.comparablesCount === 0).length,
-    "validation":       active.filter((l) => !l.bmvValidatedAt).length,
-    "offer-analysis":   active.filter((l) => !l.offerAmount && !l.offerSentAt).length,
+    action: {
+      "ai-conversation":  active.filter((l) => (l._count?.smsMessages ?? 0) === 0).length,
+      "property-details": active.filter((l) => l.estimatedMarketValue == null || l.propertyType == null).length,
+      // Amber only when no photos uploaded at all — analysis running/pending is progress, not outstanding
+      "photo-analysis":   active.filter((l) => (l._count?.photos ?? 0) === 0).length,
+      "portal-check":     active.filter((l) => !l.latestCheckedAt && !l.portalCheckedAt).length,
+      "comparable":       active.filter((l) => !l.comparablesCount || l.comparablesCount === 0).length,
+      // Amber only when validation has never been run (no bmvValidatedAt)
+      "validation":       active.filter((l) => !l.bmvValidatedAt && l.validationPassed !== false).length,
+      "offer-analysis":   active.filter((l) => !l.offerAmount && !l.offerSentAt).length,
+    },
+    failed: {
+      // Red when AI analysis was attempted (photos exist) but status is not a success/in-progress state
+      "photo-analysis":   active.filter((l) =>
+        (l._count?.photos ?? 0) > 0 &&
+        l.photoAnalysisStatus != null &&
+        l.photoAnalysisStatus !== "complete" &&
+        l.photoAnalysisStatus !== "pending" &&
+        l.photoAnalysisStatus !== "running"
+      ).length,
+      // Red when validation ran and explicitly failed BMV criteria
+      "validation":       active.filter((l) => l.validationPassed === false).length,
+    },
   }
 }
 
@@ -963,16 +993,45 @@ function TabBar({
   onChange: (t: TabId) => void
   leads: VendorLead[]
 }) {
-  const counts  = getTabBadgeCounts(leads)
-  const hasLeads = leads.length > 0
+  const { action: actionCounts, failed: failedCounts } = getTabCounts(leads)
+  const hasLeads = leads.filter((l) => !l.archivedAt).length > 0
 
   return (
     <div className="overflow-x-auto border-b border-gray-200 bg-white">
       <div className="flex min-w-max">
         {TABS.map((tab) => {
-          const isActive = tab.id === active
-          const count   = counts[tab.id] ?? 0
-          const allDone = hasLeads && count === 0
+          const isActive     = tab.id === active
+          const actionCount  = actionCounts[tab.id] ?? 0
+          const failedCount  = failedCounts[tab.id] ?? 0
+
+          /*
+           * Circle state — priority order:
+           *   1. Red    → completed but failed outcome (needs a decision)
+           *   2. Amber  → not started / outstanding (needs action)
+           *   3. Green  → all leads done and passing
+           *   4. Grey   → no leads yet
+           */
+          type CircleState = "red" | "amber" | "green" | "grey"
+          const circleState: CircleState =
+            !hasLeads        ? "grey"  :
+            failedCount > 0  ? "red"   :
+            actionCount > 0  ? "amber" :
+                               "green"
+
+          const circleTitle =
+            circleState === "grey"  ? `Step ${tab.step} · ${tab.label} — no leads yet` :
+            circleState === "red"   ? `Step ${tab.step} · ${tab.label} — ${failedCount} lead${failedCount !== 1 ? "s" : ""} failed, review required` :
+            circleState === "amber" ? `Step ${tab.step} · ${tab.label} — ${actionCount} lead${actionCount !== 1 ? "s" : ""} need${actionCount === 1 ? "s" : ""} action` :
+                                     `Step ${tab.step} · ${tab.label} — all complete ✓`
+
+          const circleClass = cn(
+            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
+            "text-[10px] font-bold tabular-nums leading-none transition-colors",
+            circleState === "grey"  && "bg-gray-200 text-gray-500",
+            circleState === "amber" && (isActive ? "bg-amber-500 text-white" : "bg-amber-400 text-white"),
+            circleState === "red"   && (isActive ? "bg-red-600   text-white" : "bg-red-500   text-white"),
+            circleState === "green" && (isActive ? "bg-green-600 text-white" : "bg-green-500 text-white"),
+          )
 
           return (
             <button
@@ -980,8 +1039,6 @@ function TabBar({
               onClick={() => onChange(tab.id)}
               style={{ marginBottom: "-1px" }}
               className={cn(
-                // Every tab: identical padding + height so they all sit at the same baseline.
-                // Border-b-2 is always present (transparent when inactive) so height never shifts.
                 "flex items-center gap-2 whitespace-nowrap px-4 py-3 text-[13px] font-medium",
                 "border-b-2 transition-colors -mb-px",
                 isActive
@@ -989,39 +1046,7 @@ function TabBar({
                   : "border-transparent text-gray-400 hover:text-gray-600",
               )}
             >
-              {/*
-               * ① Coloured step-number circle — the number IS the status indicator.
-               *
-               * States (priority order):
-               *   No leads yet  → grey   bg-gray-200  text-gray-500
-               *   Needs action  → amber  bg-amber-400  text-white   (count > 0)
-               *   All complete  → green  bg-green-500  text-white   (count === 0 && hasLeads)
-               *
-               * Tooltip carries the full human-readable status + count so the colour
-               * alone is never the only source of truth (accessibility).
-               */}
-              <span
-                title={
-                  !hasLeads
-                    ? `Step ${tab.step} · ${tab.label} — no leads yet`
-                    : count > 0
-                      ? `Step ${tab.step} · ${tab.label} — ${count} lead${count !== 1 ? "s" : ""} need${count === 1 ? "s" : ""} action`
-                      : `Step ${tab.step} · ${tab.label} — all complete ✓`
-                }
-                className={cn(
-                  "flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
-                  "text-[10px] font-bold tabular-nums leading-none transition-colors",
-                  !hasLeads
-                    ? "bg-gray-200 text-gray-500"                          // no leads
-                    : count > 0
-                      ? isActive
-                        ? "bg-amber-500 text-white"                        // amber — active tab
-                        : "bg-amber-400 text-white"                        // amber — inactive tab
-                      : isActive
-                        ? "bg-green-600 text-white"                        // green — active tab
-                        : "bg-green-500 text-white",                       // green — inactive tab
-                )}
-              >
+              <span title={circleTitle} className={circleClass}>
                 {tab.step}
               </span>
 
