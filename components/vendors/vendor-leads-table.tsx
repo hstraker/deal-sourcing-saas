@@ -1705,7 +1705,7 @@ const PHOTO_SCORE_COLOURS: Record<string, string> = {
   poor:                "bg-red-100 text-red-800",
 }
 
-function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
+function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, onCheck, isChecking, onOpenDetail, isSelected, onToggleSelect }: RowRendererProps) {
   const status       = lead.photoAnalysisStatus ?? "pending"
   const conditionKey = lead.photoConditionOverride
     ?? conditionFromPhotoScore(lead.photoConditionScore ?? null)
@@ -1810,10 +1810,10 @@ function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, isSelecte
         onEdit={onEdit}
         onArchive={onArchive}
         onDelete={onDelete}
-        extraActions={[
-          { icon: Camera,   title: "Upload Photos",  onClick: onView },
-          { icon: Sparkles, title: "Run Analysis",   onClick: onView },
-        ]}
+        checkAction={onCheck ? { icon: Sparkles, title: "Run AI Analysis", onClick: onCheck, loading: isChecking } : undefined}
+        extraActions={onOpenDetail ? [
+          { icon: FileText, title: "Open Full Lead Detail", onClick: onOpenDetail },
+        ] : undefined}
       />
     </tr>
   )
@@ -1832,6 +1832,7 @@ interface RowRendererProps {
   onDelete: () => void
   onCheck?: () => void
   isChecking?: boolean
+  onOpenDetail?: () => void
   isSelected?: boolean
   onToggleSelect?: () => void
 }
@@ -2118,6 +2119,7 @@ export function VendorLeadsTable() {
   const [detailModal, setDetailModal] = useState<{ lead: VendorLead; reason: string; urgency: "high" | "medium" | "low" } | null>(null)
   const [aiConvoModalLead, setAiConvoModalLead] = useState<VendorLead | null>(null)
   const [photoModalLead, setPhotoModalLead] = useState<VendorLead | null>(null)
+  const [photoDetailLead, setPhotoDetailLead] = useState<VendorLead | null>(null)
   const [editLead, setEditLead] = useState<VendorLead | null>(null)
   const [propertyDetailsModalLead, setPropertyDetailsModalLead] = useState<VendorLead | null>(null)
   const [portalCheckModalLead, setPortalCheckModalLead] = useState<VendorLead | null>(null)
@@ -2614,6 +2616,7 @@ export function VendorLeadsTable() {
                   "validation":     { endpoint: `/api/vendor-leads/${lead.id}/calculate-bmv`,              msg: "BMV calculation complete" },
                   "comparable":     { endpoint: `/api/vendor-leads/${lead.id}/fetch-comparables`,          msg: "Comparables fetched" },
                   "offer-analysis": { endpoint: `/api/vendor-leads/${lead.id}/calculate-bmv`, msg: "Offer calculated" },
+                  "photo-analysis": { endpoint: `/api/vendor-leads/${lead.id}/photos/analyse`, msg: "AI analysis started" },
                 }
                 const checkCfg = checkEndpoints[activeTab]
 
@@ -2650,6 +2653,7 @@ export function VendorLeadsTable() {
                     ? () => handleCheck(lead.id, checkCfg.endpoint, checkCfg.msg)
                     : undefined,
                   isChecking: checkingIds.has(lead.id),
+                  onOpenDetail: activeTab === "photo-analysis" ? () => setPhotoDetailLead(lead) : undefined,
                   isSelected: selectedIds.has(lead.id),
                   onToggleSelect: () => handleToggleSelect(lead.id),
                 }
@@ -2751,6 +2755,17 @@ export function VendorLeadsTable() {
           onOpenChange={(open) => { if (!open) setEditLead(null) }}
           onUpdate={() => { fetchLeads(); setEditLead(null) }}
           initialTab="details"
+        />
+      )}
+
+      {/* Photo Detail Modal — opens VendorLeadDetailModal on photo-analysis tab */}
+      {photoDetailLead && (
+        <VendorLeadDetailModal
+          lead={photoDetailLead}
+          open={!!photoDetailLead}
+          onOpenChange={(open) => { if (!open) setPhotoDetailLead(null) }}
+          onUpdate={() => { fetchLeads(); setPhotoDetailLead(null) }}
+          initialTab="photo-analysis"
         />
       )}
 
