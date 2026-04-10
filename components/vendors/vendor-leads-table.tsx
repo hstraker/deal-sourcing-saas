@@ -939,8 +939,8 @@ const TABS: { id: TabId; label: string; step: number }[] = [
   { id: "offer-analysis",   label: "Offer Analysis",   step: 7 },
 ]
 
-/** Per-tab: how many active leads still need action at this workflow step */
-function useTabBadgeCounts(leads: VendorLead[]): Partial<Record<TabId, number>> {
+/** Per-tab count of active leads still needing action at that workflow step */
+function getTabBadgeCounts(leads: VendorLead[]): Partial<Record<TabId, number>> {
   const active = leads.filter((l) => !l.archivedAt)
   if (active.length === 0) return {}
   return {
@@ -963,7 +963,7 @@ function TabBar({
   onChange: (t: TabId) => void
   leads: VendorLead[]
 }) {
-  const counts = useTabBadgeCounts(leads)
+  const counts  = getTabBadgeCounts(leads)
   const hasLeads = leads.length > 0
 
   return (
@@ -971,7 +971,7 @@ function TabBar({
       <div className="flex min-w-max">
         {TABS.map((tab) => {
           const isActive = tab.id === active
-          const count = counts[tab.id] ?? 0
+          const count   = counts[tab.id] ?? 0
           const allDone = hasLeads && count === 0
 
           return (
@@ -980,44 +980,51 @@ function TabBar({
               onClick={() => onChange(tab.id)}
               style={{ marginBottom: "-1px" }}
               className={cn(
-                "group relative flex items-center gap-1.5 whitespace-nowrap px-4 py-3 text-[13px] font-medium transition-colors -mb-px",
+                // Every tab: identical padding + height so they all sit at the same baseline.
+                // Border-b-2 is always present (transparent when inactive) so height never shifts.
+                "flex items-center gap-2 whitespace-nowrap px-4 py-3 text-[13px] font-medium",
+                "border-b-2 transition-colors -mb-px",
                 isActive
-                  ? "border-b-2 border-blue-600 text-blue-600"
-                  : "border-b-2 border-transparent text-gray-400 hover:text-gray-600",
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-400 hover:text-gray-600",
               )}
             >
-              {/* Step number bubble */}
+              {/* ① Step numeral — plain text, not a bubble, so it never adds height */}
               <span
                 className={cn(
-                  "flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold",
-                  isActive
-                    ? "bg-blue-100 text-blue-600"
-                    : "bg-gray-100 text-gray-400 group-hover:bg-gray-200",
+                  "shrink-0 text-[11px] font-semibold tabular-nums",
+                  isActive ? "text-blue-400" : "text-gray-300",
                 )}
               >
                 {tab.step}
               </span>
 
               {/* Label */}
-              {tab.label}
+              <span>{tab.label}</span>
 
-              {/* Action-needed badge — amber count */}
-              {count > 0 && (
-                <span
-                  title={`${count} lead${count !== 1 ? "s" : ""} need action here`}
-                  className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-amber-100 px-1 py-px text-[10px] font-bold text-amber-700"
-                >
-                  {count}
-                </span>
-              )}
-
-              {/* All-done indicator — green tick */}
-              {allDone && (
-                <CheckCircle2
-                  className="h-3.5 w-3.5 shrink-0 text-green-500"
-                  title="All leads complete for this step"
-                />
-              )}
+              {/*
+               * Fixed-width 20 × 20 indicator slot — EVERY tab has this slot so
+               * the label text always ends at the same distance from the right edge.
+               * Content: amber count  |  green ✓  |  invisible placeholder
+               */}
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+                {count > 0 ? (
+                  <span
+                    title={`${count} lead${count !== 1 ? "s" : ""} need${count === 1 ? "s" : ""} action here`}
+                    className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-amber-100 px-1 text-[10px] font-bold text-amber-700"
+                  >
+                    {count > 99 ? "99+" : count}
+                  </span>
+                ) : allDone ? (
+                  <CheckCircle2
+                    className="h-3.5 w-3.5 text-green-500"
+                    title="All leads complete for this step"
+                  />
+                ) : (
+                  // Empty placeholder — keeps the slot width consistent when there are no leads yet
+                  <span className="h-1.5 w-1.5 rounded-full bg-gray-100" />
+                )}
+              </span>
             </button>
           )
         })}
