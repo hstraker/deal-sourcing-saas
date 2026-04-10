@@ -1041,7 +1041,8 @@ function Th({ children, className }: { children: React.ReactNode; className?: st
   return (
     <th
       className={cn(
-        "px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-gray-400",
+        // whitespace-nowrap prevents column headers wrapping or clipping mid-word
+        "whitespace-nowrap px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-gray-400",
         className
       )}
     >
@@ -1797,36 +1798,33 @@ function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, onCheck, 
       </td>
       <VendorAddressCell lead={lead} isSelected={isSelected} />
 
-      {/* Photos — count + analysis status */}
+      {/* Photos — count + analysis status — single inline row */}
       <Td>
-        <div className="space-y-0.5">
-          <div className="flex items-center gap-1.5">
-            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700"
-              title={`${photoCount} photo${photoCount !== 1 ? "s" : ""} uploaded`}>
-              <Camera className="h-3 w-3" />{photoCount}
-            </span>
-          </div>
-          <p className={cn("text-[11px] font-medium", PHOTO_STATUS_COLOURS[status] ?? "text-gray-400")}
-            title={`Photo analysis status: ${PHOTO_STATUS_LABELS[status] ?? status}`}>
+        <div className="flex items-center gap-1.5">
+          <span
+            className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700"
+            title={`${photoCount} photo${photoCount !== 1 ? "s" : ""} uploaded`}
+          >
+            <Camera className="h-3 w-3" />{photoCount}
+          </span>
+          <span
+            className={cn("text-[11px] font-medium", PHOTO_STATUS_COLOURS[status] ?? "text-gray-400")}
+            title={`Photo analysis status: ${PHOTO_STATUS_LABELS[status] ?? status}`}
+          >
             {PHOTO_STATUS_LABELS[status] ?? status}
-          </p>
+          </span>
         </div>
       </Td>
 
-      {/* AI Score */}
+      {/* AI Score — single badge, no progress bar (bar belongs in the detail modal) */}
       <Td>
         {lead.photoConditionScore != null ? (
-          <div className="space-y-1" title={`AI score: ${lead.photoConditionScore}/100. Scale: 80+ Excellent, 65–79 Good, 50–64 Needs Work, 30–49 Needs Modernisation, <30 Poor`}>
-            <div className="flex items-center gap-1.5">
-              <span className={cn("text-xs font-bold px-1.5 py-0.5 rounded cursor-help", PHOTO_SCORE_COLOURS[scoreKey] ?? "bg-gray-100 text-gray-700")}>
-                {lead.photoConditionScore}/100
-              </span>
-            </div>
-            <div className="w-16 bg-gray-100 rounded-full h-1">
-              <div className={cn("h-1 rounded-full", PHOTO_SCORE_COLOURS[scoreKey]?.split(" ")[0]?.replace("bg-", "bg-") ?? "bg-gray-300")}
-                style={{ width: `${lead.photoConditionScore}%` }} />
-            </div>
-          </div>
+          <span
+            className={cn("text-xs font-bold px-1.5 py-0.5 rounded cursor-help", PHOTO_SCORE_COLOURS[scoreKey] ?? "bg-gray-100 text-gray-700")}
+            title={`AI score: ${lead.photoConditionScore}/100. Scale: 80+ Excellent, 65–79 Good, 50–64 Needs Work, 30–49 Needs Modernisation, <30 Poor`}
+          >
+            {lead.photoConditionScore}/100
+          </span>
         ) : (
           <span className="text-xs text-gray-400">—</span>
         )}
@@ -1835,15 +1833,13 @@ function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, onCheck, 
       {/* Condition */}
       <Td>
         {status === "complete" || lead.photoConditionOverride ? (
-          <div className="space-y-0.5">
-            <span
-              title={`${PHOTO_CONDITION_LABELS[conditionKey] ?? conditionKey}${lead.photoConditionOverride ? " — manually overridden" : " — AI assessed"}`}
-              className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium cursor-help", PHOTO_CONDITION_COLOURS[conditionKey] ?? "bg-gray-100 text-gray-600 border-gray-200")}
-            >
-              {PHOTO_CONDITION_LABELS[conditionKey] ?? "Unknown"}
-              {lead.photoConditionOverride && <span title="Manually overridden" className="text-[9px]">★</span>}
-            </span>
-          </div>
+          <span
+            title={`${PHOTO_CONDITION_LABELS[conditionKey] ?? conditionKey}${lead.photoConditionOverride ? " — manually overridden" : " — AI assessed"}`}
+            className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium cursor-help", PHOTO_CONDITION_COLOURS[conditionKey] ?? "bg-gray-100 text-gray-600 border-gray-200")}
+          >
+            {PHOTO_CONDITION_LABELS[conditionKey] ?? "Unknown"}
+            {lead.photoConditionOverride && <span title="Manually overridden" className="text-[9px]">★</span>}
+          </span>
         ) : (
           <span className="text-xs text-gray-400">—</span>
         )}
