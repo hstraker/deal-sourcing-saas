@@ -220,7 +220,11 @@ export function PhotoAnalysisTab({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ override }),
     })
-    setLeadData((prev) => prev ? { ...prev, photoConditionOverride: override } : prev)
+    setLeadData((prev) => {
+      const updated = prev ? { ...prev, photoConditionOverride: override } : prev
+      if (updated && onDataLoaded) onDataLoaded(photos, updated)
+      return updated
+    })
     toast.success("Condition override saved")
   }
 
