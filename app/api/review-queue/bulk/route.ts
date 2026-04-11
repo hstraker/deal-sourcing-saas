@@ -129,7 +129,11 @@ export async function POST(request: NextRequest) {
             estimatedMarketValue: enrichment.marketValue,
             estimatedMonthlyRent: enrichment.estimatedMonthlyRent,
             estimatedRefurbCost:  enrichment.estimatedRefurbCost,
-            bmvScore:             calculatedMetrics.bmvPercentage,
+            // Only save a real BMV score — never save the 1.15× fallback estimate,
+            // which would display a misleading 13.0% for every un-comparable lead.
+            bmvScore:             enrichment.marketValueSource !== "estimated"
+                                    ? calculatedMetrics.bmvPercentage
+                                    : null,
             comparablesCount:     enrichment.comparablesCount ?? null,
             avgComparablePrice:   enrichment.avgComparablePrice ?? null,
             pipelineStage:        "NEW_LEAD",

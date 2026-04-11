@@ -226,6 +226,7 @@ export interface VendorLead {
   surveyFeeOverride?: string | number | null
   bridgingCostOverride?: string | number | null
   insuranceOverride?: string | number | null
+  leadSource?: string | null  // e.g. "Scraper: RM" | "Scraper: Z" | "manual" | "facebook_ads"
 }
 
 type TabId = "map-view" | "property-details" | "portal-check" | "validation" | "comparable" | "offer-analysis" | "ai-conversation" | "photo-analysis"
@@ -1096,6 +1097,20 @@ function Td({ children, className }: { children: React.ReactNode; className?: st
  * of fixed width and giving more room for the scrollable data columns.
  */
 function VendorAddressCell({ lead, isSelected }: { lead: VendorLead; isSelected?: boolean }) {
+  // Detect scraper/portal source badge from leadSource (e.g. "Scraper: RM" → "RM")
+  const scraperMatch = lead.leadSource?.match(/^Scraper:\s*(.+)$/)
+  const sourceBadge  = scraperMatch ? scraperMatch[1].trim() : null
+
+  // Scraper leads: second line = postcode only (concise); direct leads: full address
+  const secondLine = sourceBadge
+    ? (lead.propertyPostcode ?? lead.propertyAddress)
+    : lead.propertyAddress
+
+  // Full detail in native tooltip so nothing is ever truly hidden
+  const tooltip = [lead.vendorName, lead.propertyAddress, lead.propertyPostcode]
+    .filter(Boolean)
+    .join(" · ")
+
   return (
     <td
       className={cn(
@@ -1103,21 +1118,26 @@ function VendorAddressCell({ lead, isSelected }: { lead: VendorLead; isSelected?
         isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]"
       )}
     >
-      <div className="flex items-start gap-2 min-w-0">
+      <div className="flex items-start gap-2 min-w-0" title={tooltip}>
         <MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-gray-300" />
         <div className="min-w-0 flex-1">
 
-          {/* Vendor name + processing spinner */}
-          <div className="flex items-center gap-1.5">
+          {/* Line 1: truncated vendor name + portal source badge + processing spinner */}
+          <div className="flex items-center gap-1 min-w-0">
             <span className="truncate text-sm font-semibold text-gray-900 leading-tight">
               {lead.vendorName}
             </span>
+            {sourceBadge && (
+              <span className="shrink-0 rounded border border-blue-200 bg-blue-50 px-1 py-px text-[9px] font-bold uppercase tracking-wide text-blue-500">
+                {sourceBadge}
+              </span>
+            )}
             <ProcessingIcon status={lead.processingStatus} />
           </div>
 
-          {/* Property address */}
+          {/* Line 2: postcode only (scraper) or full address (direct) */}
           <p className="truncate text-xs text-gray-500 mt-0.5 leading-tight">
-            {lead.propertyAddress ?? <span className="text-gray-300 italic">No address</span>}
+            {secondLine ?? <span className="text-gray-300 italic">No address</span>}
           </p>
 
           {/* Status badges (shown when relevant) */}
