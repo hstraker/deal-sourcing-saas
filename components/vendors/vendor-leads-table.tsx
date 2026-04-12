@@ -931,13 +931,13 @@ function VendorLeadsKpiBar({ kpis }: { kpis: Kpis }) {
 // Workflow tabs — ordered to match the natural deal evaluation pipeline.
 // Map View is a reference tool, not a workflow step; it lives in the toolbar instead.
 const TABS: { id: TabId; label: string; step: number }[] = [
-  { id: "ai-conversation",  label: "AI Conversation",  step: 1 },
-  { id: "property-details", label: "Property Details", step: 2 },
-  { id: "photo-analysis",   label: "Photo Analysis",   step: 3 },
-  { id: "portal-check",     label: "Portal Check",     step: 4 },
-  { id: "comparable",       label: "Comparables",      step: 5 },
-  { id: "validation",       label: "Validation",       step: 6 },
-  { id: "offer-analysis",   label: "Offer Analysis",   step: 7 },
+  { id: "ai-conversation",  label: "AI Chat",    step: 1 },
+  { id: "property-details", label: "Details",    step: 2 },
+  { id: "photo-analysis",   label: "Photos",     step: 3 },
+  { id: "portal-check",     label: "Portal",     step: 4 },
+  { id: "comparable",       label: "Comps",      step: 5 },
+  { id: "validation",       label: "Validation", step: 6 },
+  { id: "offer-analysis",   label: "Offer",      step: 7 },
 ]
 
 interface TabCounts {
@@ -998,8 +998,8 @@ function TabBar({
   const hasLeads = leads.filter((l) => !l.archivedAt).length > 0
 
   return (
-    <div className="overflow-x-auto border-b border-gray-200 bg-white">
-      <div className="flex min-w-max">
+    <div className="overflow-x-auto border-b border-gray-200 bg-white [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex min-w-max snap-x snap-mandatory">
         {TABS.map((tab) => {
           const isActive     = tab.id === active
           const actionCount  = actionCounts[tab.id] ?? 0
@@ -1026,12 +1026,11 @@ function TabBar({
                                      `Step ${tab.step} · ${tab.label} — all complete ✓`
 
           const circleClass = cn(
-            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
-            "text-[10px] font-bold tabular-nums leading-none transition-colors",
-            circleState === "grey"  && "bg-gray-200 text-gray-500",
-            circleState === "amber" && (isActive ? "bg-amber-500 text-white" : "bg-amber-400 text-white"),
-            circleState === "red"   && (isActive ? "bg-red-600   text-white" : "bg-red-500   text-white"),
-            circleState === "green" && (isActive ? "bg-green-600 text-white" : "bg-green-500 text-white"),
+            "h-2.5 w-2.5 shrink-0 rounded-full transition-colors",
+            circleState === "grey"  && "bg-gray-200",
+            circleState === "amber" && (isActive ? "bg-amber-500" : "bg-amber-400"),
+            circleState === "red"   && (isActive ? "bg-red-600"   : "bg-red-500"),
+            circleState === "green" && (isActive ? "bg-green-600" : "bg-green-500"),
           )
 
           return (
@@ -1041,15 +1040,13 @@ function TabBar({
               style={{ marginBottom: "-1px" }}
               className={cn(
                 "flex items-center gap-2 whitespace-nowrap px-4 py-3 text-[13px] font-medium",
-                "border-b-2 transition-colors -mb-px",
+                "border-b-2 transition-colors -mb-px snap-start flex-shrink-0",
                 isActive
                   ? "border-blue-600 text-blue-600"
                   : "border-transparent text-gray-400 hover:text-gray-600",
               )}
             >
-              <span title={circleTitle} className={circleClass}>
-                {tab.step}
-              </span>
+              <span title={circleTitle} className={circleClass} />
 
               {/* Label */}
               <span>{tab.label}</span>
@@ -1097,19 +1094,30 @@ function Td({ children, className }: { children: React.ReactNode; className?: st
  * of fixed width and giving more room for the scrollable data columns.
  */
 function VendorAddressCell({ lead, isSelected }: { lead: VendorLead; isSelected?: boolean }) {
-  // Detect scraper/portal source badge from leadSource (e.g. "Scraper: RM" → "RM")
+  const [tooltipOpen, setTooltipOpen] = useState(false)
+
+  // Parse source label from leadSource field
   const scraperMatch = lead.leadSource?.match(/^Scraper:\s*(.+)$/)
   const sourceBadge  = scraperMatch ? scraperMatch[1].trim() : null
 
-  // Scraper leads: second line = postcode only (concise); direct leads: full address
-  const secondLine = sourceBadge
-    ? (lead.propertyPostcode ?? lead.propertyAddress)
-    : lead.propertyAddress
+  // Human-readable source name for tooltip
+  const SOURCE_NAMES: Record<string, string> = {
+    RM:  "Rightmove",
+    Z:   "Zoopla",
+    OTM: "OnTheMarket",
+    PL:  "PrimeLocation",
+  }
+  const sourceLabel = sourceBadge
+    ? (SOURCE_NAMES[sourceBadge] ?? `Portal (${sourceBadge})`)
+    : (lead.leadSource === "manual" ? "Direct / Manual" : lead.leadSource ?? "Direct")
 
-  // Full detail in native tooltip so nothing is ever truly hidden
-  const tooltip = [lead.vendorName, lead.propertyAddress, lead.propertyPostcode]
-    .filter(Boolean)
-    .join(" · ")
+  // Date added
+  const dateAdded = lead.createdAt
+    ? new Date(lead.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+    : null
+
+  // Pipeline stage label
+  const stageLabel = STAGE_LABEL[lead.pipelineStage] ?? lead.pipelineStage
 
   return (
     <td
@@ -1118,26 +1126,72 @@ function VendorAddressCell({ lead, isSelected }: { lead: VendorLead; isSelected?
         isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]"
       )}
     >
-      <div className="flex items-start gap-2 min-w-0" title={tooltip}>
+      <div className="flex items-start gap-2 min-w-0">
         <MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-gray-300" />
         <div className="min-w-0 flex-1">
 
-          {/* Line 1: truncated vendor name + portal source badge + processing spinner */}
-          <div className="flex items-center gap-1 min-w-0">
-            <span className="truncate text-sm font-semibold text-gray-900 leading-tight">
-              {lead.vendorName}
-            </span>
-            {sourceBadge && (
-              <span className="shrink-0 rounded border border-blue-200 bg-blue-50 px-1 py-px text-[9px] font-bold uppercase tracking-wide text-blue-500">
-                {sourceBadge}
+          {/* Vendor name with rich hover tooltip — tap-toggleable on mobile */}
+          <div className="relative group">
+            <div
+              className="flex items-center gap-1 min-w-0 cursor-default"
+              onClick={() => setTooltipOpen((v) => !v)}
+            >
+              <span className="max-w-[160px] truncate text-sm font-medium text-gray-900 leading-tight">
+                {lead.vendorName}
               </span>
-            )}
-            <ProcessingIcon status={lead.processingStatus} />
+              <ProcessingIcon status={lead.processingStatus} />
+            </div>
+
+            {/* Tooltip — desktop: group-hover, mobile: tooltipOpen state */}
+            <div
+              className={cn(
+                "absolute left-0 top-full mt-1 z-50 w-72 rounded-lg bg-gray-900 p-3 shadow-xl",
+                "pointer-events-none group-hover:pointer-events-auto",
+                tooltipOpen ? "block" : "hidden group-hover:block"
+              )}
+            >
+              {/* × close for mobile */}
+              <button
+                className="absolute right-2 top-2 text-gray-400 hover:text-white md:hidden"
+                onClick={(e) => { e.stopPropagation(); setTooltipOpen(false) }}
+              >
+                ×
+              </button>
+
+              {/* Full vendor/property name */}
+              <p className="text-sm font-medium text-white leading-snug">{lead.vendorName}</p>
+
+              {/* Full address */}
+              {lead.propertyAddress && (
+                <p className="mt-1 text-xs text-gray-300">{lead.propertyAddress}</p>
+              )}
+              {lead.propertyPostcode && (
+                <p className="text-xs text-gray-300">{lead.propertyPostcode}</p>
+              )}
+
+              {/* Property type */}
+              {lead.propertyType && (
+                <p className="text-xs text-gray-300 capitalize">{lead.propertyType.replace(/_/g, " ").toLowerCase()}</p>
+              )}
+
+              {/* Source + date */}
+              <div className="mt-2 border-t border-gray-700 pt-2 flex flex-col gap-0.5">
+                <p className="text-xs text-gray-400">Source: {sourceLabel}</p>
+                {dateAdded && <p className="text-xs text-gray-400">Added: {dateAdded}</p>}
+              </div>
+
+              {/* Status badge */}
+              <div className="mt-2">
+                <span className="inline-block rounded-full bg-gray-700 px-2 py-0.5 text-[10px] text-gray-200">
+                  {stageLabel}
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* Line 2: postcode only (scraper) or full address (direct) */}
-          <p className="truncate text-xs text-gray-500 mt-0.5 leading-tight">
-            {secondLine ?? <span className="text-gray-300 italic">No address</span>}
+          {/* Postcode (second line — always short, never truncated) */}
+          <p className="text-xs text-gray-500 mt-0.5 leading-tight">
+            {lead.propertyPostcode ?? lead.propertyAddress ?? <span className="italic text-gray-300">No address</span>}
           </p>
 
           {/* Status badges (shown when relevant) */}
@@ -1159,6 +1213,14 @@ function VendorAddressCell({ lead, isSelected }: { lead: VendorLead; isSelected?
           )}
         </div>
       </div>
+
+      {/* Click-outside to close mobile tooltip */}
+      {tooltipOpen && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setTooltipOpen(false)}
+        />
+      )}
     </td>
   )
 }
