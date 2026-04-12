@@ -310,6 +310,20 @@ function Tip({ text, children }: { text: string; children: React.ReactNode }) {
   )
 }
 
+/** Same Radix tooltip as Tip but accepts rich ReactNode content and a wider panel. */
+function TipRich({ content, children }: { content: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {typeof children === "string" ? <span>{children}</span> : children}
+      </TooltipTrigger>
+      <TooltipContent className="max-w-[280px] text-left text-[11px] leading-snug p-0 overflow-hidden">
+        {content}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Badge / Pill Components
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1094,30 +1108,40 @@ function Td({ children, className }: { children: React.ReactNode; className?: st
  * of fixed width and giving more room for the scrollable data columns.
  */
 function VendorAddressCell({ lead, isSelected }: { lead: VendorLead; isSelected?: boolean }) {
-  const [tooltipOpen, setTooltipOpen] = useState(false)
-
-  // Parse source label from leadSource field
+  // Parse portal source from leadSource (e.g. "Scraper: RM" → "Rightmove")
   const scraperMatch = lead.leadSource?.match(/^Scraper:\s*(.+)$/)
   const sourceBadge  = scraperMatch ? scraperMatch[1].trim() : null
-
-  // Human-readable source name for tooltip
   const SOURCE_NAMES: Record<string, string> = {
-    RM:  "Rightmove",
-    Z:   "Zoopla",
-    OTM: "OnTheMarket",
-    PL:  "PrimeLocation",
+    RM: "Rightmove", Z: "Zoopla", OTM: "OnTheMarket", PL: "PrimeLocation",
   }
   const sourceLabel = sourceBadge
     ? (SOURCE_NAMES[sourceBadge] ?? `Portal (${sourceBadge})`)
     : (lead.leadSource === "manual" ? "Direct / Manual" : lead.leadSource ?? "Direct")
 
-  // Date added
   const dateAdded = lead.createdAt
     ? new Date(lead.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
     : null
 
-  // Pipeline stage label
   const stageLabel = STAGE_LABEL[lead.pipelineStage] ?? lead.pipelineStage
+
+  /** Rich tooltip content — rendered inside the standard Radix TooltipContent panel */
+  const tooltipContent = (
+    <div className="p-3 space-y-1">
+      <p className="font-semibold text-[12px]">{lead.vendorName}</p>
+      {lead.propertyAddress && <p className="text-[11px] opacity-80">{lead.propertyAddress}</p>}
+      {lead.propertyPostcode && <p className="text-[11px] opacity-80">{lead.propertyPostcode}</p>}
+      {lead.propertyType && (
+        <p className="text-[11px] opacity-70 capitalize">
+          {lead.propertyType.replace(/_/g, " ").toLowerCase()}
+        </p>
+      )}
+      <div className="pt-1 mt-1 border-t border-white/20 space-y-0.5">
+        <p className="text-[10px] opacity-60">Source: {sourceLabel}</p>
+        {dateAdded && <p className="text-[10px] opacity-60">Added: {dateAdded}</p>}
+        <p className="text-[10px] opacity-60">Status: {stageLabel}</p>
+      </div>
+    </div>
+  )
 
   return (
     <td
@@ -1130,64 +1154,15 @@ function VendorAddressCell({ lead, isSelected }: { lead: VendorLead; isSelected?
         <MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-gray-300" />
         <div className="min-w-0 flex-1">
 
-          {/* Vendor name with rich hover tooltip — tap-toggleable on mobile */}
-          <div className="relative group">
-            <div
-              className="flex items-center gap-1 min-w-0 cursor-default"
-              onClick={() => setTooltipOpen((v) => !v)}
-            >
+          {/* Vendor name — truncated, tooltip on hover via Radix (same as all other tooltips) */}
+          <TipRich content={tooltipContent}>
+            <div className="flex items-center gap-1 min-w-0 cursor-default">
               <span className="max-w-[160px] truncate text-sm font-medium text-gray-900 leading-tight">
                 {lead.vendorName}
               </span>
               <ProcessingIcon status={lead.processingStatus} />
             </div>
-
-            {/* Tooltip — desktop: group-hover, mobile: tooltipOpen state */}
-            <div
-              className={cn(
-                "absolute left-0 top-full mt-1 z-50 w-72 rounded-lg bg-gray-900 p-3 shadow-xl",
-                "pointer-events-none group-hover:pointer-events-auto",
-                tooltipOpen ? "block" : "hidden group-hover:block"
-              )}
-            >
-              {/* × close for mobile */}
-              <button
-                className="absolute right-2 top-2 text-gray-400 hover:text-white md:hidden"
-                onClick={(e) => { e.stopPropagation(); setTooltipOpen(false) }}
-              >
-                ×
-              </button>
-
-              {/* Full vendor/property name */}
-              <p className="text-sm font-medium text-white leading-snug">{lead.vendorName}</p>
-
-              {/* Full address */}
-              {lead.propertyAddress && (
-                <p className="mt-1 text-xs text-gray-300">{lead.propertyAddress}</p>
-              )}
-              {lead.propertyPostcode && (
-                <p className="text-xs text-gray-300">{lead.propertyPostcode}</p>
-              )}
-
-              {/* Property type */}
-              {lead.propertyType && (
-                <p className="text-xs text-gray-300 capitalize">{lead.propertyType.replace(/_/g, " ").toLowerCase()}</p>
-              )}
-
-              {/* Source + date */}
-              <div className="mt-2 border-t border-gray-700 pt-2 flex flex-col gap-0.5">
-                <p className="text-xs text-gray-400">Source: {sourceLabel}</p>
-                {dateAdded && <p className="text-xs text-gray-400">Added: {dateAdded}</p>}
-              </div>
-
-              {/* Status badge */}
-              <div className="mt-2">
-                <span className="inline-block rounded-full bg-gray-700 px-2 py-0.5 text-[10px] text-gray-200">
-                  {stageLabel}
-                </span>
-              </div>
-            </div>
-          </div>
+          </TipRich>
 
           {/* Postcode (second line — always short, never truncated) */}
           <p className="text-xs text-gray-500 mt-0.5 leading-tight">
@@ -1213,14 +1188,6 @@ function VendorAddressCell({ lead, isSelected }: { lead: VendorLead; isSelected?
           )}
         </div>
       </div>
-
-      {/* Click-outside to close mobile tooltip */}
-      {tooltipOpen && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setTooltipOpen(false)}
-        />
-      )}
     </td>
   )
 }
