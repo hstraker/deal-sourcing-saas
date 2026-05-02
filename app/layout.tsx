@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { Providers } from "./providers"
@@ -12,9 +12,20 @@ const inter = Inter({
   adjustFontFallback: false,
 })
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+}
+
 export const metadata: Metadata = {
   title: "DealStack - Property Deal Sourcing SaaS",
   description: "Professional property investment deal sourcing platform",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Habbits Deal Source",
+  },
 }
 
 export default function RootLayout({

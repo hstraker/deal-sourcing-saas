@@ -66,7 +66,7 @@ export function DashboardKpiStrip() {
             <Loader2 className="h-5 w-5 animate-spin text-gray-300" />
           </div>
         ) : (
-          <div className="grid grid-cols-2 divide-x divide-[var(--ds-border)] md:grid-cols-4">
+          <div className="grid grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[var(--ds-border)] md:grid-cols-4">
             {/* Active Leads */}
             <div className="p-6">
               <div className="flex items-start justify-between gap-2">

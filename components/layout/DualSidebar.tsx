@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 import React, { useState, useEffect } from "react"
 import {
+  Bars3Icon,
+  XMarkIcon,
   ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
   ArrowRightStartOnRectangleIcon,
@@ -108,7 +110,12 @@ function UserName() {
 
 // ── DualSidebar ────────────────────────────────────────────────────────────
 
-export default function DualSidebar() {
+interface DualSidebarProps {
+  mobileNavOpen: boolean
+  setMobileNavOpen: (open: boolean) => void
+}
+
+export default function DualSidebar({ mobileNavOpen, setMobileNavOpen }: DualSidebarProps) {
   const pathname = usePathname()
   const { data: session, status } = useSession()
   const { activeSectionId, setActiveSectionId, secondaryOpen, setSecondaryOpen } =
@@ -173,28 +180,67 @@ export default function DualSidebar() {
   return (
     <>
       {/* ═══════════════════════════════════════════════════
+          HAMBURGER BUTTON — mobile only (hidden on md+)
+          Fixed top-left, above the overlay (z-30).
+          Tap to open primary sidebar on small screens.
+      ═══════════════════════════════════════════════════ */}
+      <button
+        onClick={() => setMobileNavOpen(true)}
+        aria-label="Open navigation"
+        className="
+          fixed top-4 left-4 z-30
+          block md:hidden
+          w-10 h-10 rounded-lg bg-white shadow-md border border-gray-200
+          flex items-center justify-center
+          text-gray-600 hover:text-gray-900 transition-colors
+        "
+      >
+        <Bars3Icon className="w-5 h-5" />
+      </button>
+
+      {/* ═══════════════════════════════════════════════════
           NAV1 — PRIMARY SIDEBAR
-          56px collapsed. Expands to 200px on CSS hover.
-          Overlays content — does NOT shift layout.
+          Mobile:  full-width (200px), slides in from left via translate.
+                   Hidden by default (-translate-x-full), shown when
+                   mobileNavOpen=true (translate-x-0). z-50 above overlay.
+          Desktop: 56px collapsed rail, expands to 200px on CSS hover.
+                   Always visible (md:translate-x-0).
       ═══════════════════════════════════════════════════ */}
       <aside
         className={`
           fixed left-0 top-0 h-screen z-50
           bg-[var(--sidebar-bg)] border-r border-[var(--sidebar-border)]
           flex flex-col py-3
-          w-14 hover:w-[200px]
-          transition-[width] duration-200 ease-in-out
+          w-[200px] md:w-14 md:hover:w-[200px]
+          transition-[width,transform] duration-200 ease-in-out
           overflow-hidden
           group
+          ${mobileNavOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0
         `}
       >
+        {/* Close button — mobile only, inside the sidebar */}
+        <button
+          onClick={() => setMobileNavOpen(false)}
+          aria-label="Close navigation"
+          className="
+            block md:hidden
+            absolute top-4 right-4
+            w-8 h-8 rounded-full
+            flex items-center justify-center
+            text-gray-400 hover:bg-[var(--sidebar-hover)] hover:text-white
+            transition-colors
+          "
+        >
+          <XMarkIcon className="w-5 h-5" />
+        </button>
+
         {/* Logo row */}
         <div className="flex items-center gap-2.5 px-3 mb-3 flex-shrink-0 min-w-[200px]">
           <LogoMark />
           <span
             className="
               text-sm font-bold text-white whitespace-nowrap
-              opacity-0 group-hover:opacity-100
+              opacity-100 md:opacity-0 md:group-hover:opacity-100
               transition-opacity duration-150 delay-75
             "
           >
@@ -212,7 +258,11 @@ export default function DualSidebar() {
             return (
               <button
                 key={section.id}
-                onClick={() => handleSectionClick(section.id)}
+                onClick={() => {
+                  handleSectionClick(section.id)
+                  // Close mobile nav when a section is tapped
+                  setMobileNavOpen(false)
+                }}
                 className={`
                   flex items-center gap-3 w-full px-2 py-2.5 rounded-xl
                   transition-colors duration-150 text-left min-w-[176px]
@@ -227,7 +277,7 @@ export default function DualSidebar() {
                 <span
                   className="
                     text-sm whitespace-nowrap
-                    opacity-0 group-hover:opacity-100
+                    opacity-100 md:opacity-0 md:group-hover:opacity-100
                     transition-opacity duration-150 delay-75
                   "
                 >
@@ -249,7 +299,7 @@ export default function DualSidebar() {
             <span
               className="
                 text-sm whitespace-nowrap
-                opacity-0 group-hover:opacity-100
+                opacity-100 md:opacity-0 md:group-hover:opacity-100
                 transition-opacity duration-150 delay-75
               "
             >
@@ -262,7 +312,7 @@ export default function DualSidebar() {
             <span
               className="
                 text-sm font-medium text-gray-300 whitespace-nowrap truncate
-                opacity-0 group-hover:opacity-100
+                opacity-100 md:opacity-0 md:group-hover:opacity-100
                 transition-opacity duration-150 delay-75
               "
             >
@@ -274,13 +324,15 @@ export default function DualSidebar() {
 
       {/* ═══════════════════════════════════════════════════
           NAV2 — SECONDARY SIDEBAR
-          Collapsible. Shows the active section's nav groups.
-          Independent of NAV1 hover state.
+          Hidden on mobile (hidden md:flex) — the primary sidebar
+          covers navigation needs on small screens.
+          Collapsible on desktop. Shows the active section's nav groups.
       ═══════════════════════════════════════════════════ */}
       <aside
         className={`
+          hidden md:flex
           fixed left-14 top-0 h-screen bg-white border-r border-gray-200 z-40
-          flex flex-col transition-all duration-200 ease-in-out overflow-hidden
+          flex-col transition-all duration-200 ease-in-out overflow-hidden
           ${secondaryOpen ? "w-[260px]" : "w-0"}
         `}
       >
@@ -386,7 +438,8 @@ export default function DualSidebar() {
 
       {/* ═══════════════════════════════════════════════════
           NAV2 EXPAND TAB
-          Visible only when NAV2 is collapsed.
+          Visible only when NAV2 is collapsed (desktop only).
+          w-8 on mobile for easier tapping, md:w-5 on desktop.
       ═══════════════════════════════════════════════════ */}
       {!secondaryOpen && (
         <button
@@ -394,10 +447,10 @@ export default function DualSidebar() {
           aria-label="Expand sidebar"
           className="
             fixed left-14 top-1/2 -translate-y-1/2 z-40
-            w-5 h-10 bg-white border border-gray-200 border-l-0
+            w-8 h-10 md:w-5 bg-white border border-gray-200 border-l-0
             rounded-r-lg shadow-sm
             flex items-center justify-center
-            text-gray-400 hover:text-gray-600 hover:w-6
+            text-gray-400 hover:text-gray-600
             transition-all duration-150
           "
         >

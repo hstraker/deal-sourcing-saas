@@ -69,6 +69,10 @@
   * {
     @apply border-border;
   }
+  html, body {
+    overflow-x: hidden;
+    min-height: 100dvh;
+  }
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
@@ -138,7 +142,7 @@
     --section-gap: 20px;
 
     /* Typography tokens — controlled by theme picker */
-    --font-size-base: 14px;
+    --font-size-base: 16px;
     --font-weight-heading: 700;
 
     /* Table density */
@@ -200,5 +204,24 @@
   /* ── Page fade-in ──────────────────────────────────────────────────────── */
   .animate-fade-in {
     animation: fade-in 200ms ease-out both;
+  }
+
+  /* ── Mobile utility classes ─────────────────────────────────────────────── */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .tabs-scroll {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }

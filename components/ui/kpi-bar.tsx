@@ -20,7 +20,7 @@ interface KpiBarProps {
 
 export function KpiBar({ tiles }: KpiBarProps) {
   return (
-    <div className="flex items-stretch divide-x divide-gray-200 rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div className="flex flex-col sm:flex-row items-stretch divide-y sm:divide-y-0 sm:divide-x divide-gray-200 rounded-xl border border-gray-200 bg-white shadow-sm">
       {tiles.map((tile, i) => {
         const tileEl = (
           <div key={i} className="flex flex-1 items-center gap-3 px-5 py-4">
