@@ -211,9 +211,9 @@ export default function DualSidebar({ mobileNavOpen, setMobileNavOpen }: DualSid
           fixed left-0 top-0 h-screen z-50
           bg-[var(--sidebar-bg)] border-r border-[var(--sidebar-border)]
           flex flex-col py-3
-          w-[200px] md:w-14 md:hover:w-[200px]
+          w-[260px] md:w-14 md:hover:w-[200px]
           transition-[width,transform] duration-200 ease-in-out
-          overflow-hidden
+          overflow-x-hidden overflow-y-auto md:overflow-hidden
           group
           ${mobileNavOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0
         `}
@@ -258,11 +258,7 @@ export default function DualSidebar({ mobileNavOpen, setMobileNavOpen }: DualSid
             return (
               <button
                 key={section.id}
-                onClick={() => {
-                  handleSectionClick(section.id)
-                  // Close mobile nav when a section is tapped
-                  setMobileNavOpen(false)
-                }}
+                onClick={() => handleSectionClick(section.id)}
                 className={`
                   flex items-center gap-3 w-full px-2 py-2.5 rounded-xl
                   transition-colors duration-150 text-left min-w-[176px]
@@ -286,6 +282,41 @@ export default function DualSidebar({ mobileNavOpen, setMobileNavOpen }: DualSid
               </button>
             )
           })}
+        </div>
+
+        {/* Mobile inline sub-nav — active section items shown inline; desktop uses NAV2 */}
+        <div className="md:hidden border-t border-[var(--sidebar-border)] mt-2 pt-2 px-2">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 px-2 mb-1.5">
+            {activeSection.title}
+          </p>
+          {activeSection.groups.map((group) => (
+            <div key={group.label} className="mb-3 last:mb-0">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 px-2 mb-1 whitespace-nowrap">
+                {group.label}
+              </p>
+              {group.items.map((item) => {
+                const active = isActiveItem(item.href)
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileNavOpen(false)}
+                    className={`
+                      flex items-center gap-2.5 px-3 py-2 rounded-lg mb-0.5
+                      text-sm transition-all duration-100
+                      ${active
+                        ? "bg-[var(--sidebar-active-bg)] text-[var(--sidebar-bg)] font-semibold"
+                        : "text-gray-300 hover:bg-[var(--sidebar-hover)] hover:text-white"
+                      }
+                    `}
+                  >
+                    <item.icon className="w-4 h-4 flex-shrink-0" />
+                    <span className="whitespace-nowrap">{item.label}</span>
+                  </Link>
+                )
+              })}
+            </div>
+          ))}
         </div>
 
         {/* Sign out + user row */}
