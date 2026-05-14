@@ -1257,7 +1257,7 @@ export function ValidationModal({
             <p className="text-sm font-bold text-gray-800">Acquisition Costs & SDLT</p>
           </div>
           <AcquisitionCostPanel
-            purchasePrice={toNum(lead.offerAmount) ?? toNum(lead.askingPrice) ?? 0}
+            purchasePrice={toNum(lead.askingPrice) ?? 0}
             refurbCost={toNum(lead.estimatedRefurbCost) ?? undefined}
             monthlyRent={toNum(lead.estimatedMonthlyRent) ?? 0}
             savedBuyerType={lead.sdltBuyerType ?? null}

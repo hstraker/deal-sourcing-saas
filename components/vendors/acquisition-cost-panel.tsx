@@ -433,11 +433,13 @@ export function AcquisitionCostPanel({
                   )}
                   {icr !== null && (
                     <tr className={cn(icrPass ? "bg-green-50" : "bg-amber-50")}>
-                      <td className={cn("px-3 py-2 flex items-center gap-1", icrPass ? "text-green-700" : "text-amber-700")}>
-                        {icrPass
-                          ? <CheckCircle2 className="h-3 w-3 shrink-0" />
-                          : <AlertTriangle className="h-3 w-3 shrink-0" />}
-                        ICR (lender stress test ≥125%)
+                      <td className={cn("px-3 py-2", icrPass ? "text-green-700" : "text-amber-700")}>
+                        <div className="flex items-center gap-1">
+                          {icrPass
+                            ? <CheckCircle2 className="h-3 w-3 shrink-0" />
+                            : <AlertTriangle className="h-3 w-3 shrink-0" />}
+                          ICR (lender stress test ≥125%)
+                        </div>
                       </td>
                       <td className={cn("px-3 py-2 text-right font-bold", icrPass ? "text-green-700" : "text-amber-700")}>
                         {icr}%
