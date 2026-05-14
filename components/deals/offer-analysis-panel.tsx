@@ -17,7 +17,11 @@ import {
   Home,
   Loader2,
   Ban,
+  BarChart2,
+  DollarSign,
+  Layers,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { formatCurrency } from "@/lib/format"
 import {
   calculatePropertyOffer,
@@ -66,268 +70,114 @@ function pct(n: number): string {
   return `${(n * 100).toFixed(1)}%`
 }
 
+function opening(ceiling: number): number {
+  return Math.round((ceiling * 0.88) / 50) * 50
+}
+
 /** Display ROCE — sentinel 99.9 means full BRRR (all capital recycled), show "∞ BRRR" */
 function fmtROCE(multiple: number): string {
   return multiple >= 99 ? "∞ (BRRR)" : `${multiple.toFixed(2)}×`
 }
 
-function ViabilityDots({ score }: { score: number }) {
-  const filled = Math.round((score / 100) * 5)
+// ─────────────────────────────────────────────────────────────────────────────
+// Scorecard primitives (Option B — traffic-light rows)
+// ─────────────────────────────────────────────────────────────────────────────
+
+type RowStatus = "pass" | "negotiate" | "fail" | "info" | "none"
+
+const SCORECARD_CFG: Record<RowStatus, {
+  dot: string
+  badge: string
+  expandBg: string
+  label: string
+}> = {
+  pass:      { dot: "bg-green-500", badge: "bg-green-100 text-green-700 border-green-200",  expandBg: "border-t border-green-100 bg-green-50/60",  label: "✓ Pass"      },
+  negotiate: { dot: "bg-amber-500", badge: "bg-amber-100 text-amber-700 border-amber-200",  expandBg: "border-t border-amber-100 bg-amber-50/60",  label: "⚠ Negotiate" },
+  fail:      { dot: "bg-red-500",   badge: "bg-red-100 text-red-700 border-red-200",        expandBg: "border-t border-red-100 bg-red-50/60",      label: "✕ Fail"      },
+  info:      { dot: "bg-blue-400",  badge: "bg-blue-100 text-blue-700 border-blue-200",     expandBg: "border-t border-blue-100 bg-blue-50/30",    label: "ℹ Info"      },
+  none:      { dot: "bg-gray-300",  badge: "bg-gray-100 text-gray-500 border-gray-200",     expandBg: "border-t border-gray-100 bg-gray-50",       label: "Pending"     },
+}
+
+function ScorecardRow({
+  criterion,
+  icon,
+  status,
+  summary,
+  children,
+  defaultOpen = false,
+}: {
+  criterion: string
+  icon?: React.ReactNode
+  status: RowStatus
+  summary: string
+  children?: React.ReactNode
+  defaultOpen?: boolean
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  const c = SCORECARD_CFG[status]
+
   return (
-    <span className="inline-flex gap-0.5">
-      {Array.from({ length: 5 }, (_, i) => (
-        <span
-          key={i}
-          className={`inline-block w-3 h-3 rounded-full ${
-            i < filled ? "bg-[#2563EB]" : "bg-gray-100"
-          }`}
-        />
-      ))}
-    </span>
+    <div className="rounded-xl border border-gray-200 overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center gap-3 bg-white px-4 py-2.5 text-left hover:bg-gray-50 transition-colors"
+      >
+        <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", c.dot)} />
+        {icon && <span className="text-gray-400 shrink-0">{icon}</span>}
+        <span className="flex-1 min-w-0">
+          <span className="text-xs font-semibold text-gray-700">{criterion}</span>
+          {summary && (
+            <span className="ml-2 text-xs text-gray-400 truncate">{summary}</span>
+          )}
+        </span>
+        <span className={cn(
+          "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold",
+          c.badge
+        )}>
+          {c.label}
+        </span>
+        {open
+          ? <ChevronUp className="h-4 w-4 text-gray-400 shrink-0" />
+          : <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
+        }
+      </button>
+      {open && children && (
+        <div className={cn("px-4 py-3", c.expandBg)}>
+          {children}
+        </div>
+      )}
+    </div>
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Small metric row used inside strategy cards
-// ─────────────────────────────────────────────────────────────────────────────
-
-function MetricRow({
+function KpiMini({
   label,
   value,
-  pass,
+  status,
   hint,
 }: {
   label: string
   value: string
-  pass?: boolean
+  status?: RowStatus | null
   hint?: string
 }) {
+  const colour =
+    status === "pass"      ? "text-green-700"
+    : status === "fail"    ? "text-red-600"
+    : status === "negotiate" ? "text-amber-700"
+    :                        "text-gray-800"
   return (
-    <div className="flex justify-between items-center gap-2">
-      <span className="text-gray-400 shrink-0">{label}</span>
-      <div className="flex items-center gap-1">
-        {pass !== undefined && (
-          pass
-            ? <CheckCircle2 className="h-3 w-3 text-green-500 shrink-0" />
-            : <XCircle className="h-3 w-3 text-red-400 shrink-0" />
-        )}
-        <span className={`font-medium ${pass === true ? "text-green-700" : pass === false ? "text-red-600" : ""}`}>
-          {value}
-        </span>
-        {hint && <span className="text-gray-400/60 text-[10px]">({hint})</span>}
-      </div>
+    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-center">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-0.5">{label}</p>
+      <p className={cn("text-sm font-bold leading-tight", colour)}>{value}</p>
+      {hint && <p className="text-[10px] text-gray-400 mt-0.5">{hint}</p>}
     </div>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Strategy breakdown — one card per strategy with key metrics and plain-English
-// reason for viability or exclusion
+// Pass/fail inline badge
 // ─────────────────────────────────────────────────────────────────────────────
-
-function StrategyRationale({ result }: { result: OfferCalculationResult }) {
-  const { flip, hold, mortgage, cashflow, inputs, recommendedStrategy } = result
-
-  // Three states per strategy:
-  // 1. Viable     — return criteria met + discount within 20% threshold (green)
-  // 2. Steep disc — return criteria met but discount > 20% (amber — motivated seller needed)
-  // 3. No price   — return criteria can't be met at any purchase price (grey)
-  const flipHasPrice = flip.maxPurchasePrice > 0
-  const holdHasPrice = hold.maxPurchasePrice > 0
-  const flipViable = flipHasPrice && flip.viewingCriteriaMet
-  const holdViable = holdHasPrice && hold.viewingCriteriaMet
-  const flipSteep = flipHasPrice && !flip.viewingCriteriaMet
-  const holdSteep = holdHasPrice && !hold.viewingCriteriaMet
-  // BRRR = all capital pulled back out after refinancing (no money left in)
-  const isTrueBRRR = holdViable && hold.moneyLeftIn <= 0
-
-  // Metrics at asking price — used for diagnostic display when a strategy isn't viable
-  // so the user can see WHY it fails rather than just "—"
-  const atAsking = computeMetricsAtPrice(inputs.askingPrice, inputs)
-
-  // Plain-English result messages per strategy state
-  // Flip
-  const flipResultMsg = flipViable
-    ? `✓ Achievable discount (${pct(flip.discountPercent)}) with ${pct(flip.profitOnCost)} profit on cost — ${fmt(flip.profit)} gross profit at ceiling.`
-    : flipSteep
-    ? `⚠ Returns work at ${fmt(flip.maxPurchasePrice)} but needs a ${pct(flip.discountPercent)} discount from asking — above the 20% threshold. Achievable with a motivated seller.`
-    : `✗ After refurb (${fmt(inputs.totalRefurbishment)}) and bridging finance, the GDV (${fmt(inputs.gdv)}) doesn't leave enough margin for the 20% profit target.`
-
-  // Hold
-  const holdResultMsg = holdViable
-    ? isTrueBRRR
-      ? `✓ True BRRR — ${fmt(hold.cashSurplus)} cash surplus after refinancing. Full deposit recycled for next deal at ${pct(hold.grossYield)} gross yield.`
-      : `✓ BTL viable — ${fmt(hold.moneyLeftIn)} equity in deal after refinancing. ${pct(hold.grossYield)} gross yield, ${fmt(hold.netMonthlyCashflow)}/mo net cashflow.`
-    : holdSteep
-    ? `⚠ Returns work at ${fmt(hold.maxPurchasePrice)} but needs a ${pct(hold.discountPercent)} discount from asking — above the 20% threshold. Achievable with a motivated seller.`
-    : !mortgage.icrPass
-    ? `✗ Rent (${fmt(inputs.estimatedRent)}/mo) is below the lender ICR minimum (${fmt(mortgage.requiredRentForICR)}/mo). A BTL mortgage won't be approved.`
-    : atAsking.roceMultiple >= 99
-    ? `✗ Full BRRR appears possible at asking price but cashflow is negative — check rent estimate.`
-    : `✗ ROCE at asking is ${fmtROCE(atAsking.roceMultiple)} — below the 2.5× target. Not enough cashflow relative to capital invested.`
-
-  const recLabel =
-    recommendedStrategy === "both"
-      ? (flipViable || holdViable ? "Flip or BTL/BRRR" : "Both (steep discount)")
-      : recommendedStrategy === "flip"
-      ? (flipViable ? "Flip" : "Flip (steep discount)")
-      : recommendedStrategy === "hold"
-      ? (holdViable ? (isTrueBRRR ? "BRRR" : "BTL") : holdSteep ? (hold.moneyLeftIn <= 0 ? "BRRR (steep disc.)" : "BTL (steep disc.)") : "Hold")
-      : "No viable strategy"
-
-  const recBadgeClass =
-    recommendedStrategy === "pass"
-      ? "bg-red-100 text-red-700 border-red-200"
-      : flipViable || holdViable
-      ? "bg-green-100 text-green-700 border-green-200"
-      : "bg-amber-100 text-amber-700 border-amber-200"
-
-  return (
-    <div className="space-y-2">
-      {/* Header row */}
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Strategy Breakdown</span>
-        <div className="h-px flex-1 bg-border" />
-        <Badge variant="outline" className={`text-xs font-semibold ${recBadgeClass}`}>
-          Recommended: {recLabel}
-        </Badge>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {/* ── Flip ── */}
-        <div className={`rounded-lg border p-3 space-y-2 ${
-          flipViable ? "border-green-200 bg-green-50/40" :
-          flipSteep  ? "border-amber-200 bg-amber-50/30" :
-                       "border-[var(--ds-border)] bg-gray-50 opacity-80"
-        }`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <TrendingUp className="h-3.5 w-3.5 text-gray-400" />
-              <span className="text-sm font-semibold">Flip</span>
-            </div>
-            <Badge variant="outline" className={`text-xs font-semibold ${
-              flipViable ? "bg-green-100 text-green-700 border-green-300" :
-              flipSteep  ? "bg-amber-100 text-amber-700 border-amber-300" :
-                           "text-gray-400"
-            }`}>
-              {flipViable ? "Viable ✓" : flipSteep ? "Steep discount" : "Not achievable"}
-            </Badge>
-          </div>
-          <p className="text-xs text-gray-400 leading-relaxed">
-            Buy with bridging finance, refurbish, then sell at market value for a profit.
-          </p>
-          <div className="space-y-1 text-xs border-t pt-2">
-            <MetricRow
-              label="Max offer"
-              value={flipHasPrice ? fmt(flip.maxPurchasePrice) : "Not achievable"}
-            />
-            <MetricRow
-              label="Profit on cost"
-              value={pct(flipHasPrice ? flip.profitOnCost : atAsking.profitOnCost)}
-              pass={(flipHasPrice ? flip.profitOnCost : atAsking.profitOnCost) >= 0.2}
-              hint={flipHasPrice ? "target ≥20%" : "at asking · target ≥20%"}
-            />
-            <MetricRow
-              label="Gross profit"
-              value={fmt(flipHasPrice ? flip.profit : atAsking.profit)}
-            />
-            <MetricRow
-              label="Discount needed"
-              value={flipHasPrice ? pct(flip.discountPercent) : "—"}
-              pass={flipHasPrice ? flip.viewingCriteriaMet : undefined}
-              hint={flipHasPrice ? (flip.viewingCriteriaMet ? "within 20%" : "above 20% threshold") : undefined}
-            />
-          </div>
-          <div className={`text-xs rounded p-2 leading-relaxed border-l-2 ${
-            flipViable ? "border-green-400 bg-green-50 text-green-800" :
-            flipSteep  ? "border-amber-400 bg-amber-50 text-amber-800" :
-                         "border-red-300 bg-gray-50 text-gray-400"
-          }`}>
-            {flipResultMsg}
-          </div>
-        </div>
-
-        {/* ── BTL / BRRR ── */}
-        <div className={`rounded-lg border p-3 space-y-2 ${
-          holdViable ? "border-green-200 bg-green-50/40" :
-          holdSteep  ? "border-amber-200 bg-amber-50/30" :
-                       "border-[var(--ds-border)] bg-gray-50 opacity-80"
-        }`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Home className="h-3.5 w-3.5 text-gray-400" />
-              <span className="text-sm font-semibold">BTL / BRRR</span>
-            </div>
-            <Badge variant="outline" className={`text-xs font-semibold ${
-              holdViable ? "bg-green-100 text-green-700 border-green-300" :
-              holdSteep  ? "bg-amber-100 text-amber-700 border-amber-300" :
-                           "text-gray-400"
-            }`}>
-              {holdViable
-                ? (isTrueBRRR ? "BRRR ✓" : "BTL ✓")
-                : holdSteep
-                ? "Steep discount"
-                : "Not achievable"}
-            </Badge>
-          </div>
-          <p className="text-xs text-gray-400 leading-relaxed">
-            Buy with bridging, refurbish to add value, refinance to a BTL mortgage, and rent out.{" "}
-            {holdViable && isTrueBRRR && <span className="text-green-700 font-medium">Full BRRR — all capital recycled.</span>}
-            {holdViable && !isTrueBRRR && <span className="text-amber-700 font-medium">BTL exit — some equity stays in the deal.</span>}
-            {holdSteep && <span className="text-amber-700 font-medium">Returns viable — motivated seller needed.</span>}
-          </p>
-          <div className="space-y-1 text-xs border-t pt-2">
-            <MetricRow
-              label="Max offer"
-              value={holdHasPrice ? fmt(hold.maxPurchasePrice) : "Not achievable"}
-            />
-            <MetricRow
-              label="ICR stress test"
-              value={`${fmt(inputs.estimatedRent)}/mo vs ${fmt(mortgage.requiredRentForICR)} req.`}
-              pass={mortgage.icrPass}
-              hint="lender affordability"
-            />
-            {/* ROCE — ceiling-price value if has price, else asking-price as diagnostic */}
-            <MetricRow
-              label="ROCE multiple"
-              value={fmtROCE(holdHasPrice ? hold.roceMultiple : atAsking.roceMultiple)}
-              pass={(holdHasPrice ? hold.roceMultiple : atAsking.roceMultiple) >= 2.5}
-              hint={
-                (holdHasPrice ? hold.roceMultiple : atAsking.roceMultiple) >= 99
-                  ? "full BRRR — capital recycled"
-                  : holdHasPrice ? "target ≥2.5×" : "at asking · target ≥2.5×"
-              }
-            />
-            {/* Net cashflow is price-independent (mortgage based on GDV) */}
-            <MetricRow
-              label="Net cashflow"
-              value={`${fmt(cashflow.netMonthlyCashflow)}/mo`}
-              pass={cashflow.netMonthlyCashflow >= 0}
-            />
-            {/* Money left in — ceiling price if has price, asking price as diagnostic if not */}
-            <MetricRow
-              label={holdHasPrice ? "Money left in" : "Capital left in"}
-              value={holdHasPrice
-                ? (hold.moneyLeftIn > 0 ? fmt(hold.moneyLeftIn) : `${fmt(hold.cashSurplus)} surplus`)
-                : (atAsking.moneyLeftIn > 0 ? fmt(atAsking.moneyLeftIn) : "Full BRRR possible")}
-              pass={holdHasPrice ? hold.moneyLeftIn <= 0 : undefined}
-              hint={holdHasPrice
-                ? (hold.moneyLeftIn <= 0 ? "full BRRR" : "BTL")
-                : "at asking"}
-            />
-          </div>
-          <div className={`text-xs rounded p-2 leading-relaxed border-l-2 ${
-            holdViable ? "border-green-400 bg-green-50 text-green-800" :
-            holdSteep  ? "border-amber-400 bg-amber-50 text-amber-800" :
-                         "border-red-300 bg-gray-50 text-gray-400"
-          }`}>
-            {holdResultMsg}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function PassBadge({ pass, passLabel, failLabel }: { pass: boolean; passLabel?: string; failLabel?: string }) {
   return pass ? (
@@ -344,460 +194,32 @@ function PassBadge({ pass, passLabel, failLabel }: { pass: boolean; passLabel?: 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Collapsible section wrapper
+// Viability dots
 // ─────────────────────────────────────────────────────────────────────────────
 
-function CollapsibleSection({
-  title,
-  summary,
-  children,
-  defaultOpen = true,
-}: {
-  title: string
-  summary?: React.ReactNode
-  children: React.ReactNode
-  defaultOpen?: boolean
-}) {
-  const [open, setOpen] = useState(defaultOpen)
+function ViabilityDots({ score }: { score: number }) {
+  const filled = Math.round((score / 100) * 5)
+  const colour =
+    score >= 70 ? "bg-green-500"
+    : score >= 40 ? "bg-amber-400"
+    :               "bg-red-400"
   return (
-    <div className="border-t pt-3">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 w-full text-left group mb-0"
-      >
-        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400 group-hover:text-gray-900 transition-colors flex-1">
-          {open ? <ChevronUp className="h-3.5 w-3.5 shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0" />}
-          {title}
-        </span>
-        {!open && summary && (
-          <span className="text-xs text-gray-400 truncate">{summary}</span>
-        )}
-      </button>
-      {open && <div className="mt-3">{children}</div>}
-    </div>
+    <span className="inline-flex gap-0.5">
+      {Array.from({ length: 5 }, (_, i) => (
+        <span
+          key={i}
+          className={cn(
+            "inline-block w-3 h-3 rounded-full",
+            i < filled ? colour : "bg-gray-200"
+          )}
+        />
+      ))}
+    </span>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Strategy column
-// ─────────────────────────────────────────────────────────────────────────────
-
-function StrategyColumn({
-  strategy,
-  data,
-  askingPrice,
-  result,
-}: {
-  strategy: "flip" | "hold"
-  data: OfferCalculationResult["flip"] | OfferCalculationResult["hold"]
-  askingPrice: number
-  result: OfferCalculationResult
-}) {
-  const isFlip = strategy === "flip"
-  const viable = data.maxPurchasePrice > 0
-  const atAsking = !viable ? computeMetricsAtPrice(askingPrice, result.inputs) : null
-
-  return (
-    <div className="flex-1 min-w-0 space-y-3">
-      {/* Header */}
-      <div className="flex items-center gap-2">
-        {isFlip ? (
-          <TrendingUp className="h-4 w-4 text-[#2563EB] shrink-0" />
-        ) : (
-          <Home className="h-4 w-4 text-[#2563EB] shrink-0" />
-        )}
-        <span className="text-sm font-semibold uppercase tracking-wide">
-          {isFlip ? "Flip" : "BTL / BRRR"}
-        </span>
-        <MetricTooltipIcon tooltipKey={isFlip ? "flipMaxPurchasePrice" : "holdMaxPurchasePrice"} />
-      </div>
-
-      {/* Ceiling */}
-      <div>
-        <p className="text-xs text-gray-400 mb-0.5 flex items-center">
-          Ceiling
-          <MetricTooltipIcon tooltipKey="negotiationCeiling" />
-        </p>
-        {viable ? (
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-xl font-bold">{fmt(data.maxPurchasePrice)}</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <p className="text-sm text-gray-400 italic">No viable price</p>
-            {/* Diagnostic metrics at asking price so user can see why */}
-            {atAsking && (
-              <div className="rounded border border-dashed border-[var(--ds-border)] bg-gray-50 p-2 space-y-1 text-xs">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Why not viable — at asking price</p>
-                {!isFlip && (
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Rent vs ICR req.</span>
-                      <span className={result.mortgage.icrPass ? "text-green-600 font-medium" : "text-red-500 font-medium"}>
-                        {fmt(result.inputs.estimatedRent)}/mo vs {fmt(result.mortgage.requiredRentForICR)} req.
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">ROCE multiple</span>
-                      <span className={atAsking.roceMultiple >= 2.5 ? "text-green-600 font-medium" : "text-red-500 font-medium"}>
-                        {fmtROCE(atAsking.roceMultiple)}{" "}
-                        <span className="text-gray-400 font-normal">
-                          {atAsking.roceMultiple >= 99 ? "(full BRRR)" : "(need 2.5×)"}
-                        </span>
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Net cashflow</span>
-                      <span className={result.cashflow.netMonthlyCashflow >= 0 ? "text-green-600 font-medium" : "text-red-500 font-medium"}>
-                        {fmt(result.cashflow.netMonthlyCashflow)}/mo
-                      </span>
-                    </div>
-                  </>
-                )}
-                {isFlip && (
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Profit on cost</span>
-                      <span className={atAsking.profitOnCost >= 0.2 ? "text-green-600 font-medium" : "text-red-500 font-medium"}>
-                        {pct(atAsking.profitOnCost)} <span className="text-gray-400 font-normal">(need 20%)</span>
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Gross profit</span>
-                      <span className="font-medium">{fmt(atAsking.profit)}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Required discount */}
-      {viable && (
-        <div>
-          <p className="text-xs text-gray-400 mb-0.5 flex items-center">
-            Required Discount
-            <MetricTooltipIcon tooltipKey="viewingCriteria" />
-          </p>
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-medium">
-              {pct(data.discountPercent)}{" "}
-              <span className="text-gray-400 text-xs">
-                ({fmt(data.discountFromAsking)} off {fmt(askingPrice)})
-              </span>
-            </p>
-          </div>
-          <div className="mt-0.5">
-            <PassBadge
-              pass={data.viewingCriteriaMet}
-              passLabel="Viewing: PASS"
-              failLabel={`Viewing: FAIL — >${pct(data.discountPercent)}`}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Return at ceiling */}
-      {viable && isFlip && (
-        <div className="space-y-1 text-sm">
-          <p className="text-xs text-gray-400 flex items-center">
-            Return at ceiling
-            <MetricTooltipIcon tooltipKey="profitOnCost" />
-          </p>
-          <div className="flex justify-between">
-            <span className="text-gray-400">Profit on Cost</span>
-            <span
-              className={`font-semibold ${
-                data.profitOnCost >= 0.2
-                  ? "text-green-600"
-                  : data.profitOnCost >= 0.1
-                  ? "text-amber-600"
-                  : "text-red-500"
-              }`}
-            >
-              {pct(data.profitOnCost)}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-400">Profit</span>
-            <span className="font-semibold">{fmt(data.profit)}</span>
-          </div>
-        </div>
-      )}
-
-      {viable && !isFlip && (
-        <div className="space-y-1 text-sm">
-          <p className="text-xs text-gray-400 flex items-center">
-            Return at ceiling
-            <MetricTooltipIcon tooltipKey="roceMultiple" />
-          </p>
-          <div className="flex justify-between">
-            <span className="text-gray-400">ROCE Multiple</span>
-            <span
-              className={`font-semibold ${
-                data.roceMultiple >= 2.5
-                  ? "text-green-600"
-                  : data.roceMultiple >= 1.5
-                  ? "text-amber-600"
-                  : "text-red-500"
-              }`}
-            >
-              {fmtROCE(data.roceMultiple)}
-            </span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-400 flex items-center">
-              Net CF
-              <MetricTooltipIcon tooltipKey="netMonthlyCashflow" />
-            </span>
-            <span
-              className={`font-semibold ${
-                data.netMonthlyCashflow >= 0 ? "text-green-600" : "text-red-500"
-              }`}
-            >
-              {fmt(data.netMonthlyCashflow)}/mo
-            </span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-400 flex items-center">
-              Money Left In
-              <MetricTooltipIcon tooltipKey="moneyLeftIn" />
-            </span>
-            <span className="font-semibold">
-              {data.moneyLeftIn > 0 ? fmt(data.moneyLeftIn) : (
-                <span className="text-green-600">{fmt(data.cashSurplus)} surplus</span>
-              )}
-            </span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-400 flex items-center">
-              Gross Yield
-              <MetricTooltipIcon tooltipKey="grossYield" />
-            </span>
-            <span className="font-semibold">{pct(data.grossYield)}</span>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Financial breakdown (collapsible)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function FinancialBreakdown({ result }: { result: OfferCalculationResult }) {
-  const { bridging, mortgage, cashflow, flip } = result
-
-  return (
-    <CollapsibleSection
-      title="Financial Breakdown"
-      summary={`Bridge ${fmt(bridging.totalCosts)} · Equity ${fmt(flip.totalEquityInvested)}`}
-      defaultOpen={false}
-    >
-      <div className="grid md:grid-cols-2 gap-6 text-sm">
-          {/* Bridging Finance */}
-          <div>
-            <p className="font-semibold mb-2 text-xs uppercase tracking-wide text-gray-400 flex items-center">
-              Bridging Finance
-              <MetricTooltipIcon tooltipKey="bridgingTotalCosts" />
-            </p>
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400 flex items-center">
-                  Gross Loan (75% LTV)
-                  <MetricTooltipIcon tooltipKey="bridgingGrossLoan" />
-                </span>
-                <span className="font-medium">{fmt(bridging.grossLoan)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400 flex items-center">
-                  Net Advance
-                  <MetricTooltipIcon tooltipKey="bridgingNetLoanAdvance" />
-                </span>
-                <span className="font-medium">{fmt(bridging.netLoanAdvance)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400 flex items-center">
-                  Deposit
-                  <MetricTooltipIcon tooltipKey="bridgingDeposit" />
-                </span>
-                <span className="font-medium">{fmt(bridging.deposit)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Arrangement Fee</span>
-                <span className="font-medium">{fmt(bridging.arrangementFee)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Monthly Interest</span>
-                <span className="font-medium">{fmt(bridging.monthlyInterest)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Total Interest</span>
-                <span className="font-medium">{fmt(bridging.totalInterest)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Exit Fee</span>
-                <span className="font-medium">{fmt(bridging.exitFee)}</span>
-              </div>
-              <div className="flex justify-between border-t pt-1 font-semibold">
-                <span>Total Bridging Costs</span>
-                <span>{fmt(bridging.totalCosts)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Mortgage (Exit) */}
-          <div>
-            <p className="font-semibold mb-2 text-xs uppercase tracking-wide text-gray-400">
-              Exit Mortgage (on GDV)
-            </p>
-            <div className="space-y-1.5">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Loan (75% of GDV)</span>
-                <span className="font-medium">{fmt(mortgage.loanAmount)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Monthly Payment</span>
-                <span className="font-medium">{fmt(mortgage.monthlyPayment)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Arrangement Fee</span>
-                <span className="font-medium">{fmt(mortgage.arrangementFee)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400 flex items-center">
-                  ICR Check
-                  <MetricTooltipIcon tooltipKey="icrPass" />
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <PassBadge pass={mortgage.icrPass} />
-                  <span className="text-gray-400 text-xs">
-                    ({fmt(mortgage.requiredRentForICR)} req.)
-                  </span>
-                </span>
-              </div>
-              <div className="flex justify-between border-t pt-1 font-semibold">
-                <span>Total Mortgage Costs</span>
-                <span>{fmt(mortgage.totalCosts)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Monthly Cashflow */}
-          <div>
-            <p className="font-semibold mb-2 text-xs uppercase tracking-wide text-gray-400 flex items-center">
-              Monthly Cashflow
-              <MetricTooltipIcon tooltipKey="netMonthlyCashflow" />
-            </p>
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-green-600">
-                <span>Rent</span>
-                <span className="font-medium">{fmt(cashflow.grossRentMonthly)}</span>
-              </div>
-              <div className="flex justify-between text-red-500">
-                <span>Mortgage</span>
-                <span className="font-medium">−{fmt(cashflow.mortgagePaymentMonthly)}</span>
-              </div>
-              {cashflow.managementCostMonthly > 0 && (
-                <div className="flex justify-between text-red-500">
-                  <span>Management</span>
-                  <span className="font-medium">−{fmt(cashflow.managementCostMonthly)}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-red-500">
-                <span>Void Allowance</span>
-                <span className="font-medium">−{fmt(cashflow.voidAllowanceMonthly)}</span>
-              </div>
-              <div className="flex justify-between text-red-500">
-                <span>Insurance</span>
-                <span className="font-medium">−{fmt(cashflow.insuranceMonthly)}</span>
-              </div>
-              <div
-                className={`flex justify-between border-t pt-1 font-semibold ${
-                  cashflow.netMonthlyCashflow >= 0 ? "text-green-600" : "text-red-500"
-                }`}
-              >
-                <span>Net Monthly</span>
-                <span>{fmt(cashflow.netMonthlyCashflow)}</span>
-              </div>
-              <div className="flex justify-between items-center text-gray-400 text-xs">
-                <span className="flex items-center">
-                  Gross Yield
-                  <MetricTooltipIcon tooltipKey="grossYield" />
-                </span>
-                <span>{pct(cashflow.grossYield)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Acquisition & Project Costs */}
-          <div>
-            <p className="font-semibold mb-2 text-xs uppercase tracking-wide text-gray-400">
-              Acquisition &amp; Project Costs
-            </p>
-            <div className="space-y-1.5">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Deposit</span>
-                <span className="font-medium">{fmt(flip.acquisitionCosts.deposit)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400 flex items-center">
-                  Stamp Duty
-                  <MetricTooltipIcon tooltipKey="stampDuty" />
-                </span>
-                <span className="font-medium">{fmt(flip.acquisitionCosts.stampDuty)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Solicitor / Searches</span>
-                <span className="font-medium">
-                  {fmt(
-                    flip.acquisitionCosts.solicitorFees +
-                      flip.acquisitionCosts.searches +
-                      flip.acquisitionCosts.buildingControl
-                  )}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Acquisition Total</span>
-                <span className="font-medium">{fmt(flip.acquisitionCosts.total)}</span>
-              </div>
-              <div className="border-t pt-1" />
-              <div className="flex justify-between">
-                <span className="text-gray-400">Refurbishment</span>
-                <span className="font-medium">{fmt(flip.projectCosts.refurbishment)}</span>
-              </div>
-              {flip.projectCosts.contingency > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Contingency</span>
-                  <span className="font-medium">{fmt(flip.projectCosts.contingency)}</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-gray-400">Holding / Furnishing</span>
-                <span className="font-medium">
-                  {fmt(
-                    flip.projectCosts.utilities +
-                      flip.projectCosts.councilTax +
-                      flip.projectCosts.furnishing
-                  )}
-                </span>
-              </div>
-              <div className="flex justify-between border-t pt-1 font-semibold">
-                <span>Total Equity Invested</span>
-                <span>{fmt(flip.totalEquityInvested)}</span>
-              </div>
-            </div>
-          </div>
-      </div>
-    </CollapsibleSection>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Assumptions override panel (collapsible)
+// Assumptions override panel
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface AssumptionsState {
@@ -819,7 +241,6 @@ function AssumptionsPanel({
   loading: boolean
   hasDefaultedRefurb?: boolean
 }) {
-  // Always start expanded — sourcer needs to see and adjust numbers without an extra click
   const [editMode, setEditMode] = useState(true)
   const [vals, setVals] = useState<AssumptionsState>(defaults)
 
@@ -829,7 +250,6 @@ function AssumptionsPanel({
 
   return (
     <div className="border-t pt-4">
-      {/* Always-visible summary row */}
       <div className="flex items-center justify-between gap-3 mb-3">
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
           {vals.gdv && (
@@ -872,7 +292,6 @@ function AssumptionsPanel({
         </button>
       </div>
 
-      {/* Editable form — shown when editMode */}
       {editMode && (
         <div className="space-y-4 rounded-lg bg-gray-100 border px-4 py-3">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -977,7 +396,6 @@ export function OfferAnalysisPanel({
   const [error, setError] = useState<string | null>(null)
   const [calculatedAt, setCalculatedAt] = useState<string | null>(null)
 
-  // If refurb cost not yet set, estimate 10% of GDV as a standard light-refurb default
   const refurbDefault = !totalRefurbishment && gdv ? Math.round(gdv * 0.1) : null
   const effectiveRefurb = totalRefurbishment ?? refurbDefault
   const hasDefaultedRefurb = !totalRefurbishment && !!refurbDefault
@@ -1073,16 +491,14 @@ export function OfferAnalysisPanel({
     [dealId, askingPrice, gdv, estimatedRent, totalRefurbishment]
   )
 
-  // Auto-calculate on mount for vendor lead mode (no dealId) when we have enough data
   useEffect(() => {
-    if (dealId) return // deal mode loads from cache separately
+    if (dealId) return
     if (hasRequiredInputs) {
       void runCalculation(assumptionDefaults)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // intentionally run once on mount only
+  }, [])
 
-  // Load cached result on mount (deal mode only)
   useEffect(() => {
     if (!dealId) return
     const loadCached = async () => {
@@ -1105,36 +521,107 @@ export function OfferAnalysisPanel({
           }
         }
       } catch {
-        // No cache — that's fine
+        // No cache
       }
     }
     void loadCached()
   }, [dealId])
 
-  const viabilityBadgeClass =
-    result?.dealViability === "strong"
-      ? "bg-green-100 text-green-700 border-green-200"
-      : result?.dealViability === "marginal"
-      ? "bg-amber-100 text-amber-700 border-amber-200"
-      : "bg-red-100 text-red-600 border-red-200"
+  // ── Derived scorecard data ──────────────────────────────────────────────────
+  const flip         = result?.flip
+  const hold         = result?.hold
+  const bridging     = result?.bridging
+  const cashflow     = result?.cashflow
+  const mortgage     = result?.mortgage
+  const inputs       = result?.inputs
 
-  const viabilityColor =
-    result?.dealViability === "strong"
-      ? "text-green-600"
-      : result?.dealViability === "marginal"
-      ? "text-amber-600"
-      : "text-red-500"
+  const flipHasPrice = (flip?.maxPurchasePrice ?? 0) > 0
+  const holdHasPrice = (hold?.maxPurchasePrice ?? 0) > 0
+  const flipViable   = flipHasPrice && (flip?.viewingCriteriaMet ?? false)
+  const holdViable   = holdHasPrice && (hold?.viewingCriteriaMet ?? false)
+  const flipSteep    = flipHasPrice && !(flip?.viewingCriteriaMet ?? false)
+  const holdSteep    = holdHasPrice && !(hold?.viewingCriteriaMet ?? false)
+  const isTrueBRRR   = holdViable && (hold?.moneyLeftIn ?? 1) <= 0
+
+  const atAsking = result ? computeMetricsAtPrice(askingPrice, result.inputs) : null
+
+  const flipStatus: RowStatus = flipViable ? "pass" : flipSteep ? "negotiate" : result ? "fail" : "none"
+  const holdStatus: RowStatus = holdViable ? "pass" : holdSteep ? "negotiate" : result ? "fail" : "none"
+  const viabilityStatus: RowStatus =
+    (result?.viabilityScore ?? 0) >= 70 ? "pass"
+    : (result?.viabilityScore ?? 0) >= 40 ? "negotiate"
+    : result ? "fail"
+    : "none"
+
+  const flipSummary = flip && flipHasPrice
+    ? `${fmt(flip.maxPurchasePrice)} ceiling · ${pct(flip.profitOnCost)} profit on cost · ${pct(flip.discountPercent)} off asking`
+    : result ? "No viable price at any purchase amount" : ""
+
+  const holdSummary = hold && holdHasPrice
+    ? `${fmt(hold.maxPurchasePrice)} ceiling · ${fmtROCE(hold.roceMultiple)} ROCE · ${pct(hold.grossYield)} yield`
+    : result ? "No viable price at any purchase amount" : ""
+
+  const flipCeiling = flip?.maxPurchasePrice ?? 0
+  const holdCeiling = hold?.maxPurchasePrice ?? 0
+  const flipOpening = flipHasPrice ? opening(flipCeiling) : 0
+  const holdOpening = holdHasPrice ? opening(holdCeiling) : 0
+
+  const ladderSummary = flipHasPrice || holdHasPrice
+    ? `Open ${fmt(flipHasPrice ? flipOpening : holdOpening)} → Max ${fmt(flipHasPrice ? flipCeiling : holdCeiling)}`
+    : "No viable ceiling"
+
+  const viabilityLabel =
+    result?.dealViability === "strong" ? "Strong"
+    : result?.dealViability === "marginal" ? "Marginal"
+    : result ? "No Deal"
+    : ""
+
+  const viabilityScore = result?.viabilityScore ?? 0
+  const viabilitySummary = result ? `${viabilityScore}/100 · ${viabilityLabel}` : ""
+
+  // Flip result message
+  const flipResultMsg = !result ? "" :
+    flipViable
+      ? `✓ Achievable discount (${pct(flip!.discountPercent)}) with ${pct(flip!.profitOnCost)} profit on cost — ${fmt(flip!.profit)} gross profit at ceiling.`
+      : flipSteep
+      ? `⚠ Returns work at ${fmt(flip!.maxPurchasePrice)} but needs a ${pct(flip!.discountPercent)} discount from asking — above the 20% threshold. Achievable with a motivated seller.`
+      : `✗ After refurb (${fmt(inputs!.totalRefurbishment)}) and bridging finance, the GDV (${fmt(inputs!.gdv)}) doesn't leave enough margin for the 20% profit target.`
+
+  // Hold result message
+  const holdResultMsg = !result ? "" :
+    holdViable
+      ? isTrueBRRR
+        ? `✓ True BRRR — ${fmt(hold!.cashSurplus)} cash surplus after refinancing. Full deposit recycled for next deal at ${pct(hold!.grossYield)} gross yield.`
+        : `✓ BTL viable — ${fmt(hold!.moneyLeftIn)} equity in deal after refinancing. ${pct(hold!.grossYield)} gross yield, ${fmt(hold!.netMonthlyCashflow)}/mo net cashflow.`
+      : holdSteep
+      ? `⚠ Returns work at ${fmt(hold!.maxPurchasePrice)} but needs a ${pct(hold!.discountPercent)} discount from asking — above the 20% threshold. Achievable with a motivated seller.`
+      : !mortgage?.icrPass
+      ? `✗ Rent (${fmt(inputs!.estimatedRent)}/mo) is below the lender ICR minimum (${fmt(mortgage!.requiredRentForICR)}/mo). A BTL mortgage won't be approved.`
+      : atAsking && atAsking.roceMultiple >= 99
+      ? `✗ Full BRRR appears possible at asking price but cashflow is negative — check rent estimate.`
+      : atAsking
+      ? `✗ ROCE at asking is ${fmtROCE(atAsking.roceMultiple)} — below the 2.5× target. Not enough cashflow relative to capital invested.`
+      : ""
+
+  const recLabel =
+    result?.recommendedStrategy === "pass"    ? "No viable strategy"
+    : result?.recommendedStrategy === "both"  ? "Flip or BTL/BRRR"
+    : result?.recommendedStrategy === "flip"  ? (flipViable ? "Flip" : "Flip (steep discount)")
+    : result?.recommendedStrategy === "hold"  ? (holdViable ? (isTrueBRRR ? "BRRR" : "BTL") : "Hold (steep discount)")
+    : null
 
   return (
     <TooltipProvider delayDuration={300}>
       <div className="ds-card overflow-hidden">
+
+        {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="px-5 py-4 border-b border-[var(--ds-border)]">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold text-gray-900 text-base">Offer Analysis Engine</h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                Based on Excel PropertyAnalyser methodology
-                {calculatedAt && ` · Last calculated: ${calculatedAt}`}
+                Goal-seek methodology · Excel PropertyAnalyser
+                {calculatedAt && ` · Calculated ${calculatedAt}`}
               </p>
             </div>
             <Button
@@ -1158,7 +645,9 @@ export function OfferAnalysisPanel({
           </div>
         </div>
 
-        <div className="p-5 space-y-5">          {/* Missing inputs warning — only shown when GDV or rent are absent (refurb has a default) */}
+        <div className="p-5 space-y-4">
+
+          {/* ── Missing inputs ─────────────────────────────────────────── */}
           {(!gdv || !estimatedRent) && !result && (
             <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-sm">
               <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
@@ -1187,218 +676,497 @@ export function OfferAnalysisPanel({
             </div>
           )}
 
+          {/* ── Result scorecard ──────────────────────────────────────── */}
           {result && (
             <>
-              {/* ── Asking price summary ─────────────────────────────────── */}
-              <div className="flex items-center gap-3 text-sm text-gray-400 pb-2 border-b">
+              {/* Asking / GDV pill */}
+              <div className="flex items-center gap-3 text-sm text-gray-400 pb-1 border-b">
                 <span className="flex items-center">
-                  Asking Price
-                  <MetricTooltipIcon tooltipKey="askingPrice" />
+                  Asking Price<MetricTooltipIcon tooltipKey="askingPrice" />
                 </span>
                 <span className="font-semibold text-gray-900">{fmt(askingPrice)}</span>
-                <span className="text-gray-400">·</span>
+                <span>·</span>
                 <span className="flex items-center">
-                  GDV
-                  <MetricTooltipIcon tooltipKey="gdv" />
+                  GDV<MetricTooltipIcon tooltipKey="gdv" />
                 </span>
-                <span className="font-semibold text-gray-900">
-                  {fmt(result.inputs.gdv)}
-                </span>
+                <span className="font-semibold text-gray-900">{fmt(result.inputs.gdv)}</span>
+                {recLabel && (
+                  <>
+                    <span>·</span>
+                    <span className={cn(
+                      "rounded-full border px-2 py-0.5 text-[10px] font-bold",
+                      result.recommendedStrategy === "pass"
+                        ? "bg-red-100 text-red-700 border-red-200"
+                        : (flipViable || holdViable)
+                        ? "bg-green-100 text-green-700 border-green-200"
+                        : "bg-amber-100 text-amber-700 border-amber-200"
+                    )}>
+                      Recommended: {recLabel}
+                    </span>
+                  </>
+                )}
               </div>
 
-              {/* ── Offer Ceilings Summary ────────────────────────────── */}
-              {(() => {
-                const rec = result.recommendedStrategy
-                const flipHasPrice = result.flip.maxPurchasePrice > 0
-                const holdHasPrice = result.hold.maxPurchasePrice > 0
-                if (!flipHasPrice && !holdHasPrice) return null
-                const flipCeiling = result.flip.maxPurchasePrice
-                const holdCeiling = result.hold.maxPurchasePrice
-                const flipOpening = flipHasPrice ? Math.round(flipCeiling * 0.88 / 50) * 50 : 0
-                const holdOpening = holdHasPrice ? Math.round(holdCeiling * 0.88 / 50) * 50 : 0
-                const isFlipRec = rec === "flip" || rec === "both"
-                const isHoldRec = rec === "hold" || rec === "both"
-                return (
-                  <div className="rounded-lg border border-[var(--ds-border)] bg-gray-50 p-3 space-y-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                      Offer Ceilings — Opening → Best &amp; Final
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {/* Flip tile */}
-                      <div className={`rounded-md border p-2.5 ${
-                        !flipHasPrice ? "opacity-60 bg-gray-50 border-[var(--ds-border)]" :
-                        isFlipRec ? "border-[#2563EB]/40 bg-[#2563EB]/5" : "border-[var(--ds-border)] bg-white"
-                      }`}>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-xs font-semibold flex items-center gap-1 text-gray-400">
-                            <TrendingUp className="h-3 w-3" /> Flip
-                          </span>
-                          {isFlipRec && flipHasPrice && (
-                            <span className="text-[9px] font-semibold text-[#2563EB] bg-[#2563EB]/10 px-1.5 py-0.5 rounded-full">
-                              Recommended
-                            </span>
-                          )}
-                        </div>
-                        {flipHasPrice ? (
-                          <div>
-                            <div className="flex items-baseline gap-1.5">
-                              <span className="text-[10px] text-gray-400">Opening</span>
-                              <span className="text-sm font-semibold">{fmt(flipOpening)}</span>
-                              <span className="text-gray-400 text-[10px]">→</span>
-                              <span className={`text-base font-bold ${isFlipRec ? "text-[#2563EB]" : ""}`}>{fmt(flipCeiling)}</span>
-                            </div>
-                            <p className="text-[10px] text-gray-400 mt-0.5">{pct(result.flip.discountPercent)} off asking</p>
-                          </div>
-                        ) : (
-                          <p className="text-xs text-gray-400 italic">Not achievable</p>
-                        )}
-                      </div>
+              {/* Scorecard rows */}
+              <div className="space-y-2">
 
-                      {/* BTL / BRRR tile */}
-                      <div className={`rounded-md border p-2.5 ${
-                        !holdHasPrice ? "opacity-60 bg-gray-50 border-[var(--ds-border)]" :
-                        isHoldRec ? "border-[#2563EB]/40 bg-[#2563EB]/5" : "border-[var(--ds-border)] bg-white"
-                      }`}>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-xs font-semibold flex items-center gap-1 text-gray-400">
-                            <Home className="h-3 w-3" /> BTL / BRRR
-                          </span>
-                          {isHoldRec && holdHasPrice && (
-                            <span className="text-[9px] font-semibold text-[#2563EB] bg-[#2563EB]/10 px-1.5 py-0.5 rounded-full">
-                              Recommended
-                            </span>
-                          )}
-                        </div>
-                        {holdHasPrice ? (
-                          <div>
-                            <div className="flex items-baseline gap-1.5">
-                              <span className="text-[10px] text-gray-400">Opening</span>
-                              <span className="text-sm font-semibold">{fmt(holdOpening)}</span>
-                              <span className="text-gray-400 text-[10px]">→</span>
-                              <span className={`text-base font-bold ${isHoldRec ? "text-[#2563EB]" : ""}`}>{fmt(holdCeiling)}</span>
-                            </div>
-                            <p className="text-[10px] text-gray-400 mt-0.5">{pct(result.hold.discountPercent)} off asking</p>
-                          </div>
-                        ) : (
-                          <p className="text-xs text-gray-400 italic">Not achievable</p>
-                        )}
+                {/* ── 1. Flip Strategy ───────────────────────────────── */}
+                <ScorecardRow
+                  criterion="Flip Strategy"
+                  icon={<TrendingUp className="h-3.5 w-3.5" />}
+                  status={flipStatus}
+                  summary={flipSummary}
+                  defaultOpen={flipStatus !== "pass"}
+                >
+                  {/* KPI grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                    <KpiMini
+                      label="Ceiling"
+                      value={flipHasPrice ? fmt(flipCeiling) : "—"}
+                      status={flipHasPrice ? (flipViable ? "pass" : "negotiate") : "fail"}
+                    />
+                    <KpiMini
+                      label="Open with"
+                      value={flipHasPrice ? fmt(flipOpening) : "—"}
+                      hint="88% of ceiling"
+                    />
+                    <KpiMini
+                      label="Profit on cost"
+                      value={flipHasPrice ? pct(flip!.profitOnCost) : atAsking ? pct(atAsking.profitOnCost) : "—"}
+                      status={((flipHasPrice ? flip!.profitOnCost : atAsking?.profitOnCost ?? 0) >= 0.2) ? "pass" : "fail"}
+                      hint="target ≥ 20%"
+                    />
+                    <KpiMini
+                      label="Gross profit"
+                      value={flipHasPrice ? fmt(flip!.profit) : atAsking ? fmt(atAsking.profit) : "—"}
+                      status={((flipHasPrice ? flip!.profit : atAsking?.profit ?? 0) > 0) ? "pass" : "fail"}
+                    />
+                  </div>
+                  {flipHasPrice && (
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      <KpiMini
+                        label="Discount required"
+                        value={pct(flip!.discountPercent)}
+                        status={flip!.viewingCriteriaMet ? "pass" : "negotiate"}
+                        hint={flip!.viewingCriteriaMet ? "within 20% ✓" : "above 20% threshold"}
+                      />
+                      <KpiMini
+                        label="Discount amount"
+                        value={fmt(flip!.discountFromAsking)}
+                        hint="off asking price"
+                      />
+                    </div>
+                  )}
+                  {/* Rationale */}
+                  <div className={cn(
+                    "text-xs rounded-lg p-2.5 leading-relaxed border-l-2",
+                    flipViable ? "border-green-400 bg-green-50 text-green-800"
+                    : flipSteep  ? "border-amber-400 bg-amber-50 text-amber-800"
+                    :              "border-red-300 bg-red-50/50 text-gray-500"
+                  )}>
+                    {flipResultMsg}
+                  </div>
+                  {/* Why not at asking price */}
+                  {!flipHasPrice && atAsking && (
+                    <div className="mt-2 rounded-lg border border-dashed border-gray-200 bg-white p-3 space-y-1 text-xs">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">
+                        At asking price
+                      </p>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Profit on cost</span>
+                        <span className={atAsking.profitOnCost >= 0.2 ? "text-green-600 font-medium" : "text-red-500 font-medium"}>
+                          {pct(atAsking.profitOnCost)} <span className="text-gray-400 font-normal">(need 20%)</span>
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Gross profit</span>
+                        <span className="font-medium">{fmt(atAsking.profit)}</span>
                       </div>
                     </div>
-                    <p className="text-[10px] text-gray-400 leading-relaxed">
-                      Opening = 88% of ceiling to anchor negotiations · Ceiling = goal-seek maximum, do not exceed · Each strategy has its own ceiling
-                    </p>
+                  )}
+                </ScorecardRow>
+
+                {/* ── 2. BTL / BRRR ──────────────────────────────────── */}
+                <ScorecardRow
+                  criterion="BTL / BRRR"
+                  icon={<Home className="h-3.5 w-3.5" />}
+                  status={holdStatus}
+                  summary={holdSummary}
+                  defaultOpen={holdStatus !== "pass"}
+                >
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                    <KpiMini
+                      label="Ceiling"
+                      value={holdHasPrice ? fmt(holdCeiling) : "—"}
+                      status={holdHasPrice ? (holdViable ? "pass" : "negotiate") : "fail"}
+                    />
+                    <KpiMini
+                      label="Open with"
+                      value={holdHasPrice ? fmt(holdOpening) : "—"}
+                      hint="88% of ceiling"
+                    />
+                    <KpiMini
+                      label="ROCE multiple"
+                      value={holdHasPrice ? fmtROCE(hold!.roceMultiple) : atAsking ? fmtROCE(atAsking.roceMultiple) : "—"}
+                      status={((holdHasPrice ? hold!.roceMultiple : atAsking?.roceMultiple ?? 0) >= 2.5) ? "pass" : "fail"}
+                      hint="target ≥ 2.5×"
+                    />
+                    <KpiMini
+                      label="Gross yield"
+                      value={holdHasPrice ? pct(hold!.grossYield) : "—"}
+                      status={(holdHasPrice && (hold?.grossYield ?? 0) >= 0.06) ? "pass" : null}
+                    />
                   </div>
-                )
-              })()}
+                  {(holdHasPrice || cashflow) && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                      <KpiMini
+                        label="Net cashflow"
+                        value={cashflow ? `${fmt(cashflow.netMonthlyCashflow)}/mo` : "—"}
+                        status={(cashflow?.netMonthlyCashflow ?? 0) >= 0 ? "pass" : "fail"}
+                      />
+                      <KpiMini
+                        label="Money left in"
+                        value={holdHasPrice
+                          ? (hold!.moneyLeftIn > 0 ? fmt(hold!.moneyLeftIn) : `${fmt(hold!.cashSurplus)} surplus`)
+                          : "—"
+                        }
+                        status={holdHasPrice ? (hold!.moneyLeftIn <= 0 ? "pass" : null) : null}
+                        hint={holdHasPrice && hold!.moneyLeftIn <= 0 ? "full BRRR ✓" : holdHasPrice ? "BTL" : undefined}
+                      />
+                      <KpiMini
+                        label="ICR check"
+                        value={mortgage ? `${fmt(inputs!.estimatedRent)} vs ${fmt(mortgage.requiredRentForICR)} req.` : "—"}
+                        status={mortgage?.icrPass ? "pass" : "fail"}
+                        hint={mortgage?.icrPass ? "lender approved" : "lender fail"}
+                      />
+                      {holdHasPrice && (
+                        <KpiMini
+                          label="Discount required"
+                          value={pct(hold!.discountPercent)}
+                          status={hold!.viewingCriteriaMet ? "pass" : "negotiate"}
+                          hint={hold!.viewingCriteriaMet ? "within 20% ✓" : "above 20%"}
+                        />
+                      )}
+                    </div>
+                  )}
+                  {/* Rationale */}
+                  <div className={cn(
+                    "text-xs rounded-lg p-2.5 leading-relaxed border-l-2",
+                    holdViable ? "border-green-400 bg-green-50 text-green-800"
+                    : holdSteep  ? "border-amber-400 bg-amber-50 text-amber-800"
+                    :              "border-red-300 bg-red-50/50 text-gray-500"
+                  )}>
+                    {holdResultMsg}
+                  </div>
+                  {/* Why not at asking price */}
+                  {!holdHasPrice && atAsking && mortgage && (
+                    <div className="mt-2 rounded-lg border border-dashed border-gray-200 bg-white p-3 space-y-1 text-xs">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">At asking price</p>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Rent vs ICR req.</span>
+                        <span className={mortgage.icrPass ? "text-green-600 font-medium" : "text-red-500 font-medium"}>
+                          {fmt(inputs!.estimatedRent)}/mo vs {fmt(mortgage.requiredRentForICR)} req.
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">ROCE multiple</span>
+                        <span className={atAsking.roceMultiple >= 2.5 ? "text-green-600 font-medium" : "text-red-500 font-medium"}>
+                          {fmtROCE(atAsking.roceMultiple)}{" "}
+                          <span className="text-gray-400 font-normal">(need 2.5×)</span>
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Net cashflow</span>
+                        <span className={cashflow && cashflow.netMonthlyCashflow >= 0 ? "text-green-600 font-medium" : "text-red-500 font-medium"}>
+                          {cashflow ? fmt(cashflow.netMonthlyCashflow) : "—"}/mo
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </ScorecardRow>
 
-              {/* ── Strategy rationale — always visible ──────────────────── */}
-              <StrategyRationale result={result} />
+                {/* ── 3. Negotiation Ladder ──────────────────────────── */}
+                {ladders && (
+                  <ScorecardRow
+                    criterion="Negotiation Ladder"
+                    icon={<Layers className="h-3.5 w-3.5" />}
+                    status="info"
+                    summary={ladderSummary}
+                    defaultOpen={true}
+                  >
+                    <NegotiationLadderPanel
+                      flipLadder={ladders.flip}
+                      holdLadder={ladders.hold}
+                      dealId={dealId}
+                      onOfferSent={onOfferSent}
+                      readOnly={readOnly}
+                      vendorLeadId={vendorLeadId}
+                      vendorName={vendorName}
+                      vendorEmail={vendorEmail}
+                      vendorPhone={vendorPhone}
+                    />
+                  </ScorecardRow>
+                )}
 
-              {/* ── Two-column strategy display ──────────────────────────── */}
-              <CollapsibleSection
-                title="Offer Strategy"
-                summary={`Flip ${fmt(result.flip.maxPurchasePrice)} · Hold ${fmt(result.hold.maxPurchasePrice)}`}
-                defaultOpen={false}
-              >
-                <div className="flex gap-6 flex-col sm:flex-row">
-                  <StrategyColumn
-                    strategy="flip"
-                    data={result.flip}
-                    askingPrice={askingPrice}
-                    result={result}
-                  />
-                  <div className="hidden sm:block w-px bg-border self-stretch" />
-                  <StrategyColumn
-                    strategy="hold"
-                    data={result.hold}
-                    askingPrice={askingPrice}
-                    result={result}
-                  />
-                </div>
-              </CollapsibleSection>
+                {/* ── 4. Financial Breakdown ────────────────────────── */}
+                {bridging && mortgage && cashflow && flip && (
+                  <ScorecardRow
+                    criterion="Financial Breakdown"
+                    icon={<DollarSign className="h-3.5 w-3.5" />}
+                    status="info"
+                    summary={`Bridge ${fmt(bridging.totalCosts)} · Equity ${fmt(flip.totalEquityInvested)} · Mortgage ${fmt(mortgage.monthlyPayment)}/mo`}
+                    defaultOpen={false}
+                  >
+                    <div className="grid md:grid-cols-2 gap-6 text-sm">
+                      {/* Bridging */}
+                      <div>
+                        <p className="font-semibold mb-2 text-xs uppercase tracking-wide text-gray-400 flex items-center">
+                          Bridging Finance
+                          <MetricTooltipIcon tooltipKey="bridgingTotalCosts" />
+                        </p>
+                        <div className="space-y-1.5">
+                          {[
+                            ["Gross Loan (75% LTV)", fmt(bridging.grossLoan), "bridgingGrossLoan"],
+                            ["Net Advance",           fmt(bridging.netLoanAdvance), "bridgingNetLoanAdvance"],
+                            ["Deposit",               fmt(bridging.deposit), "bridgingDeposit"],
+                            ["Arrangement Fee",       fmt(bridging.arrangementFee), null],
+                            ["Monthly Interest",      fmt(bridging.monthlyInterest), null],
+                            ["Total Interest",        fmt(bridging.totalInterest), null],
+                            ["Exit Fee",              fmt(bridging.exitFee), null],
+                          ].map(([label, val, tip]) => (
+                            <div key={label} className="flex justify-between items-center">
+                              <span className="text-gray-400 flex items-center">
+                                {label}
+                                {tip && <MetricTooltipIcon tooltipKey={tip as string} />}
+                              </span>
+                              <span className="font-medium">{val}</span>
+                            </div>
+                          ))}
+                          <div className="flex justify-between border-t pt-1 font-semibold">
+                            <span>Total Bridging Costs</span>
+                            <span>{fmt(bridging.totalCosts)}</span>
+                          </div>
+                        </div>
+                      </div>
 
-              {/* ── Negotiation ladder ───────────────────────────────────── */}
-              {ladders && (
-                <CollapsibleSection
-                  title="Negotiation Ladder"
-                  summary={`Opening → Counter 1 → Counter 2 → Best & Final`}
+                      {/* Exit Mortgage */}
+                      <div>
+                        <p className="font-semibold mb-2 text-xs uppercase tracking-wide text-gray-400">
+                          Exit Mortgage (on GDV)
+                        </p>
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Loan (75% of GDV)</span>
+                            <span className="font-medium">{fmt(mortgage.loanAmount)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Monthly Payment</span>
+                            <span className="font-medium">{fmt(mortgage.monthlyPayment)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Arrangement Fee</span>
+                            <span className="font-medium">{fmt(mortgage.arrangementFee)}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-400 flex items-center">
+                              ICR Check
+                              <MetricTooltipIcon tooltipKey="icrPass" />
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <PassBadge pass={mortgage.icrPass} />
+                              <span className="text-gray-400 text-xs">
+                                ({fmt(mortgage.requiredRentForICR)} req.)
+                              </span>
+                            </span>
+                          </div>
+                          <div className="flex justify-between border-t pt-1 font-semibold">
+                            <span>Total Mortgage Costs</span>
+                            <span>{fmt(mortgage.totalCosts)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Monthly Cashflow */}
+                      <div>
+                        <p className="font-semibold mb-2 text-xs uppercase tracking-wide text-gray-400 flex items-center">
+                          Monthly Cashflow
+                          <MetricTooltipIcon tooltipKey="netMonthlyCashflow" />
+                        </p>
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between text-green-600">
+                            <span>Rent</span>
+                            <span className="font-medium">{fmt(cashflow.grossRentMonthly)}</span>
+                          </div>
+                          <div className="flex justify-between text-red-500">
+                            <span>Mortgage</span>
+                            <span className="font-medium">−{fmt(cashflow.mortgagePaymentMonthly)}</span>
+                          </div>
+                          {cashflow.managementCostMonthly > 0 && (
+                            <div className="flex justify-between text-red-500">
+                              <span>Management</span>
+                              <span className="font-medium">−{fmt(cashflow.managementCostMonthly)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between text-red-500">
+                            <span>Void Allowance</span>
+                            <span className="font-medium">−{fmt(cashflow.voidAllowanceMonthly)}</span>
+                          </div>
+                          <div className="flex justify-between text-red-500">
+                            <span>Insurance</span>
+                            <span className="font-medium">−{fmt(cashflow.insuranceMonthly)}</span>
+                          </div>
+                          <div className={cn(
+                            "flex justify-between border-t pt-1 font-semibold",
+                            cashflow.netMonthlyCashflow >= 0 ? "text-green-600" : "text-red-500"
+                          )}>
+                            <span>Net Monthly</span>
+                            <span>{fmt(cashflow.netMonthlyCashflow)}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-gray-400 text-xs">
+                            <span className="flex items-center">
+                              Gross Yield
+                              <MetricTooltipIcon tooltipKey="grossYield" />
+                            </span>
+                            <span>{pct(cashflow.grossYield)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Acquisition & Project Costs */}
+                      <div>
+                        <p className="font-semibold mb-2 text-xs uppercase tracking-wide text-gray-400">
+                          Acquisition &amp; Project Costs
+                        </p>
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Deposit</span>
+                            <span className="font-medium">{fmt(flip.acquisitionCosts.deposit)}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-400 flex items-center">
+                              Stamp Duty
+                              <MetricTooltipIcon tooltipKey="stampDuty" />
+                            </span>
+                            <span className="font-medium">{fmt(flip.acquisitionCosts.stampDuty)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Solicitor / Searches</span>
+                            <span className="font-medium">
+                              {fmt(
+                                flip.acquisitionCosts.solicitorFees +
+                                flip.acquisitionCosts.searches +
+                                flip.acquisitionCosts.buildingControl
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Acquisition Total</span>
+                            <span className="font-medium">{fmt(flip.acquisitionCosts.total)}</span>
+                          </div>
+                          <div className="border-t pt-1" />
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Refurbishment</span>
+                            <span className="font-medium">{fmt(flip.projectCosts.refurbishment)}</span>
+                          </div>
+                          {flip.projectCosts.contingency > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Contingency</span>
+                              <span className="font-medium">{fmt(flip.projectCosts.contingency)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Holding / Furnishing</span>
+                            <span className="font-medium">
+                              {fmt(
+                                flip.projectCosts.utilities +
+                                flip.projectCosts.councilTax +
+                                flip.projectCosts.furnishing
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex justify-between border-t pt-1 font-semibold">
+                            <span>Total Equity Invested</span>
+                            <span>{fmt(flip.totalEquityInvested)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </ScorecardRow>
+                )}
+
+                {/* ── 5. Deal Viability ──────────────────────────────── */}
+                <ScorecardRow
+                  criterion="Deal Viability"
+                  icon={<BarChart2 className="h-3.5 w-3.5" />}
+                  status={viabilityStatus}
+                  summary={viabilitySummary}
                   defaultOpen={true}
                 >
-                  <NegotiationLadderPanel
-                    flipLadder={ladders.flip}
-                    holdLadder={ladders.hold}
-                    dealId={dealId}
-                    onOfferSent={onOfferSent}
-                    readOnly={readOnly}
-                    vendorLeadId={vendorLeadId}
-                    vendorName={vendorName}
-                    vendorEmail={vendorEmail}
-                    vendorPhone={vendorPhone}
-                  />
-                </CollapsibleSection>
-              )}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <ViabilityDots score={viabilityScore} />
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-xs font-semibold capitalize",
+                            result.dealViability === "strong"   ? "bg-green-100 text-green-700 border-green-200"
+                            : result.dealViability === "marginal" ? "bg-amber-100 text-amber-700 border-amber-200"
+                            :                                       "bg-red-100 text-red-600 border-red-200"
+                          )}
+                        >
+                          {result.dealViability === "pass" ? "No Deal" : result.dealViability}
+                        </Badge>
+                        <span className={cn(
+                          "text-sm font-semibold",
+                          result.dealViability === "strong"   ? "text-green-600"
+                          : result.dealViability === "marginal" ? "text-amber-600"
+                          :                                       "text-red-500"
+                        )}>
+                          {viabilityScore}/100
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-400">Recommended</p>
+                        <p className="text-sm font-bold capitalize">
+                          {result.recommendedStrategy === "pass"
+                            ? "No deal"
+                            : result.recommendedStrategy === "both"
+                            ? "Flip or Hold"
+                            : result.recommendedStrategy}
+                        </p>
+                      </div>
+                    </div>
+                    <ul className="space-y-1">
+                      {result.viabilityNotes.map((note, i) => (
+                        <li key={i} className="text-xs text-gray-500 flex items-start gap-1.5">
+                          <span className="mt-0.5 shrink-0">•</span>
+                          <span>{note}</span>
+                        </li>
+                      ))}
+                    </ul>
 
-              {/* ── Financial breakdown (collapsible, starts closed) ─────── */}
-              <FinancialBreakdown result={result} />
+                    {onReject && !readOnly && (
+                      <div className="pt-2 border-t">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 border-red-300 hover:bg-red-50"
+                          onClick={onReject}
+                        >
+                          <Ban className="h-3.5 w-3.5 mr-1.5" />
+                          Reject Deal
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </ScorecardRow>
 
-              {/* ── Deal viability score ────────────────────────────────── */}
-              <CollapsibleSection
-                title="Deal Viability"
-                summary={`${result.viabilityScore}/100 · ${result.dealViability === "pass" ? "No Deal" : result.dealViability}`}
-                defaultOpen={true}
-              >
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <ViabilityDots score={result.viabilityScore} />
-                    <Badge
-                      variant="outline"
-                      className={`text-xs font-semibold capitalize ${viabilityBadgeClass}`}
-                    >
-                      {result.dealViability === "pass" ? "No Deal" : result.dealViability}
-                    </Badge>
-                    <span className={`text-sm font-semibold ${viabilityColor}`}>
-                      {result.viabilityScore}/100
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-400">Recommended</p>
-                    <p className="text-sm font-bold capitalize">
-                      {result.recommendedStrategy === "pass"
-                        ? "No deal"
-                        : result.recommendedStrategy === "both"
-                        ? "Flip or Hold"
-                        : result.recommendedStrategy}
-                    </p>
-                  </div>
-                </div>
-                <ul className="mt-2 space-y-1">
-                  {result.viabilityNotes.map((note, i) => (
-                    <li key={i} className="text-xs text-gray-400 flex items-start gap-1.5">
-                      <span className="mt-0.5 shrink-0">•</span>
-                      <span>{note}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                {/* Reject deal button lives inside viability so it's contextual */}
-                {onReject && !readOnly && (
-                  <div className="pt-3 mt-3 border-t">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-red-600 border-red-300 hover:bg-red-50"
-                      onClick={onReject}
-                    >
-                      <Ban className="h-3.5 w-3.5 mr-1.5" />
-                      Reject Deal
-                    </Button>
-                  </div>
-                )}
-              </CollapsibleSection>
+              </div>
             </>
           )}
 
-          {/* Assumptions override — always visible when we have base inputs */}
+          {/* ── Assumptions override — always visible when we have base inputs ── */}
           {hasRequiredInputs && (
             <AssumptionsPanel
               defaults={assumptionDefaults}
@@ -1407,6 +1175,7 @@ export function OfferAnalysisPanel({
               hasDefaultedRefurb={hasDefaultedRefurb}
             />
           )}
+
         </div>
       </div>
     </TooltipProvider>

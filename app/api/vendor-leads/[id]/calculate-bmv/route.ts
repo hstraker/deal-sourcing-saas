@@ -514,15 +514,37 @@ export async function POST(
     const hasGoodYield = grossYield >= 6
     const validationPassed = bmvScore >= minBmv && profitPotential >= minProfit
 
+    // ── Offer Engine Goal-Seek Ceilings ──────────────────────────────────────
+    // Use the same binary-search methodology as the Offer tab so ceilings are
+    // consistent across the validation scorecard and the offer analysis view.
+    // Flip ceiling = max purchase price where profitOnCost ≥ 20% (after bridging).
+    // Hold ceiling = max purchase price where ROCE multiple ≥ 2.5× (after mortgage).
+    let flipEngineCeiling = 0
+    let holdEngineCeiling = 0
+    try {
+      const { calculatePropertyOffer: calcOffer } = await import("@/lib/offer-engine/property-offer-calculator")
+      const engineResult = calcOffer({
+        askingPrice,
+        gdv: marketValue,
+        estimatedRent: monthlyRent,
+        totalRefurbishment: refurbCost,
+      })
+      flipEngineCeiling = engineResult.flip.maxPurchasePrice
+      holdEngineCeiling = engineResult.hold.maxPurchasePrice
+      console.log(`[BMV Calculator] Offer engine ceilings — Flip: £${flipEngineCeiling.toLocaleString()}, Hold: £${holdEngineCeiling.toLocaleString()}`)
+    } catch (engErr) {
+      console.warn("[BMV Calculator] Offer engine goal-seek failed, using simple formula ceilings:", engErr)
+    }
+
     // ── Negotiation Required ─────────────────────────────────────────────────
     // A deal is "negotiation required" (not "failed") when the asking price
     // doesn't yet meet our criteria BUT is below at least one strategy ceiling —
     // meaning the deal is achievable with vendor negotiation.
     //
     // Strategy ceilings:
-    //   BTL / BuyHold  → annualRent / minYield%
-    //   Flip           → MV × flipPct% − refurb
-    //   BRR            → MV × brrLtv% − refurb
+    //   BTL / BuyHold  → annualRent / minYield%  (yield-based, unchanged)
+    //   Flip           → goal-seek: max price where 20% profit-on-cost (inc. bridging)
+    //   Hold/BRRR      → goal-seek: max price where ROCE ≥ 2.5× mortgage rate
     const sConfig2 = offerCalcConfig
       ? { btlMinYield:     Number(offerCalcConfig.btlMinYield),
           buyHoldMinYield: Number(offerCalcConfig.buyHoldMinYield),
@@ -532,8 +554,13 @@ export async function POST(
     const strategyCeilings = [
       annualRent > 0 ? Math.round(annualRent / (sConfig2.btlMinYield     / 100)) : null,
       annualRent > 0 ? Math.round(annualRent / (sConfig2.buyHoldMinYield / 100)) : null,
-      Math.round(marketValue * sConfig2.flipMvPct / 100 - refurbCost),
-      Math.round(marketValue * sConfig2.brrLtv    / 100 - refurbCost),
+      // Use goal-seek ceilings when available; fall back to simple formula if engine errored
+      flipEngineCeiling > 0
+        ? flipEngineCeiling
+        : Math.round(marketValue * sConfig2.flipMvPct / 100 - refurbCost),
+      holdEngineCeiling > 0
+        ? holdEngineCeiling
+        : Math.round(marketValue * sConfig2.brrLtv / 100 - refurbCost),
     ].filter((c): c is number => c != null)
     const bestCeiling = strategyCeilings.length > 0 ? Math.max(...strategyCeilings) : 0
     const negotiationRequired = !validationPassed && askingPrice <= bestCeiling
@@ -632,12 +659,18 @@ export async function POST(
             maxViable = annualRent > 0 ? Math.round(annualRent / (bhMin / 100)) : null
             yieldAtOffer = r.achievedGrossYield > 0 ? Math.round(r.achievedGrossYield * 10) / 10 : null
           } else if (r.key === "Flip") {
-            maxViable = Math.round(marketValue * flipPct / 100 - refurbCost)
+            // Use goal-seek ceiling (matches Offer tab) — falls back to simple formula if engine errored
+            maxViable = flipEngineCeiling > 0
+              ? flipEngineCeiling
+              : Math.round(marketValue * flipPct / 100 - refurbCost)
             // Profit at recommended offer: sell at MV, subtract offer + refurb + selling costs (~5% MV)
             flipProfit = Math.round(marketValue - r.recommendedOffer - refurbCost - marketValue * 0.05)
             flipMargin = r.recommendedOffer > 0 ? Math.round((flipProfit / r.recommendedOffer) * 1000) / 10 : null
           } else if (r.key === "BRR") {
-            maxViable = Math.round(marketValue * brrLtv / 100 - refurbCost)
+            // Use goal-seek hold ceiling (matches Offer tab) — falls back to simple formula if engine errored
+            maxViable = holdEngineCeiling > 0
+              ? holdEngineCeiling
+              : Math.round(marketValue * brrLtv / 100 - refurbCost)
             brrProceeds = Math.round(marketValue * brrLtv / 100)
             brrLeftIn = Math.max(0, r.recommendedOffer + refurbCost - brrProceeds)
           }
@@ -670,9 +703,15 @@ export async function POST(
               return `Annual Rent ÷ Min B&H Yield\n${gb(annualRent)} ÷ ${pct(bhMin)} = ${gb(maxViable!)}`
             }
             if (r.key === "Flip") {
+              if (flipEngineCeiling > 0) {
+                return `Goal-seek: max price where profit-on-cost ≥ 20% (inc. bridging finance)\nFlip ceiling: ${gb(flipEngineCeiling)}`
+              }
               return `Market Value × ${pct(flipPct)} − Refurb Cost\n${gb(marketValue)} × ${pct(flipPct)} − ${gb(refurbCost)} = ${gb(maxViable!)}`
             }
             if (r.key === "BRR") {
+              if (holdEngineCeiling > 0) {
+                return `Goal-seek: max price where ROCE ≥ 2.5× mortgage rate (inc. exit mortgage)\nHold/BRRR ceiling: ${gb(holdEngineCeiling)}`
+              }
               return `Market Value × ${pct(brrLtv)} LTV − Refurb Cost\n${gb(marketValue)} × ${pct(brrLtv)} − ${gb(refurbCost)} = ${gb(maxViable!)}`
             }
             return null
