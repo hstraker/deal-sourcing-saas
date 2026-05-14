@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { ChevronDown, ChevronRight, Info, Calculator } from "lucide-react"
+import { ChevronDown, ChevronRight, Info, Calculator, TrendingUp, AlertTriangle, CheckCircle2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 import {
@@ -168,6 +168,8 @@ function CostInputRow({
 export interface AcquisitionCostPanelProps {
   purchasePrice: number
   refurbCost?: number
+  /** Monthly rent for ICR / cashflow calculations in the mortgage section */
+  monthlyRent?: number
   /** Persisted overrides from the lead record */
   savedBuyerType?: string | null
   savedSolicitorFees?: number | null
@@ -181,6 +183,7 @@ export interface AcquisitionCostPanelProps {
 export function AcquisitionCostPanel({
   purchasePrice,
   refurbCost = 0,
+  monthlyRent = 0,
   savedBuyerType,
   savedSolicitorFees,
   savedSurveyFee,
@@ -196,6 +199,9 @@ export function AcquisitionCostPanel({
   const [bridgingCost, setBridgingCost] = useState(savedBridgingCost ?? 0)
   const [insurance, setInsurance] = useState(savedInsurance ?? 400)
   const [sdltOpen, setSdltOpen] = useState(false)
+  const [ltvPct, setLtvPct] = useState(75)
+  const [mortgageRate, setMortgageRate] = useState(5.5)
+  const [mortgageOpen, setMortgageOpen] = useState(true)
 
   const result = useMemo(() => calculateAcquisitionCost({
     purchasePrice,
@@ -206,6 +212,21 @@ export function AcquisitionCostPanel({
     insuranceFirstYear: insurance,
     refurbCost,
   }), [purchasePrice, buyerType, solicitorFees, surveyFee, bridgingCost, insurance, refurbCost])
+
+  // ── Mortgage calculations ───────────────────────────────────────────────────
+  const mortgageAmount   = Math.round(purchasePrice * ltvPct / 100)
+  const deposit          = purchasePrice - mortgageAmount
+  // Interest-only monthly payment (standard for BTL)
+  const monthlyPayment   = Math.round(mortgageAmount * (mortgageRate / 100) / 12)
+  // Total cash-in with mortgage = deposit + all costs EXCEPT the purchase price itself
+  const otherCosts       = result.totalCashRequired - purchasePrice
+  const totalCashIn      = deposit + otherCosts
+  const monthlyCashflow  = monthlyRent > 0 ? monthlyRent - monthlyPayment : null
+  // ICR: rent / mortgage payment × 100 — lenders typically require ≥125%
+  const icr              = monthlyPayment > 0 && monthlyRent > 0
+                             ? Math.round((monthlyRent / monthlyPayment) * 100)
+                             : null
+  const icrPass          = icr !== null && icr >= 125
 
   const sdlt = result.sdlt
 
@@ -306,9 +327,147 @@ export function AcquisitionCostPanel({
       {/* All-In cost table */}
       <div>
         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">
-          All-In Cost of Acquisition
+          All-In Cost of Acquisition (Cash Purchase)
         </p>
         <AllInCostTable result={result} />
+      </div>
+
+      {/* BTL Mortgage section */}
+      <div className="rounded-xl border border-indigo-200 bg-indigo-50 overflow-hidden">
+        <button
+          className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-indigo-100/60 transition-colors"
+          onClick={() => setMortgageOpen(o => !o)}
+        >
+          <div className="flex items-center gap-2">
+            {mortgageOpen
+              ? <ChevronDown className="h-3.5 w-3.5 text-indigo-500" />
+              : <ChevronRight className="h-3.5 w-3.5 text-indigo-500" />}
+            <TrendingUp className="h-3.5 w-3.5 text-indigo-500" />
+            <span className="text-[11px] font-bold text-indigo-800 uppercase tracking-wide">
+              BTL Mortgage — Cash-In Calculator
+            </span>
+          </div>
+          <span className="text-[10px] text-indigo-400">interest-only</span>
+        </button>
+
+        {mortgageOpen && (
+          <div className="px-4 pb-4 pt-2 space-y-3">
+            {/* LTV & rate controls */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-indigo-600 mb-1.5">
+                  LTV %
+                </label>
+                <div className="flex gap-1">
+                  {[65, 70, 75, 80].map(v => (
+                    <button
+                      key={v}
+                      onClick={() => setLtvPct(v)}
+                      className={cn(
+                        "flex-1 rounded py-1 text-[11px] font-bold transition-colors",
+                        ltvPct === v
+                          ? "bg-indigo-600 text-white"
+                          : "bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-100"
+                      )}
+                    >
+                      {v}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-indigo-600 mb-1.5">
+                  Interest Rate %
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min={1}
+                    max={15}
+                    value={mortgageRate}
+                    onChange={e => {
+                      const v = parseFloat(e.target.value)
+                      if (!isNaN(v) && v > 0) setMortgageRate(v)
+                    }}
+                    className="w-full rounded border border-indigo-200 bg-white px-3 pr-7 py-1 text-xs font-semibold text-indigo-800 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-100"
+                  />
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-indigo-400">%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Mortgage breakdown table */}
+            <div className="overflow-hidden rounded-lg border border-indigo-200 bg-white text-xs">
+              <table className="w-full">
+                <tbody>
+                  <tr className="border-b border-indigo-100">
+                    <td className="px-3 py-2 text-indigo-700">Purchase Price</td>
+                    <td className="px-3 py-2 text-right font-bold text-gray-900">{gbp(purchasePrice)}</td>
+                  </tr>
+                  <tr className="border-b border-indigo-100 bg-indigo-50/40">
+                    <td className="px-3 py-2 text-indigo-700">Mortgage ({ltvPct}% LTV)</td>
+                    <td className="px-3 py-2 text-right font-bold text-indigo-700">{gbp(mortgageAmount)}</td>
+                  </tr>
+                  <tr className="border-b border-indigo-100">
+                    <td className="px-3 py-2 text-indigo-700">Deposit ({100 - ltvPct}%)</td>
+                    <td className="px-3 py-2 text-right font-bold text-gray-900">{gbp(deposit)}</td>
+                  </tr>
+                  <tr className="border-b border-indigo-100 bg-indigo-50/40">
+                    <td className="px-3 py-2 text-indigo-700">Acquisition Costs (SDLT + fees)</td>
+                    <td className="px-3 py-2 text-right font-bold text-gray-900">{gbp(otherCosts)}</td>
+                  </tr>
+                  <tr className="border-b border-indigo-100">
+                    <td className="px-3 py-2 text-indigo-700">Monthly Payment (interest-only)</td>
+                    <td className="px-3 py-2 text-right font-bold text-gray-900">{gbp(monthlyPayment)}/mo</td>
+                  </tr>
+                  {monthlyRent > 0 && monthlyCashflow !== null && (
+                    <tr className={cn("border-b border-indigo-100", monthlyCashflow >= 0 ? "bg-green-50" : "bg-red-50")}>
+                      <td className={cn("px-3 py-2", monthlyCashflow >= 0 ? "text-green-700" : "text-red-700")}>
+                        Est. Monthly Cashflow (rent − mortgage)
+                      </td>
+                      <td className={cn("px-3 py-2 text-right font-bold", monthlyCashflow >= 0 ? "text-green-700" : "text-red-700")}>
+                        {monthlyCashflow >= 0 ? "+" : ""}{gbp(monthlyCashflow)}/mo
+                      </td>
+                    </tr>
+                  )}
+                  {icr !== null && (
+                    <tr className={cn(icrPass ? "bg-green-50" : "bg-amber-50")}>
+                      <td className={cn("px-3 py-2 flex items-center gap-1", icrPass ? "text-green-700" : "text-amber-700")}>
+                        {icrPass
+                          ? <CheckCircle2 className="h-3 w-3 shrink-0" />
+                          : <AlertTriangle className="h-3 w-3 shrink-0" />}
+                        ICR (lender stress test ≥125%)
+                      </td>
+                      <td className={cn("px-3 py-2 text-right font-bold", icrPass ? "text-green-700" : "text-amber-700")}>
+                        {icr}%
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Total Cash-In highlight */}
+            <div className="rounded-lg bg-indigo-600 px-4 py-3 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-200">
+                  Total Cash Required (with mortgage)
+                </p>
+                <p className="text-[10px] text-indigo-300 mt-0.5">
+                  Deposit + SDLT + all fees (excluding refurb)
+                </p>
+              </div>
+              <p className="text-xl font-extrabold text-white">{gbp(totalCashIn)}</p>
+            </div>
+
+            {!monthlyRent && (
+              <p className="text-[10px] text-indigo-500 text-center">
+                Run BMV calculation to see cashflow and ICR figures
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <p className="text-[10px] text-gray-400">
