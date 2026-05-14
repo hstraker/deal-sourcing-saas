@@ -57,12 +57,17 @@ export async function POST(
     let comparables: SoldProperty[] = []
     let creditsUsed = 0
 
-    // Rental data for yield calculations - will be fetched from API or use existing data
-    let monthlyRent = lead.estimatedMonthlyRent?.toNumber() || 0
-    let annualRent = lead.estimatedAnnualRent?.toNumber() || monthlyRent * 12
-    let weeklyRent = monthlyRent > 0 ? Math.round(monthlyRent / 4.333) : 0
+    // Rental data for yield calculations.
+    // The stored estimatedMonthlyRent is a previously-computed cached value, NOT a
+    // user-entered override — so we always recompute from the priority chain and use
+    // the stored figure only as a last resort. This prevents stale area-average figures
+    // (e.g. £505 fetched without a bedroom filter) from persisting across recalculations.
+    let monthlyRent = 0
+    let annualRent = 0
+    let weeklyRent = 0
     let rentConfidenceRange: { min: number; max: number } | null = null
-    let rentalDataSource = monthlyRent > 0 ? "manual_entry" : "none"
+    let rentalDataSource = "none"
+    const storedRent = lead.estimatedMonthlyRent?.toNumber() || 0  // fallback only
     const squareFeet = lead.squareFeet || 0
     const localAverageRent = lead.localAverageRent?.toNumber() || 0
 
@@ -247,8 +252,14 @@ export async function POST(
               console.error("[BMV Calculator] Error fetching rental data:", error)
             }
           }
-        } else {
-          console.log(`[BMV Calculator] Using existing rental data: £${monthlyRent}/month (source: ${rentalDataSource})`)
+        // Priority 4: stored DB value (last resort — may be stale API figure)
+        if (monthlyRent === 0 && storedRent > 0) {
+          monthlyRent = storedRent
+          annualRent = monthlyRent * 12
+          weeklyRent = Math.round(monthlyRent / 4.333)
+          rentalDataSource = "stored_fallback"
+          console.log(`[BMV Calculator] Using stored rent as fallback: £${monthlyRent}/mo (may be stale)`)
+        }
         }
 
       } catch (error) {
