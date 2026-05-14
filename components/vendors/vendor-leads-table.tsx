@@ -601,19 +601,27 @@ function UrgencyBadge({ level }: { level: string | null }) {
   return <span className="font-mono text-xs text-gray-400">—</span>
 }
 
-function ValidationResultBadge({ passed }: { passed: boolean | null }) {
+function ValidationResultBadge({ passed, validationNotes }: { passed: boolean | null; validationNotes?: string | null }) {
   if (passed === true)
     return (
       <Tip text="Deal passed BMV and profit validation criteria">
         <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700 cursor-default">✓ Pass</span>
       </Tip>
     )
-  if (passed === false)
+  if (passed === false) {
+    const isNegotiation = validationNotes?.startsWith("⚠️ NEGOTIATION REQUIRED")
+    if (isNegotiation)
+      return (
+        <Tip text="Viable with price negotiation — asking price is below the best strategy ceiling">
+          <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 cursor-default">⚠ Negotiate</span>
+        </Tip>
+      )
     return (
       <Tip text="Deal did not meet minimum BMV or profit thresholds">
         <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 cursor-default">✕ Fail</span>
       </Tip>
     )
+  }
   return (
     <Tip text="Validation not yet run">
       <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-400 cursor-default">Pending</span>
@@ -1506,7 +1514,7 @@ function ValidationRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, 
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
       <VendorAddressCell lead={lead} isSelected={isSelected} />
-      <Td><ValidationResultBadge passed={lead.validationPassed} /></Td>
+      <Td><ValidationResultBadge passed={lead.validationPassed} validationNotes={lead.validationNotes} /></Td>
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{resolvePostcode(lead) ?? "—"}</span></Td>
       <Td><span className="text-xs text-gray-700">{lead.propertyType ?? <span className="text-gray-400">—</span>}</span></Td>

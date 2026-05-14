@@ -69,8 +69,14 @@ function Accordion({
   )
 }
 
-function PassBadge({ pass }: { pass: boolean | null }) {
+function PassBadge({ pass }: { pass: boolean | null | "negotiate" }) {
   if (pass === null) return null
+  if (pass === "negotiate")
+    return (
+      <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
+        ⚠ NEGOTIATE
+      </span>
+    )
   return (
     <span className={cn(
       "rounded-full px-2 py-0.5 text-[10px] font-bold",
@@ -709,14 +715,17 @@ function ValidationNotesRenderer({ notes }: { notes: string }) {
     const fullLines = cleaned.split("\n").map(l => l.trim()).filter(Boolean)
     const kpis = parseRentKPIs(fullLines)
     const bullets = parseBullets(rentalSection.body)
-    const hasPass = rentalSection.header.includes("✅") || rentalSection.header.toUpperCase().includes("PASS")
-    const hasFail = rentalSection.header.includes("❌") || rentalSection.header.toUpperCase().includes("FAIL")
+    const hasPass      = rentalSection.header.includes("✅") || rentalSection.header.toUpperCase().includes("PASS")
+    const hasFail      = rentalSection.header.includes("❌") || rentalSection.header.toUpperCase().includes("FAIL")
+    const hasNegRental = rentalSection.header.includes("⚠️") || rentalSection.header.toUpperCase().includes("NEGOTIATE")
+    const rentalBadge: boolean | null | "negotiate" =
+      hasPass ? true : hasNegRental ? "negotiate" : hasFail ? false : null
 
     rendered.push(
       <Accordion
         key="rental"
         title="Rental Yield Analysis"
-        badge={<PassBadge pass={hasPass ? true : hasFail ? false : null} />}
+        badge={<PassBadge pass={rentalBadge} />}
         defaultOpen
       >
         <RentKPIRenderer kpis={kpis} bullets={bullets} rawBody={rentalSection.body} />
@@ -726,8 +735,11 @@ function ValidationNotesRenderer({ notes }: { notes: string }) {
 
   // ── BMV Analysis section ──────────────────────────────────────────────────
   if (bmvSection) {
-    const hasPass = bmvSection.header.includes("✅") || bmvSection.header.toUpperCase().includes("PASS")
-    const hasFail = bmvSection.header.includes("❌") || bmvSection.header.toUpperCase().includes("FAIL")
+    const hasPass      = bmvSection.header.includes("✅") || bmvSection.header.toUpperCase().includes("PASS")
+    const hasFail      = bmvSection.header.includes("❌") || bmvSection.header.toUpperCase().includes("FAIL")
+    const hasNegotiate = bmvSection.header.includes("⚠️") || bmvSection.header.toUpperCase().includes("NEGOTIATE")
+    const bmvBadgeVal: boolean | null | "negotiate" =
+      hasPass ? true : hasNegotiate ? "negotiate" : hasFail ? false : null
     const bullets = parseBullets(bmvSection.body)
     const others = bmvSection.body.filter(l => !l.startsWith("•") && !l.startsWith("-") && l.trim())
 
@@ -735,7 +747,7 @@ function ValidationNotesRenderer({ notes }: { notes: string }) {
       <Accordion
         key="bmv"
         title="BMV Analysis"
-        badge={<PassBadge pass={hasPass ? true : hasFail ? false : null} />}
+        badge={<PassBadge pass={bmvBadgeVal} />}
       >
         <div className="space-y-1">
           {[...others, ...bullets].filter(Boolean).map((b, i) => (

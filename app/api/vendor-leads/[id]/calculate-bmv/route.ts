@@ -815,7 +815,8 @@ export async function POST(
       validationNotes += `\n`
 
       // BMV Analysis - HIGHLIGHTED
-      validationNotes += `💰 BMV ANALYSIS\n`
+      const bmvBadge = validationPassed ? "✅ PASS" : negotiationRequired ? "⚠️ NEGOTIATE" : "❌ FAIL"
+      validationNotes += `💰 BMV ANALYSIS: ${bmvBadge}\n`
       validationNotes += `${"─".repeat(60)}\n`
       validationNotes += `  🎯 BMV Percentage: ${bmvScore.toFixed(1)}%\n`
       validationNotes += `  📉 Asking Price: £${askingPrice.toLocaleString()}\n`
@@ -962,7 +963,7 @@ export async function POST(
 
       const reasons = []
 
-      validationNotes += `💰 BMV ANALYSIS: ${bmvScore >= 15 ? "✅ PASS" : "❌ FAIL (need 15%+)"}\n`
+      validationNotes += `💰 BMV ANALYSIS: ${validationPassed ? "✅ PASS" : negotiationRequired ? "⚠️ NEGOTIATE" : "❌ FAIL"}\n`
       validationNotes += `${"─".repeat(60)}\n`
       validationNotes += `  🎯 BMV Percentage: ${bmvScore.toFixed(1)}%\n`
       validationNotes += `  📉 Asking Price: £${askingPrice.toLocaleString()}\n`
