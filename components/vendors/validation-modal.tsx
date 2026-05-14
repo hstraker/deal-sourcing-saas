@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { X, Loader2, Calculator, CheckCircle, XCircle, Home, ChevronDown, ChevronRight, Info, Camera } from "lucide-react"
+import { X, Loader2, Calculator, CheckCircle, XCircle, Home, ChevronDown, ChevronRight, Info, Camera, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -1046,13 +1046,22 @@ export function ValidationModal({
             <p className="mt-1 text-[10px] text-green-300">Deal meets investment criteria</p>
           </div>
         )}
-        {passed === false && (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-center">
-            <XCircle className="h-7 w-7 text-red-400 mx-auto mb-1.5" />
-            <p className="text-xl font-extrabold text-red-400 leading-none">FAILED</p>
-            <p className="mt-1 text-[10px] text-red-300">Does not meet criteria</p>
-          </div>
-        )}
+        {passed === false && (() => {
+          const isNegotiation = lead.validationNotes?.startsWith("⚠️ NEGOTIATION REQUIRED")
+          return isNegotiation ? (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-center">
+              <AlertTriangle className="h-7 w-7 text-amber-400 mx-auto mb-1.5" />
+              <p className="text-xl font-extrabold text-amber-400 leading-none">NEGOTIATE</p>
+              <p className="mt-1 text-[10px] text-amber-300">Viable with price negotiation</p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-center">
+              <XCircle className="h-7 w-7 text-red-400 mx-auto mb-1.5" />
+              <p className="text-xl font-extrabold text-red-400 leading-none">FAILED</p>
+              <p className="mt-1 text-[10px] text-red-300">Does not meet criteria</p>
+            </div>
+          )
+        })()}
         {passed === null && (
           <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
             <Calculator className="h-7 w-7 text-slate-500 mx-auto mb-1.5" />

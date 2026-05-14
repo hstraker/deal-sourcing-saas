@@ -514,6 +514,30 @@ export async function POST(
     const hasGoodYield = grossYield >= 6
     const validationPassed = bmvScore >= minBmv && profitPotential >= minProfit
 
+    // ── Negotiation Required ─────────────────────────────────────────────────
+    // A deal is "negotiation required" (not "failed") when the asking price
+    // doesn't yet meet our criteria BUT is below at least one strategy ceiling —
+    // meaning the deal is achievable with vendor negotiation.
+    //
+    // Strategy ceilings:
+    //   BTL / BuyHold  → annualRent / minYield%
+    //   Flip           → MV × flipPct% − refurb
+    //   BRR            → MV × brrLtv% − refurb
+    const sConfig2 = offerCalcConfig
+      ? { btlMinYield:     Number(offerCalcConfig.btlMinYield),
+          buyHoldMinYield: Number(offerCalcConfig.buyHoldMinYield),
+          flipMvPct:       Number(offerCalcConfig.flipMarketValuePct),
+          brrLtv:          Number(offerCalcConfig.brrLtvPercent) }
+      : { btlMinYield: 7, buyHoldMinYield: 8, flipMvPct: 70, brrLtv: 75 }
+    const strategyCeilings = [
+      annualRent > 0 ? Math.round(annualRent / (sConfig2.btlMinYield     / 100)) : null,
+      annualRent > 0 ? Math.round(annualRent / (sConfig2.buyHoldMinYield / 100)) : null,
+      Math.round(marketValue * sConfig2.flipMvPct / 100 - refurbCost),
+      Math.round(marketValue * sConfig2.brrLtv    / 100 - refurbCost),
+    ].filter((c): c is number => c != null)
+    const bestCeiling = strategyCeilings.length > 0 ? Math.max(...strategyCeilings) : 0
+    const negotiationRequired = !validationPassed && askingPrice <= bestCeiling
+
     // ── Strategy Analysis (always run regardless of mode) ─────────────────────
     let strategyAnalysisBlock = ""
     try {
@@ -879,7 +903,9 @@ export async function POST(
         validationNotes += `Meets minimum criteria for BMV investment.`
       }
     } else {
-      validationNotes = `❌ DEAL FAILED VALIDATION\n`
+      validationNotes = negotiationRequired
+        ? `⚠️ NEGOTIATION REQUIRED\n`
+        : `❌ DEAL FAILED VALIDATION\n`
       validationNotes += `${"=".repeat(60)}\n\n`
       validationNotes += postcodeWarning
       validationNotes += strategyExplanationBlock
@@ -1087,6 +1113,8 @@ export async function POST(
         offerPercentage,
         profitPotential,
         validationPassed,
+        negotiationRequired,
+        bestStrategyCeiling: bestCeiling,
         validationNotes,
         marketValueSource,
         comparablesCount: comparables.length,
