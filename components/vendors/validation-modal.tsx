@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { X, Loader2, Calculator, CheckCircle, XCircle, Home, ChevronDown, ChevronRight, Info, Camera, AlertTriangle } from "lucide-react"
+import { X, Loader2, Calculator, CheckCircle, XCircle, Home, ChevronDown, ChevronRight, Info, Camera, AlertTriangle, TrendingDown, BarChart2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -990,6 +990,157 @@ function SourcerSummaryPanel({ summary }: { summary: SourcerSummary }) {
   )
 }
 
+// ─── strategy block parser ───────────────────────────────────────────────────
+
+interface StrategyRow {
+  key: string
+  viable: boolean
+  maxViable: number | null
+  recommendedOffer: number | null
+  yieldAtOffer: number | null
+  flipProfit: number | null
+  flipRoi: number | null
+  brrProceeds: number | null
+  brrLeftIn: number | null
+}
+interface StrategyBlock { strategies: StrategyRow[]; recommended: string | null }
+
+function parseStrategyBlock(notes: string | null): StrategyBlock | null {
+  if (!notes) return null
+  const m = notes.match(/\[STRATEGY_DATA\]([\s\S]*?)\[\/STRATEGY_DATA\]/i)
+  if (!m) return null
+  try {
+    const j = JSON.parse(m[1].trim())
+    return { strategies: j.strategies ?? [], recommended: j.recommended ?? null }
+  } catch { return null }
+}
+
+// ─── scorecard row ────────────────────────────────────────────────────────────
+
+type RowStatus = "pass" | "negotiate" | "fail" | "info" | "none"
+
+function ScorecardRow({
+  criterion, icon, status, summary, children, defaultOpen = false,
+}: {
+  criterion: string
+  icon: React.ReactNode
+  status: RowStatus
+  summary: string
+  children?: React.ReactNode
+  defaultOpen?: boolean
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  const cfg: Record<RowStatus, { dot: string; badge: string; expandBg: string; label: string }> = {
+    pass:      { dot: "bg-green-500", badge: "bg-green-100 text-green-700 border-green-200", expandBg: "border-t border-green-100 bg-green-50/50",  label: "✓ Pass"      },
+    negotiate: { dot: "bg-amber-500", badge: "bg-amber-100 text-amber-700 border-amber-200", expandBg: "border-t border-amber-100 bg-amber-50/50",  label: "⚠ Negotiate" },
+    fail:      { dot: "bg-red-500",   badge: "bg-red-100 text-red-700 border-red-200",       expandBg: "border-t border-red-100 bg-red-50/50",      label: "✕ Fail"      },
+    info:      { dot: "bg-blue-400",  badge: "bg-blue-100 text-blue-700 border-blue-200",    expandBg: "border-t border-blue-100 bg-blue-50/20",    label: "ℹ Info"      },
+    none:      { dot: "bg-gray-300",  badge: "bg-gray-100 text-gray-500 border-gray-200",    expandBg: "border-t border-gray-100 bg-gray-50",       label: "Pending"     },
+  }
+  const c = cfg[status]
+  return (
+    <div className="border-b border-gray-100 last:border-0">
+      <button
+        onClick={() => { if (children) setOpen(!open) }}
+        className={cn(
+          "w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors",
+          children ? "hover:bg-gray-50 cursor-pointer" : "cursor-default"
+        )}
+      >
+        <div className={cn("h-2.5 w-2.5 rounded-full shrink-0 mt-0.5", c.dot)} />
+        <div className="flex items-center gap-2 w-44 shrink-0">
+          <span className="text-gray-400 shrink-0">{icon}</span>
+          <span className="text-sm font-semibold text-gray-800">{criterion}</span>
+        </div>
+        <span className="text-sm text-gray-500 flex-1 min-w-0 truncate">{summary}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold border", c.badge)}>
+            {c.label}
+          </span>
+          {children && (
+            open
+              ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+              : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />
+          )}
+        </div>
+      </button>
+      {open && children && (
+        <div className={cn("px-5 py-4", c.expandBg)}>{children}</div>
+      )}
+    </div>
+  )
+}
+
+// ─── KPI mini card ────────────────────────────────────────────────────────────
+
+function KpiMini({ label, value, highlight = false, status }: {
+  label: string; value: string; highlight?: boolean; status?: RowStatus
+}) {
+  const valueColor = status
+    ? status === "pass" ? "text-green-700" : status === "negotiate" ? "text-amber-700" : status === "fail" ? "text-red-700" : "text-gray-900"
+    : highlight ? "text-blue-700" : "text-gray-900"
+  return (
+    <div className="rounded-lg bg-white border border-gray-200 px-3 py-2.5">
+      <p className="text-[10px] text-gray-400 mb-0.5 uppercase tracking-wide">{label}</p>
+      <p className={cn("text-sm font-bold", valueColor)}>{value}</p>
+    </div>
+  )
+}
+
+// ─── Compact strategy table ───────────────────────────────────────────────────
+
+function StrategyScoreTable({ block }: { block: StrategyBlock }) {
+  const LABELS: Record<string, string> = {
+    BTL: "Buy-to-Let (BTL)", BuyHold: "Buy & Hold", Flip: "Flip", BRR: "BRRR",
+  }
+  return (
+    <div className="overflow-hidden rounded-lg border border-gray-200">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="bg-gray-50 border-b border-gray-200">
+            <th className="px-3 py-2 text-left font-semibold text-gray-600">Strategy</th>
+            <th className="px-3 py-2 text-right font-semibold text-gray-600">Max Price</th>
+            <th className="px-3 py-2 text-right font-semibold text-gray-600">At Rec. Offer</th>
+            <th className="px-3 py-2 text-center font-semibold text-gray-600">Viable</th>
+          </tr>
+        </thead>
+        <tbody>
+          {block.strategies.map((s, i) => {
+            const isRec = s.key === block.recommended
+            const atOffer = s.viable
+              ? s.yieldAtOffer != null ? `${s.yieldAtOffer.toFixed(1)}% yield`
+                : s.flipProfit != null ? `£${Math.round(s.flipProfit).toLocaleString()} profit`
+                : s.brrLeftIn === 0 ? "£0 left in"
+                : "✓"
+              : "—"
+            return (
+              <tr key={s.key} className={cn("border-b border-gray-100 last:border-0", i % 2 === 0 ? "bg-white" : "bg-gray-50/40")}>
+                <td className="px-3 py-2.5 font-medium text-gray-800">
+                  {LABELS[s.key] ?? s.key}
+                  {isRec && (
+                    <span className="ml-2 rounded-full bg-purple-100 border border-purple-200 px-1.5 py-0.5 text-[9px] font-bold text-purple-700">REC</span>
+                  )}
+                </td>
+                <td className="px-3 py-2.5 text-right font-semibold text-gray-700">
+                  {s.maxViable != null ? `£${Math.round(s.maxViable).toLocaleString()}` : "—"}
+                </td>
+                <td className={cn("px-3 py-2.5 text-right font-semibold", s.viable ? "text-green-700" : "text-gray-400")}>
+                  {atOffer}
+                </td>
+                <td className="px-3 py-2.5 text-center">
+                  {s.viable
+                    ? <span className="text-green-600 font-bold">✓</span>
+                    : <span className="text-red-400">✕</span>}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 // ─── component ────────────────────────────────────────────────────────────────
 
 export function ValidationModal({
@@ -1005,90 +1156,103 @@ export function ValidationModal({
 }) {
   const [checking, setChecking] = useState(false)
 
-  const bmv     = toNum(lead.bmvScore)
-  const profit  = toNum(lead.profitPotential)
-  const offer   = toNum(lead.offerAmount)
-  const refurb  = toNum(lead.estimatedRefurbCost)
-  const opening = offer ? calcOpening(offer) : null
-  const strategy = parseStrategy(lead.validationNotes)
-  const passed  = lead.validationPassed
+  const askingPrice  = toNum(lead.askingPrice) ?? 0
+  const marketValue  = toNum(lead.estimatedMarketValue) ?? 0
+  const monthlyRent  = toNum(lead.estimatedMonthlyRent) ?? 0
+  const refurb       = toNum(lead.estimatedRefurbCost) ?? 0
+  const offer        = toNum(lead.offerAmount)
+  const opening      = offer ? calcOpening(offer) : null
 
+  const bmv          = toNum(lead.bmvScore) ?? (marketValue > 0 ? ((marketValue - askingPrice) / marketValue) * 100 : 0)
+  const annualRent   = monthlyRent * 12
+  const grossYield   = askingPrice > 0 && annualRent > 0 ? (annualRent / askingPrice) * 100 : 0
+
+  const passed        = lead.validationPassed
+  const isNegotiation = lead.validationNotes?.startsWith("⚠️ NEGOTIATION REQUIRED")
+  const verdict: RowStatus = passed === true ? "pass" : isNegotiation ? "negotiate" : passed === false ? "fail" : "none"
+
+  const strategyBlock  = parseStrategyBlock(lead.validationNotes)
   const sourcerSummary = buildSourcerSummary(lead)
 
-  // ── Left panel ───────────────────────────────────────────────────────────
-  const leftPanel = (
-    <div className="flex h-full flex-col overflow-y-auto p-5 gap-0">
+  // ── Derived values ────────────────────────────────────────────────────────
+  const BMV_TARGET         = 20
+  const bmvGap             = Math.max(0, BMV_TARGET - bmv)
+  const targetAsking       = marketValue > 0 ? Math.round(marketValue * (1 - BMV_TARGET / 100)) : null
+  const additionalDiscount = targetAsking && askingPrice > targetAsking ? askingPrice - targetAsking : null
 
+  // Quick cost estimate for scorecard summary chip (full detail in row 6)
+  const sdltEstimate  = Math.round(askingPrice * 0.03)
+  const totalFees     = sdltEstimate + 1800 + 600 + 400
+  const cashPurchase  = askingPrice + totalFees
+  const mortgageCashIn = Math.round(askingPrice * 0.25) + totalFees
+
+  // Row statuses
+  const mvStatus: RowStatus    = marketValue > 0 ? "pass" : "none"
+  const bmvStatus: RowStatus   = verdict === "none" ? "none" : verdict
+  const rentStatus: RowStatus  = grossYield >= 7 ? "pass" : grossYield >= 5 ? "negotiate" : grossYield > 0 ? "fail" : "none"
+  const viableCount            = strategyBlock?.strategies.filter(s => s.viable).length ?? 0
+  const stratStatus: RowStatus = !strategyBlock ? "none" : viableCount >= 3 ? "pass" : viableCount >= 1 ? "negotiate" : "fail"
+  const photoScore             = toNum(lead.photoConditionScore)
+  const photoStatus: RowStatus = photoScore != null ? (photoScore >= 7 ? "pass" : photoScore >= 4 ? "negotiate" : "fail") : "none"
+
+  // ── Left panel ────────────────────────────────────────────────────────────
+  const leftPanel = (
+    <div className="flex h-full flex-col p-5">
       {/* Property */}
-      <div className="mb-4">
+      <div className="mb-5">
         <p className="text-sm font-bold leading-snug text-slate-100">
           {lead.propertyAddress ?? lead.vendorName}
         </p>
-        <p className="mt-0.5 font-mono text-[10px] text-slate-500">
-          {lead.propertyPostcode ?? ""}
-        </p>
+        <p className="mt-0.5 font-mono text-[10px] text-slate-500">{lead.propertyPostcode ?? ""}</p>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {lead.bedrooms != null && (
-            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-slate-200">
-              {lead.bedrooms} bed
-            </span>
+            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-slate-200">{lead.bedrooms} bed</span>
           )}
           {lead.propertyType && (
-            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] capitalize text-slate-200">
-              {lead.propertyType}
-            </span>
+            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] capitalize text-slate-200">{lead.propertyType}</span>
           )}
           {lead.tenureType && (
-            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] capitalize text-slate-200">
-              {lead.tenureType}
-            </span>
+            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] capitalize text-slate-200">{lead.tenureType}</span>
           )}
         </div>
       </div>
 
       {/* Verdict */}
-      <div className="mb-4">
-        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-2">
-          Validation Result
-        </p>
-        {passed === true && (
-          <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-3 text-center">
-            <CheckCircle className="h-7 w-7 text-green-400 mx-auto mb-1.5" />
-            <p className="text-xl font-extrabold text-green-400 leading-none">PASSED</p>
+      <div className="mb-5">
+        {verdict === "pass" && (
+          <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4 text-center">
+            <CheckCircle className="h-8 w-8 text-green-400 mx-auto mb-2" />
+            <p className="text-2xl font-extrabold text-green-400 leading-none">PASSED</p>
             <p className="mt-1 text-[10px] text-green-300">Deal meets investment criteria</p>
           </div>
         )}
-        {passed === false && (() => {
-          const isNegotiation = lead.validationNotes?.startsWith("⚠️ NEGOTIATION REQUIRED")
-          return isNegotiation ? (
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-center">
-              <AlertTriangle className="h-7 w-7 text-amber-400 mx-auto mb-1.5" />
-              <p className="text-xl font-extrabold text-amber-400 leading-none">NEGOTIATE</p>
-              <p className="mt-1 text-[10px] text-amber-300">Viable with price negotiation</p>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-center">
-              <XCircle className="h-7 w-7 text-red-400 mx-auto mb-1.5" />
-              <p className="text-xl font-extrabold text-red-400 leading-none">FAILED</p>
-              <p className="mt-1 text-[10px] text-red-300">Does not meet criteria</p>
-            </div>
-          )
-        })()}
-        {passed === null && (
-          <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
-            <Calculator className="h-7 w-7 text-slate-500 mx-auto mb-1.5" />
+        {verdict === "negotiate" && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-center">
+            <AlertTriangle className="h-8 w-8 text-amber-400 mx-auto mb-2" />
+            <p className="text-2xl font-extrabold text-amber-400 leading-none">NEGOTIATE</p>
+            <p className="mt-1 text-[10px] text-amber-300">Viable with price negotiation</p>
+          </div>
+        )}
+        {verdict === "fail" && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-center">
+            <XCircle className="h-8 w-8 text-red-400 mx-auto mb-2" />
+            <p className="text-2xl font-extrabold text-red-400 leading-none">FAILED</p>
+            <p className="mt-1 text-[10px] text-red-300">Does not meet criteria</p>
+          </div>
+        )}
+        {verdict === "none" && (
+          <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
+            <Calculator className="h-8 w-8 text-slate-500 mx-auto mb-2" />
             <p className="text-lg font-extrabold text-slate-400 leading-none">NOT RUN</p>
             <p className="mt-1 text-[10px] text-slate-500">Calculate BMV to validate</p>
           </div>
         )}
       </div>
 
-      {/* Recommended offer */}
+      {/* Offer */}
       {offer && (
-        <div className="mb-4">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-2">
-            Recommended Offer
-          </p>
+        <div className="mb-5">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-2">Recommended Offer</p>
           <div className="grid grid-cols-2 gap-2">
             <div className="rounded-lg border border-white/10 bg-white/5 p-2.5 text-center">
               <p className="text-[9px] text-slate-500 mb-0.5">Opening</p>
@@ -1102,71 +1266,29 @@ export function ValidationModal({
         </div>
       )}
 
-      <div className="mb-4 h-px bg-white/10" />
-
-      {/* Deal metrics */}
-      <div className="mb-4 space-y-2">
-        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Deal Metrics</p>
-
-        {strategy && (
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-400">Strategy</span>
-            <span className="rounded-full bg-purple-500/20 border border-purple-500/30 px-2 py-0.5 text-[10px] font-bold text-purple-300">
-              {strategy}
-            </span>
-          </div>
-        )}
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-slate-400">Asking Price</span>
-          <span className="font-semibold text-slate-100">{fmtCurrency(lead.askingPrice)}</span>
-        </div>
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-slate-400">Market Value</span>
-          <span className="font-semibold text-slate-100">{fmtCurrency(lead.estimatedMarketValue)}</span>
-        </div>
-        {bmv !== null && (
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-400">BMV Discount</span>
-            <span className={cn("font-bold", bmv >= 20 ? "text-green-400" : bmv >= 10 ? "text-amber-400" : "text-red-400")}>
-              {bmv.toFixed(1)}%
-              {bmv < 20 && <span className="ml-1 text-[10px] font-normal text-slate-500">(below 20%)</span>}
-            </span>
-          </div>
-        )}
-        {profit !== null && (
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-400">Profit Potential</span>
-            <span className={cn("font-bold", profit > 0 ? "text-green-400" : "text-red-400")}>
-              {fmtCurrency(profit)}
-            </span>
-          </div>
-        )}
-        {refurb !== null && refurb > 0 && (
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-400">Refurb Cost</span>
-            <span className="font-semibold text-amber-400">{fmtCurrency(refurb)}</span>
-          </div>
-        )}
-        {lead.estimatedMonthlyRent && (
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-400">Est. Monthly Rent</span>
-            <span className="font-semibold text-slate-100">{fmtCurrency(lead.estimatedMonthlyRent)}/mo</span>
-          </div>
-        )}
-      </div>
-
-      {/* Sourcer summary */}
+      {/* Action */}
       {sourcerSummary && (
-        <div className="mb-4">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-2">
-            Sourcer Summary
-          </p>
-          <SourcerSummaryPanel summary={sourcerSummary} />
+        <div className="mb-5">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-2">Action</p>
+          <div className={cn(
+            "rounded-xl border px-3 py-2.5",
+            verdict === "pass"      ? "border-green-500/30 bg-green-500/10"  :
+            verdict === "negotiate" ? "border-amber-500/30 bg-amber-500/10"  :
+            verdict === "fail"      ? "border-red-500/30 bg-red-500/10"      : "border-white/10 bg-white/5"
+          )}>
+            <p className={cn(
+              "text-[11px] font-semibold leading-snug",
+              verdict === "pass"      ? "text-green-300"  :
+              verdict === "negotiate" ? "text-amber-200"  :
+              verdict === "fail"      ? "text-red-300"    : "text-slate-400"
+            )}>{sourcerSummary.action}</p>
+          </div>
         </div>
       )}
 
-      {/* Photo thumbnails — always shown */}
-      <div className="mb-4 h-px bg-white/10" />
+      <div className="h-px bg-white/10 mb-5" />
+
+      {/* Photos */}
       <div className="mb-4">
         <LeftPanelPhotoThumbs
           leadId={lead.id}
@@ -1181,10 +1303,7 @@ export function ValidationModal({
         <div className="flex items-center justify-between">
           <span className="text-[10px] text-slate-500">Pipeline Stage</span>
           <StatusBadge
-            label={lead.pipelineStage
-              .replace(/_/g, " ")
-              .toLowerCase()
-              .replace(/\b\w/g, (c) => c.toUpperCase())}
+            label={lead.pipelineStage.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}
             cssKey={getPipelineStageVarKey(lead.pipelineStage)}
           />
         </div>
@@ -1192,108 +1311,202 @@ export function ValidationModal({
     </div>
   )
 
-  // ── Right panel ───────────────────────────────────────────────────────────
+  // ── Right panel (scorecard) ───────────────────────────────────────────────
 
   return (
-    <ModalShell onClose={onClose} leftPanel={leftPanel} maxWidth="4xl">
+    <ModalShell onClose={onClose} leftPanel={leftPanel} maxWidth="5xl">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3 shrink-0">
+      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3 shrink-0 bg-gray-50/60">
         <div>
-          <p className="text-sm font-bold text-gray-900">Validation Notes</p>
+          <p className="text-sm font-bold text-gray-900">Deal Scorecard</p>
           <p className="text-xs text-gray-400">
-            {lead.validationNotes
-              ? lead.bmvValidatedAt
-                ? `Calculated ${new Date(lead.bmvValidatedAt).toLocaleDateString("en-GB", {
-                    day: "numeric", month: "short", year: "numeric",
-                  })}`
-                : "Validation complete"
+            {lead.bmvValidatedAt
+              ? `Calculated ${new Date(lead.bmvValidatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
               : "No validation run yet"}
           </p>
         </div>
         <button
           onClick={onClose}
-          className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+          className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-200 text-gray-500 hover:bg-gray-300 hover:text-gray-700"
           aria-label="Close"
         >
           <X className="h-4 w-4" />
         </button>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {lead.validationNotes ? (
-          <ValidationNotesRenderer notes={lead.validationNotes} />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-48 text-center py-8">
-            <div className="rounded-full bg-gray-100 p-4 mb-4">
-              <Home className="h-8 w-8 text-gray-300" />
+      {lead.validationNotes ? (
+        <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
+
+          {/* Column headers */}
+          <div className="flex items-center gap-3 px-5 py-2 bg-gray-50 border-b border-gray-200">
+            <div className="w-2.5 shrink-0" />
+            <div className="w-44 shrink-0">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Criterion</span>
             </div>
-            <p className="text-sm font-semibold text-gray-600 mb-1">No Validation Run Yet</p>
-            <p className="text-xs text-gray-400 mb-6">
-              Calculate BMV to analyse this deal and get a full validation report
-            </p>
-            {onCheck && (
-              <button
-                onClick={async () => {
-                  setChecking(true)
-                  try { await onCheck() } finally { setChecking(false) }
-                }}
-                disabled={checking}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-              >
-                {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
-                {checking ? "Calculating…" : "Calculate BMV"}
-              </button>
-            )}
+            <span className="flex-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">Summary</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pr-6">Result</span>
           </div>
-        )}
 
-        {/* ── Photo Condition — always shown ───────────────────────────── */}
-        <div>
-          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200">
-            <Camera className="h-4 w-4 text-blue-500" />
-            <p className="text-sm font-bold text-gray-800">Photo Condition</p>
-          </div>
-          <PhotoConditionCard
-            conditionScore={lead.photoConditionScore}
-            conditionOverride={lead.photoConditionOverride}
-            analysisStatus={lead.photoAnalysisStatus}
-            photoCount={lead._count?.photos ?? 0}
-          />
-        </div>
+          {/* ── Row 1: Market Value ───────────────────────────────────── */}
+          <ScorecardRow
+            criterion="Market Value"
+            icon={<Home className="h-3.5 w-3.5" />}
+            status={mvStatus}
+            summary={marketValue > 0 ? `${fmtCurrency(marketValue)} · from comparable sales` : "Not yet calculated"}
+          >
+            <div className="grid grid-cols-3 gap-3">
+              <KpiMini label="Market Value" value={fmtCurrency(marketValue)} highlight />
+              <KpiMini label="Asking Price" value={fmtCurrency(askingPrice)} />
+              <KpiMini label="Equity at Asking" value={fmtCurrency(marketValue - askingPrice)} />
+            </div>
+          </ScorecardRow>
 
-        {/* ── Acquisition Costs & SDLT ─────────────────────────────────── */}
-        <div>
-          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200">
-            <Calculator className="h-4 w-4 text-blue-500" />
-            <p className="text-sm font-bold text-gray-800">Acquisition Costs & SDLT</p>
-          </div>
-          <AcquisitionCostPanel
-            purchasePrice={toNum(lead.askingPrice) ?? 0}
-            refurbCost={toNum(lead.estimatedRefurbCost) ?? undefined}
-            monthlyRent={toNum(lead.estimatedMonthlyRent) ?? 0}
-            savedBuyerType={lead.sdltBuyerType ?? null}
-            savedSolicitorFees={toNum(lead.solicitorFeesOverride) ?? null}
-            savedSurveyFee={toNum(lead.surveyFeeOverride) ?? null}
-            savedBridgingCost={toNum(lead.bridgingCostOverride) ?? null}
-            savedInsurance={toNum(lead.insuranceOverride) ?? null}
-            onSave={async (overrides) => {
-              const body: Record<string, unknown> = {}
-              if (overrides.buyerType !== undefined) body.sdltBuyerType = overrides.buyerType
-              if (overrides.solicitorFees !== undefined) body.solicitorFeesOverride = overrides.solicitorFees
-              if (overrides.surveyFee !== undefined) body.surveyFeeOverride = overrides.surveyFee
-              if (overrides.bridgingCost !== undefined) body.bridgingCostOverride = overrides.bridgingCost
-              if (overrides.insurance !== undefined) body.insuranceOverride = overrides.insurance
-              await fetch(`/api/vendor-pipeline/leads/${lead.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body),
-              })
-              onUpdate?.()
-            }}
-          />
+          {/* ── Row 2: BMV Discount ───────────────────────────────────── */}
+          <ScorecardRow
+            criterion="BMV Discount"
+            icon={<TrendingDown className="h-3.5 w-3.5" />}
+            status={bmvStatus}
+            summary={
+              bmv > 0
+                ? bmvGap > 0
+                  ? `${bmv.toFixed(1)}% — ${bmvGap.toFixed(1)}pp below ${BMV_TARGET}% target`
+                  : `${bmv.toFixed(1)}% — above ${BMV_TARGET}% target ✓`
+                : "Not calculated"
+            }
+            defaultOpen={bmvStatus !== "pass"}
+          >
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-3">
+                <KpiMini label={`BMV Score (target ${BMV_TARGET}%)`} value={`${bmv.toFixed(1)}%`} status={bmvStatus} />
+                <KpiMini label="Profit Potential" value={fmtCurrency(toNum(lead.profitPotential))} />
+                <KpiMini label="Asking Price" value={fmtCurrency(askingPrice)} />
+              </div>
+              {bmvGap > 0 && targetAsking && additionalDiscount && (
+                <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
+                  <p className="text-xs font-semibold text-amber-900 mb-1">
+                    To hit {BMV_TARGET}% BMV, asking price must be{" "}
+                    <span className="font-extrabold">{fmtCurrency(targetAsking)}</span> or below
+                  </p>
+                  <p className="text-xs text-amber-700">
+                    That's <span className="font-bold">{fmtCurrency(additionalDiscount)}</span> more discount needed
+                    from the current asking price of {fmtCurrency(askingPrice)}.
+                  </p>
+                </div>
+              )}
+            </div>
+          </ScorecardRow>
+
+          {/* ── Row 3: Rental Income ─────────────────────────────────── */}
+          <ScorecardRow
+            criterion="Rental Income"
+            icon={<Home className="h-3.5 w-3.5" />}
+            status={rentStatus}
+            summary={
+              monthlyRent > 0
+                ? `${fmtCurrency(monthlyRent)}/mo · ${grossYield.toFixed(2)}% gross yield`
+                : "No rental data"
+            }
+          >
+            <div className="grid grid-cols-4 gap-3">
+              <KpiMini label="Monthly" value={fmtCurrency(monthlyRent)} highlight />
+              <KpiMini label="Annual" value={fmtCurrency(annualRent)} />
+              <KpiMini label="Weekly" value={`£${Math.round(monthlyRent / 4.333).toLocaleString()}`} />
+              <KpiMini label="Gross Yield" value={`${grossYield.toFixed(2)}%`} status={rentStatus} />
+            </div>
+          </ScorecardRow>
+
+          {/* ── Row 4: Strategy Fit ───────────────────────────────────── */}
+          <ScorecardRow
+            criterion="Strategy Fit"
+            icon={<BarChart2 className="h-3.5 w-3.5" />}
+            status={stratStatus}
+            summary={
+              strategyBlock
+                ? `${viableCount} of ${strategyBlock.strategies.length} viable${strategyBlock.recommended ? ` · Recommended: ${strategyBlock.recommended}` : ""}`
+                : "No strategy data"
+            }
+            defaultOpen
+          >
+            {strategyBlock && <StrategyScoreTable block={strategyBlock} />}
+          </ScorecardRow>
+
+          {/* ── Row 5: Photo Condition ────────────────────────────────── */}
+          <ScorecardRow
+            criterion="Photo Condition"
+            icon={<Camera className="h-3.5 w-3.5" />}
+            status={photoStatus}
+            summary={photoScore != null ? `AI condition score: ${photoScore}/10` : "No analysis yet — upload photos"}
+          >
+            <PhotoConditionCard
+              conditionScore={lead.photoConditionScore}
+              conditionOverride={lead.photoConditionOverride}
+              analysisStatus={lead.photoAnalysisStatus}
+              photoCount={lead._count?.photos ?? 0}
+            />
+          </ScorecardRow>
+
+          {/* ── Row 6: Acquisition & Costs ───────────────────────────── */}
+          <ScorecardRow
+            criterion="Acquisition & Costs"
+            icon={<Calculator className="h-3.5 w-3.5" />}
+            status="info"
+            summary={
+              askingPrice > 0
+                ? `Cash: ${fmtCurrency(cashPurchase)} · With 75% mortgage: ${fmtCurrency(mortgageCashIn)}`
+                : "Enter asking price to calculate"
+            }
+          >
+            <AcquisitionCostPanel
+              purchasePrice={askingPrice}
+              refurbCost={refurb || undefined}
+              monthlyRent={monthlyRent || 0}
+              savedBuyerType={lead.sdltBuyerType ?? null}
+              savedSolicitorFees={toNum(lead.solicitorFeesOverride) ?? null}
+              savedSurveyFee={toNum(lead.surveyFeeOverride) ?? null}
+              savedBridgingCost={toNum(lead.bridgingCostOverride) ?? null}
+              savedInsurance={toNum(lead.insuranceOverride) ?? null}
+              onSave={async (overrides) => {
+                const body: Record<string, unknown> = {}
+                if (overrides.buyerType !== undefined) body.sdltBuyerType = overrides.buyerType
+                if (overrides.solicitorFees !== undefined) body.solicitorFeesOverride = overrides.solicitorFees
+                if (overrides.surveyFee !== undefined) body.surveyFeeOverride = overrides.surveyFee
+                if (overrides.bridgingCost !== undefined) body.bridgingCostOverride = overrides.bridgingCost
+                if (overrides.insurance !== undefined) body.insuranceOverride = overrides.insurance
+                await fetch(`/api/vendor-pipeline/leads/${lead.id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(body),
+                })
+                onUpdate?.()
+              }}
+            />
+          </ScorecardRow>
+
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center flex-1 text-center py-12">
+          <div className="rounded-full bg-gray-100 p-5 mb-4">
+            <Home className="h-8 w-8 text-gray-300" />
+          </div>
+          <p className="text-sm font-semibold text-gray-600 mb-1">No Validation Run Yet</p>
+          <p className="text-xs text-gray-400 mb-6 max-w-xs">
+            Calculate BMV to analyse this deal and get a full scorecard breakdown
+          </p>
+          {onCheck && (
+            <button
+              onClick={async () => {
+                setChecking(true)
+                try { await onCheck() } finally { setChecking(false) }
+              }}
+              disabled={checking}
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+            >
+              {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
+              {checking ? "Calculating…" : "Calculate BMV"}
+            </button>
+          )}
+        </div>
+      )}
     </ModalShell>
   )
 }
