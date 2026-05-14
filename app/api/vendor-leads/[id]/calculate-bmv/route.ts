@@ -157,6 +157,38 @@ export async function POST(
           )
 
           console.log(`[BMV Calculator] Average comparable price from stored data: £${comparableAverage?.toLocaleString()}`)
+
+          // ── Comparable rent average ───────────────────────────────────────
+          // Each stored comparable already has monthlyRent fetched from
+          // PropertyData with the correct bedroom filter for THAT property.
+          // Average those for matching-bedroom comparables — this is far more
+          // accurate than the area-wide /rents average (which blends all sizes).
+          const bedroomMatchedRents = storedComparables
+            .filter((c) =>
+              c.monthlyRent != null &&
+              c.monthlyRent.toNumber() > 0 &&
+              // Match exact bedrooms, or ±1 if lead bedrooms not set
+              (lead.bedrooms == null || Math.abs((c.bedrooms ?? 0) - lead.bedrooms) <= 1)
+            )
+            .map((c) => c.monthlyRent!.toNumber())
+
+          if (bedroomMatchedRents.length > 0) {
+            const avgCompRent = Math.round(
+              bedroomMatchedRents.reduce((s, r) => s + r, 0) / bedroomMatchedRents.length
+            )
+            // Store on monthlyRent immediately as Priority 1 — will not be
+            // overridden by lower-priority sources below.
+            monthlyRent = avgCompRent
+            annualRent = avgCompRent * 12
+            weeklyRent = Math.round(avgCompRent / 4.333)
+            rentalDataSource = "comparable_rents"
+            console.log(
+              `[BMV Calculator] Rent from ${bedroomMatchedRents.length} comparable rents ` +
+              `(${lead.bedrooms ?? '?'}-bed match): £${avgCompRent}/mo — ` +
+              `range £${Math.min(...bedroomMatchedRents)}–£${Math.max(...bedroomMatchedRents)}`
+            )
+          }
+
           creditsUsed = 0 // No credits used when using stored data
         } else {
           // No stored comparables, fetch from PropertyData API
