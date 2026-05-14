@@ -192,31 +192,60 @@ export async function POST(
         // Only call if we have square footage (required for valuation API)
         // For now, skip valuation API and use comparables only
 
-        // Fetch rental data from PropertyData API if we don't already have it
+        // ── Rent resolution (priority chain) ─────────────────────────────────
+        // Priority 1: existing stored rent (manual entry or previously confirmed)
+        // Priority 2: derive from comparable sale prices × typical area yield
+        //             — more accurate than the API area average for specific
+        //               bedroom counts (e.g. SA11 2-beds rent for £836/mo but
+        //               the /rents area average blends in studios → £505/mo)
+        // Priority 3: PropertyData /rents area average (last resort, 1 credit)
+
         if (monthlyRent === 0 || rentalDataSource === "none") {
-          console.log(`[BMV Calculator] Fetching rental data from PropertyData...`)
-          try {
-            const rentalResult = await fetchRentalData(
-              effectivePostcode!,
-              lead.bedrooms || undefined,
-              lead.propertyType || undefined
+          // Priority 2: comparable-derived rent
+          if (comparableAverage && comparableAverage > 0 && lead.bedrooms) {
+            // Typical South Wales BTL gross yields by bedroom count.
+            // These reflect actual SA/CF/NP market conditions rather than UK averages.
+            const yieldByBeds: Record<number, number> = { 1: 0.075, 2: 0.070, 3: 0.068, 4: 0.065 }
+            const typicalYield = yieldByBeds[lead.bedrooms] ?? 0.070
+            monthlyRent = Math.round((comparableAverage * typicalYield) / 12)
+            annualRent = monthlyRent * 12
+            weeklyRent = Math.round(monthlyRent / 4.333)
+            rentalDataSource = "comparable_avg"
+            console.log(
+              `[BMV Calculator] Rent from comparable avg ` +
+              `(£${comparableAverage.toLocaleString()} × ${(typicalYield * 100).toFixed(1)}% yield): ` +
+              `£${monthlyRent}/mo — more accurate than area-wide API average`
             )
+          }
 
-            if (rentalResult) {
-              monthlyRent = rentalResult.monthlyRent
-              weeklyRent = rentalResult.weeklyRent
-              annualRent = monthlyRent * 12
-              rentConfidenceRange = rentalResult.confidenceRange
-              rentalDataSource = "propertydata_api"
-              creditsUsed += 1 // Rental API uses 1 credit
+          // Priority 3: PropertyData /rents area average (only if no comparables)
+          if (monthlyRent === 0) {
+            console.log(`[BMV Calculator] Fetching PropertyData area rent (fallback)...`)
+            try {
+              const rentalResult = await fetchRentalData(
+                effectivePostcode!,
+                lead.bedrooms || undefined,
+                lead.propertyType || undefined
+              )
 
-              console.log(`[BMV Calculator] Rental data from API: £${monthlyRent}/month (weekly: £${weeklyRent}, range: £${rentConfidenceRange.min}-£${rentConfidenceRange.max})`)
-            } else {
-              console.log(`[BMV Calculator] No rental data available from API`)
+              if (rentalResult) {
+                monthlyRent = rentalResult.monthlyRent
+                weeklyRent = rentalResult.weeklyRent
+                annualRent = monthlyRent * 12
+                rentConfidenceRange = rentalResult.confidenceRange
+                rentalDataSource = "propertydata_api"
+                creditsUsed += 1
+
+                console.log(
+                  `[BMV Calculator] Rent from PropertyData area avg: £${monthlyRent}/mo ` +
+                  `(⚠️ area-wide average — may understate for ${lead.bedrooms ?? '?'}-bed properties)`
+                )
+              } else {
+                console.log(`[BMV Calculator] No rental data available from API`)
+              }
+            } catch (error) {
+              console.error("[BMV Calculator] Error fetching rental data:", error)
             }
-          } catch (error) {
-            console.error("[BMV Calculator] Error fetching rental data:", error)
-            // Continue without rental data
           }
         } else {
           console.log(`[BMV Calculator] Using existing rental data: £${monthlyRent}/month (source: ${rentalDataSource})`)
