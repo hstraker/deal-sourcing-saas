@@ -1033,11 +1033,13 @@ export async function POST(
         validationNotes,
         validatedAt: new Date(),
         updatedAt: new Date(),
-        // Update rental data if fetched from API
-        ...(rentalDataSource === "propertydata_api" && {
+        // Update rental data whenever we have a better figure than what's stored.
+        // Covers: comparable_rents (avg of stored comps — most accurate),
+        //         comparable_avg (sale price × yield), propertydata_api (area avg fallback)
+        ...(monthlyRent > 0 && ["comparable_rents", "comparable_avg", "propertydata_api"].includes(rentalDataSource) && {
           estimatedMonthlyRent: monthlyRent,
           estimatedAnnualRent: annualRent,
-          localAverageRent: monthlyRent,   // area average from PropertyData
+          localAverageRent: rentalDataSource === "propertydata_api" ? monthlyRent : undefined,
         }),
         // EPC data (if fetched and rating is valid A–G)
         ...(epcRating !== null && /^[A-Ga-g]$/.test(epcRating) && {
