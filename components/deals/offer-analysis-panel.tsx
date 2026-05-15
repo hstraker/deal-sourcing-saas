@@ -20,6 +20,8 @@ import {
   BarChart2,
   DollarSign,
   Layers,
+  Banknote,
+  Building2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatCurrency } from "@/lib/format"
@@ -219,6 +221,182 @@ function ViabilityDots({ score }: { score: number }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Cash Purchase Panel
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Simple UK SDLT at additional-property (investor) rates */
+function calcSDLT(price: number): number {
+  const bands: [number, number, number][] = [
+    [0,         125_000, 0.03],
+    [125_000,   250_000, 0.05],
+    [250_000,   925_000, 0.08],
+    [925_000, 1_500_000, 0.13],
+    [1_500_000, Infinity, 0.15],
+  ]
+  let tax = 0
+  for (const [lo, hi, rate] of bands) {
+    if (price <= lo) break
+    tax += (Math.min(price, hi) - lo) * rate
+  }
+  return Math.round(tax)
+}
+
+function CashPurchasePanel({
+  purchasePrice,
+  estimatedRent,
+  refurbCost,
+}: {
+  purchasePrice: number
+  estimatedRent: number
+  refurbCost: number
+}) {
+  const sdlt          = calcSDLT(purchasePrice)
+  const solicitorFees = 1_500
+  const surveyFee     = 500
+  const totalCashIn   = purchasePrice + sdlt + solicitorFees + surveyFee + refurbCost
+
+  const grossRentAnnual   = estimatedRent * 12
+  const managementAnnual  = Math.round(grossRentAnnual * 0.10)  // 10% mgmt
+  const voidAnnual        = estimatedRent                        // 1 month void
+  const insuranceAnnual   = 600
+  const maintenanceAnnual = Math.round(grossRentAnnual * 0.05)  // 5% maintenance
+  const netAnnualCashflow = grossRentAnnual - managementAnnual - voidAnnual - insuranceAnnual - maintenanceAnnual
+  const netMonthlyCF      = netAnnualCashflow / 12
+
+  const grossYield   = (grossRentAnnual / purchasePrice) * 100
+  const cashYield    = totalCashIn > 0 ? (netAnnualCashflow / totalCashIn) * 100 : 0
+
+  const yieldStatus  = (y: number): RowStatus => y >= 6 ? "pass" : y >= 4 ? "negotiate" : "fail"
+  const cfStatus: RowStatus = netMonthlyCF >= 0 ? "pass" : "fail"
+
+  return (
+    <div className="space-y-4">
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <KpiMini
+          label="Total Cash In"
+          value={fmt(totalCashIn)}
+          hint="purchase + costs + refurb"
+        />
+        <KpiMini
+          label="Gross Yield"
+          value={`${grossYield.toFixed(1)}%`}
+          status={yieldStatus(grossYield)}
+          hint="annual rent ÷ purchase price"
+        />
+        <KpiMini
+          label="Cash Yield"
+          value={`${cashYield.toFixed(1)}%`}
+          status={yieldStatus(cashYield)}
+          hint="net cashflow ÷ total cash in"
+        />
+        <KpiMini
+          label="Net Cashflow"
+          value={`${fmt(netMonthlyCF)}/mo`}
+          status={cfStatus}
+          hint="after all running costs"
+        />
+      </div>
+
+      {/* Cost breakdown */}
+      <ScorecardRow
+        criterion="Cash In (Acquisition)"
+        icon={<DollarSign className="h-3.5 w-3.5" />}
+        status="info"
+        summary={`${fmt(totalCashIn)} total cash required`}
+        defaultOpen={true}
+      >
+        <div className="space-y-1.5 text-xs">
+          {[
+            ["Purchase Price",      purchasePrice],
+            ["SDLT (2nd property)", sdlt],
+            ["Solicitor / Searches", solicitorFees],
+            ["Survey",              surveyFee],
+            ["Refurbishment",       refurbCost],
+          ].map(([label, val]) => (
+            <div key={label as string} className="flex justify-between">
+              <span className="text-gray-400">{label as string}</span>
+              <span className="font-medium font-mono">{fmt(val as number)}</span>
+            </div>
+          ))}
+          <div className="flex justify-between border-t pt-1 font-semibold">
+            <span>Total Cash Required</span>
+            <span className="font-mono">{fmt(totalCashIn)}</span>
+          </div>
+        </div>
+      </ScorecardRow>
+
+      {/* Annual cashflow */}
+      <ScorecardRow
+        criterion="Annual Cashflow"
+        icon={<TrendingUp className="h-3.5 w-3.5" />}
+        status={cfStatus}
+        summary={`${fmt(netMonthlyCF)}/mo net · ${grossYield.toFixed(1)}% gross yield`}
+        defaultOpen={true}
+      >
+        <div className="space-y-1.5 text-xs">
+          <div className="flex justify-between text-green-600">
+            <span>Gross Annual Rent</span>
+            <span className="font-medium font-mono">{fmt(grossRentAnnual)}</span>
+          </div>
+          {[
+            ["Management (10%)",   -managementAnnual],
+            ["Void Allowance (1mo)", -voidAnnual],
+            ["Insurance",          -insuranceAnnual],
+            ["Maintenance (5%)",   -maintenanceAnnual],
+          ].map(([label, val]) => (
+            <div key={label as string} className="flex justify-between text-red-500">
+              <span>{label as string}</span>
+              <span className="font-medium font-mono">−{fmt(Math.abs(val as number))}</span>
+            </div>
+          ))}
+          <div className={cn(
+            "flex justify-between border-t pt-1 font-semibold",
+            netAnnualCashflow >= 0 ? "text-green-600" : "text-red-500"
+          )}>
+            <span>Net Annual Cashflow</span>
+            <span className="font-mono">{fmt(netAnnualCashflow)}</span>
+          </div>
+          <div className="flex justify-between text-gray-400 text-[11px]">
+            <span>= per month</span>
+            <span className="font-mono">{fmt(netMonthlyCF)}/mo</span>
+          </div>
+        </div>
+      </ScorecardRow>
+
+      {/* Returns summary */}
+      <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-xs space-y-1.5">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
+          Cash Returns Summary
+        </p>
+        <div className="flex justify-between">
+          <span className="text-gray-500">Gross yield</span>
+          <span className={cn("font-semibold", grossYield >= 6 ? "text-green-700" : grossYield >= 4 ? "text-amber-700" : "text-red-600")}>
+            {grossYield.toFixed(2)}%
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">Net cash yield (on total cash in)</span>
+          <span className={cn("font-semibold", cashYield >= 5 ? "text-green-700" : cashYield >= 3 ? "text-amber-700" : "text-red-600")}>
+            {cashYield.toFixed(2)}%
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">Payback period</span>
+          <span className="font-semibold text-gray-700">
+            {netAnnualCashflow > 0 ? `${(totalCashIn / netAnnualCashflow).toFixed(1)} years` : "N/A"}
+          </span>
+        </div>
+        <p className="text-[10px] text-gray-400 pt-1 border-t border-gray-200">
+          No mortgage, no ICR check, no bridging required. Cash buyer metrics only.
+          Management at 10%, void 1 month/yr, maintenance 5%.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Assumptions override panel
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -395,6 +573,7 @@ export function OfferAnalysisPanel({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [calculatedAt, setCalculatedAt] = useState<string | null>(null)
+  const [purchaseMode, setPurchaseMode] = useState<"mortgage" | "cash">("mortgage")
 
   const refurbDefault = !totalRefurbishment && gdv ? Math.round(gdv * 0.1) : null
   const effectiveRefurb = totalRefurbishment ?? refurbDefault
@@ -616,32 +795,68 @@ export function OfferAnalysisPanel({
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="px-5 py-4 border-b border-[var(--ds-border)]">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
             <div>
               <h3 className="text-sm font-semibold text-gray-900 text-base">Offer Analysis Engine</h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                Goal-seek methodology · Excel PropertyAnalyser
+                {purchaseMode === "mortgage"
+                  ? "Goal-seek methodology · Excel PropertyAnalyser"
+                  : "Cash purchase · no bridging or mortgage"}
                 {calculatedAt && ` · Calculated ${calculatedAt}`}
               </p>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => void runCalculation()}
-              disabled={loading || !hasRequiredInputs}
-              title={
-                !hasRequiredInputs
-                  ? "Set GDV, rent, and refurb cost on this deal to calculate"
-                  : undefined
-              }
-            >
-              {loading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-              ) : (
-                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Purchase mode toggle */}
+              <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
+                <button
+                  type="button"
+                  onClick={() => setPurchaseMode("mortgage")}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 transition-colors",
+                    purchaseMode === "mortgage"
+                      ? "bg-blue-600 text-white font-semibold"
+                      : "bg-white text-gray-600 hover:bg-gray-50"
+                  )}
+                >
+                  <Building2 className="h-3.5 w-3.5" />
+                  Mortgage
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPurchaseMode("cash")}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 transition-colors border-l border-gray-200",
+                    purchaseMode === "cash"
+                      ? "bg-green-600 text-white font-semibold"
+                      : "bg-white text-gray-600 hover:bg-gray-50"
+                  )}
+                >
+                  <Banknote className="h-3.5 w-3.5" />
+                  Cash
+                </button>
+              </div>
+
+              {purchaseMode === "mortgage" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void runCalculation()}
+                  disabled={loading || !hasRequiredInputs}
+                  title={
+                    !hasRequiredInputs
+                      ? "Set GDV, rent, and refurb cost on this deal to calculate"
+                      : undefined
+                  }
+                >
+                  {loading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  {result ? "Recalculate" : "Calculate"}
+                </Button>
               )}
-              {result ? "Recalculate" : "Calculate"}
-            </Button>
+            </div>
           </div>
         </div>
 
@@ -676,8 +891,29 @@ export function OfferAnalysisPanel({
             </div>
           )}
 
+          {/* ── Cash Purchase View ────────────────────────────────────── */}
+          {purchaseMode === "cash" && (
+            estimatedRent && (askingPrice || (result?.inputs?.gdv)) ? (
+              <CashPurchasePanel
+                purchasePrice={askingPrice}
+                estimatedRent={estimatedRent}
+                refurbCost={
+                  result?.inputs?.totalRefurbishment ??
+                  (totalRefurbishment ?? 0)
+                }
+              />
+            ) : (
+              <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-sm">
+                <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                <p className="text-amber-800">
+                  Set a monthly rent estimate to see cash purchase metrics.
+                </p>
+              </div>
+            )
+          )}
+
           {/* ── Result scorecard ──────────────────────────────────────── */}
-          {result && (
+          {purchaseMode === "mortgage" && result && (
             <>
               {/* Asking / GDV pill */}
               <div className="flex items-center gap-3 text-sm text-gray-400 pb-1 border-b">
@@ -1166,8 +1402,8 @@ export function OfferAnalysisPanel({
             </>
           )}
 
-          {/* ── Assumptions override — always visible when we have base inputs ── */}
-          {hasRequiredInputs && (
+          {/* ── Assumptions override — mortgage mode only ── */}
+          {purchaseMode === "mortgage" && hasRequiredInputs && (
             <AssumptionsPanel
               defaults={assumptionDefaults}
               onRecalculate={runCalculation}

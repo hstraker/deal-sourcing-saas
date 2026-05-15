@@ -2144,6 +2144,34 @@ export function VendorLeadDetailModal({
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
+
+                          {/* Offer Letter button */}
+                          <TooltipProvider delayDuration={300}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 rounded-none border-0 gap-1.5 text-[11px] px-2.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                                  disabled={!currentLead.offerAmount && !currentLead.askingPrice}
+                                  onClick={() => {
+                                    const price = currentLead.offerAmount ?? currentLead.askingPrice
+                                    if (!price) return
+                                    window.open(
+                                      `/api/vendor-leads/${currentLead.id}/offer-letter?offerPrice=${Number(price)}`,
+                                      "_blank"
+                                    )
+                                  }}
+                                >
+                                  <FileText className="h-3 w-3" />
+                                  Offer Letter
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="text-xs">
+                                <p>Generate a print-ready offer letter PDF</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
 
                         {res && (
