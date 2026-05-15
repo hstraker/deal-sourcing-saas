@@ -80,12 +80,11 @@ export async function PATCH(
     ? Math.round(activePrices.reduce((s, p) => s + p, 0) / activePrices.length)
     : null
 
+  // Only update the avg price — comparablesCount stays as the total fetched count
+  // so the table column always shows total, and the modal shows "X of N active"
   await prisma.vendorLead.update({
     where: { id: params.id },
-    data: {
-      avgComparablePrice: newAvg,
-      comparablesCount: activePrices.length,
-    },
+    data: { avgComparablePrice: newAvg },
   })
 
   return NextResponse.json({
@@ -96,6 +95,5 @@ export async function PATCH(
       manualPriceOverride: updated.manualPriceOverride?.toNumber() ?? null,
     },
     avgComparablePrice: newAvg,
-    activeCount: activePrices.length,
   })
 }

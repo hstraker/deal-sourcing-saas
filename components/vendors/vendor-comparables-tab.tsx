@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Loader2,
   RefreshCw,
@@ -13,6 +12,7 @@ import {
   Clock,
   ChevronRight,
   ExternalLink,
+  Eye,
   EyeOff,
 } from "lucide-react"
 import {
@@ -244,24 +244,42 @@ function ComparablesAccordion({
           return (
             <div key={comp.id}>
 
-              {/* ── Collapsed row ── */}
-              <button
-                type="button"
+              {/* ── Collapsed row — uses CSS grid so the eye toggle sits outside the expand button ── */}
+              <div
                 className={cn(
-                  "grid w-full items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-gray-50 focus:outline-none",
+                  "grid w-full items-center gap-2 px-3 transition-colors hover:bg-gray-50",
                   isOpen && "bg-blue-50/60",
-                  isExcluded && "opacity-40"
+                  isExcluded && "opacity-50"
                 )}
                 style={{ gridTemplateColumns: cols }}
-                onClick={() => setOpenId(isOpen ? null : comp.id)}
               >
-                {/* # */}
-                <span className="text-xs font-medium text-gray-400">
-                  {isExcluded ? <EyeOff className="h-3 w-3 text-gray-300" /> : i + 1}
-                </span>
+                {/* # — eye toggle (click to exclude/include without expanding) */}
+                <button
+                  type="button"
+                  title={isExcluded ? "Click to include in average" : "Click to exclude from average"}
+                  disabled={isSaving}
+                  onClick={(e) => { e.stopPropagation(); patchComp(comp.id, { excluded: !isExcluded }) }}
+                  className={cn(
+                    "flex items-center justify-center rounded p-0.5 transition-colors focus:outline-none",
+                    isExcluded
+                      ? "text-red-400 hover:text-red-600"
+                      : "text-gray-300 hover:text-gray-500"
+                  )}
+                >
+                  {isSaving
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />
+                    : isExcluded
+                      ? <EyeOff className="h-3.5 w-3.5" />
+                      : <Eye className="h-3.5 w-3.5" />
+                  }
+                </button>
 
-                {/* Address */}
-                <div className="min-w-0">
+                {/* Address — clicking expands */}
+                <button
+                  type="button"
+                  className="min-w-0 text-left py-2.5 focus:outline-none"
+                  onClick={() => setOpenId(isOpen ? null : comp.id)}
+                >
                   <p className={cn(
                     "truncate text-xs font-semibold leading-tight text-gray-900",
                     isExcluded && "line-through text-gray-400"
@@ -273,7 +291,7 @@ function ComparablesAccordion({
                       {comp.postcode}
                     </p>
                   )}
-                </div>
+                </button>
 
                 {/* Beds */}
                 <span className="text-center text-xs font-semibold text-gray-700">
@@ -324,14 +342,20 @@ function ComparablesAccordion({
                     : "—"}
                 </span>
 
-                {/* Chevron */}
-                <ChevronRight
-                  className={cn(
-                    "h-3.5 w-3.5 text-gray-300 transition-transform duration-200",
-                    isOpen && "rotate-90"
-                  )}
-                />
-              </button>
+                {/* Chevron — clicking expands */}
+                <button
+                  type="button"
+                  className="flex items-center justify-center py-2.5 focus:outline-none"
+                  onClick={() => setOpenId(isOpen ? null : comp.id)}
+                >
+                  <ChevronRight
+                    className={cn(
+                      "h-3.5 w-3.5 text-gray-300 transition-transform duration-200",
+                      isOpen && "rotate-90"
+                    )}
+                  />
+                </button>
+              </div>
 
               {/* ── Expanded panel ── */}
               {isOpen && (
@@ -477,23 +501,8 @@ function ComparablesAccordion({
                     </div>
                   </div>
 
-                  {/* ── Exclude / Adjust controls ────────────────────────────────── */}
+                  {/* ── Price override ───────────────────────────────────────────── */}
                   <div className="flex flex-wrap items-end gap-4 border-t border-gray-200 pt-3">
-
-                    {/* Exclude checkbox */}
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <Checkbox
-                        checked={isExcluded}
-                        disabled={isSaving}
-                        onCheckedChange={(checked) => {
-                          patchComp(comp.id, { excluded: !!checked })
-                        }}
-                        className="h-3.5 w-3.5"
-                      />
-                      <span className="text-[11px] text-gray-600 font-medium">
-                        Exclude from avg
-                      </span>
-                    </label>
 
                     {/* Manual price override */}
                     <div className="flex items-center gap-2">
