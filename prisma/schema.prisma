@@ -1096,6 +1096,7 @@ model VendorLead {
   comparablesSnapshots ComparablesSnapshot[]
   portalChecks         VendorPropertyCheck[]
   photos               PropertyPhoto[]
+  leadNotes            LeadNote[]
 
   @@index([pipelineStage])
   @@index([createdAt])
@@ -1342,8 +1343,12 @@ model ComparableProperty {
   propertyDataId      String? @map("propertydata_id") // PropertyData property ID
 
   // Analysis
-  confidence Decimal @default(1.0) @db.Decimal(3, 2) // 0.0 to 1.0 confidence score
-  notes      String? @db.Text
+  confidence          Decimal  @default(1.0) @db.Decimal(3, 2) // 0.0 to 1.0 confidence score
+  notes               String?  @db.Text
+
+  // Sourcer overrides
+  excluded            Boolean  @default(false)                   // exclude from avg calc
+  manualPriceOverride Decimal? @map("manual_price_override") @db.Decimal(10, 2) // override sale price for avg
 
   // Metadata
   fetchedAt DateTime @default(now()) @map("fetched_at")
@@ -2053,4 +2058,26 @@ model ScrapedPhoto {
 
   @@index([propertyListingId])
   @@map("scraped_photos")
+}
+
+// ============================================================================
+// LEAD NOTES
+// ============================================================================
+
+model LeadNote {
+  id           String     @id @default(cuid())
+  vendorLeadId String     @map("vendor_lead_id")
+  vendorLead   VendorLead @relation(fields: [vendorLeadId], references: [id], onDelete: Cascade)
+
+  content      String     @db.Text
+  createdById  String?    @map("created_by_id")
+  // Denormalised author name so notes remain readable after user deletion
+  createdByName String?   @map("created_by_name")
+
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  @@index([vendorLeadId])
+  @@index([createdAt])
+  @@map("lead_notes")
 }
