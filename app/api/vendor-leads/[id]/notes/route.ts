@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { createId } from "@paralleldrive/cuid2"
+import { randomUUID } from "crypto"
 
 // ── GET ───────────────────────────────────────────────────────────────────────
 
@@ -80,7 +80,7 @@ export async function POST(
 
   const note = await prisma.leadNote.create({
     data: {
-      id: createId(),
+      id: randomUUID(),
       vendorLeadId: params.id,
       content,
       createdById: user.id ?? null,

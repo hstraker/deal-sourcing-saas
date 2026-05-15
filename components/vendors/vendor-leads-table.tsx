@@ -57,6 +57,7 @@ import {
 import type { LucideIcon } from "lucide-react"
 import { VendorPipelineKanbanBoard } from "./vendor-pipeline-kanban-board"
 import { cn } from "@/lib/utils"
+import { computeDealScore, dealScoreClasses } from "@/lib/utils/deal-score"
 import { toast } from "sonner"
 import { PropertyDetailsModal } from "./property-details-modal"
 import { MapModal } from "./map-modal"
@@ -1505,6 +1506,45 @@ function PortalCheckRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete,
   )
 }
 
+// ─── Deal Score Badge ─────────────────────────────────────────────────────────
+
+function DealScoreCell({ lead }: { lead: VendorLead }) {
+  const score = computeDealScore({
+    bmvScore: lead.bmvScore,
+    estimatedMonthlyRent: lead.estimatedMonthlyRent,
+    estimatedMarketValue: lead.estimatedMarketValue,
+    motivationScore: lead.motivationScore,
+    comparablesCount: lead.comparablesCount,
+    photoConditionScore: lead.photoConditionScore,
+  })
+
+  if (!score) return <span className="text-xs text-gray-300">—</span>
+
+  const cls = dealScoreClasses(score.colour)
+  const breakdown = [
+    `BMV: ${score.bmvPts}/40`,
+    `Yield: ${score.yieldPts}/20`,
+    `Motivation: ${score.motivationPts}/20`,
+    `Comps: ${score.compsPts}/10`,
+    `Condition: ${score.conditionPts}/10`,
+  ].join("\n")
+
+  return (
+    <Tip text={`${score.label} — ${score.total}/100\n${breakdown}`}>
+      <span
+        className={cn(
+          "inline-flex cursor-default items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold",
+          cls.bg, cls.text, cls.border
+        )}
+      >
+        {score.total}
+      </span>
+    </Tip>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function ValidationRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline }: RowRendererProps) {
   const rentNum = toNum(lead.estimatedMonthlyRent)
   const netCashflow = rentNum ? rentNum * 0.8 : null
@@ -1544,6 +1584,7 @@ function ValidationRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, 
         </Tip>
       </Td>
       <Td><EpcCombinedCell rating={lead.epcRating} score={lead.epcScore} inspectionDate={lead.epcInspectionDate} /></Td>
+      <Td><DealScoreCell lead={lead} /></Td>
       <ActionsCell
         lead={lead} onView={onView} onEdit={onEdit} onArchive={onArchive} onDelete={onDelete}
         checkAction={onCheck ? { icon: Calculator, title: "Calculate BMV & Validation", onClick: onCheck, loading: isChecking } : undefined}
@@ -1720,6 +1761,7 @@ function OfferAnalysisRow({ lead, onRowClick, onView, onEdit, onArchive, onDelet
           )
         })()}
       </Td>
+      <Td><DealScoreCell lead={lead} /></Td>
       <ActionsCell
         lead={lead} onView={onView} onEdit={onEdit} onArchive={onArchive} onDelete={onDelete}
         checkAction={onCheck ? { icon: Calculator, title: "Calculate Offer", onClick: onCheck, loading: isChecking } : undefined}
@@ -2091,6 +2133,7 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
         <Th><Tip text="Market Value − Asking Price − Estimated Refurb Cost">Profit Potential</Tip></Th>
         <Th><Tip text="Monthly rent − mortgage − expenses. Positive = self-sustaining, negative = you fund it monthly">Est. Net Cashflow</Tip></Th>
         <Th><Tip text="Energy Performance Certificate. A = most efficient, G = least. Below E = unmortgageable without improvement">EPC</Tip></Th>
+        <Th><Tip text="Composite deal quality score (0-100): BMV 40pts + Yield 20pts + Motivation 20pts + Comps 10pts + Condition 10pts">Score</Tip></Th>
         {stickyRight}
       </tr>
 
@@ -2125,6 +2168,7 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
         <Th><Tip text="Vendor's current response status: awaiting, negotiating, accepted, or rejected">Vendor Response</Tip></Th>
         <Th><Tip text="Estimated profit if vendor accepts final offer = Market Value − Final Offer − Refurb − Costs">Profit @ Offer</Tip></Th>
         <Th>Last Activity</Th>
+        <Th><Tip text="Composite deal quality score (0-100): BMV 40pts + Yield 20pts + Motivation 20pts + Comps 10pts + Condition 10pts">Score</Tip></Th>
         {stickyRight}
       </tr>
 

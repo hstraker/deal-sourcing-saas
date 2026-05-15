@@ -83,6 +83,9 @@ import { PhotoAnalysisTab } from "./photo-analysis-tab"
 import { LeadPhotoStrip } from "./lead-photo-strip"
 import { SourcingFeePanel } from "./sourcing-fee-panel"
 import { InvestorMatchPanel } from "./investor-match-panel"
+import { LeadNotesTab } from "./lead-notes-tab"
+import { useSession } from "next-auth/react"
+import { StickyNote } from "lucide-react"
 
 interface SMSMessage {
   id: string
@@ -214,7 +217,7 @@ interface VendorLeadDetailModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onUpdate?: () => void
-  initialTab?: "details" | "portal-check" | "comparables" | "ai-conversation" | "activity" | "deal-pl" | "photo-analysis"
+  initialTab?: "details" | "portal-check" | "comparables" | "ai-conversation" | "activity" | "deal-pl" | "photo-analysis" | "notes"
   alertReason?: string
   alertUrgency?: "high" | "medium" | "low"
 }
@@ -654,6 +657,7 @@ export function VendorLeadDetailModal({
   alertReason,
   alertUrgency = "low",
 }: VendorLeadDetailModalProps) {
+  const { data: session } = useSession()
   const [manualMessage, setManualMessage] = useState("")
   const [sendingMessage, setSendingMessage] = useState(false)
   const [showConversation, setShowConversation] = useState(false)
@@ -1362,7 +1366,7 @@ export function VendorLeadDetailModal({
           onValueChange={setActiveTab}
           className="flex flex-col flex-1 min-h-0 w-full"
         >
-          <TabsList className="grid w-full grid-cols-7 h-auto p-1 gap-0.5 bg-gray-50 flex-shrink-0">
+          <TabsList className="grid w-full grid-cols-8 h-auto p-1 gap-0.5 bg-gray-50 flex-shrink-0">
 
             {/* 1 — Lead Details */}
             <TabsTrigger
@@ -1457,6 +1461,17 @@ export function VendorLeadDetailModal({
             >
               <Camera className="h-3.5 w-3.5" />
               <span>Photos</span>
+            </TabsTrigger>
+
+            {/* 8 — Notes */}
+            <TabsTrigger
+              value="notes"
+              className="relative flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
+                hover:bg-gray-50 hover:text-[#2563EB] hover:shadow-sm
+                data-[state=active]:bg-white data-[state=active]:text-[#2563EB] data-[state=active]:shadow-sm"
+            >
+              <StickyNote className="h-3.5 w-3.5" />
+              <span>Notes</span>
             </TabsTrigger>
 
           </TabsList>
@@ -2592,6 +2607,15 @@ export function VendorLeadDetailModal({
           {/* ── Photo Analysis Tab ───────────────────────────────────────────── */}
           <TabsContent value="photo-analysis" className="flex-1 overflow-y-auto min-h-0 pt-2 pb-6 px-0.5">
             <PhotoAnalysisTab leadId={lead.id} />
+          </TabsContent>
+
+          {/* 8 — Notes */}
+          <TabsContent value="notes" className="flex-1 overflow-y-auto min-h-0 pt-2 pb-6 px-0.5">
+            <LeadNotesTab
+              vendorLeadId={currentLead.id}
+              currentUserId={session?.user?.id ?? null}
+              currentUserRole={session?.user?.role ?? null}
+            />
           </TabsContent>
         </Tabs>
       </DialogContent>
