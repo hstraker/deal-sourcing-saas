@@ -51,6 +51,10 @@ export interface ComparableProperty {
   listingUrlSecondary?: string
   confidence?: number
 
+  // Exclude / adjust
+  excluded?: boolean
+  manualPriceOverride?: number | null
+
   // Calculated fields
   pricePerSqft?: number
   notes?: string

@@ -67,14 +67,22 @@ export async function GET(
       })
     }
 
-    // Calculate statistics
-    const prices = comparables.map((c) => c.salePrice.toNumber())
-    const avgPrice = Math.round(prices.reduce((sum, p) => sum + p, 0) / prices.length)
-    const minPrice = Math.min(...prices)
-    const maxPrice = Math.max(...prices)
+    // Calculate statistics — only non-excluded comps; use manualPriceOverride when set
+    const activeComps = comparables.filter((c) => !c.excluded)
+    const activePrices = activeComps.map((c) =>
+      c.manualPriceOverride != null
+        ? c.manualPriceOverride.toNumber()
+        : c.salePrice.toNumber()
+    )
+    const allPrices = comparables.map((c) => c.salePrice.toNumber())
+    const avgPrice = activePrices.length > 0
+      ? Math.round(activePrices.reduce((sum, p) => sum + p, 0) / activePrices.length)
+      : null
+    const minPrice = activePrices.length > 0 ? Math.min(...activePrices) : Math.min(...allPrices)
+    const maxPrice = activePrices.length > 0 ? Math.max(...activePrices) : Math.max(...allPrices)
 
-    // Calculate rental yield statistics
-    const rentalYields = comparables
+    // Calculate rental yield statistics (only active comps)
+    const rentalYields = activeComps
       .map((c) => c.rentalYield?.toNumber())
       .filter((y): y is number => y !== undefined && y !== null)
 
@@ -86,13 +94,15 @@ export async function GET(
       ? { min: Math.min(...rentalYields), max: Math.max(...rentalYields) }
       : null
 
-    // Calculate confidence level based on data quality
+    // Calculate confidence level based on data quality (active comps only)
     let confidence: "HIGH" | "MEDIUM" | "LOW" = "LOW"
-    const avgConfidence = comparables.reduce((sum, c) => sum + c.confidence.toNumber(), 0) / comparables.length
+    const avgConfidence = activeComps.length > 0
+      ? activeComps.reduce((sum, c) => sum + c.confidence.toNumber(), 0) / activeComps.length
+      : 0
 
-    if (comparables.length >= 5 && avgConfidence >= 0.8) {
+    if (activeComps.length >= 5 && avgConfidence >= 0.8) {
       confidence = "HIGH"
-    } else if (comparables.length >= 3 && avgConfidence >= 0.6) {
+    } else if (activeComps.length >= 3 && avgConfidence >= 0.6) {
       confidence = "MEDIUM"
     }
 
@@ -123,6 +133,9 @@ export async function GET(
       listingUrlSecondary: comp.listingUrlSecondary,
       propertyDataId: comp.propertyDataId,
       confidence: comp.confidence.toNumber(),
+      // Exclude / adjust fields
+      excluded: comp.excluded,
+      manualPriceOverride: comp.manualPriceOverride?.toNumber() ?? null,
       // Calculated fields
       pricePerSqft: comp.squareFeet && comp.squareFeet > 0
         ? Math.round(comp.salePrice.toNumber() / comp.squareFeet)
@@ -136,6 +149,7 @@ export async function GET(
       data: {
         comparables: formattedComparables,
         count: comparables.length,
+        activeCount: activeComps.length,
         avgPrice,
         avgRentalYield,
         priceRange: { min: minPrice, max: maxPrice },

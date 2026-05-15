@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Loader2,
   RefreshCw,
@@ -11,6 +13,7 @@ import {
   Clock,
   ChevronRight,
   ExternalLink,
+  EyeOff,
 } from "lucide-react"
 import {
   ComparablesAnalysis,
@@ -43,6 +46,7 @@ interface VendorComparablesTabProps {
 interface ComparablesData {
   comparables: ComparableProperty[]
   count: number
+  activeCount?: number
   avgPrice: number | null
   avgRentalYield: number | null
   priceRange: { min: number; max: number } | null
@@ -131,16 +135,42 @@ function shortType(type: string | undefined): string {
 function ComparablesAccordion({
   comparables,
   askingPrice,
+  vendorLeadId,
+  onCompUpdated,
 }: {
   comparables: ComparableProperty[]
   askingPrice?: number
+  vendorLeadId: string
+  onCompUpdated: (compId: string, patch: Partial<ComparableProperty>, newAvg: number | null) => void
 }) {
   const [openId, setOpenId] = useState<string | null>(null)
+  const [savingId, setSavingId] = useState<string | null>(null)
+  // Local override inputs — keyed by comp id
+  const [overrideInputs, setOverrideInputs] = useState<Record<string, string>>({})
 
   const sorted = useMemo(
     () => [...comparables].sort((a, b) => (a.distance ?? 999) - (b.distance ?? 999)),
     [comparables]
   )
+
+  const patchComp = async (compId: string, patch: { excluded?: boolean; manualPriceOverride?: number | null }) => {
+    setSavingId(compId)
+    try {
+      const res = await fetch(`/api/vendor-leads/${vendorLeadId}/comparables/${compId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? "Update failed")
+      onCompUpdated(compId, patch, json.avgComparablePrice ?? null)
+      toast.success("Comparable updated")
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to update comparable")
+    } finally {
+      setSavingId(null)
+    }
+  }
 
   // Column template:  #  address  beds  type  sale-price  £/bed  vs-ask  sold  yield  rent/mo  chevron
   // DIST removed from columns (moved to expanded panel) so address gets more 1fr space.
@@ -171,9 +201,11 @@ function ComparablesAccordion({
       {/* Rows */}
       <div className="divide-y divide-gray-100">
         {sorted.map((comp, i) => {
-          const isOpen     = openId === comp.id
-          const yieldClass = getYieldColour(comp.rentalYield)
-          const conf       = getConfidenceInfo(comp.confidence)
+          const isOpen      = openId === comp.id
+          const isExcluded  = comp.excluded === true
+          const isSaving    = savingId === comp.id
+          const yieldClass  = getYieldColour(comp.rentalYield)
+          const conf        = getConfidenceInfo(comp.confidence)
 
           const saleDateFmt = (() => {
             try { return format(new Date(comp.saleDate), "d MMM yyyy") }
@@ -183,21 +215,31 @@ function ComparablesAccordion({
           // Beds
           const beds = comp.bedrooms != null && comp.bedrooms > 0 ? comp.bedrooms : null
 
+          // Effective price (manualPriceOverride takes precedence)
+          const effectivePrice = comp.manualPriceOverride ?? comp.salePrice
+
           // £ per bedroom
-          const pricePerBed = beds ? Math.round(comp.salePrice / beds) : null
+          const pricePerBed = beds ? Math.round(effectivePrice / beds) : null
           const pricePerBedFmt = pricePerBed
             ? `£${(pricePerBed / 1000).toFixed(0)}k`
             : "—"
 
           // vs Asking Price
           const vsAsk = askingPrice && askingPrice > 0
-            ? ((comp.salePrice - askingPrice) / askingPrice) * 100
+            ? ((effectivePrice - askingPrice) / askingPrice) * 100
             : null
           const vsAskStyle = vsAsk != null ? getVsAskStyle(vsAsk) : null
 
           // Sold recency
-          const mo       = monthsAgo(comp.saleDate)
+          const mo        = monthsAgo(comp.saleDate)
           const soldStyle = getSoldStyle(mo)
+
+          // Override input value (local state wins, else show stored value)
+          const overrideVal = overrideInputs[comp.id] !== undefined
+            ? overrideInputs[comp.id]
+            : comp.manualPriceOverride != null
+              ? String(Math.round(comp.manualPriceOverride))
+              : ""
 
           return (
             <div key={comp.id}>
@@ -207,17 +249,23 @@ function ComparablesAccordion({
                 type="button"
                 className={cn(
                   "grid w-full items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-gray-50 focus:outline-none",
-                  isOpen && "bg-blue-50/60"
+                  isOpen && "bg-blue-50/60",
+                  isExcluded && "opacity-40"
                 )}
                 style={{ gridTemplateColumns: cols }}
                 onClick={() => setOpenId(isOpen ? null : comp.id)}
               >
                 {/* # */}
-                <span className="text-xs font-medium text-gray-400">{i + 1}</span>
+                <span className="text-xs font-medium text-gray-400">
+                  {isExcluded ? <EyeOff className="h-3 w-3 text-gray-300" /> : i + 1}
+                </span>
 
-                {/* Address — postcode only as sub-line, type is its own column */}
+                {/* Address */}
                 <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold leading-tight text-gray-900">
+                  <p className={cn(
+                    "truncate text-xs font-semibold leading-tight text-gray-900",
+                    isExcluded && "line-through text-gray-400"
+                  )}>
                     {comp.address}
                   </p>
                   {comp.postcode && (
@@ -232,14 +280,21 @@ function ComparablesAccordion({
                   {beds ?? "—"}
                 </span>
 
-                {/* Type — own column, abbreviated */}
+                {/* Type */}
                 <span className="text-xs text-gray-600">
                   {comp.propertyType ? shortType(comp.propertyType) : "—"}
                 </span>
 
-                {/* Sale price */}
+                {/* Sale price — show override if set */}
                 <span className="text-right text-xs font-bold text-gray-900">
-                  {formatCurrency(comp.salePrice)}
+                  {comp.manualPriceOverride != null ? (
+                    <span className="flex flex-col items-end">
+                      <span className="text-blue-700">{formatCurrency(comp.manualPriceOverride)}</span>
+                      <span className="text-[9px] text-gray-400 line-through">{formatCurrency(comp.salePrice)}</span>
+                    </span>
+                  ) : (
+                    formatCurrency(comp.salePrice)
+                  )}
                 </span>
 
                 {/* £/Bed */}
@@ -280,143 +335,213 @@ function ComparablesAccordion({
 
               {/* ── Expanded panel ── */}
               {isOpen && (
-                <div className="grid grid-cols-2 gap-4 border-t border-gray-100 bg-gray-50/80 px-4 py-4">
+                <div className="border-t border-gray-100 bg-gray-50/80 px-4 py-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
 
-                  {/* Property column */}
-                  <div className="space-y-1.5">
-                    <p className="mb-2 text-[9px] font-bold uppercase tracking-widest text-gray-400">
-                      Property
-                    </p>
-                    <AccRow label="Sold" value={saleDateFmt} />
-                    <AccRow
-                      label="Freshness"
-                      value={soldStyle.label}
-                      valueClass={soldStyle.className}
-                    />
-                    {comp.distance != null && (
-                      <AccRow label="Distance" value={`${comp.distance.toFixed(2)} mi`} />
-                    )}
-                    {comp.propertyType && (
-                      <AccRow label="Type" value={comp.propertyType} />
-                    )}
-                    {beds != null && (
-                      <AccRow label="Bedrooms" value={beds} />
-                    )}
-                    {comp.bathrooms != null && comp.bathrooms > 0 && (
-                      <AccRow label="Bathrooms" value={comp.bathrooms} />
-                    )}
-                    {comp.squareFeet ? (
+                    {/* Property column */}
+                    <div className="space-y-1.5">
+                      <p className="mb-2 text-[9px] font-bold uppercase tracking-widest text-gray-400">
+                        Property
+                      </p>
+                      <AccRow label="Sold" value={saleDateFmt} />
                       <AccRow
-                        label="Sq Ft"
-                        value={`${comp.squareFeet.toLocaleString()} ft²`}
+                        label="Freshness"
+                        value={soldStyle.label}
+                        valueClass={soldStyle.className}
                       />
-                    ) : null}
-                    {comp.pricePerSqft ? (
-                      <AccRow label="£/sqft" value={`£${comp.pricePerSqft}`} />
-                    ) : null}
-                    {pricePerBed && (
-                      <AccRow label="£/Bedroom" value={`£${pricePerBed.toLocaleString("en-GB")}`} />
-                    )}
-                    {vsAskStyle && (
+                      {comp.distance != null && (
+                        <AccRow label="Distance" value={`${comp.distance.toFixed(2)} mi`} />
+                      )}
+                      {comp.propertyType && (
+                        <AccRow label="Type" value={comp.propertyType} />
+                      )}
+                      {beds != null && (
+                        <AccRow label="Bedrooms" value={beds} />
+                      )}
+                      {comp.bathrooms != null && comp.bathrooms > 0 && (
+                        <AccRow label="Bathrooms" value={comp.bathrooms} />
+                      )}
+                      {comp.squareFeet ? (
+                        <AccRow
+                          label="Sq Ft"
+                          value={`${comp.squareFeet.toLocaleString()} ft²`}
+                        />
+                      ) : null}
+                      {comp.pricePerSqft ? (
+                        <AccRow label="£/sqft" value={`£${comp.pricePerSqft}`} />
+                      ) : null}
+                      {pricePerBed && (
+                        <AccRow label="£/Bedroom" value={`£${pricePerBed.toLocaleString("en-GB")}`} />
+                      )}
+                      {vsAskStyle && (
+                        <AccRow
+                          label="vs Asking Price"
+                          value={vsAskStyle.label}
+                          valueClass={vsAskStyle.className}
+                        />
+                      )}
+                      {comp.daysOnMarket != null && (
+                        <AccRow label="Days Listed" value={comp.daysOnMarket} />
+                      )}
+                      {comp.priceReductions != null && comp.priceReductions > 0 && (
+                        <AccRow
+                          label="Price Cuts"
+                          value={comp.priceReductions}
+                          valueClass="text-amber-500"
+                        />
+                      )}
                       <AccRow
-                        label="vs Asking Price"
-                        value={vsAskStyle.label}
-                        valueClass={vsAskStyle.className}
+                        label="Confidence"
+                        value={conf.label}
+                        valueClass={conf.colour}
                       />
-                    )}
-                    {comp.daysOnMarket != null && (
-                      <AccRow label="Days Listed" value={comp.daysOnMarket} />
-                    )}
-                    {comp.priceReductions != null && comp.priceReductions > 0 && (
-                      <AccRow
-                        label="Price Cuts"
-                        value={comp.priceReductions}
-                        valueClass="text-amber-500"
-                      />
-                    )}
-                    <AccRow
-                      label="Confidence"
-                      value={conf.label}
-                      valueClass={conf.colour}
-                    />
+                    </div>
+
+                    {/* Rental column */}
+                    <div className="space-y-1.5">
+                      <p className="mb-2 text-[9px] font-bold uppercase tracking-widest text-gray-400">
+                        Rental
+                      </p>
+
+                      {comp.monthlyRent ? (
+                        <>
+                          <AccRow
+                            label="Monthly Rent"
+                            value={`£${Math.round(comp.monthlyRent).toLocaleString("en-GB")}/mo`}
+                          />
+                          <AccRow
+                            label="Annual Rent"
+                            value={formatCurrency(comp.monthlyRent * 12)}
+                          />
+                          {comp.weeklyRent ? (
+                            <AccRow
+                              label="Weekly Rent"
+                              value={`£${Math.round(comp.weeklyRent)}/wk`}
+                            />
+                          ) : null}
+                        </>
+                      ) : (
+                        <p className="text-[10px] italic text-gray-400">
+                          No rental data for this postcode
+                        </p>
+                      )}
+
+                      {comp.rentalYield != null && (
+                        <AccRow
+                          label="Gross Yield"
+                          value={`${comp.rentalYield.toFixed(2)}%`}
+                          valueClass={yieldClass}
+                        />
+                      )}
+                      {comp.rentalYieldMin != null && comp.rentalYieldMax != null && (
+                        <AccRow
+                          label="Yield Range"
+                          value={`${comp.rentalYieldMin.toFixed(1)}%–${comp.rentalYieldMax.toFixed(1)}%`}
+                          valueClass="text-gray-500"
+                        />
+                      )}
+                      {comp.areaAverageRent ? (
+                        <AccRow
+                          label="Area Avg Rent"
+                          value={`£${Math.round(comp.areaAverageRent).toLocaleString("en-GB")}/mo`}
+                        />
+                      ) : null}
+
+                      {/* Portal links */}
+                      {(comp.listingUrl || comp.listingUrlSecondary) && (
+                        <div className="mt-1 flex gap-3 border-t border-gray-200 pt-2.5">
+                          {comp.listingUrl && (
+                            <a
+                              href={comp.listingUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-[10px] font-medium text-blue-600 hover:text-blue-800"
+                            >
+                              Rightmove
+                              <ExternalLink className="h-2.5 w-2.5" />
+                            </a>
+                          )}
+                          {comp.listingUrlSecondary && (
+                            <a
+                              href={comp.listingUrlSecondary}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-[10px] font-medium text-blue-600 hover:text-blue-800"
+                            >
+                              Zoopla
+                              <ExternalLink className="h-2.5 w-2.5" />
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Rental column */}
-                  <div className="space-y-1.5">
-                    <p className="mb-2 text-[9px] font-bold uppercase tracking-widest text-gray-400">
-                      Rental
-                    </p>
+                  {/* ── Exclude / Adjust controls ────────────────────────────────── */}
+                  <div className="flex flex-wrap items-end gap-4 border-t border-gray-200 pt-3">
 
-                    {comp.monthlyRent ? (
-                      <>
-                        <AccRow
-                          label="Monthly Rent"
-                          value={`£${Math.round(comp.monthlyRent).toLocaleString("en-GB")}/mo`}
-                        />
-                        <AccRow
-                          label="Annual Rent"
-                          value={formatCurrency(comp.monthlyRent * 12)}
-                        />
-                        {comp.weeklyRent ? (
-                          <AccRow
-                            label="Weekly Rent"
-                            value={`£${Math.round(comp.weeklyRent)}/wk`}
-                          />
-                        ) : null}
-                      </>
-                    ) : (
-                      <p className="text-[10px] italic text-gray-400">
-                        No rental data for this postcode
-                      </p>
-                    )}
+                    {/* Exclude checkbox */}
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <Checkbox
+                        checked={isExcluded}
+                        disabled={isSaving}
+                        onCheckedChange={(checked) => {
+                          patchComp(comp.id, { excluded: !!checked })
+                        }}
+                        className="h-3.5 w-3.5"
+                      />
+                      <span className="text-[11px] text-gray-600 font-medium">
+                        Exclude from avg
+                      </span>
+                    </label>
 
-                    {comp.rentalYield != null && (
-                      <AccRow
-                        label="Gross Yield"
-                        value={`${comp.rentalYield.toFixed(2)}%`}
-                        valueClass={yieldClass}
+                    {/* Manual price override */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-gray-500 shrink-0">Override price £</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1000}
+                        className="h-6 w-28 text-xs px-2"
+                        placeholder={String(Math.round(comp.salePrice))}
+                        value={overrideVal}
+                        disabled={isSaving || isExcluded}
+                        onChange={(e) =>
+                          setOverrideInputs((prev) => ({ ...prev, [comp.id]: e.target.value }))
+                        }
                       />
-                    )}
-                    {comp.rentalYieldMin != null && comp.rentalYieldMax != null && (
-                      <AccRow
-                        label="Yield Range"
-                        value={`${comp.rentalYieldMin.toFixed(1)}%–${comp.rentalYieldMax.toFixed(1)}%`}
-                        valueClass="text-gray-500"
-                      />
-                    )}
-                    {comp.areaAverageRent ? (
-                      <AccRow
-                        label="Area Avg Rent"
-                        value={`£${Math.round(comp.areaAverageRent).toLocaleString("en-GB")}/mo`}
-                      />
-                    ) : null}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        disabled={isSaving || isExcluded}
+                        onClick={() => {
+                          const raw = overrideInputs[comp.id]
+                          const parsed = raw ? parseFloat(raw) : null
+                          patchComp(comp.id, { manualPriceOverride: parsed && parsed > 0 ? parsed : null })
+                        }}
+                      >
+                        {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                      </Button>
+                      {comp.manualPriceOverride != null && (
+                        <button
+                          type="button"
+                          className="text-[10px] text-gray-400 hover:text-red-500 underline"
+                          disabled={isSaving}
+                          onClick={() => {
+                            setOverrideInputs((prev) => ({ ...prev, [comp.id]: "" }))
+                            patchComp(comp.id, { manualPriceOverride: null })
+                          }}
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
 
-                    {/* Portal links */}
-                    {(comp.listingUrl || comp.listingUrlSecondary) && (
-                      <div className="mt-1 flex gap-3 border-t border-gray-200 pt-2.5">
-                        {comp.listingUrl && (
-                          <a
-                            href={comp.listingUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-[10px] font-medium text-blue-600 hover:text-blue-800"
-                          >
-                            Rightmove
-                            <ExternalLink className="h-2.5 w-2.5" />
-                          </a>
-                        )}
-                        {comp.listingUrlSecondary && (
-                          <a
-                            href={comp.listingUrlSecondary}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-[10px] font-medium text-blue-600 hover:text-blue-800"
-                          >
-                            Zoopla
-                            <ExternalLink className="h-2.5 w-2.5" />
-                          </a>
-                        )}
-                      </div>
+                    {isSaving && (
+                      <span className="text-[11px] text-gray-400 flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+                      </span>
                     )}
                   </div>
                 </div>
@@ -447,6 +572,27 @@ export function VendorComparablesTab({
   )
   const [isLoading, setIsLoading] = useState(() => !_comparablesCache.has(vendorLeadId))
   const [isFetching, setIsFetching] = useState(false)
+
+  // Local optimistic update: when a comp is excluded or its price overridden,
+  // patch the local copy immediately so the UI reflects the change without re-fetching.
+  const handleCompUpdated = (
+    compId: string,
+    patch: Partial<ComparableProperty>,
+    newAvg: number | null
+  ) => {
+    setData((prev) => {
+      if (!prev) return prev
+      const updated = {
+        ...prev,
+        avgPrice: newAvg ?? prev.avgPrice,
+        comparables: prev.comparables.map((c) =>
+          c.id === compId ? { ...c, ...patch } : c
+        ),
+      }
+      _comparablesCache.set(vendorLeadId, updated)
+      return updated
+    })
+  }
 
   useEffect(() => {
     // If we already have cached data for this lead, skip the network round-trip
@@ -701,12 +847,23 @@ export function VendorComparablesTab({
           {/* Accordion list */}
           <div>
             <h4 className="mb-3 text-sm font-semibold text-gray-700">
-              {data.comparables.length} Comparable{data.comparables.length !== 1 ? "s" : ""} Found
+              {(() => {
+                const active = data.comparables.filter((c) => !c.excluded).length
+                const total  = data.comparables.length
+                return active < total
+                  ? `${active} of ${total} Comparables Active`
+                  : `${total} Comparable${total !== 1 ? "s" : ""} Found`
+              })()}
               <span className="ml-2 text-xs font-normal text-gray-400">
-                — sorted by distance, click a row to expand
+                — sorted by distance, click a row to expand/adjust
               </span>
             </h4>
-            <ComparablesAccordion comparables={data.comparables} askingPrice={askingPrice} />
+            <ComparablesAccordion
+              comparables={data.comparables}
+              askingPrice={askingPrice}
+              vendorLeadId={vendorLeadId}
+              onCompUpdated={handleCompUpdated}
+            />
           </div>
         </>
       )}
