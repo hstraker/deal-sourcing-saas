@@ -1421,7 +1421,7 @@ function MapViewRow({ lead, onRowClick, onView, onDelete, isSelected, onToggleSe
   )
 }
 
-function PropertyDetailsRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
+function PropertyDetailsRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline }: RowRendererProps) {
   const ownershipTenure = (lead.latestPortalCheck?.ownershipCheckRaw as any)?.tenure ?? null
   const tenure = lead.tenureType ?? ownershipTenure
   const annualRent = toNum(lead.estimatedAnnualRent)
@@ -1460,12 +1460,15 @@ function PropertyDetailsRow({ lead, onRowClick, onView, onEdit, onArchive, onDel
         </span>
       </Td>
       <Td><span className="text-xs text-gray-700">{lead.condition ? lead.condition.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : <span className="text-gray-400">—</span>}</span></Td>
-      <ActionsCell lead={lead} onView={onView} onEdit={onEdit} onArchive={onArchive} onDelete={onDelete} />
+      <ActionsCell
+        lead={lead} onView={onView} onEdit={onEdit} onArchive={onArchive} onDelete={onDelete}
+        extraActions={onRerunPipeline ? [{ icon: Rocket, title: "Re-run Pipeline (portal → comps → BMV)", onClick: onRerunPipeline, loading: isRerunningPipeline }] : undefined}
+      />
     </tr>
   )
 }
 
-function PortalCheckRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect }: RowRendererProps) {
+function PortalCheckRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline }: RowRendererProps) {
   const ownership = lead.latestPortalCheck?.ownershipCheckRaw as any
   const ownerType = ownership?.isCorporateOwned
     ? ownership?.isOverseasOwned ? "Overseas Corp" : "Corporate"
@@ -1496,12 +1499,13 @@ function PortalCheckRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete,
       <ActionsCell
         lead={lead} onView={onView} onEdit={onEdit} onArchive={onArchive} onDelete={onDelete}
         checkAction={onCheck ? { icon: ShieldCheck, title: "Run Portal Check", onClick: onCheck, loading: isChecking } : undefined}
+        extraActions={onRerunPipeline ? [{ icon: Rocket, title: "Re-run Pipeline (portal → comps → BMV)", onClick: onRerunPipeline, loading: isRerunningPipeline }] : undefined}
       />
     </tr>
   )
 }
 
-function ValidationRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect }: RowRendererProps) {
+function ValidationRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline }: RowRendererProps) {
   const rentNum = toNum(lead.estimatedMonthlyRent)
   const netCashflow = rentNum ? rentNum * 0.8 : null
   const annualRent = toNum(lead.estimatedAnnualRent)
@@ -1543,12 +1547,13 @@ function ValidationRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, 
       <ActionsCell
         lead={lead} onView={onView} onEdit={onEdit} onArchive={onArchive} onDelete={onDelete}
         checkAction={onCheck ? { icon: Calculator, title: "Calculate BMV & Validation", onClick: onCheck, loading: isChecking } : undefined}
+        extraActions={onRerunPipeline ? [{ icon: Rocket, title: "Re-run Pipeline (portal → comps → BMV)", onClick: onRerunPipeline, loading: isRerunningPipeline }] : undefined}
       />
     </tr>
   )
 }
 
-function ComparableRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect }: RowRendererProps) {
+function ComparableRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline }: RowRendererProps) {
   const annualRent = toNum(lead.estimatedAnnualRent)
   const price = toNum(lead.askingPrice)
   const avgPrice = toNum(lead.avgComparablePrice)
@@ -1614,12 +1619,13 @@ function ComparableRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, 
       <ActionsCell
         lead={lead} onView={onView} onEdit={onEdit} onArchive={onArchive} onDelete={onDelete}
         checkAction={onCheck ? { icon: GitCompare, title: "Fetch Comparables", onClick: onCheck, loading: isChecking } : undefined}
+        extraActions={onRerunPipeline ? [{ icon: Rocket, title: "Re-run Pipeline (portal → comps → BMV)", onClick: onRerunPipeline, loading: isRerunningPipeline }] : undefined}
       />
     </tr>
   )
 }
 
-function OfferAnalysisRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect }: RowRendererProps) {
+function OfferAnalysisRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline }: RowRendererProps) {
   // Build offer chain: initial offer → retries → projected ladder
   const retries = lead.offerRetries ?? []
   // initialOffer: always the first offer sent to the vendor
@@ -1717,12 +1723,13 @@ function OfferAnalysisRow({ lead, onRowClick, onView, onEdit, onArchive, onDelet
       <ActionsCell
         lead={lead} onView={onView} onEdit={onEdit} onArchive={onArchive} onDelete={onDelete}
         checkAction={onCheck ? { icon: Calculator, title: "Calculate Offer", onClick: onCheck, loading: isChecking } : undefined}
+        extraActions={onRerunPipeline ? [{ icon: Rocket, title: "Re-run Pipeline (portal → comps → BMV)", onClick: onRerunPipeline, loading: isRerunningPipeline }] : undefined}
       />
     </tr>
   )
 }
 
-function AiConversationRow({ lead, onView, onEdit, onArchive, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
+function AiConversationRow({ lead, onView, onEdit, onArchive, onDelete, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline }: RowRendererProps) {
   const convState = (lead.conversationState ?? {}) as Record<string, any>
   const isComplete = !!convState.conversationComplete
   const messageCount = lead._count?.smsMessages ?? lead.smsMessages?.length ?? 0
@@ -1800,7 +1807,10 @@ function AiConversationRow({ lead, onView, onEdit, onArchive, onDelete, isSelect
           {isComplete ? "Complete" : messageCount > 0 ? "In Progress" : "Not Started"}
         </span>
       </Td>
-      <ActionsCell lead={lead} onView={onView} onEdit={onEdit} onArchive={onArchive} onDelete={onDelete} />
+      <ActionsCell
+        lead={lead} onView={onView} onEdit={onEdit} onArchive={onArchive} onDelete={onDelete}
+        extraActions={onRerunPipeline ? [{ icon: Rocket, title: "Re-run Pipeline (portal → comps → BMV)", onClick: onRerunPipeline, loading: isRerunningPipeline }] : undefined}
+      />
     </tr>
   )
 }
@@ -1857,7 +1867,7 @@ const PHOTO_SCORE_COLOURS: Record<string, string> = {
   poor:                "bg-red-100 text-red-800",
 }
 
-function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, onCheck, isChecking, onOpenDetail, isSelected, onToggleSelect }: RowRendererProps) {
+function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, onCheck, isChecking, onOpenDetail, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline }: RowRendererProps) {
   const status       = lead.photoAnalysisStatus ?? "pending"
   const conditionKey = lead.photoConditionOverride
     ?? conditionFromPhotoScore(lead.photoConditionScore ?? null)
@@ -1958,9 +1968,10 @@ function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, onCheck, 
         onArchive={onArchive}
         onDelete={onDelete}
         checkAction={onCheck ? { icon: Sparkles, title: "Run AI Analysis", onClick: onCheck, loading: isChecking } : undefined}
-        extraActions={onOpenDetail ? [
-          { icon: FileText, title: "Open Full Lead Detail", onClick: onOpenDetail },
-        ] : undefined}
+        extraActions={[
+          ...(onOpenDetail ? [{ icon: FileText, title: "Open Full Lead Detail", onClick: onOpenDetail }] : []),
+          ...(onRerunPipeline ? [{ icon: Rocket, title: "Re-run Pipeline (portal → comps → BMV)", onClick: onRerunPipeline, loading: isRerunningPipeline }] : []),
+        ]}
       />
     </tr>
   )
@@ -1982,6 +1993,8 @@ interface RowRendererProps {
   onOpenDetail?: () => void
   isSelected?: boolean
   onToggleSelect?: () => void
+  onRerunPipeline?: () => void
+  isRerunningPipeline?: boolean
 }
 
 function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
@@ -2263,6 +2276,7 @@ export function VendorLeadsTable() {
   const [activeTab, setActiveTab] = useState<TabId>("ai-conversation")
   const [mapLead, setMapLead] = useState<VendorLead | null>(null)
   const [checkingIds, setCheckingIds] = useState<Set<string>>(new Set())
+  const [rerunningIds, setRerunningIds] = useState<Set<string>>(new Set())
   const [detailModal, setDetailModal] = useState<{ lead: VendorLead; reason: string; urgency: "high" | "medium" | "low" } | null>(null)
   const [aiConvoModalLead, setAiConvoModalLead] = useState<VendorLead | null>(null)
   const [photoModalLead, setPhotoModalLead] = useState<VendorLead | null>(null)
@@ -2403,6 +2417,28 @@ export function VendorLeadsTable() {
       toast.error(err.message || "Action failed")
     } finally {
       setCheckingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(leadId)
+        return next
+      })
+    }
+  }, [fetchLeads])
+
+  // ── Re-run full pipeline ──────────────────────────────────────────────────
+  const handleRerunPipeline = useCallback(async (leadId: string) => {
+    setRerunningIds((prev) => new Set(prev).add(leadId))
+    try {
+      const res = await fetch(`/api/vendor-leads/${leadId}/rerun-pipeline`, { method: "POST" })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(body.error || `Pipeline failed (${res.status})`)
+      }
+      toast.success("Pipeline complete — portal, comps & BMV updated")
+      await fetchLeads()
+    } catch (err: any) {
+      toast.error(err.message || "Pipeline re-run failed")
+    } finally {
+      setRerunningIds((prev) => {
         const next = new Set(prev)
         next.delete(leadId)
         return next
@@ -2818,6 +2854,8 @@ export function VendorLeadsTable() {
                   onOpenDetail: activeTab === "photo-analysis" ? () => setPhotoDetailLead(lead) : undefined,
                   isSelected: selectedIds.has(lead.id),
                   onToggleSelect: () => handleToggleSelect(lead.id),
+                  onRerunPipeline: () => handleRerunPipeline(lead.id),
+                  isRerunningPipeline: rerunningIds.has(lead.id),
                 }
 
                 switch (activeTab) {
