@@ -24,14 +24,24 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    // Allow internal service calls (e.g. auto-trigger pipeline) to bypass session auth.
+    // The caller must supply the X-Internal-Service-Token header matching INTERNAL_SERVICE_SECRET.
+    const internalToken = request.headers.get("x-internal-service-token")
+    const isInternalCall =
+      internalToken &&
+      process.env.INTERNAL_SERVICE_SECRET &&
+      internalToken === process.env.INTERNAL_SERVICE_SECRET
 
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    if (!isInternalCall) {
+      const session = await getServerSession(authOptions)
 
-    if (session.user.role !== "admin" && session.user.role !== "sourcer") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      if (!session) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      }
+
+      if (session.user.role !== "admin" && session.user.role !== "sourcer") {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
     }
 
     // Fetch the vendor lead
