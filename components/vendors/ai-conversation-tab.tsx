@@ -20,6 +20,8 @@ import {
   Sparkles,
   Edit3,
   Loader2,
+  UserCheck,
+  UserX,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -182,6 +184,9 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
   const [showPrompt, setShowPrompt] = useState(false)
   const [promptCopied, setPromptCopied] = useState(false)
   const [isLive, setIsLive] = useState(false)
+  // AI Handover state
+  const [aiPaused, setAiPaused] = useState(false)
+  const [handoverLoading, setHandoverLoading] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastMessageCountRef = useRef(lead.smsMessages?.length ?? 0)
@@ -197,6 +202,33 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
   useEffect(() => {
     setMessages(lead.smsMessages || [])
   }, [lead.smsMessages])
+
+  // Load AI handover state
+  useEffect(() => {
+    fetch(`/api/vendor-leads/${lead.id}/handover`)
+      .then(r => r.json())
+      .then(d => setAiPaused(d.aiPaused ?? false))
+      .catch(() => {/* ignore */})
+  }, [lead.id])
+
+  const toggleHandover = async () => {
+    setHandoverLoading(true)
+    try {
+      const res = await fetch(`/api/vendor-leads/${lead.id}/handover`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paused: !aiPaused }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed")
+      setAiPaused(data.aiPaused)
+      toast.success(data.message)
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update handover status")
+    } finally {
+      setHandoverLoading(false)
+    }
+  }
 
   const convState = (lead.conversationState || {}) as ConversationState
   const isComplete = convState.conversationComplete
@@ -329,6 +361,45 @@ export function AiConversationTab({ lead, onUpdate }: AiConversationTabProps) {
 
   return (
     <div className="space-y-4">
+
+      {/* ── AI Handover banner ────────────────────────────────────────────── */}
+      {aiPaused ? (
+        <div className="flex items-center gap-3 rounded-xl border border-orange-300 bg-orange-50 px-4 py-2.5">
+          <UserCheck className="h-4 w-4 text-orange-600 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-orange-800">You are in control — AI is paused</p>
+            <p className="text-[10px] text-orange-600">Inbound replies from the vendor will be stored but AI will not auto-respond. Reply manually below.</p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={toggleHandover}
+            disabled={handoverLoading}
+            className="text-xs h-7 shrink-0 border-orange-300 text-orange-700 hover:bg-orange-100"
+          >
+            {handoverLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Bot className="h-3 w-3 mr-1" />}
+            Resume AI
+          </Button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2">
+          <Bot className="h-4 w-4 text-blue-500 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-gray-700">AI is handling this conversation</p>
+            <p className="text-[10px] text-gray-400">Inbound replies will trigger automatic AI responses via {selectedChannel === "whatsapp" ? "WhatsApp" : "SMS"}.</p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={toggleHandover}
+            disabled={handoverLoading}
+            className="text-xs h-7 shrink-0 border-gray-300 text-gray-600 hover:bg-white"
+          >
+            {handoverLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <UserCheck className="h-3 w-3 mr-1" />}
+            Take Over
+          </Button>
+        </div>
+      )}
 
       {/* ── Channel banner (when WhatsApp active) ─────────────────────── */}
       {selectedChannel === "whatsapp" && (

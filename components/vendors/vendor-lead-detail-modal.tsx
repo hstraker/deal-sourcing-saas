@@ -84,8 +84,9 @@ import { LeadPhotoStrip } from "./lead-photo-strip"
 import { SourcingFeePanel } from "./sourcing-fee-panel"
 import { InvestorMatchPanel } from "./investor-match-panel"
 import { LeadNotesTab } from "./lead-notes-tab"
+import { RefurbLineItemsTab } from "./refurb-line-items-tab"
 import { useSession } from "next-auth/react"
-import { StickyNote } from "lucide-react"
+import { StickyNote, Hammer, Zap } from "lucide-react"
 
 interface SMSMessage {
   id: string
@@ -210,6 +211,10 @@ export interface VendorLead {
   photoConditionScore?: number | null
   photoConditionOverride?: string | null
   photoAnalysisCompletedAt?: string | null
+  // EPC
+  epcRating?: string | null
+  epcScore?: number | null
+  epcInspectionDate?: string | Date | null
 }
 
 interface VendorLeadDetailModalProps {
@@ -217,7 +222,7 @@ interface VendorLeadDetailModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onUpdate?: () => void
-  initialTab?: "details" | "portal-check" | "comparables" | "ai-conversation" | "activity" | "deal-pl" | "photo-analysis" | "notes"
+  initialTab?: "details" | "portal-check" | "comparables" | "ai-conversation" | "activity" | "deal-pl" | "photo-analysis" | "notes" | "refurb"
   alertReason?: string
   alertUrgency?: "high" | "medium" | "low"
 }
@@ -674,6 +679,7 @@ export function VendorLeadDetailModal({
     confirmLabel: string; onConfirm: () => void;
   }>({ open: false, title: "", description: "", variant: "default", confirmLabel: "Confirm", onConfirm: () => {} })
   const [isCalculating, setIsCalculating] = useState(false)
+  const [isFetchingEpc, setIsFetchingEpc] = useState(false)
   const [isGeneratingPack, setIsGeneratingPack] = useState(false)
   const [isFixingPostcode, setIsFixingPostcode] = useState(false)
   const [bmvResult, setBmvResult] = useState<any>(null)
@@ -695,6 +701,9 @@ export function VendorLeadDetailModal({
     motivationScore: leadData.motivationScore ? Number(leadData.motivationScore) : null,
     estimatedMonthlyRent: leadData.estimatedMonthlyRent ? Number(leadData.estimatedMonthlyRent) : null,
     estimatedAnnualRent: leadData.estimatedAnnualRent ? Number(leadData.estimatedAnnualRent) : null,
+    epcRating: leadData.epcRating ?? null,
+    epcScore: leadData.epcScore != null ? Number(leadData.epcScore) : null,
+    epcInspectionDate: leadData.epcInspectionDate ?? null,
     reservedAt: leadData.reservedAt ? new Date(leadData.reservedAt) : null,
     reservation: leadData.reservation
       ? {
@@ -1156,6 +1165,31 @@ export function VendorLeadDetailModal({
     }
   }
 
+  const handleFetchEpc = async () => {
+    setIsFetchingEpc(true)
+    try {
+      const res = await fetch(`/api/vendor-leads/${lead.id}/fetch-epc`, { method: "POST" })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "EPC fetch failed")
+      if (!data.found) {
+        toast.warning(data.message || "No EPC records found for this postcode")
+        return
+      }
+      // Refresh lead data so EPC fields appear
+      const freshRes = await fetch(`/api/vendor-leads/${lead.id}`)
+      if (freshRes.ok) {
+        const freshData = await freshRes.json()
+        setFullLead(prev => prev ? { ...prev, ...transformLead(freshData) } : prev)
+      }
+      toast.success(data.message)
+      onUpdate?.()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to fetch EPC data")
+    } finally {
+      setIsFetchingEpc(false)
+    }
+  }
+
   // Derive land registry status from fresh calculation result OR from stored validation notes
   const landRegistryUsed: boolean =
     bmvResult?.landRegistryUsed === true ||
@@ -1366,7 +1400,7 @@ export function VendorLeadDetailModal({
           onValueChange={setActiveTab}
           className="flex flex-col flex-1 min-h-0 w-full"
         >
-          <TabsList className="grid w-full grid-cols-8 h-auto p-1 gap-0.5 bg-gray-50 flex-shrink-0">
+          <TabsList className="grid w-full grid-cols-9 h-auto p-1 gap-0.5 bg-gray-50 flex-shrink-0">
 
             {/* 1 — Lead Details */}
             <TabsTrigger
@@ -1472,6 +1506,17 @@ export function VendorLeadDetailModal({
             >
               <StickyNote className="h-3.5 w-3.5" />
               <span>Notes</span>
+            </TabsTrigger>
+
+            {/* 9 — Refurb */}
+            <TabsTrigger
+              value="refurb"
+              className="relative flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
+                hover:bg-gray-50 hover:text-amber-600 hover:shadow-sm
+                data-[state=active]:bg-white data-[state=active]:text-amber-600 data-[state=active]:shadow-sm"
+            >
+              <Hammer className="h-3.5 w-3.5" />
+              <span>Refurb</span>
             </TabsTrigger>
 
           </TabsList>
@@ -2540,6 +2585,63 @@ export function VendorLeadDetailModal({
               </div>
             )}
 
+            {/* ── EPC Card ─────────────────────────────────────────────────── */}
+            <div className="ds-card p-4">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-yellow-500" />
+                  <span className="text-sm font-semibold text-gray-900">Energy Performance Certificate (EPC)</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleFetchEpc}
+                  disabled={isFetchingEpc || !currentLead.propertyPostcode}
+                  className="h-7 text-xs gap-1.5"
+                  title={!currentLead.propertyPostcode ? "Add a postcode first" : "Fetch EPC from PropertyData"}
+                >
+                  {isFetchingEpc
+                    ? <><Loader2 className="h-3 w-3 animate-spin" /> Fetching…</>
+                    : <><Zap className="h-3 w-3" /> Fetch EPC</>
+                  }
+                </Button>
+              </div>
+
+              {currentLead.epcRating ? (
+                <div className="flex items-center gap-4">
+                  {/* Rating badge */}
+                  <div className={cn(
+                    "flex items-center justify-center h-14 w-14 rounded-xl text-2xl font-bold shrink-0 border-2",
+                    currentLead.epcRating === "A" ? "bg-green-100 text-green-800 border-green-300" :
+                    currentLead.epcRating === "B" ? "bg-emerald-100 text-emerald-800 border-emerald-300" :
+                    currentLead.epcRating === "C" ? "bg-lime-100 text-lime-800 border-lime-300" :
+                    currentLead.epcRating === "D" ? "bg-yellow-100 text-yellow-800 border-yellow-300" :
+                    currentLead.epcRating === "E" ? "bg-orange-100 text-orange-800 border-orange-300" :
+                    "bg-red-100 text-red-800 border-red-300"
+                  )}>
+                    {currentLead.epcRating}
+                  </div>
+                  <div className="space-y-1 text-xs text-gray-600">
+                    <p><span className="text-gray-400">Score:</span> <span className="font-semibold">{currentLead.epcScore}/100</span></p>
+                    {currentLead.epcInspectionDate && (
+                      <p><span className="text-gray-400">Inspected:</span> {new Date(currentLead.epcInspectionDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
+                    )}
+                    {["D", "E", "F", "G"].includes(currentLead.epcRating) && (
+                      <p className="text-amber-600 flex items-center gap-1 mt-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        D or below may affect mortgage lending
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 text-xs text-gray-400">
+                  <Zap className="h-5 w-5 text-gray-200 shrink-0" />
+                  <span>No EPC data yet. Click "Fetch EPC" to look up the rating for this postcode.</span>
+                </div>
+              )}
+            </div>
+
             <VendorComparablesTab
               vendorLeadId={lead.id}
               askingPrice={typeof currentLead.askingPrice === 'number' ? currentLead.askingPrice : (currentLead.askingPrice ? Number(currentLead.askingPrice) : undefined)}
@@ -2643,6 +2745,17 @@ export function VendorLeadDetailModal({
               vendorLeadId={currentLead.id}
               currentUserId={session?.user?.id ?? null}
               currentUserRole={session?.user?.role ?? null}
+            />
+          </TabsContent>
+
+          {/* 9 — Refurb cost breakdown */}
+          <TabsContent value="refurb" className="flex-1 overflow-y-auto min-h-0 pt-2 pb-6 px-0.5">
+            <RefurbLineItemsTab
+              vendorLeadId={currentLead.id}
+              condition={currentLead.condition}
+              bedrooms={currentLead.bedrooms}
+              propertyType={currentLead.propertyType}
+              photoAnalysisNotes={undefined}
             />
           </TabsContent>
         </Tabs>

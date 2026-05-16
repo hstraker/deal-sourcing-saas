@@ -70,6 +70,40 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // ── AI Handover check ─────────────────────────────────────────────────────
+    // If a sourcer has taken over the conversation, skip AI processing entirely.
+    // The message is still stored by the AI agent's storeInboundMessage helper,
+    // but no automatic reply is generated — the sourcer replies manually.
+    const handoverRows = await prisma.$queryRaw<Array<{ ai_paused: boolean }>>`
+      SELECT ai_paused FROM vendor_leads WHERE id = ${lead.id} LIMIT 1
+    `
+    const aiPaused = handoverRows[0]?.ai_paused ?? false
+
+    if (aiPaused) {
+      console.log(`[Webhook] AI paused for lead ${lead.id} — storing message only, no auto-reply`)
+      // Store the inbound message in the DB without triggering AI response
+      await prisma.sMSMessage.create({
+        data: {
+          vendorLeadId: lead.id,
+          messageSid: messageSid ?? `manual_${Date.now()}`,
+          direction: "inbound" as any,
+          messageBody,
+          status: "delivered" as any,
+          channel,
+          aiGenerated: false,
+        },
+      })
+      await prisma.vendorLead.update({
+        where: { id: lead.id },
+        data: { lastContactAt: new Date() },
+      })
+      return new Response(TWIML_EMPTY, {
+        status: 200,
+        headers: { "Content-Type": "text/xml" },
+      })
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     // Process inbound message with AI — reply on same channel
     await aiSMSAgent.processInboundMessage(lead.id, messageBody, fromNumber, channel)
 
