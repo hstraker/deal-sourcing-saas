@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { signIn } from "next-auth/react"
+import { signIn, getSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -30,7 +30,12 @@ export default function LoginPage() {
       if (result?.error) {
         setError(result.error)
       } else {
-        router.push("/dashboard")
+        const session = await getSession()
+        if (session?.user?.role === "investor") {
+          router.push("/investor/marketplace")
+        } else {
+          router.push("/dashboard")
+        }
         router.refresh()
       }
     } catch (err) {
