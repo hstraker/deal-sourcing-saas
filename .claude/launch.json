@@ -9,8 +9,8 @@
     },
     {
       "name": "mockup",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", "-p", "3333", ".claude/mockups"],
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["-e", "require('http').createServer((req,res)=>{const fs=require('fs'),path=require('path');const f=path.join('mockups',req.url==='/'?'manage-lead-options.html':req.url);fs.readFile(f,(e,d)=>{res.writeHead(e?404:200,{'Content-Type':'text/html'});res.end(e?'Not found':d)})}).listen(3333)"],
       "port": 3333
     }
   ]

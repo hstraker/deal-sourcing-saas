@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Manage Lead — Layout Options</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; }
+  .picker { display:flex; gap:0; background:#1e293b; padding:12px 20px; align-items:center; position:sticky; top:0; z-index:100; }
+  .picker h1 { color:#f8fafc; font-size:14px; font-weight:600; margin-right:20px; }
+  .pick-btn { padding:6px 16px; border:1px solid #334155; border-radius:6px; background:transparent; color:#94a3b8; font-size:12px; font-weight:500; cursor:pointer; transition:all .15s; }
+  .pick-btn.active { background:#2563eb; border-color:#2563eb; color:#fff; }
+  .pick-btn:not(.active):hover { border-color:#475569; color:#e2e8f0; }
+  .pick-btn + .pick-btn { margin-left:6px; }
+  .option { display:none; height:calc(100vh - 46px); }
+  .option.active { display:flex; }
+
+  /* OPTION A */
+  .a-shell { display:flex; width:100%; height:100%; }
+  .a-sidebar { width:240px; min-width:240px; background:#0f172a; display:flex; flex-direction:column; border-right:1px solid rgba(255,255,255,.07); }
+  .a-vendor { padding:20px 18px 16px; border-bottom:1px solid rgba(255,255,255,.07); }
+  .a-avatar { width:48px; height:48px; border-radius:14px; background:linear-gradient(135deg,#2563eb,#7c3aed); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:16px; margin-bottom:12px; }
+  .a-name { color:#f1f5f9; font-size:13px; font-weight:600; line-height:1.3; }
+  .a-phone { color:#60a5fa; font-size:11px; margin-top:2px; }
+  .a-email { color:#64748b; font-size:11px; margin-top:1px; }
+  .a-stage-row { padding:12px 18px; border-bottom:1px solid rgba(255,255,255,.07); }
+  .a-label { color:#475569; font-size:9px; letter-spacing:.08em; text-transform:uppercase; font-weight:600; margin-bottom:6px; }
+  .a-stage { display:flex; align-items:center; gap:7px; }
+  .a-dot { width:7px; height:7px; border-radius:50%; background:#3b82f6; }
+  .a-stage-text { color:#cbd5e1; font-size:11px; font-weight:500; }
+  .a-metrics { padding:12px 18px; border-bottom:1px solid rgba(255,255,255,.07); }
+  .a-metric { display:flex; justify-content:space-between; align-items:center; margin-bottom:7px; }
+  .a-metric:last-child { margin-bottom:0; }
+  .a-metric-label { color:#64748b; font-size:10px; }
+  .a-metric-val { color:#f1f5f9; font-size:10px; font-weight:600; }
+  .a-metric-val.green { color:#34d399; }
+  .a-metric-val.amber { color:#fbbf24; }
+  .a-nav { padding:10px; flex:1; overflow-y:auto; }
+  .a-nav-item { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:7px; color:#64748b; font-size:11px; font-weight:500; cursor:pointer; transition:all .12s; margin-bottom:2px; position:relative; }
+  .a-nav-item:hover { background:rgba(255,255,255,.05); color:#cbd5e1; }
+  .a-nav-item.active { background:#1e3a5f; color:#60a5fa; }
+  .a-nav-item .dot { width:5px; height:5px; border-radius:50%; position:absolute; right:10px; top:50%; transform:translateY(-50%); }
+  .a-actions { padding:14px 18px; border-top:1px solid rgba(255,255,255,.07); display:flex; flex-direction:column; gap:6px; }
+  .a-action-btn { display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:7px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); color:#94a3b8; font-size:10px; font-weight:500; cursor:pointer; text-decoration:none; transition:all .12s; }
+  .a-action-btn:hover { background:rgba(255,255,255,.08); color:#e2e8f0; }
+  .a-content { flex:1; display:flex; flex-direction:column; background:#f8fafc; overflow:hidden; }
+  .a-content-header { padding:16px 24px; background:#fff; border-bottom:1px solid #e2e8f0; }
+  .a-content-title { font-size:14px; font-weight:600; color:#0f172a; }
+  .a-content-sub { font-size:11px; color:#94a3b8; margin-top:2px; }
+  .a-content-body { flex:1; overflow-y:auto; padding:20px 24px; }
+  .form-card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:18px 20px; margin-bottom:14px; }
+  .form-section-label { font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#94a3b8; margin-bottom:14px; }
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+  .form-row.one { grid-template-columns:1fr; }
+  .form-row.three { grid-template-columns:1fr 1fr 1fr; }
+  .form-field label { display:block; font-size:10px; font-weight:600; color:#64748b; margin-bottom:4px; }
+  .form-field input, .form-field select, .form-field textarea { width:100%; border:1px solid #e2e8f0; border-radius:7px; padding:7px 10px; font-size:12px; color:#1e293b; background:#fff; outline:none; transition:border-color .12s; }
+  .form-field input:focus, .form-field select:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.08); }
+  .form-field textarea { resize:none; }
+  .a-footer { padding:14px 24px; background:#fff; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end; gap:8px; }
+  .btn { padding:8px 16px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid transparent; }
+  .btn-outline { background:#fff; border-color:#e2e8f0; color:#475569; }
+  .btn-primary { background:#2563eb; color:#fff; }
+
+  /* OPTION B */
+  .b-shell { display:flex; width:100%; height:100%; }
+  .b-left { width:280px; min-width:280px; background:#0f172a; display:flex; flex-direction:column; }
+  .b-hero { padding:24px 20px 20px; }
+  .b-avatar-wrap { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+  .b-avatar { width:52px; height:52px; border-radius:16px; flex-shrink:0; background:linear-gradient(135deg,#2563eb,#7c3aed); display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px; font-weight:700; }
+  .b-vendor-name { color:#f1f5f9; font-size:14px; font-weight:700; }
+  .b-vendor-sub { color:#64748b; font-size:11px; margin-top:2px; }
+  .b-stage-pill { display:inline-flex; align-items:center; gap:6px; background:rgba(59,130,246,.15); border:1px solid rgba(59,130,246,.3); border-radius:20px; padding:4px 10px; margin-bottom:16px; }
+  .b-stage-pill-dot { width:6px; height:6px; border-radius:50%; background:#3b82f6; }
+  .b-stage-pill-text { color:#93c5fd; font-size:10px; font-weight:600; }
+  .b-stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .b-stat { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:10px 12px; }
+  .b-stat-label { color:#475569; font-size:9px; text-transform:uppercase; letter-spacing:.06em; font-weight:600; margin-bottom:4px; }
+  .b-stat-val { color:#f1f5f9; font-size:14px; font-weight:700; }
+  .b-stat-val.green { color:#34d399; }
+  .b-stat-val.amber { color:#fbbf24; }
+  .b-divider { height:1px; background:rgba(255,255,255,.06); margin:16px 0; }
+  .b-contact { padding:0 20px 16px; }
+  .b-contact-item { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .b-contact-icon { font-size:12px; color:#475569; width:16px; }
+  .b-contact-text { color:#94a3b8; font-size:11px; }
+  .b-contact-text a { color:#60a5fa; text-decoration:none; }
+  .b-quick { padding:0 20px; margin-top:auto; padding-bottom:16px; display:flex; gap:6px; }
+  .b-qbtn { flex:1; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.05); color:#94a3b8; font-size:10px; font-weight:600; cursor:pointer; text-align:center; }
+  .b-right { flex:1; display:flex; flex-direction:column; background:#f8fafc; overflow:hidden; }
+  .b-tabbar { display:flex; background:#fff; border-bottom:1px solid #e2e8f0; padding:0 16px; overflow-x:auto; flex-shrink:0; }
+  .b-tab { display:flex; flex-direction:column; align-items:center; gap:3px; padding:12px 14px 10px; font-size:10px; font-weight:600; color:#94a3b8; cursor:pointer; border-bottom:2px solid transparent; transition:all .12s; white-space:nowrap; position:relative; }
+  .b-tab:hover { color:#475569; }
+  .b-tab.active { color:#2563eb; border-bottom-color:#2563eb; }
+  .b-tab .tab-dot { position:absolute; top:10px; right:8px; width:5px; height:5px; border-radius:50%; background:#ef4444; }
+  .b-tab .tab-dot.blue { background:#3b82f6; }
+  .b-tab .tab-dot.green { background:#22c55e; }
+  .b-content { flex:1; overflow-y:auto; padding:20px; }
+  .b-footer { padding:14px 20px; background:#fff; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end; gap:8px; }
+
+  /* OPTION C */
+  .c-shell { display:flex; flex-direction:column; width:100%; height:100%; }
+  .c-header { background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%); border-bottom:1px solid rgba(255,255,255,.08); padding:0 24px; flex-shrink:0; }
+  .c-header-top { display:flex; align-items:center; gap:16px; padding:16px 0 12px; border-bottom:1px solid rgba(255,255,255,.06); }
+  .c-avatar { width:44px; height:44px; border-radius:12px; flex-shrink:0; background:linear-gradient(135deg,#2563eb,#7c3aed); display:flex; align-items:center; justify-content:center; color:#fff; font-size:15px; font-weight:700; }
+  .c-vendor-info { flex:1; }
+  .c-vendor-name { color:#f8fafc; font-size:15px; font-weight:700; }
+  .c-vendor-addr { color:#64748b; font-size:11px; margin-top:1px; }
+  .c-header-badges { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .c-badge { padding:3px 10px; border-radius:20px; font-size:10px; font-weight:600; display:inline-flex; align-items:center; gap:5px; }
+  .c-badge.stage { background:rgba(59,130,246,.15); border:1px solid rgba(59,130,246,.3); color:#93c5fd; }
+  .c-badge.price { background:rgba(34,197,94,.1); border:1px solid rgba(34,197,94,.2); color:#86efac; }
+  .c-badge.bmv { background:rgba(251,191,36,.1); border:1px solid rgba(251,191,36,.2); color:#fde68a; }
+  .c-header-actions { display:flex; gap:8px; }
+  .c-hbtn { padding:6px 14px; border-radius:7px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06); color:#94a3b8; }
+  .c-hbtn.primary { background:#2563eb; border-color:#2563eb; color:#fff; }
+  .c-tabs { display:flex; padding-top:4px; overflow-x:auto; }
+  .c-tab { padding:10px 16px 9px; font-size:10px; font-weight:600; color:#475569; cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap; transition:all .12s; display:flex; align-items:center; gap:6px; }
+  .c-tab:hover { color:#94a3b8; }
+  .c-tab.active { color:#60a5fa; border-bottom-color:#3b82f6; }
+  .c-body { flex:1; display:flex; overflow:hidden; background:#f1f5f9; }
+  .c-sidebar { width:220px; min-width:220px; background:#fff; border-right:1px solid #e2e8f0; overflow-y:auto; padding:16px; }
+  .c-sidebar-section { margin-bottom:20px; }
+  .c-sidebar-title { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#94a3b8; margin-bottom:8px; }
+  .c-sidebar-item { display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-radius:6px; margin-bottom:2px; }
+  .c-sidebar-item label { font-size:10px; color:#64748b; }
+  .c-sidebar-item value { font-size:10px; font-weight:700; color:#1e293b; }
+  .c-sidebar-item value.green { color:#16a34a; }
+  .c-sidebar-item value.amber { color:#d97706; }
+  .c-main { flex:1; overflow-y:auto; padding:20px; }
+  .c-footer { padding:14px 24px; background:#fff; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end; gap:8px; }
+
+  /* Shared */
+  .section-badge { font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#94a3b8; margin-bottom:12px; display:block; }
+  .field { margin-bottom:10px; }
+  .field label { display:block; font-size:10px; font-weight:600; color:#64748b; margin-bottom:4px; }
+  .field input, .field select, .field textarea { width:100%; border:1px solid #e2e8f0; border-radius:7px; padding:7px 10px; font-size:12px; color:#1e293b; outline:none; transition:border-color .12s; background:#fff; }
+  .field input:focus, .field select:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.08); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  .card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:18px; margin-bottom:14px; }
+</style>
+</head>
+<body>
+
+<div class="picker">
+  <h1>Manage Lead — 3 Layout Options</h1>
+  <button class="pick-btn active" onclick="show('A',this)">Option A — Sidebar Nav</button>
+  <button class="pick-btn" onclick="show('B',this)">Option B — Split + Tabs</button>
+  <button class="pick-btn" onclick="show('C',this)">Option C — Dark Header</button>
+</div>
+
+<!-- OPTION A -->
+<div class="option active" id="opt-A">
+  <div class="a-shell">
+    <div class="a-sidebar">
+      <div class="a-vendor">
+        <div class="a-avatar">HL</div>
+        <div class="a-name">Henry Langdon Straker</div>
+        <div class="a-phone">+447595354573</div>
+        <div class="a-email">henrystraker@gmail.com</div>
+      </div>
+      <div class="a-stage-row">
+        <div class="a-label">Pipeline Stage</div>
+        <div class="a-stage"><div class="a-dot"></div><div class="a-stage-text">AI Conversation</div></div>
+      </div>
+      <div class="a-metrics">
+        <div class="a-label">Deal Metrics</div>
+        <div class="a-metric"><span class="a-metric-label">£ Asking</span><span class="a-metric-val">£86,000</span></div>
+        <div class="a-metric"><span class="a-metric-label">↑ Market Val.</span><span class="a-metric-val">£88,900</span></div>
+        <div class="a-metric"><span class="a-metric-label">↓ BMV</span><span class="a-metric-val amber">3.3%</span></div>
+        <div class="a-metric"><span class="a-metric-label">⌂ Rent</span><span class="a-metric-val">£877/mo</span></div>
+        <div class="a-metric"><span class="a-metric-label">% Yield</span><span class="a-metric-val green">12.2%</span></div>
+      </div>
+      <div class="a-nav">
+        <div class="a-label" style="padding:0 8px 6px">Sections</div>
+        <div class="a-nav-item active">👤 Lead Details</div>
+        <div class="a-nav-item">🛡 Due Diligence <span class="dot" style="background:#22c55e"></span></div>
+        <div class="a-nav-item">📊 Valuation <span class="dot" style="background:#ef4444"></span></div>
+        <div class="a-nav-item">💬 Outreach <span class="dot" style="background:#3b82f6"></span></div>
+        <div class="a-nav-item">📋 Deal Log</div>
+        <div class="a-nav-item">💰 Completion</div>
+        <div class="a-nav-item">📸 Photos</div>
+        <div class="a-nav-item">📝 Notes</div>
+        <div class="a-nav-item">🔨 Refurb</div>
+        <div class="a-nav-item">✨ AI Pack</div>
+      </div>
+      <div class="a-actions">
+        <a class="a-action-btn">📞 Call vendor</a>
+        <a class="a-action-btn">✉️ Send email</a>
+      </div>
+    </div>
+    <div class="a-content">
+      <div class="a-content-header">
+        <div class="a-content-title">Lead Details</div>
+        <div class="a-content-sub">30 Brookdale, Neath, SA11 1PB · 2 bed terraced</div>
+      </div>
+      <div class="a-content-body">
+        <div class="form-card">
+          <div class="form-section-label">Vendor Contact</div>
+          <div class="form-row"><div class="form-field"><label>Full Name *</label><input value="Henry Langdon Straker" /></div><div class="form-field"><label>Phone *</label><input value="+447595354573" /></div></div>
+          <div class="form-row one"><div class="form-field"><label>Email</label><input value="henrystraker@gmail.com" /></div></div>
+        </div>
+        <div class="form-card">
+          <div class="form-section-label">Property Details</div>
+          <div class="form-row one"><div class="form-field"><label>Address</label><textarea rows="2">30 Brookdale, Neath, SA11 1PB</textarea></div></div>
+          <div class="form-row three"><div class="form-field"><label>Type</label><input value="Terraced" /></div><div class="form-field"><label>Bedrooms</label><input type="number" value="2" /></div><div class="form-field"><label>Bathrooms</label><input type="number" value="1" /></div></div>
+          <div class="form-row"><div class="form-field"><label>Sq Footage</label><input type="number" value="675" /></div><div class="form-field"><label>Condition</label><select><option>Fair</option><option>Good</option><option>Needs Work</option></select></div></div>
+        </div>
+        <div class="form-card">
+          <div class="form-section-label">Pricing & Metrics</div>
+          <div class="form-row"><div class="form-field"><label>Asking Price (£)</label><input type="number" value="86000" /></div><div class="form-field"><label>Market Value (£)</label><input type="number" value="88900" /></div></div>
+          <div class="form-row"><div class="form-field"><label>Monthly Rent (£)</label><input type="number" value="877" /></div><div class="form-field"><label>Refurb Est. (£)</label><input type="number" value="20500" /></div></div>
+        </div>
+        <div class="form-card">
+          <div class="form-section-label">Seller Intelligence</div>
+          <div class="form-row"><div class="form-field"><label>Motivation (1–10)</label><input type="number" value="7" /></div><div class="form-field"><label>Urgency</label><select><option>Moderate</option><option>Urgent</option><option>Flexible</option></select></div></div>
+          <div class="form-row"><div class="form-field"><label>Reason for Selling</label><select><option>Relocation</option><option>Financial</option><option>Divorce</option></select></div><div class="form-field"><label>Timeline (days)</label><input type="number" value="60" /></div></div>
+        </div>
+        <div class="form-card">
+          <div class="form-section-label">Pipeline Stage</div>
+          <div class="form-row one"><div class="form-field"><label>Current Stage</label><select><option>AI Conversation</option><option>Deal Validation</option><option>Offer Sent</option></select></div></div>
+        </div>
+      </div>
+      <div class="a-footer"><button class="btn btn-outline">Cancel</button><button class="btn btn-primary">Save Changes</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- OPTION B -->
+<div class="option" id="opt-B">
+  <div class="b-shell">
+    <div class="b-left">
+      <div class="b-hero">
+        <div class="b-avatar-wrap"><div class="b-avatar">HL</div><div><div class="b-vendor-name">Henry Langdon Straker</div><div class="b-vendor-sub">Vendor · SA11 1PB</div></div></div>
+        <div class="b-stage-pill"><div class="b-stage-pill-dot"></div><div class="b-stage-pill-text">AI CONVERSATION</div></div>
+        <div class="b-stat-grid">
+          <div class="b-stat"><div class="b-stat-label">Asking</div><div class="b-stat-val">£86k</div></div>
+          <div class="b-stat"><div class="b-stat-label">Market Val</div><div class="b-stat-val">£88.9k</div></div>
+          <div class="b-stat"><div class="b-stat-label">BMV</div><div class="b-stat-val amber">3.3%</div></div>
+          <div class="b-stat"><div class="b-stat-label">Yield</div><div class="b-stat-val green">12.2%</div></div>
+        </div>
+      </div>
+      <div class="b-divider"></div>
+      <div class="b-contact">
+        <div class="b-contact-item"><span class="b-contact-icon">📞</span><span class="b-contact-text"><a>+447595354573</a></span></div>
+        <div class="b-contact-item"><span class="b-contact-icon">✉️</span><span class="b-contact-text">henrystraker@gmail.com</span></div>
+        <div class="b-contact-item"><span class="b-contact-icon">📍</span><span class="b-contact-text">30 Brookdale, Neath</span></div>
+        <div class="b-contact-item"><span class="b-contact-icon">🛏</span><span class="b-contact-text">2 bed · 1 bath · 675 sq ft</span></div>
+      </div>
+      <div class="b-divider"></div>
+      <div class="b-quick"><div class="b-qbtn">📞 Call</div><div class="b-qbtn">✉️ Email</div><div class="b-qbtn">🗺 Map</div></div>
+    </div>
+    <div class="b-right">
+      <div class="b-tabbar">
+        <div class="b-tab active">👤 Lead Details</div>
+        <div class="b-tab">🛡 Due Diligence<span class="tab-dot green"></span></div>
+        <div class="b-tab">📊 Valuation<span class="tab-dot"></span></div>
+        <div class="b-tab">💬 Outreach<span class="tab-dot blue"></span></div>
+        <div class="b-tab">📋 Deal Log</div>
+        <div class="b-tab">💰 Completion</div>
+        <div class="b-tab">📸 Photos</div>
+        <div class="b-tab">📝 Notes</div>
+        <div class="b-tab">🔨 Refurb</div>
+        <div class="b-tab">✨ AI Pack</div>
+      </div>
+      <div class="b-content">
+        <div class="card"><span class="section-badge">Vendor Contact</span><div class="grid2"><div class="field"><label>Full Name *</label><input value="Henry Langdon Straker" /></div><div class="field"><label>Phone *</label><input value="+447595354573" /></div></div><div class="field"><label>Email</label><input value="henrystraker@gmail.com" /></div></div>
+        <div class="card"><span class="section-badge">Property Details</span><div class="field"><label>Address</label><textarea rows="2">30 Brookdale, Neath, SA11 1PB</textarea></div><div class="grid3"><div class="field"><label>Type</label><input value="Terraced" /></div><div class="field"><label>Bedrooms</label><input type="number" value="2" /></div><div class="field"><label>Bathrooms</label><input type="number" value="1" /></div></div></div>
+        <div class="card"><span class="section-badge">Pricing</span><div class="grid2"><div class="field"><label>Asking Price (£)</label><input type="number" value="86000" /></div><div class="field"><label>Market Value (£)</label><input type="number" value="88900" /></div><div class="field"><label>Monthly Rent (£)</label><input type="number" value="877" /></div><div class="field"><label>Refurb Est. (£)</label><input type="number" value="20500" /></div></div></div>
+        <div class="card"><span class="section-badge">Seller Intelligence</span><div class="grid2"><div class="field"><label>Motivation (1–10)</label><input type="number" value="7" /></div><div class="field"><label>Urgency</label><select><option>Moderate</option></select></div><div class="field"><label>Reason</label><select><option>Relocation</option></select></div><div class="field"><label>Timeline (days)</label><input type="number" value="60" /></div></div></div>
+      </div>
+      <div class="b-footer"><button class="btn btn-outline">Cancel</button><button class="btn btn-primary">Save Changes</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- OPTION C -->
+<div class="option" id="opt-C">
+  <div class="c-shell">
+    <div class="c-header">
+      <div class="c-header-top">
+        <div class="c-avatar">HL</div>
+        <div class="c-vendor-info"><div class="c-vendor-name">Henry Langdon Straker</div><div class="c-vendor-addr">30 Brookdale, Neath, SA11 1PB · 2 bed terraced · 675 sq ft</div></div>
+        <div class="c-header-badges"><span class="c-badge stage">● AI Conversation</span><span class="c-badge price">£86,000</span><span class="c-badge bmv">3.3% BMV</span></div>
+        <div class="c-header-actions"><button class="c-hbtn">Cancel</button><button class="c-hbtn primary">Save Changes</button></div>
+      </div>
+      <div class="c-tabs">
+        <div class="c-tab active">👤 Lead Details</div>
+        <div class="c-tab">🛡 Due Diligence</div>
+        <div class="c-tab">📊 Valuation</div>
+        <div class="c-tab">💬 Outreach</div>
+        <div class="c-tab">📋 Deal Log</div>
+        <div class="c-tab">💰 Completion</div>
+        <div class="c-tab">📸 Photos</div>
+        <div class="c-tab">📝 Notes</div>
+        <div class="c-tab">🔨 Refurb</div>
+        <div class="c-tab">✨ AI Pack</div>
+      </div>
+    </div>
+    <div class="c-body">
+      <div class="c-sidebar">
+        <div class="c-sidebar-section">
+          <div class="c-sidebar-title">Deal Metrics</div>
+          <div class="c-sidebar-item"><label>Asking</label><value>£86,000</value></div>
+          <div class="c-sidebar-item"><label>Market Val.</label><value>£88,900</value></div>
+          <div class="c-sidebar-item"><label>BMV</label><value class="amber">3.3%</value></div>
+          <div class="c-sidebar-item"><label>Monthly Rent</label><value>£877</value></div>
+          <div class="c-sidebar-item"><label>Gross Yield</label><value class="green">12.2%</value></div>
+          <div class="c-sidebar-item"><label>Refurb Est.</label><value>£20,500</value></div>
+        </div>
+        <div class="c-sidebar-section">
+          <div class="c-sidebar-title">Property</div>
+          <div class="c-sidebar-item"><label>Type</label><value>Terraced</value></div>
+          <div class="c-sidebar-item"><label>Beds / Baths</label><value>2 / 1</value></div>
+          <div class="c-sidebar-item"><label>Sq Ft</label><value>675</value></div>
+          <div class="c-sidebar-item"><label>Condition</label><value>Fair</value></div>
+          <div class="c-sidebar-item"><label>EPC</label><value>D</value></div>
+        </div>
+        <div class="c-sidebar-section">
+          <div class="c-sidebar-title">Seller</div>
+          <div class="c-sidebar-item"><label>Motivation</label><value class="green">7/10</value></div>
+          <div class="c-sidebar-item"><label>Urgency</label><value>Moderate</value></div>
+          <div class="c-sidebar-item"><label>Reason</label><value>Relocation</value></div>
+        </div>
+      </div>
+      <div class="c-main">
+        <div class="card"><span class="section-badge">Vendor Contact</span><div class="grid2"><div class="field"><label>Full Name *</label><input value="Henry Langdon Straker" /></div><div class="field"><label>Phone *</label><input value="+447595354573" /></div></div><div class="field"><label>Email</label><input value="henrystraker@gmail.com" /></div></div>
+        <div class="card"><span class="section-badge">Property Details</span><div class="field"><label>Address</label><textarea rows="2">30 Brookdale, Neath, SA11 1PB</textarea></div><div class="grid3"><div class="field"><label>Type</label><input value="Terraced" /></div><div class="field"><label>Bedrooms</label><input type="number" value="2" /></div><div class="field"><label>Bathrooms</label><input type="number" value="1" /></div></div><div class="grid2"><div class="field"><label>Sq Footage</label><input type="number" value="675" /></div><div class="field"><label>Condition</label><select><option>Fair</option></select></div></div></div>
+        <div class="card"><span class="section-badge">Pricing & Metrics</span><div class="grid2"><div class="field"><label>Asking Price (£)</label><input type="number" value="86000" /></div><div class="field"><label>Market Value (£)</label><input type="number" value="88900" /></div><div class="field"><label>Monthly Rent (£)</label><input type="number" value="877" /></div><div class="field"><label>Refurb Est. (£)</label><input type="number" value="20500" /></div></div></div>
+        <div class="card"><span class="section-badge">Pipeline & Seller</span><div class="grid2"><div class="field"><label>Pipeline Stage</label><select><option>AI Conversation</option></select></div><div class="field"><label>Motivation (1–10)</label><input type="number" value="7" /></div><div class="field"><label>Urgency</label><select><option>Moderate</option></select></div><div class="field"><label>Reason</label><select><option>Relocation</option></select></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function show(id, btn) {
+    document.querySelectorAll('.option').forEach(el => el.classList.remove('active'))
+    document.querySelectorAll('.pick-btn').forEach(el => el.classList.remove('active'))
+    document.getElementById('opt-' + id).classList.add('active')
+    btn.classList.add('active')
+  }
+  document.querySelectorAll('.a-nav-item').forEach(item => {
+    item.addEventListener('click', function() {
+      document.querySelectorAll('.a-nav-item').forEach(i => i.classList.remove('active'))
+      this.classList.add('active')
+      document.querySelector('.a-content-title').textContent = this.textContent.trim()
+    })
+  })
+  document.querySelectorAll('.b-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.b-tab').forEach(t => t.classList.remove('active'))
+      this.classList.add('active')
+    })
+  })
+  document.querySelectorAll('.c-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.c-tab').forEach(t => t.classList.remove('active'))
+      this.classList.add('active')
+    })
+  })
+</script>
+</body>
+</html>
