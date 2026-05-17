@@ -91,6 +91,13 @@ export async function POST(
 
   if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 })
 
+  // Parse the validated monthly rent from validation notes (PropertyData figure takes priority)
+  const monthlyRentMatch = lead.validationNotes?.match(/Monthly Rent: £([\d,]+)/)
+  const validatedMonthlyRent = monthlyRentMatch
+    ? parseInt(monthlyRentMatch[1].replace(/,/g, ""))
+    : null
+  const monthlyRent = validatedMonthlyRent ?? (lead.estimatedMonthlyRent ? Number(lead.estimatedMonthlyRent) : null)
+
   // Fetch refurb line items total for context
   const refurbRows = await prisma.$queryRaw<Array<{ total: number }>>`
     SELECT COALESCE(SUM(estimated_cost), 0)::float AS total
@@ -105,8 +112,8 @@ export async function POST(
     : "discount to market value not yet calculated"
 
   const grossYield =
-    lead.estimatedMonthlyRent && lead.askingPrice
-      ? ((Number(lead.estimatedMonthlyRent) * 12) / Number(lead.askingPrice)) * 100
+    monthlyRent && lead.askingPrice
+      ? ((monthlyRent * 12) / Number(lead.askingPrice)) * 100
       : null
 
   const refurbFigure =
@@ -129,7 +136,7 @@ PROPERTY DATA:
 - Market Value: ${fmt(lead.estimatedMarketValue ? Number(lead.estimatedMarketValue) : null)}
 - Discount: ${bmvPct}
 - Our Offer: ${fmt(lead.offerAmount ? Number(lead.offerAmount) : null)}
-- Monthly Rent (est.): ${fmt(lead.estimatedMonthlyRent ? Number(lead.estimatedMonthlyRent) : null)}
+- Monthly Rent (est.): ${fmt(monthlyRent)}
 - Gross Yield (est.): ${grossYield ? pct(grossYield) : "not calculated"}
 - Refurbishment Cost (est.): ${refurbFigure ?? "not assessed"}
 - Vendor Motivation: ${lead.reasonForSelling ?? "not stated"} (score: ${lead.motivationScore ?? "n/a"}/10, urgency: ${lead.urgencyLevel ?? "unknown"})

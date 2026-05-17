@@ -2780,6 +2780,7 @@ export function VendorLeadDetailModal({
               estimatedMarketValue={currentLead.estimatedMarketValue}
               bmvScore={currentLead.bmvScore}
               estimatedMonthlyRent={currentLead.estimatedMonthlyRent}
+              validatedMonthlyRent={parseValidationNotes(currentLead.validationNotes)?.rentalYield?.monthlyRent ?? null}
               estimatedRefurbCost={currentLead.estimatedRefurbCost}
               bedrooms={currentLead.bedrooms}
               propertyType={currentLead.propertyType}

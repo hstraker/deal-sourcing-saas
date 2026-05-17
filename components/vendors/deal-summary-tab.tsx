@@ -20,6 +20,8 @@ interface DealSummaryTabProps {
   estimatedMarketValue: number | null
   bmvScore: number | null
   estimatedMonthlyRent: number | null
+  /** Rent figure from PropertyData validation — takes priority over estimatedMonthlyRent */
+  validatedMonthlyRent?: number | null
   estimatedRefurbCost: number | null
   bedrooms: number | null
   propertyType: string | null
@@ -69,11 +71,14 @@ export function DealSummaryTab({
   estimatedMarketValue,
   bmvScore,
   estimatedMonthlyRent,
+  validatedMonthlyRent,
   estimatedRefurbCost,
   bedrooms,
   propertyType,
   condition,
 }: DealSummaryTabProps) {
+  // Prefer the PropertyData-validated rent over the raw field
+  const monthlyRent = validatedMonthlyRent ?? estimatedMonthlyRent
   const [summary, setSummary]           = useState<string>("")
   const [generatedAt, setGeneratedAt]   = useState<string | null>(null)
   const [generating, setGenerating]     = useState(false)
@@ -119,8 +124,8 @@ export function DealSummaryTab({
   }
 
   const grossYield =
-    estimatedMonthlyRent && askingPrice
-      ? ((estimatedMonthlyRent * 12) / askingPrice) * 100
+    monthlyRent && askingPrice
+      ? ((monthlyRent * 12) / askingPrice) * 100
       : null
 
   if (loading) {
@@ -161,7 +166,7 @@ export function DealSummaryTab({
           />
           <MetricCard
             label="Monthly Rent"
-            value={fmt(estimatedMonthlyRent)}
+            value={fmt(monthlyRent)}
             icon={Home}
             accent="bg-violet-50 text-violet-600"
           />
