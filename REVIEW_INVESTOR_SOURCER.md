@@ -284,6 +284,8 @@ The `.env` has `STRIPE_SECRET_KEY="sk_test_..."` — placeholder only. The entir
 | 2026-05-16 | **AI Handover ("Take Over")** | `ai_paused` DB flag; SMS webhook skips AI when paused; "Take Over / Resume AI" banner with orange indicator in Conversation tab |
 | 2026-05-16 | **EPC auto-fetch** | `POST /api/vendor-leads/[id]/fetch-epc` via PropertyData; EPC card in Valuation tab with A–G colour badge, score, inspection date, mortgage risk warning for D or below |
 | 2026-05-16 | **Refurb line-item breakdown** | `refurb_line_items` table; CRUD API; Refurb tab (tab 9) with 12 categories, inline edit/delete, "Generate from Assessment" AI estimate, 10% contingency, category bar chart |
+| 2026-05-17 | **Investor portal — full build** | `/investor/marketplace`, `/investor/deals/[id]`, `/investor/dashboard`; role-based middleware; deal browsing + search + filters; register interest (no-Stripe reservation); favourites; dashboard with reservation status tracking |
+| 2026-05-17 | **Login role-based redirect** | Investors now land at `/investor/marketplace` after sign-in instead of bouncing off the sourcer dashboard |
 
 ---
 
@@ -291,18 +293,17 @@ The `.env` has `STRIPE_SECRET_KEY="sk_test_..."` — placeholder only. The entir
 
 | Priority | Feature | Est. Effort | Revenue Impact |
 |----------|---------|------------|----------------|
-| 🔴 1 | Investor-facing portal (marketplace + purchase flow) | 3–4 days | Very High — unblocks B2C revenue |
-| 🔴 2 | Stripe payment integration | 1 day | Very High — no revenue without this |
-| 🟠 3 | AI-generated deal summary (in investor pack) | 0.5 day | Medium (pack quality + sourcer time saving) |
-| 🟠 4 | Flood risk / mining subsidence check | 1 day | Medium (deal qualification, saves failed surveys) |
-| 🟠 5 | Floorplan upload + viewer | 0.5 day | Medium (pack completeness, investor trust) |
-| 🔵 6 | Bulk investor SMS when deal goes live | 0.5 day | Medium (speed to deal) |
-| 🔵 7 | Duplicate phone/address detection on lead creation | 0.5 day | Low-Medium (data quality) |
-| 🔵 8 | Post-completion feedback loop (DealOutcome) | 1 day | Low (long-term analytics) |
-| 🔵 9 | Street view embed in map modal | 0.5 day | Low (sourcer convenience) |
-| 🔵 10 | Auction workflow (fields + pipeline stage) | 2 days | Low (niche use case) |
-| 🔵 11 | Area demand / days-on-market from PropertyData | 0.5 day | Low (nice to have) |
+| 🔴 1 | Stripe payment integration | 1 day | Very High — investors can register interest but no fee collected yet |
+| 🟠 2 | AI-generated deal summary | 0.5 day | Medium — "Generate Summary" button sends deal metrics to Claude → editable 3-paragraph investment case for investor pack |
+| 🟠 3 | Flood risk / mining subsidence check | 1 day | Medium — Environment Agency API; flags Zone 2/3 in portal check scorecard |
+| 🟠 4 | Floorplan upload + viewer | 0.5 day | Medium — S3 upload with zoomable viewer; `DocumentType.floorplan` already in schema |
+| 🔵 5 | Bulk investor SMS when deal goes live | 0.5 day | Medium — one-click notify all matched investors when deal status hits `listed` |
+| 🔵 6 | Duplicate phone/address detection | 0.5 day | Low-Medium — warn on lead creation if phone/address already exists |
+| 🔵 7 | Post-completion feedback loop | 1 day | Low — `DealOutcome` record; actual purchase price, real yield, investor rating; follow-up email trigger |
+| 🔵 8 | Street view embed in map modal | 0.5 day | Low — Google Maps Street View iframe using property coordinates |
+| 🔵 9 | Auction workflow | 2 days | Low — auction-specific fields, `AUCTION_MONITORING` pipeline stage, pre-auction reminders |
+| 🔵 10 | Area demand / days-on-market | 0.5 day | Low — PropertyData `/demand` endpoint; surface in Comparables tab |
 
 ---
 
-*Last updated 2026-05-16 after Sprint 1 + Sprint 2 + Sprint 3. Original review: 2026-05-15.*
+*Last updated 2026-05-17 after Sprint 1 + Sprint 2 + Sprint 3 + Investor Portal. Original review: 2026-05-15.*

@@ -67,6 +67,7 @@ import {
   Send,
   TrendingDown,
   Camera,
+  Sparkles,
 } from "lucide-react"
 import { PipelineStage } from "@prisma/client"
 import { cn } from "@/lib/utils"
@@ -85,6 +86,7 @@ import { SourcingFeePanel } from "./sourcing-fee-panel"
 import { InvestorMatchPanel } from "./investor-match-panel"
 import { LeadNotesTab } from "./lead-notes-tab"
 import { RefurbLineItemsTab } from "./refurb-line-items-tab"
+import { DealSummaryTab } from "./deal-summary-tab"
 import { useSession } from "next-auth/react"
 import { StickyNote, Hammer, Zap } from "lucide-react"
 
@@ -222,7 +224,7 @@ interface VendorLeadDetailModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onUpdate?: () => void
-  initialTab?: "details" | "portal-check" | "comparables" | "ai-conversation" | "activity" | "deal-pl" | "photo-analysis" | "notes" | "refurb"
+  initialTab?: "details" | "portal-check" | "comparables" | "ai-conversation" | "activity" | "deal-pl" | "photo-analysis" | "notes" | "refurb" | "deal-summary"
   alertReason?: string
   alertUrgency?: "high" | "medium" | "low"
 }
@@ -1400,7 +1402,7 @@ export function VendorLeadDetailModal({
           onValueChange={setActiveTab}
           className="flex flex-col flex-1 min-h-0 w-full"
         >
-          <TabsList className="grid w-full grid-cols-9 h-auto p-1 gap-0.5 bg-gray-50 flex-shrink-0">
+          <TabsList className="grid w-full grid-cols-10 h-auto p-1 gap-0.5 bg-gray-50 flex-shrink-0">
 
             {/* 1 — Lead Details */}
             <TabsTrigger
@@ -1517,6 +1519,17 @@ export function VendorLeadDetailModal({
             >
               <Hammer className="h-3.5 w-3.5" />
               <span>Refurb</span>
+            </TabsTrigger>
+
+            {/* 10 — AI Deal Summary */}
+            <TabsTrigger
+              value="deal-summary"
+              className="relative flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
+                hover:bg-gray-50 hover:text-violet-600 hover:shadow-sm
+                data-[state=active]:bg-white data-[state=active]:text-violet-600 data-[state=active]:shadow-sm"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>AI Pack</span>
             </TabsTrigger>
 
           </TabsList>
@@ -2756,6 +2769,21 @@ export function VendorLeadDetailModal({
               bedrooms={currentLead.bedrooms}
               propertyType={currentLead.propertyType}
               photoAnalysisNotes={undefined}
+            />
+          </TabsContent>
+
+          {/* 10 — AI Deal Summary */}
+          <TabsContent value="deal-summary" className="flex-1 overflow-y-auto min-h-0 pt-2 pb-6 px-0.5">
+            <DealSummaryTab
+              vendorLeadId={currentLead.id}
+              askingPrice={currentLead.askingPrice}
+              estimatedMarketValue={currentLead.estimatedMarketValue}
+              bmvScore={currentLead.bmvScore}
+              estimatedMonthlyRent={currentLead.estimatedMonthlyRent}
+              estimatedRefurbCost={currentLead.estimatedRefurbCost}
+              bedrooms={currentLead.bedrooms}
+              propertyType={currentLead.propertyType}
+              condition={currentLead.condition}
             />
           </TabsContent>
         </Tabs>
