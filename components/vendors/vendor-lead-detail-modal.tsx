@@ -5,7 +5,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -87,7 +86,6 @@ import { InvestorMatchPanel } from "./investor-match-panel"
 import { LeadNotesTab } from "./lead-notes-tab"
 import { RefurbLineItemsTab } from "./refurb-line-items-tab"
 import { DealSummaryTab } from "./deal-summary-tab"
-import { LeadManagerPanel } from "./lead-manager-panel"
 import { useSession } from "next-auth/react"
 import { StickyNote, Hammer, Zap } from "lucide-react"
 
@@ -1218,183 +1216,281 @@ export function VendorLeadDetailModal({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className={cn(
-            "relative",
+            "p-0 gap-0 overflow-hidden flex",
             isFullscreen
-              ? "!fixed !left-2 !top-2 !right-2 !bottom-2 !translate-x-0 !translate-y-0 !max-w-none !w-auto !max-h-none !h-auto rounded-xl flex flex-col overflow-hidden"
-              : "max-w-6xl w-[95vw] h-[88vh] flex flex-col overflow-hidden"
+              ? "!fixed !left-2 !top-2 !right-2 !bottom-2 !translate-x-0 !translate-y-0 !max-w-none !w-auto !max-h-none !h-auto rounded-xl"
+              : "max-w-[1200px] w-[95vw] h-[90vh] rounded-xl"
           )}>
-          {/* ── Lead Manager Panel (Option A slide-over) ──────────────────── */}
-          {isEditing && (
-            <LeadManagerPanel
-              lead={currentLead}
-              editForm={editForm}
-              setEditForm={setEditForm}
-              onSave={handleSave}
-              onCancel={handleCancelEdit}
-              isSaving={isSaving}
-              onFixPostcode={handleFixPostcode}
-              isFixingPostcode={isFixingPostcode}
-            />
-          )}
-          <DialogHeader className="pb-2 border-b pr-16 flex-shrink-0">
-            {/* ── Row 1: stage pill + action buttons ──────────────────────────── */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-[#2563EB]/10 text-[#2563EB] border-0">
-                  {currentLead.pipelineStage.replace(/_/g, " ")}
-                </Badge>
-                {currentLead.dealId ? (
-                  <Badge className="text-[11px] bg-emerald-100 text-emerald-700 border border-emerald-300">
-                    <CheckCircle2 className="h-2.5 w-2.5 mr-1" />
-                    Deal Created
-                  </Badge>
-                ) : null}
-                {alertReason && (
-                  <TooltipProvider delayDuration={200}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Badge
-                          className={cn(
-                            "text-[11px] font-medium px-2.5 py-0.5 rounded-full border inline-flex items-center gap-1 cursor-help",
-                            alertUrgency === "high"
-                              ? "bg-red-50 text-red-700 border-red-200"
-                              : alertUrgency === "medium"
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
-                              : "bg-orange-50 text-orange-600 border-orange-200"
-                          )}
-                        >
-                          {alertUrgency === "high" ? (
-                            <AlertCircle className="h-3 w-3 shrink-0" />
-                          ) : alertUrgency === "medium" ? (
-                            <AlertTriangle className="h-3 w-3 shrink-0" />
-                          ) : (
-                            <ClockIcon className="h-3 w-3 shrink-0" />
-                          )}
-                          {alertUrgency === "high" ? "Action Required" : alertUrgency === "medium" ? "Needs Attention" : "Stale Lead"}
-                        </Badge>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="max-w-[260px] text-xs">
-                        <div className="flex items-start gap-1.5">
-                          <Bell className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-400" />
-                          <span>{alertReason}</span>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
+          <DialogDescription className="sr-only">Manage vendor lead details</DialogDescription>
+
+          {/* ═══ LEFT — Dark identity panel ═══════════════════════════════ */}
+          <div className="w-[272px] shrink-0 bg-[#0f172a] flex flex-col text-white overflow-y-auto">
+
+            {/* Avatar + contact */}
+            <div className="px-5 pt-6 pb-5 border-b border-white/10">
+              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-[#2563EB] to-violet-600 flex items-center justify-center text-lg font-bold shadow-lg mb-3">
+                {currentLead.vendorName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()}
               </div>
-
-              <div className="flex items-center gap-1.5">
-                {!isEditing ? (
-                  <>
-                    {/* Manage Lead button */}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleEdit}
-                      disabled={isSaving}
-                      className="h-8 text-xs gap-1.5 font-medium"
-                    >
-                      <Edit className="h-3.5 w-3.5" />
-                      Manage Lead
-                    </Button>
-
-                    {/* Delete — icon button, danger on hover */}
-                    <TooltipProvider delayDuration={300}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={handleDelete}
-                            disabled={isSaving || isDeleting}
-                            className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-                          >
-                            {isDeleting
-                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              : <Trash2 className="h-3.5 w-3.5" />}
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" className="text-xs">Delete lead</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-
-                    {/* Fullscreen toggle */}
-                    <TooltipProvider delayDuration={300}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={() => setIsFullscreen((v) => !v)}
-                            className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 transition-colors hover:border-gray-300 hover:text-gray-700"
-                          >
-                            {isFullscreen
-                              ? <Minimize2 className="h-3.5 w-3.5" />
-                              : <Maximize2 className="h-3.5 w-3.5" />}
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" className="text-xs">
-                          {isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </>
-                ) : null}
-              </div>
-            </div>
-
-            {/* ── Row 2: property address as title ────────────────────────────── */}
-            <DialogTitle className="mt-3 flex items-start gap-2 text-base font-semibold leading-snug">
-              <MapPin className="h-4 w-4 text-[#2563EB] shrink-0 mt-0.5" />
-              <span>{cleanPropertyAddress(currentLead.propertyAddress, currentLead.propertyPostcode)}</span>
-            </DialogTitle>
-
-            {/* ── Row 3: meta chips ────────────────────────────────────────────── */}
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              {currentLead.vendorName && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-md px-2 py-0.5">
-                  <User className="h-3 w-3" />
-                  {currentLead.vendorName}
-                </span>
-              )}
-              {currentLead.vendorPhone && (
-                <a
-                  href={`tel:${currentLead.vendorPhone}`}
-                  className="inline-flex items-center gap-1 text-[11px] font-medium bg-green-50 text-green-700 border border-green-200 rounded-md px-2 py-0.5 hover:bg-green-100 transition-colors"
-                >
-                  <Phone className="h-3 w-3" />
-                  {currentLead.vendorPhone}
+              <p className="font-semibold text-sm leading-snug">{currentLead.vendorName}</p>
+              <a href={`tel:${currentLead.vendorPhone}`} className="text-xs text-blue-300 hover:text-blue-200 transition-colors mt-0.5 block">
+                {currentLead.vendorPhone}
+              </a>
+              {currentLead.vendorEmail && (
+                <a href={`mailto:${currentLead.vendorEmail}`} className="text-xs text-slate-400 hover:text-slate-300 transition-colors mt-0.5 block truncate">
+                  {currentLead.vendorEmail}
                 </a>
               )}
-              {currentLead.askingPrice && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-green-50 text-green-800 border border-green-300 rounded-md px-2 py-0.5">
-                  <PoundSterling className="h-3 w-3" />
-                  {formatCurrency(currentLead.askingPrice)}
+            </div>
+
+            {/* Pipeline stage */}
+            <div className="px-5 py-3 border-b border-white/10">
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-2">Pipeline</p>
+              <div className="flex items-center gap-2">
+                <span className={cn("h-2 w-2 rounded-full shrink-0", (() => {
+                  const s = currentLead.pipelineStage
+                  if (s.includes("COMPLETED")) return "bg-green-500"
+                  if (s.includes("OFFER")) return "bg-violet-500"
+                  if (s.includes("CONVERSATION")) return "bg-blue-500"
+                  if (s.includes("VALIDATION") || s.includes("VALUATION")) return "bg-amber-500"
+                  if (s.includes("NEGOTIATION")) return "bg-orange-500"
+                  if (s.includes("SOLICITOR") || s.includes("LOCKOUT")) return "bg-teal-500"
+                  return "bg-gray-500"
+                })())} />
+                <span className="text-xs font-medium text-slate-200">
+                  {currentLead.pipelineStage.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}
                 </span>
-              )}
-              {currentLead.bmvScore !== null && (
-                <span className={cn(
-                  "inline-flex items-center gap-1 text-[11px] font-semibold rounded-md px-2 py-0.5 border",
-                  Number(currentLead.bmvScore) >= 15
-                    ? "bg-emerald-50 text-emerald-800 border-emerald-300"
-                    : "bg-red-50 text-red-700 border-red-200"
-                )}>
-                  <TrendingUp className="h-3 w-3" />
-                  {Number(currentLead.bmvScore).toFixed(1)}% BMV
-                </span>
-              )}
-              {currentLead.validationPassed !== null && (
-                <span className={cn(
-                  "inline-flex items-center gap-1 text-[11px] font-medium rounded-md px-2 py-0.5 border",
-                  currentLead.validationPassed
-                    ? "bg-green-50 text-green-700 border-green-200"
-                    : "bg-red-50 text-red-600 border-red-200"
-                )}>
-                  {currentLead.validationPassed
-                    ? <CheckCircle2 className="h-3 w-3" />
-                    : <XCircle className="h-3 w-3" />}
-                  {currentLead.validationPassed ? "Validated" : "Not Validated"}
-                </span>
+              </div>
+            </div>
+
+            {/* 2×2 Stat grid */}
+            <div className="px-5 py-4 border-b border-white/10">
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-3">Deal Metrics</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-lg bg-white/5 border border-white/10 p-2.5">
+                  <p className="text-[10px] text-slate-500 mb-1">Asking</p>
+                  <p className="text-sm font-bold text-white">
+                    {currentLead.askingPrice ? `£${Number(currentLead.askingPrice).toLocaleString()}` : "—"}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-white/5 border border-white/10 p-2.5">
+                  <p className="text-[10px] text-slate-500 mb-1">Market Val.</p>
+                  <p className="text-sm font-bold text-white">
+                    {currentLead.estimatedMarketValue ? `£${Number(currentLead.estimatedMarketValue).toLocaleString()}` : "—"}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-white/5 border border-white/10 p-2.5">
+                  <p className="text-[10px] text-slate-500 mb-1">BMV</p>
+                  <p className={cn("text-sm font-bold",
+                    currentLead.bmvScore && Number(currentLead.bmvScore) >= 15 ? "text-emerald-400" : "text-amber-400"
+                  )}>
+                    {currentLead.bmvScore ? `${Number(currentLead.bmvScore).toFixed(1)}%` : "—"}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-white/5 border border-white/10 p-2.5">
+                  <p className="text-[10px] text-slate-500 mb-1">Rent /mo</p>
+                  <p className="text-sm font-bold text-white">
+                    {parsedNotes?.rentalYield?.monthlyRent
+                      ? `£${parsedNotes.rentalYield.monthlyRent.toLocaleString()}`
+                      : currentLead.estimatedMonthlyRent
+                        ? `£${Number(currentLead.estimatedMonthlyRent).toLocaleString()}`
+                        : "—"}
+                  </p>
+                </div>
+              </div>
+              {currentLead.estimatedMonthlyRent && currentLead.askingPrice && (
+                <div className="mt-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 flex items-center justify-between">
+                  <span className="text-[10px] text-emerald-400">Gross Yield</span>
+                  <span className="text-sm font-bold text-emerald-400">
+                    {(((parsedNotes?.rentalYield?.monthlyRent ?? Number(currentLead.estimatedMonthlyRent)) * 12 / Number(currentLead.askingPrice)) * 100).toFixed(1)}%
+                  </span>
+                </div>
               )}
             </div>
-          </DialogHeader>
+
+            {/* Property summary */}
+            {(currentLead.propertyAddress || currentLead.bedrooms) && (
+              <div className="px-5 py-3 border-b border-white/10 space-y-1.5">
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest">Property</p>
+                {currentLead.propertyAddress && (
+                  <div className="flex items-start gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 text-slate-500 mt-0.5 shrink-0" />
+                    <p className="text-xs text-slate-300 leading-snug">
+                      {cleanPropertyAddress(currentLead.propertyAddress, currentLead.propertyPostcode)}
+                    </p>
+                  </div>
+                )}
+                <div className="flex items-center gap-3 text-slate-400 text-xs flex-wrap">
+                  {currentLead.bedrooms && (
+                    <span className="flex items-center gap-1">
+                      <BedDouble className="h-3 w-3" /> {currentLead.bedrooms} bed
+                    </span>
+                  )}
+                  {currentLead.bathrooms && (
+                    <span className="flex items-center gap-1">
+                      <Bath className="h-3 w-3" /> {currentLead.bathrooms} bath
+                    </span>
+                  )}
+                  {currentLead.propertyType && (
+                    <span className="capitalize">{currentLead.propertyType}</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Validation status */}
+            {currentLead.validationPassed !== null && (
+              <div className="px-5 py-3 border-b border-white/10">
+                <div className={cn(
+                  "flex items-center gap-2 rounded-lg px-3 py-2",
+                  currentLead.validationPassed
+                    ? "bg-green-500/10 border border-green-500/20"
+                    : "bg-red-500/10 border border-red-500/20"
+                )}>
+                  {currentLead.validationPassed
+                    ? <CheckCircle2 className="h-3.5 w-3.5 text-green-400 shrink-0" />
+                    : <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />}
+                  <span className={cn("text-xs font-medium",
+                    currentLead.validationPassed ? "text-green-400" : "text-red-400"
+                  )}>
+                    {currentLead.validationPassed ? "Deal Validated" : "Not Validated"}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Quick actions */}
+            <div className="px-5 py-4 space-y-2">
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-2">Quick Actions</p>
+              <a
+                href={`tel:${currentLead.vendorPhone}`}
+                className="flex items-center gap-2 w-full rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white transition-all"
+              >
+                <Phone className="h-3.5 w-3.5 text-green-400" />
+                Call vendor
+              </a>
+              {currentLead.vendorEmail && (
+                <a
+                  href={`mailto:${currentLead.vendorEmail}`}
+                  className="flex items-center gap-2 w-full rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white transition-all"
+                >
+                  <Mail className="h-3.5 w-3.5 text-blue-400" />
+                  Send email
+                </a>
+              )}
+            </div>
+
+            {/* Manage Lead / Save controls — pinned to bottom */}
+            <div className="mt-auto px-5 py-4 border-t border-white/10 space-y-1.5">
+              {!isEditing ? (
+                <Button
+                  size="sm"
+                  className="w-full h-9 text-xs gap-2 bg-[#2563EB] hover:bg-blue-600 text-white font-medium"
+                  onClick={() => { handleEdit(); setActiveTab("details") }}
+                >
+                  <Edit className="h-3.5 w-3.5" />
+                  Manage Lead
+                </Button>
+              ) : (
+                <div className="space-y-1.5">
+                  <Button
+                    size="sm"
+                    className="w-full h-9 text-xs gap-2 bg-[#2563EB] hover:bg-blue-600 text-white font-medium"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                  >
+                    {isSaving
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : <Save className="h-3.5 w-3.5" />}
+                    Save Changes
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="w-full h-8 text-xs text-slate-400 hover:text-white hover:bg-white/10"
+                    onClick={handleCancelEdit}
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ═══ RIGHT — Workspace ══════════════════════════════════════════ */}
+          <div className="flex-1 flex flex-col min-h-0 min-w-0">
+          {/* Slim right-panel header */}
+          <div className="shrink-0 flex items-center justify-between gap-2 px-4 py-3 border-b border-gray-200 pr-14">
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <DialogTitle className="text-sm font-semibold text-gray-900 leading-snug truncate max-w-sm">
+                {cleanPropertyAddress(currentLead.propertyAddress, currentLead.propertyPostcode)}
+              </DialogTitle>
+              {currentLead.dealId && (
+                <Badge className="text-[10px] shrink-0 bg-emerald-100 text-emerald-700 border border-emerald-300">
+                  <CheckCircle2 className="h-2.5 w-2.5 mr-1" />
+                  Deal Created
+                </Badge>
+              )}
+              {alertReason && (
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge className={cn(
+                        "text-[10px] shrink-0 font-medium px-2 py-0.5 rounded-full border inline-flex items-center gap-1 cursor-help",
+                        alertUrgency === "high" ? "bg-red-50 text-red-700 border-red-200"
+                          : alertUrgency === "medium" ? "bg-amber-50 text-amber-700 border-amber-200"
+                          : "bg-orange-50 text-orange-600 border-orange-200"
+                      )}>
+                        {alertUrgency === "high" ? <AlertCircle className="h-3 w-3 shrink-0" />
+                          : alertUrgency === "medium" ? <AlertTriangle className="h-3 w-3 shrink-0" />
+                          : <ClockIcon className="h-3 w-3 shrink-0" />}
+                        {alertUrgency === "high" ? "Action Required"
+                          : alertUrgency === "medium" ? "Needs Attention"
+                          : "Stale Lead"}
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-[260px] text-xs">
+                      <div className="flex items-start gap-1.5">
+                        <Bell className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-400" />
+                        <span>{alertReason}</span>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleDelete}
+                      disabled={isSaving || isDeleting}
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                    >
+                      {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">Delete lead</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setIsFullscreen((v) => !v)}
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                    >
+                      {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    {isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </div>
 
         <Tabs
           value={activeTab}
@@ -2786,7 +2882,8 @@ export function VendorLeadDetailModal({
               condition={currentLead.condition}
             />
           </TabsContent>
-        </Tabs>
+          </Tabs>
+        </div>{/* end right workspace */}
       </DialogContent>
     </Dialog>
 
