@@ -87,6 +87,7 @@ import { InvestorMatchPanel } from "./investor-match-panel"
 import { LeadNotesTab } from "./lead-notes-tab"
 import { RefurbLineItemsTab } from "./refurb-line-items-tab"
 import { DealSummaryTab } from "./deal-summary-tab"
+import { LeadManagerPanel } from "./lead-manager-panel"
 import { useSession } from "next-auth/react"
 import { StickyNote, Hammer, Zap } from "lucide-react"
 
@@ -1216,10 +1217,25 @@ export function VendorLeadDetailModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className={isFullscreen
-            ? "!fixed !left-2 !top-2 !right-2 !bottom-2 !translate-x-0 !translate-y-0 !max-w-none !w-auto !max-h-none !h-auto rounded-xl flex flex-col overflow-hidden"
-            : "max-w-6xl w-[95vw] h-[88vh] flex flex-col overflow-hidden"
-          }>
+        <DialogContent className={cn(
+            "relative",
+            isFullscreen
+              ? "!fixed !left-2 !top-2 !right-2 !bottom-2 !translate-x-0 !translate-y-0 !max-w-none !w-auto !max-h-none !h-auto rounded-xl flex flex-col overflow-hidden"
+              : "max-w-6xl w-[95vw] h-[88vh] flex flex-col overflow-hidden"
+          )}>
+          {/* ── Lead Manager Panel (Option A slide-over) ──────────────────── */}
+          {isEditing && (
+            <LeadManagerPanel
+              lead={currentLead}
+              editForm={editForm}
+              setEditForm={setEditForm}
+              onSave={handleSave}
+              onCancel={handleCancelEdit}
+              isSaving={isSaving}
+              onFixPostcode={handleFixPostcode}
+              isFixingPostcode={isFixingPostcode}
+            />
+          )}
           <DialogHeader className="pb-2 border-b pr-16 flex-shrink-0">
             {/* ── Row 1: stage pill + action buttons ──────────────────────────── */}
             <div className="flex items-center justify-between gap-3">
@@ -1271,21 +1287,17 @@ export function VendorLeadDetailModal({
               <div className="flex items-center gap-1.5">
                 {!isEditing ? (
                   <>
-                    {/* Edit — icon button */}
-                    <TooltipProvider delayDuration={300}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={handleEdit}
-                            disabled={isSaving}
-                            className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 transition-colors hover:border-gray-300 hover:text-gray-700 disabled:opacity-50"
-                          >
-                            <Edit className="h-3.5 w-3.5" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" className="text-xs">Edit lead</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    {/* Manage Lead button */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleEdit}
+                      disabled={isSaving}
+                      className="h-8 text-xs gap-1.5 font-medium"
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                      Manage Lead
+                    </Button>
 
                     {/* Delete — icon button, danger on hover */}
                     <TooltipProvider delayDuration={300}>
@@ -1324,20 +1336,7 @@ export function VendorLeadDetailModal({
                       </Tooltip>
                     </TooltipProvider>
                   </>
-                ) : (
-                  <>
-                    <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleCancelEdit} disabled={isSaving}>
-                      <X className="h-3.5 w-3.5" />
-                      Cancel
-                    </Button>
-                    <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={handleSave} disabled={isSaving}>
-                      {isSaving
-                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        : <Save className="h-3.5 w-3.5" />}
-                      Save changes
-                    </Button>
-                  </>
-                )}
+                ) : null}
               </div>
             </div>
 
