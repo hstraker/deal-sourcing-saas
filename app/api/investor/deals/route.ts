@@ -66,15 +66,13 @@ export async function GET(request: NextRequest) {
       dealScore: true,
       status: true,
       packTier: true,
-      description: true,
-      highlights: true,
       listedAt: true,
       viewsCount: true,
       favoritesCount: true,
       photos: {
         where: { isCover: true },
         take: 1,
-        select: { s3Key: true, url: true },
+        select: { s3Key: true, s3Url: true },
       },
       _count: {
         select: { photos: true },
@@ -95,7 +93,7 @@ export async function GET(request: NextRequest) {
     netYield: d.netYield ? Number(d.netYield) : null,
     isFavorited: favoritedIds.has(d.id),
     isReserved: d.status === "reserved",
-    coverPhoto: d.photos[0] ?? null,
+    coverPhoto: d.photos[0] ? { url: d.photos[0].s3Url, s3Key: d.photos[0].s3Key } : null,
   }))
 
   return NextResponse.json({ deals: result })

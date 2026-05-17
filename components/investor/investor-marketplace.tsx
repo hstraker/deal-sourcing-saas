@@ -29,8 +29,6 @@ interface Deal {
   dealScore: number | null
   status: string
   packTier: string | null
-  description: string | null
-  highlights: string[] | null
   listedAt: string | null
   isFavorited: boolean
   isReserved: boolean

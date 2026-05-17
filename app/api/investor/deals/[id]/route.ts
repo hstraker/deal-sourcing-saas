@@ -23,7 +23,7 @@ export async function GET(
     include: {
       photos: {
         orderBy: [{ isCover: "desc" }, { sortOrder: "asc" }],
-        select: { id: true, s3Key: true, url: true, isCover: true, caption: true },
+        select: { id: true, s3Key: true, s3Url: true, isCover: true, caption: true },
       },
     },
   })
