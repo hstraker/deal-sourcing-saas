@@ -92,6 +92,12 @@ export function MapModal({
     setSvError(null)
     try {
       const res = await fetch(`/api/vendor-leads/${lead.id}/street-view-analysis`, { method: "POST" })
+      // Guard against non-JSON responses (e.g. Next.js HTML error pages)
+      const ct = res.headers.get("content-type") ?? ""
+      if (!ct.includes("application/json")) {
+        const text = await res.text()
+        throw new Error(`Server error (${res.status}): ${text.slice(0, 120)}`)
+      }
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? "Analysis failed")
       setSvAnalysis(json.analysis as StreetViewAnalysis)

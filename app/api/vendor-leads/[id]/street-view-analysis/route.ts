@@ -78,7 +78,12 @@ export async function POST(
       `&fov=90&heading=235&pitch=0` +
       `&key=${googleApiKey}`
 
-    const imageRes = await fetch(streetViewUrl)
+    // HTTP-referrer-restricted keys reject server-side requests (no Referer header).
+    // Sending the app's canonical URL as Referer satisfies the restriction.
+    const appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    const imageRes = await fetch(streetViewUrl, {
+      headers: { Referer: appUrl },
+    })
     if (!imageRes.ok) {
       console.error("[street-view-analysis] Street View fetch failed", imageRes.status)
       return NextResponse.json(
@@ -87,11 +92,32 @@ export async function POST(
       )
     }
 
-    // 7. Convert to base64
+    // 7. Content type (strip charset suffix) — must be image/* before reading body
+    const contentType = (imageRes.headers.get("content-type") ?? "").split(";")[0].trim()
+
+    // Guard: Google returns HTML for invalid API key, quota errors, or disabled API.
+    // Never send HTML to Claude — return a clear error instead.
+    if (!contentType.startsWith("image/")) {
+      const bodyText = await imageRes.text()
+      console.error("[street-view-analysis] Street View API returned non-image response:", contentType, bodyText.slice(0, 200))
+      return NextResponse.json(
+        {
+          error: "Street View Static API is not returning an image. Check the API is enabled in Google Cloud Console and the key has no HTTP referrer restrictions (server-side calls have no referrer).",
+          detail: `Content-Type: ${contentType}`,
+        },
+        { status: 502 }
+      )
+    }
+
+    // 8. Convert to base64
     const base64 = Buffer.from(await imageRes.arrayBuffer()).toString("base64")
 
-    // 8. Content type (strip charset suffix)
-    const contentType = (imageRes.headers.get("content-type") ?? "image/jpeg").split(";")[0]
+    // Ensure media_type is one of the four Claude-accepted image types
+    const mediaType = (["image/jpeg","image/png","image/gif","image/webp"] as const).includes(
+      contentType as "image/jpeg"|"image/png"|"image/gif"|"image/webp"
+    )
+      ? (contentType as "image/jpeg"|"image/png"|"image/gif"|"image/webp")
+      : ("image/jpeg" as const)
 
     // 9. Call Claude Vision
     const client = new Anthropic({ apiKey: anthropicKey })
@@ -106,7 +132,7 @@ export async function POST(
               type: "image",
               source: {
                 type: "base64",
-                media_type: contentType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+                media_type: mediaType,
                 data: base64,
               },
             },
