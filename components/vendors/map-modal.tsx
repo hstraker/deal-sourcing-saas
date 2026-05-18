@@ -91,10 +91,50 @@ export function MapModal({
     setSvLoading(true)
     setSvError(null)
     try {
-      const res = await fetch(`/api/vendor-leads/${lead.id}/street-view-analysis`, { method: "POST" })
-      // Guard against non-JSON responses (e.g. Next.js HTML error pages)
-      const ct = res.headers.get("content-type") ?? ""
-      if (!ct.includes("application/json")) {
+      // ── Strategy A: fetch the image client-side ──────────────────────────
+      // The browser automatically sends the correct Referer header,
+      // satisfying HTTP-referrer restrictions on the API key.
+      // We then POST the base64 to our API route for Claude Vision.
+      let imageBase64: string | undefined
+      let contentType: string | undefined
+
+      const location = svCoords || address
+      if (location && apiKey) {
+        const svStaticUrl =
+          `https://maps.googleapis.com/maps/api/streetview` +
+          `?size=800x450&location=${encodeURIComponent(location)}` +
+          `&fov=90&heading=235&pitch=0&key=${apiKey}`
+        try {
+          const imgRes = await fetch(svStaticUrl)
+          if (imgRes.ok) {
+            const ct = (imgRes.headers.get("content-type") ?? "image/jpeg").split(";")[0]
+            if (ct.startsWith("image/")) {
+              contentType = ct
+              const blob = await imgRes.blob()
+              imageBase64 = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader()
+                reader.onloadend = () => {
+                  const dataUrl = reader.result as string
+                  resolve(dataUrl.split(",")[1] ?? "")
+                }
+                reader.onerror = reject
+                reader.readAsDataURL(blob)
+              })
+            }
+          }
+        } catch {
+          // CORS or network failure — fall through to server-side fetch
+        }
+      }
+
+      // ── POST to API (with base64 if captured, otherwise server fetches) ──
+      const res = await fetch(`/api/vendor-leads/${lead.id}/street-view-analysis`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64, contentType }),
+      })
+      const resCt = res.headers.get("content-type") ?? ""
+      if (!resCt.includes("application/json")) {
         const text = await res.text()
         throw new Error(`Server error (${res.status}): ${text.slice(0, 120)}`)
       }

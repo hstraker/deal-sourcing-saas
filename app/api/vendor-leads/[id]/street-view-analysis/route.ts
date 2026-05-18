@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
@@ -27,10 +27,20 @@ Rules:
 If no imagery: return hasStreetViewData=false, all other fields null/empty, narrative="No street view imagery available for this location."
 Do not add any text outside the JSON object.`
 
+const VALID_MEDIA_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const
+type ValidMediaType = typeof VALID_MEDIA_TYPES[number]
+
+function toValidMediaType(ct: string): ValidMediaType {
+  const stripped = ct.split(";")[0].trim()
+  return (VALID_MEDIA_TYPES as readonly string[]).includes(stripped)
+    ? (stripped as ValidMediaType)
+    : "image/jpeg"
+}
+
 // ─── route ───────────────────────────────────────────────────────────────────
 
 export async function POST(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -49,77 +59,90 @@ export async function POST(
       return NextResponse.json({ error: "Lead not found" }, { status: 404 })
     }
 
-    // 3. Build location string
-    const location = lead.propertyAddress ?? lead.propertyPostcode ?? ""
-    if (!location) {
-      return NextResponse.json({ error: "No address or postcode available for this lead" }, { status: 400 })
-    }
-
-    // 4. Google Maps API key
-    const googleApiKey =
-      process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-    if (!googleApiKey) {
-      console.error("[street-view-analysis] Missing GOOGLE_MAPS_API_KEY")
-      return NextResponse.json({ error: "Google Maps API key not configured" }, { status: 500 })
-    }
-
-    // 5. Anthropic API key
+    // 3. Anthropic key
     const anthropicKey = process.env.ANTHROPIC_API_KEY
     if (!anthropicKey) {
-      console.error("[street-view-analysis] Missing ANTHROPIC_API_KEY")
       return NextResponse.json({ error: "Anthropic API key not configured" }, { status: 500 })
     }
 
-    // 6. Fetch Street View image (server-side)
-    const streetViewUrl =
-      `https://maps.googleapis.com/maps/api/streetview` +
-      `?size=800x450` +
-      `&location=${encodeURIComponent(location)}` +
-      `&fov=90&heading=235&pitch=0` +
-      `&key=${googleApiKey}`
+    // ── 4. Obtain the image as base64 ────────────────────────────────────────
+    //
+    // Strategy A (preferred): the client fetches the Street View Static image
+    // itself (browser sends correct Referer, satisfying API key restrictions)
+    // and POSTs the base64 here. We use that directly.
+    //
+    // Strategy B (fallback): the client couldn't fetch the image (CORS etc.),
+    // so we fetch it server-side. This only works when the API key has NO
+    // HTTP referrer restrictions (or a GOOGLE_MAPS_API_KEY env var with IP
+    // restrictions is set separately).
 
-    // HTTP-referrer-restricted keys reject server-side requests (no Referer header).
-    // Sending the app's canonical URL as Referer satisfies the restriction.
-    const appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-    const imageRes = await fetch(streetViewUrl, {
-      headers: { Referer: appUrl },
-    })
-    if (!imageRes.ok) {
-      console.error("[street-view-analysis] Street View fetch failed", imageRes.status)
-      return NextResponse.json(
-        { error: "Failed to fetch Street View image", detail: `HTTP ${imageRes.status}` },
-        { status: 502 }
-      )
+    let imageBase64: string
+    let mediaType: ValidMediaType
+
+    // Check for client-provided base64 in the request body
+    let body: { imageBase64?: string; contentType?: string } = {}
+    try {
+      body = await req.json()
+    } catch {
+      // empty body is fine — fall through to server-side fetch
     }
 
-    // 7. Content type (strip charset suffix) — must be image/* before reading body
-    const contentType = (imageRes.headers.get("content-type") ?? "").split(";")[0].trim()
+    if (body.imageBase64 && body.imageBase64.length > 100) {
+      // Strategy A — use what the client sent
+      imageBase64 = body.imageBase64
+      mediaType = toValidMediaType(body.contentType ?? "image/jpeg")
+    } else {
+      // Strategy B — server-side fetch
+      const location = lead.propertyAddress ?? lead.propertyPostcode ?? ""
+      if (!location) {
+        return NextResponse.json({ error: "No address or postcode on this lead" }, { status: 400 })
+      }
 
-    // Guard: Google returns HTML for invalid API key, quota errors, or disabled API.
-    // Never send HTML to Claude — return a clear error instead.
-    if (!contentType.startsWith("image/")) {
-      const bodyText = await imageRes.text()
-      console.error("[street-view-analysis] Street View API returned non-image response:", contentType, bodyText.slice(0, 200))
-      return NextResponse.json(
-        {
-          error: "Street View Static API is not returning an image. Check the API is enabled in Google Cloud Console and the key has no HTTP referrer restrictions (server-side calls have no referrer).",
-          detail: `Content-Type: ${contentType}`,
-        },
-        { status: 502 }
-      )
+      const googleApiKey =
+        process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+      if (!googleApiKey) {
+        return NextResponse.json({ error: "Google Maps API key not configured" }, { status: 500 })
+      }
+
+      const streetViewUrl =
+        `https://maps.googleapis.com/maps/api/streetview` +
+        `?size=800x450` +
+        `&location=${encodeURIComponent(location)}` +
+        `&fov=90&heading=235&pitch=0` +
+        `&key=${googleApiKey}`
+
+      // Inject Referer so HTTP-referrer-restricted keys accept server requests
+      const appUrl =
+        process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+      const imageRes = await fetch(streetViewUrl, { headers: { Referer: appUrl } })
+
+      if (!imageRes.ok) {
+        return NextResponse.json(
+          { error: `Street View fetch failed (HTTP ${imageRes.status})` },
+          { status: 502 }
+        )
+      }
+
+      const ct = (imageRes.headers.get("content-type") ?? "").split(";")[0].trim()
+      if (!ct.startsWith("image/")) {
+        const snippet = (await imageRes.text()).slice(0, 200)
+        console.error("[street-view-analysis] Non-image response from Google:", ct, snippet)
+        return NextResponse.json(
+          {
+            error:
+              "Street View Static API returned an error page instead of an image. " +
+              "Your API key likely has HTTP referrer restrictions that block server-side requests. " +
+              "Either remove referrer restrictions (use IP restrictions instead) or create a separate GOOGLE_MAPS_API_KEY env var with no restrictions.",
+          },
+          { status: 502 }
+        )
+      }
+
+      imageBase64 = Buffer.from(await imageRes.arrayBuffer()).toString("base64")
+      mediaType = toValidMediaType(ct)
     }
 
-    // 8. Convert to base64
-    const base64 = Buffer.from(await imageRes.arrayBuffer()).toString("base64")
-
-    // Ensure media_type is one of the four Claude-accepted image types
-    const mediaType = (["image/jpeg","image/png","image/gif","image/webp"] as const).includes(
-      contentType as "image/jpeg"|"image/png"|"image/gif"|"image/webp"
-    )
-      ? (contentType as "image/jpeg"|"image/png"|"image/gif"|"image/webp")
-      : ("image/jpeg" as const)
-
-    // 9. Call Claude Vision
+    // 5. Call Claude Vision
     const client = new Anthropic({ apiKey: anthropicKey })
     const response = await client.messages.create({
       model: process.env.ANTHROPIC_MODEL || "claude-opus-4-5",
@@ -130,11 +153,7 @@ export async function POST(
           content: [
             {
               type: "image",
-              source: {
-                type: "base64",
-                media_type: mediaType,
-                data: base64,
-              },
+              source: { type: "base64", media_type: mediaType, data: imageBase64 },
             },
             { type: "text", text: STREET_VIEW_PROMPT },
           ],
@@ -142,27 +161,18 @@ export async function POST(
       ],
     })
 
-    // 10. Extract text and strip markdown fences
-    const firstBlock = response.content[0]
-    const raw = firstBlock.type === "text" ? firstBlock.text : ""
-    const cleaned = raw
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/\s*```\s*$/i, "")
-      .trim()
+    // 6. Parse response
+    const raw = response.content[0].type === "text" ? response.content[0].text : ""
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim()
 
-    // 11. Parse JSON
     let analysis: unknown
     try {
       analysis = JSON.parse(cleaned)
     } catch {
       console.error("[street-view-analysis] JSON parse failed:", cleaned)
-      return NextResponse.json(
-        { error: "Failed to parse AI response", detail: cleaned },
-        { status: 502 }
-      )
+      return NextResponse.json({ error: "AI returned invalid JSON", detail: cleaned }, { status: 502 })
     }
 
-    // 12. Return result
     return NextResponse.json({ success: true, analysis })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
