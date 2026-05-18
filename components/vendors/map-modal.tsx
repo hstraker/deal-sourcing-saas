@@ -54,11 +54,36 @@ export function MapModal({
   const [svAnalysis, setSvAnalysis] = useState<StreetViewAnalysis | null>(null)
   const [svLoading, setSvLoading] = useState(false)
   const [svError, setSvError] = useState<string | null>(null)
+  // lat,lng resolved from postcode via postcodes.io — required for streetview embed
+  const [svCoords, setSvCoords] = useState<string | null>(null)
+  const [svCoordsLoading, setSvCoordsLoading] = useState(false)
+
+  // ── lat/lng resolution ───────────────────────────────────────────────────
+  async function resolveCoords() {
+    const postcode = (lead.propertyPostcode ?? "").replace(/\s/g, "")
+    if (!postcode) return
+    setSvCoordsLoading(true)
+    try {
+      const res = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`)
+      const json = await res.json()
+      if (json.result?.latitude && json.result?.longitude) {
+        setSvCoords(`${json.result.latitude},${json.result.longitude}`)
+      }
+    } catch {
+      // silently ignore — iframe will show Google's own error
+    } finally {
+      setSvCoordsLoading(false)
+    }
+  }
 
   // ── map type with reset ──────────────────────────────────────────────────
   function setMapTypeAndReset(t: MapType) {
     setMapType(t)
-    if (t !== "streetview") { setSvAnalysis(null); setSvError(null) }
+    if (t !== "streetview") {
+      setSvAnalysis(null); setSvError(null)
+    } else if (!svCoords) {
+      resolveCoords()
+    }
   }
 
   // ── Street View AI analysis ──────────────────────────────────────────────
@@ -83,8 +108,11 @@ export function MapModal({
   const apiKey   = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
 
   // Embedded map (switches between roadmap, satellite and streetview)
+  // Streetview requires lat,lng — resolved async from postcodes.io
   const embedSrc = mapType === "streetview"
-    ? `https://www.google.com/maps/embed/v1/streetview?key=${apiKey}&location=${encoded}&heading=235&pitch=0&fov=80`
+    ? svCoords
+      ? `https://www.google.com/maps/embed/v1/streetview?key=${apiKey}&location=${svCoords}&heading=235&pitch=0&fov=80`
+      : null  // not ready yet — show spinner instead of iframe
     : `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encoded}&zoom=15&maptype=${mapType}`
 
   // External links (open in new tab)
@@ -320,16 +348,29 @@ export function MapModal({
       </div>
 
       {/* Embedded Google Map — fills the right panel edge-to-edge */}
-      <iframe
-        key={mapType}   /* force reload when type changes */
-        src={embedSrc}
-        width="100%"
-        height="100%"
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-        className="block h-full min-h-[300px] w-full border-0"
-        title={`Map: ${address}`}
-      />
+      {embedSrc ? (
+        <iframe
+          key={embedSrc}  /* force reload when src changes */
+          src={embedSrc}
+          width="100%"
+          height="100%"
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          className="block h-full min-h-[300px] w-full border-0"
+          title={`Map: ${address}`}
+        />
+      ) : (
+        /* Resolving lat/lng from postcode before streetview can load */
+        <div className="flex h-full w-full items-center justify-center bg-gray-900">
+          <div className="flex items-center gap-3 text-sm text-slate-400">
+            <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+            </svg>
+            {svCoordsLoading ? "Locating property…" : "No postcode available for street view"}
+          </div>
+        </div>
+      )}
 
       {/* Street View AI analysis overlay */}
       {mapType === "streetview" && (

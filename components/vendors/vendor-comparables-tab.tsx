@@ -39,6 +39,14 @@ export function invalidateComparablesCache(vendorLeadId: string) {
   _comparablesCache.delete(vendorLeadId)
 }
 
+// Area intelligence results cached by lead ID — same lifetime as comparables cache.
+// Prevents the user having to re-run the AI analysis every time they reopen the modal.
+interface AreaIntelligenceCacheEntry {
+  analysis: AreaAnalysis
+  signals: AreaSignals
+}
+const _areaIntelligenceCache = new Map<string, AreaIntelligenceCacheEntry>()
+
 // ─── types ────────────────────────────────────────────────────────────────────
 
 interface VendorComparablesTabProps {
@@ -612,8 +620,10 @@ function AreaIntelligenceCard({
   avgPrice?: number | null
   avgRentalYield?: number | null
 }) {
-  const [analysis, setAnalysis] = useState<AreaAnalysis | null>(null)
-  const [signals, setSignals] = useState<AreaSignals | null>(null)
+  // Seed from module-level cache so analysis survives modal close/reopen
+  const cached = _areaIntelligenceCache.get(vendorLeadId) ?? null
+  const [analysis, setAnalysis] = useState<AreaAnalysis | null>(cached?.analysis ?? null)
+  const [signals, setSignals] = useState<AreaSignals | null>(cached?.signals ?? null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -653,8 +663,12 @@ function AreaIntelligenceCard({
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? "Analysis failed")
-      setAnalysis(json.analysis as AreaAnalysis)
-      setSignals(json.signals as AreaSignals)
+      const newAnalysis = json.analysis as AreaAnalysis
+      const newSignals  = json.signals  as AreaSignals
+      // Persist to module-level cache so reopening the modal doesn't require a re-run
+      _areaIntelligenceCache.set(vendorLeadId, { analysis: newAnalysis, signals: newSignals })
+      setAnalysis(newAnalysis)
+      setSignals(newSignals)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Analysis failed")
     } finally {
