@@ -1115,7 +1115,9 @@ export async function POST(
         ...(monthlyRent > 0 && ["comparable_rents", "comparable_avg", "propertydata_api"].includes(rentalDataSource) && {
           estimatedMonthlyRent: monthlyRent,
           estimatedAnnualRent: annualRent,
-          localAverageRent: rentalDataSource === "propertydata_api" ? monthlyRent : undefined,
+          // localAverageRent = real observed market rent (comparable property rents or PropertyData area avg).
+          // NOT saved for comparable_avg (yield-derived estimate) — that's a calculated figure, not market data.
+          localAverageRent: ["comparable_rents", "propertydata_api"].includes(rentalDataSource) ? monthlyRent : undefined,
         }),
         // EPC data (if fetched and rating is valid A–G)
         ...(epcRating !== null && /^[A-Ga-g]$/.test(epcRating) && {
