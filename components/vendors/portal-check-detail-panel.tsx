@@ -16,7 +16,7 @@ import {
   RefreshCw, Loader2, ExternalLink, ShieldCheck, ShieldAlert,
   AlertTriangle, Building2, Clock, TrendingDown, FlaskConical, Calendar,
   Search, Phone, Wifi, WifiOff, CheckCircle2, XCircle, MinusCircle,
-  Droplets, Mountain, Sparkles, Map,
+  Droplets, Mountain, Sparkles, Map as MapIcon,
 } from "lucide-react"
 import { PortalCheckBadge } from "./portal-check-badge"
 import { formatDistanceToNow, format } from "date-fns"
@@ -946,7 +946,7 @@ export function FloodRiskCard({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5">
-                <Map className="h-3.5 w-3.5" />
+                <MapIcon className="h-3.5 w-3.5" />
                 Flood Zone Map
               </p>
               <button
@@ -969,7 +969,7 @@ export function FloodRiskCard({
                 className="flex h-16 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 bg-gray-50 text-xs text-gray-400 hover:bg-gray-100 transition-colors"
                 onClick={() => setShowMap(true)}
               >
-                <Map className="h-4 w-4" />
+                <MapIcon className="h-4 w-4" />
                 Click to show EA flood zone map
               </div>
             )}
