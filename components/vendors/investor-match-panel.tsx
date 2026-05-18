@@ -2,8 +2,9 @@
 
 import { useState, useCallback } from "react"
 import {
-  Users, Send, CheckCircle2, Clock, RefreshCw, ChevronDown, ChevronRight,
-  Mail, Phone, Zap, AlertCircle, MessageSquare,
+  Users, CheckCircle2, Clock, RefreshCw, ChevronDown, ChevronRight,
+  Mail, Phone, Zap, AlertCircle, MessageSquare, Sparkles, Send,
+  Edit3, X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -34,6 +35,8 @@ interface InvestorMatchPanelProps {
   leadId: string
   validationPassed: boolean | null
 }
+
+type PitchState = "idle" | "loading" | "ready" | "error"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -75,16 +78,25 @@ function InvestorRow({
   channel: "email" | "sms" | "both"
   onNotified: (investorId: string, sentAt: string, channel: string) => void
 }) {
-  const pct = Math.round(investor.score * 100)
-  const col = scoreColour(pct)
+  const matchPct = Math.round(investor.score * 100)
+  const col = scoreColour(matchPct)
   const [sending, setSending] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const alreadySent = !!investor.notification
 
+  // AI pitch state
+  const [pitchState, setPitchState] = useState<PitchState>("idle")
+  const [emailPitch, setEmailPitch] = useState("")
+  const [smsPitch, setSmsPitch] = useState("")
+  const [pitchSubject, setPitchSubject] = useState("")
+  const [editingPitch, setEditingPitch] = useState(false)
+  const [editedMessage, setEditedMessage] = useState("")
+
   const NotifyIcon =
     channel === "sms" ? MessageSquare : channel === "both" ? Zap : Mail
 
-  async function handleNotify() {
+  // Generic quick notify (no AI message)
+  async function handleQuickNotify() {
     setSending(true)
     try {
       const res = await fetch(
@@ -111,13 +123,86 @@ function InvestorRow({
     }
   }
 
+  // Send with AI-generated (possibly edited) pitch
+  async function handleSendPitch() {
+    const messageToSend = editingPitch ? editedMessage : (channel === "sms" ? smsPitch : emailPitch)
+    setSending(true)
+    try {
+      const body: Record<string, unknown> = {
+        investorId: investor.investorId,
+        channel,
+        message: messageToSend,
+      }
+      if (channel !== "sms" && pitchSubject) body.subject = pitchSubject
+
+      const res = await fetch(
+        `/api/vendor-pipeline/leads/${leadId}/notify-investor`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }
+      )
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed")
+
+      if (data.noSmtp && channel !== "sms") {
+        toast.info(`Pitch logged for ${investor.name} (no SMTP configured — email not sent)`)
+      } else {
+        toast.success(`Personalised pitch sent to ${investor.name} via ${channel}`)
+      }
+      onNotified(investor.investorId, new Date().toISOString(), channel)
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send pitch")
+    } finally {
+      setSending(false)
+    }
+  }
+
+  // Generate AI pitch on expand
+  async function handleExpand() {
+    const willExpand = !expanded
+    setExpanded(willExpand)
+    // Auto-generate on first open
+    if (willExpand && pitchState === "idle") {
+      await generatePitch()
+    }
+  }
+
+  async function generatePitch() {
+    setPitchState("loading")
+    try {
+      const res = await fetch(
+        `/api/vendor-pipeline/leads/${leadId}/generate-investor-pitch`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ investorId: investor.investorId }),
+        }
+      )
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to generate pitch")
+
+      setEmailPitch(data.email ?? "")
+      setSmsPitch(data.sms ?? "")
+      setPitchSubject(data.subject ?? "")
+      setEditedMessage(data.email ?? "")
+      setPitchState("ready")
+    } catch (err: any) {
+      console.error("[generate-investor-pitch]", err)
+      setPitchState("error")
+    }
+  }
+
+  const activePitch = channel === "sms" ? smsPitch : emailPitch
+
   return (
     <div className="rounded-xl border border-gray-200 overflow-hidden bg-white">
       {/* Main row */}
       <div className="flex items-center gap-3 px-4 py-3">
         {/* Score badge */}
         <div className={cn("rounded-lg border px-2 py-1 text-center shrink-0 w-12", col.badge)}>
-          <span className="text-sm font-extrabold">{pct}%</span>
+          <span className="text-sm font-extrabold">{matchPct}%</span>
         </div>
 
         {/* Investor info */}
@@ -148,8 +233,8 @@ function InvestorRow({
 
         {/* Actions */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Send status / button */}
-          {alreadySent ? (
+          {/* Sent status badge */}
+          {alreadySent && (
             <div className="flex items-center gap-1 text-green-600 bg-green-50 border border-green-200 rounded-lg px-2.5 py-1.5">
               <CheckCircle2 className="h-3.5 w-3.5" />
               <span className="text-[11px] font-semibold">
@@ -158,24 +243,29 @@ function InvestorRow({
                   : ""} {timeAgo(investor.notification!.sentAt)}
               </span>
             </div>
-          ) : (
+          )}
+
+          {/* Quick notify (generic) — only when not yet sent */}
+          {!alreadySent && (
             <button
-              onClick={handleNotify}
+              onClick={handleQuickNotify}
               disabled={sending}
-              className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              title="Send generic deal alert"
+              className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
             >
               {sending
                 ? <RefreshCw className="h-3 w-3 animate-spin" />
                 : <NotifyIcon className="h-3 w-3" />
               }
-              {sending ? "Sending…" : "Notify"}
+              {sending ? "Sending…" : "Quick Notify"}
             </button>
           )}
 
-          {/* Expand toggle */}
+          {/* Expand toggle (also triggers AI pitch generation) */}
           <button
-            onClick={() => setExpanded(!expanded)}
+            onClick={handleExpand}
             className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+            title={expanded ? "Collapse" : "AI pitch & contact details"}
           >
             {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
           </button>
@@ -184,32 +274,142 @@ function InvestorRow({
 
       {/* Match bar */}
       <div className="h-0.5 bg-gray-100">
-        <div className={cn("h-0.5 transition-all", col.bar)} style={{ width: `${pct}%` }} />
+        <div className={cn("h-0.5 transition-all", col.bar)} style={{ width: `${matchPct}%` }} />
       </div>
 
-      {/* Expanded detail */}
+      {/* Expanded panel */}
       {expanded && (
-        <div className="px-4 pb-3 pt-2 bg-gray-50/50 border-t border-gray-100">
-          <div className="flex gap-4 text-xs text-gray-600">
+        <div className="border-t border-gray-100 bg-gray-50/40">
+          {/* Contact details */}
+          <div className="flex gap-4 px-4 pt-3 pb-2 text-xs text-gray-500">
             {investor.email && (
-              <a href={`mailto:${investor.email}`} className="flex items-center gap-1 hover:text-blue-600">
+              <a href={`mailto:${investor.email}`} className="flex items-center gap-1 hover:text-blue-600 transition-colors">
                 <Mail className="h-3 w-3" /> {investor.email}
               </a>
             )}
             {investor.phone && (
-              <a href={`tel:${investor.phone}`} className="flex items-center gap-1 hover:text-green-600">
+              <a href={`tel:${investor.phone}`} className="flex items-center gap-1 hover:text-green-600 transition-colors">
                 <Phone className="h-3 w-3" /> {investor.phone}
               </a>
             )}
+            {investor.notification && (
+              <span className="ml-auto flex items-center gap-1 text-gray-400">
+                <Clock className="h-3 w-3" />
+                Last notified {new Date(investor.notification.sentAt).toLocaleString("en-GB", {
+                  day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+                })}
+              </span>
+            )}
           </div>
-          {investor.notification && (
-            <p className="mt-1.5 text-[11px] text-gray-400 flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              Last notified {new Date(investor.notification.sentAt).toLocaleString("en-GB", {
-                day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-              })}
-            </p>
-          )}
+
+          {/* AI Pitch section */}
+          <div className="px-4 pb-4">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+                <span className="text-xs font-semibold text-gray-700">AI Personalised Pitch</span>
+                {pitchState === "ready" && (
+                  <span className="text-[10px] text-violet-600 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded-full font-medium">
+                    Claude generated
+                  </span>
+                )}
+              </div>
+              {pitchState === "ready" && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => { setEditingPitch(!editingPitch); if (!editingPitch) setEditedMessage(activePitch) }}
+                    className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium text-gray-500 hover:bg-gray-100 transition-colors"
+                  >
+                    {editingPitch ? <><X className="h-2.5 w-2.5" /> Cancel</> : <><Edit3 className="h-2.5 w-2.5" /> Edit</>}
+                  </button>
+                  <button
+                    onClick={generatePitch}
+                    className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium text-gray-500 hover:bg-gray-100 transition-colors"
+                  >
+                    <RefreshCw className="h-2.5 w-2.5" /> Regenerate
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Pitch state: loading */}
+            {pitchState === "loading" && (
+              <div className="flex items-center gap-2 rounded-lg border border-violet-100 bg-violet-50 px-3 py-3 text-xs text-violet-600">
+                <RefreshCw className="h-3.5 w-3.5 animate-spin shrink-0" />
+                <span>Claude is writing a personalised pitch for {investor.name}…</span>
+              </div>
+            )}
+
+            {/* Pitch state: error */}
+            {pitchState === "error" && (
+              <div className="flex items-center justify-between rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600">
+                <span>Could not generate pitch — check API key configuration.</span>
+                <button onClick={generatePitch} className="underline hover:no-underline ml-2 shrink-0">Retry</button>
+              </div>
+            )}
+
+            {/* Pitch state: ready */}
+            {pitchState === "ready" && (
+              <div className="space-y-2">
+                {/* Subject line (email only) */}
+                {channel !== "sms" && pitchSubject && (
+                  <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Subject</p>
+                    <p className="text-xs text-gray-700 font-medium">{pitchSubject}</p>
+                  </div>
+                )}
+
+                {/* Message body */}
+                <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+                  <div className="px-3 pt-2 pb-1 flex items-center justify-between border-b border-gray-100">
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide">
+                      {channel === "sms" ? "SMS message" : "Email body"}
+                    </p>
+                    {channel === "sms" && (
+                      <p className={cn("text-[10px]", activePitch.length > 140 ? "text-red-500" : "text-gray-400")}>
+                        {activePitch.length}/140 chars
+                      </p>
+                    )}
+                  </div>
+                  {editingPitch ? (
+                    <textarea
+                      value={editedMessage}
+                      onChange={(e) => setEditedMessage(e.target.value)}
+                      rows={channel === "sms" ? 3 : 8}
+                      className="w-full px-3 py-2 text-xs text-gray-700 leading-relaxed resize-none focus:outline-none focus:ring-0"
+                    />
+                  ) : (
+                    <p className="px-3 py-2 text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">
+                      {activePitch}
+                    </p>
+                  )}
+                </div>
+
+                {/* SMS preview when in email mode */}
+                {channel !== "sms" && smsPitch && (
+                  <div className="rounded-lg border border-dashed border-gray-200 bg-white px-3 py-2">
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">
+                      SMS preview <span className="normal-case text-gray-300">(if sending "Both")</span>
+                    </p>
+                    <p className="text-[11px] text-gray-500">{smsPitch}</p>
+                  </div>
+                )}
+
+                {/* Send pitched message button */}
+                <button
+                  onClick={handleSendPitch}
+                  disabled={sending || (editingPitch && !editedMessage.trim())}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-xs font-bold text-white hover:bg-violet-700 disabled:opacity-50 transition-colors"
+                >
+                  {sending
+                    ? <><RefreshCw className="h-3 w-3 animate-spin" /> Sending…</>
+                    : <><Send className="h-3 w-3" /> Send {editingPitch ? "edited" : "AI"} pitch via {channel}</>
+                  }
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -296,9 +496,14 @@ export function InvestorMatchPanel({ leadId, validationPassed }: InvestorMatchPa
               {matches.length}
             </span>
           )}
+          {loaded && (
+            <span className="flex items-center gap-1 text-[10px] text-violet-600 bg-violet-50 border border-violet-100 px-1.5 py-0.5 rounded-full">
+              <Sparkles className="h-2.5 w-2.5" /> AI pitches
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          {/* Channel picker — visible once matches are loaded */}
+          {/* Channel picker */}
           {loaded && matches.length > 0 && (
             <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden text-xs">
               {(["email", "sms", "both"] as const).map((ch) => (
@@ -319,7 +524,7 @@ export function InvestorMatchPanel({ leadId, validationPassed }: InvestorMatchPa
             <button
               onClick={load}
               className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
-              title="Refresh"
+              title="Refresh matches"
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </button>
@@ -337,6 +542,7 @@ export function InvestorMatchPanel({ leadId, validationPassed }: InvestorMatchPa
             <button
               onClick={handleSendAll}
               disabled={sendingAll}
+              title="Send generic alert to all unnotified ≥60% matches"
               className="flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
             >
               {sendingAll ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
@@ -354,7 +560,7 @@ export function InvestorMatchPanel({ leadId, validationPassed }: InvestorMatchPa
               <>
                 <p className="text-sm font-semibold text-gray-600 mb-1">Deal validated — find your investors</p>
                 <p className="text-xs text-gray-400">
-                  Click "Find Matches" to see which investors match this deal's area, budget, yield and strategy criteria.
+                  Click "Find Matches" to rank investors by fit and generate personalised AI pitches.
                 </p>
               </>
             ) : (
@@ -456,8 +662,7 @@ export function InvestorMatchPanel({ leadId, validationPassed }: InvestorMatchPa
             {/* Legend */}
             {matches.length > 0 && (
               <p className="text-[10px] text-gray-400 pt-1">
-                Match score = % of investor's criteria this deal satisfies.
-                "Notify All" sends to investors with ≥60% match who haven't been contacted yet.
+                Match score = % of investor's criteria this deal satisfies. Expand any row to generate a personalised AI pitch. "Notify All" sends a generic alert to ≥60% matches not yet contacted.
               </p>
             )}
           </>
