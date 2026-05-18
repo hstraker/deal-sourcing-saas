@@ -468,6 +468,7 @@ export async function sendOfferToInvestorEmail({
   propertyAddress,
   offerAmount,
   askingPrice,
+  marketValue,
   bmvPct,
   message,
   appUrl,
@@ -477,7 +478,8 @@ export async function sendOfferToInvestorEmail({
   propertyAddress: string
   offerAmount: number
   askingPrice: number
-  bmvPct: number
+  marketValue?: number | null   // estimated market value — used to show equity gap
+  bmvPct: number                // offer vs market value (or offer vs asking if no market value)
   message: string
   appUrl: string
 }): Promise<EmailResult> {
@@ -488,8 +490,10 @@ export async function sendOfferToInvestorEmail({
   }
 
   const fromName = process.env.SMTP_FROM_NAME || "DealStack"
-  const formattedOffer = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(offerAmount)
-  const formattedAsking = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(askingPrice)
+  const fmt = (n: number) => new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(n)
+  const formattedOffer   = fmt(offerAmount)
+  const formattedAsking  = fmt(askingPrice)
+  const formattedMarket  = marketValue ? fmt(marketValue) : null
 
   // Convert plain-text message to HTML paragraphs
   const messageHtml = message
@@ -526,11 +530,16 @@ export async function sendOfferToInvestorEmail({
                   <td style="padding:8px 0;color:#64748b;border-bottom:1px solid #f1f5f9;">Asking Price</td>
                   <td style="padding:8px 0;font-weight:600;text-align:right;border-bottom:1px solid #f1f5f9;">${formattedAsking}</td>
                 </tr>
+                ${formattedMarket ? `
+                <tr>
+                  <td style="padding:8px 0;color:#64748b;border-bottom:1px solid #f1f5f9;">Est. Market Value</td>
+                  <td style="padding:8px 0;font-weight:600;text-align:right;border-bottom:1px solid #f1f5f9;">${formattedMarket}</td>
+                </tr>` : ""}
                 <tr>
                   <td style="padding:8px 0;color:#64748b;">Our Offer</td>
                   <td style="padding:8px 0;text-align:right;">
                     <span style="background:#1e3a8a;color:white;padding:4px 12px;border-radius:4px;font-weight:700;font-size:16px;">${formattedOffer}</span>
-                    <span style="display:block;font-size:12px;color:#64748b;margin-top:4px;">${bmvPct.toFixed(1)}% Below Market Value</span>
+                    ${bmvPct > 0 ? `<span style="display:block;font-size:12px;color:#15803d;font-weight:600;margin-top:4px;">${bmvPct.toFixed(1)}% below ${formattedMarket ? "market value" : "asking price"}</span>` : ""}
                   </td>
                 </tr>
               </table>
@@ -545,7 +554,7 @@ export async function sendOfferToInvestorEmail({
         </body>
         </html>
       `,
-      text: `Hi ${investorName},\n\n${message}\n\nProperty: ${propertyAddress}\nAsking Price: ${formattedAsking}\nOur Offer: ${formattedOffer} (${bmvPct.toFixed(1)}% BMV)\n\n© ${new Date().getFullYear()} ${fromName}`,
+      text: `Hi ${investorName},\n\n${message}\n\nProperty: ${propertyAddress}\nAsking Price: ${formattedAsking}${formattedMarket ? `\nEst. Market Value: ${formattedMarket}` : ""}\nOur Offer: ${formattedOffer}${bmvPct > 0 ? ` (${bmvPct.toFixed(1)}% below ${formattedMarket ? "market value" : "asking price"})` : ""}\n\n© ${new Date().getFullYear()} ${fromName}`,
     })
     console.log(`[email] Offer email sent to ${to} for ${propertyAddress}`)
     return { success: true }

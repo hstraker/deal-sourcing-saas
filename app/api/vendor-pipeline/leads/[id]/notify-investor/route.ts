@@ -41,6 +41,7 @@ export async function POST(
         propertyPostcode: true,
         askingPrice: true,
         offerAmount: true,
+        estimatedMarketValue: true,
         bmvScore: true,
         bedrooms: true,
         propertyType: true,
@@ -62,16 +63,25 @@ export async function POST(
       [investor.user.firstName, investor.user.lastName].filter(Boolean).join(" ") ||
       investor.user.email
     const propertyAddress = lead.propertyAddress || lead.propertyPostcode || "Property"
-    const offerAmount = lead.offerAmount ? Number(lead.offerAmount) : 0
-    const askingPrice = lead.askingPrice ? Number(lead.askingPrice) : 0
-    const bmvPct = lead.bmvScore ? Number(lead.bmvScore) : 0
+    const offerAmount  = lead.offerAmount ? Number(lead.offerAmount) : 0
+    const askingPrice  = lead.askingPrice ? Number(lead.askingPrice) : 0
+    const marketValue  = lead.estimatedMarketValue ? Number(lead.estimatedMarketValue) : null
     const appUrl = process.env.APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000"
+
+    // BMV for the email = offer vs market value (not the stored bmvScore which is asking vs market value)
+    // Falls back to offer vs asking price if market value not yet calculated.
+    const offerBmvPct =
+      marketValue && marketValue > 0
+        ? ((marketValue - offerAmount) / marketValue) * 100
+        : askingPrice > 0 && offerAmount > 0 && offerAmount < askingPrice
+        ? ((askingPrice - offerAmount) / askingPrice) * 100
+        : (lead.bmvScore ? Number(lead.bmvScore) : 0)
 
     const defaultMessage =
       message ||
       `We have a new deal that matches your investment criteria. ` +
       `${propertyAddress}${lead.bedrooms ? ` — ${lead.bedrooms} bed ${lead.propertyType ?? "property"}` : ""}. ` +
-      `${bmvPct > 0 ? `Available at ${bmvPct.toFixed(0)}% BMV. ` : ""}` +
+      `${offerBmvPct > 0 ? `Available at ${offerBmvPct.toFixed(0)}% BMV. ` : ""}` +
       `Please get in touch to find out more.`
 
     // Send email
@@ -85,7 +95,8 @@ export async function POST(
         propertyAddress,
         offerAmount,
         askingPrice,
-        bmvPct,
+        marketValue,
+        bmvPct: offerBmvPct,
         message: defaultMessage,
         appUrl,
       })
