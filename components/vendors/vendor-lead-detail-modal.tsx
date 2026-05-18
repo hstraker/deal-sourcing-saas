@@ -67,6 +67,7 @@ import {
   TrendingDown,
   Camera,
   Sparkles,
+  Users,
 } from "lucide-react"
 import { PipelineStage } from "@prisma/client"
 import { cn } from "@/lib/utils"
@@ -1497,7 +1498,7 @@ export function VendorLeadDetailModal({
           onValueChange={setActiveTab}
           className="flex flex-col flex-1 min-h-0 w-full"
         >
-          <TabsList className="grid w-full grid-cols-10 h-auto p-1 gap-0.5 bg-gray-50 flex-shrink-0">
+          <TabsList className="grid w-full grid-cols-11 h-auto p-1 gap-0.5 bg-gray-50 flex-shrink-0">
 
             {/* 1 — Lead Details */}
             <TabsTrigger
@@ -1616,7 +1617,18 @@ export function VendorLeadDetailModal({
               <span>Refurb</span>
             </TabsTrigger>
 
-            {/* 10 — AI Deal Summary */}
+            {/* 10 — Investors */}
+            <TabsTrigger
+              value="investors"
+              className="relative flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
+                hover:bg-gray-50 hover:text-[#2563EB] hover:shadow-sm
+                data-[state=active]:bg-white data-[state=active]:text-[#2563EB] data-[state=active]:shadow-sm"
+            >
+              <Users className="h-3.5 w-3.5" />
+              <span>Investors</span>
+            </TabsTrigger>
+
+            {/* 11 — AI Deal Summary */}
             <TabsTrigger
               value="deal-summary"
               className="relative flex flex-col gap-0.5 py-2 text-xs font-medium rounded-md transition-all
@@ -2759,12 +2771,16 @@ export function VendorLeadDetailModal({
               bmvPercent={currentLead.bmvScore != null ? Number(currentLead.bmvScore) : null}
             />
 
-            {/* ── Investor Matching ────────────────────────────────────────── */}
+          </TabsContent>
+
+          {/* ── Investors tab ─────────────────────────────────────────────── */}
+          <TabsContent value="investors" className="flex-1 overflow-y-auto min-h-0 space-y-4 pt-2 pb-6 px-0.5">
             <InvestorMatchPanel
               leadId={currentLead.id}
               validationPassed={currentLead.validationPassed ?? null}
             />
           </TabsContent>
+
           <TabsContent value="portal-check" className="flex-1 overflow-y-auto min-h-0 space-y-4 pt-2 pb-6 px-0.5">
             <PortalCheckDetailPanel
               leadId={currentLead.id}
