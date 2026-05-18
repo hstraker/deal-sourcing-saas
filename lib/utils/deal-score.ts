@@ -5,22 +5,25 @@
  * Computed client-side on the fly — no extra API calls or DB columns needed.
  *
  * Signal weights (total 100 pts max):
- *   BMV %              → 0–30 pts  (core investment thesis — how far below market)
+ *   BMV %              → 0–20 pts  (discount below market — important but not the only path to profit)
+ *   Gross Yield        → 0–20 pts  (annual rent / market value, caps at 10%+. Equal to BMV: yield IS the deal for BTL/BRRR)
  *   Portal Risk        → 0–12 pts  (clear=12, caution=6, red_flag=0)
  *   Vendor Motivation  → 0–12 pts  (1–10 scale from AI conversation)
- *   Gross Yield        → 0–12 pts  (annual rent / market value, caps at 10%+)
- *   Photo Condition    → 0–8  pts  (AI photo analysis 0–100 score)
- *   Comparables        → 0–8  pts  (count + confidence level)
+ *   Photo Condition    → 0–10 pts  (AI photo analysis 0–100 score)
+ *   Comparables        → 0–10 pts  (count + confidence level)
  *   Flood Zone         → 0–7  pts  (zone1=7, not-checked=5, zone2=3, zone3=0)
  *   EPC Rating         → 0–6  pts  (A/B=6, C/D=5, E=3, F/G=1)
- *   Street View        → 0–5  pts  (kerbAppeal 1–10 from AI)
+ *   Street View        → 0–3  pts  (kerbAppeal 1–10 from AI)
  *
  * Risk modifier (deduction):
- *   Leasehold <70yr    → −8 pts
- *   Leasehold 70–79yr  → −4 pts
+ *   Leasehold <70yr    → −10 pts
+ *   Leasehold 70–79yr  → −5 pts
  *   Leasehold 80–84yr  → −2 pts
  *
  * Final score is clamped 0–100.
+ *
+ * NOTE: BMV and Yield have equal weight (20 pts each) so BRRR/BTL deals with strong
+ * yield but modest discount score fairly alongside flip deals with high BMV but lower yield.
  */
 
 export interface DealScoreInputs {
@@ -95,12 +98,12 @@ function signal(pts: number, maxPts: number, display: string, available: boolean
 // ─── main scorer ──────────────────────────────────────────────────────────────
 
 export function computeDealScore(inputs: DealScoreInputs): DealScoreResult {
-  // ── BMV % (0–30 pts) ──────────────────────────────────────────────────────
-  // 30%+ → 30 pts, linear. Most important signal — core investment thesis.
+  // ── BMV % (0–20 pts) ──────────────────────────────────────────────────────
+  // 30%+ BMV → full 20 pts, linear. Important but equal weight to yield.
   const bmvVal = num(inputs.bmvScore)
   const bmv = bmvVal != null
-    ? signal(Math.round(clamp(bmvVal / 30, 0, 1) * 30), 30, `${bmvVal.toFixed(1)}% BMV`, true)
-    : signal(0, 30, "Not calculated", false)
+    ? signal(Math.round(clamp(bmvVal / 30, 0, 1) * 20), 20, `${bmvVal.toFixed(1)}% BMV`, true)
+    : signal(0, 20, "Not calculated", false)
 
   // ── Portal Risk (0–12 pts) ─────────────────────────────────────────────────
   const riskVal = inputs.latestCheckRisk
@@ -116,42 +119,42 @@ export function computeDealScore(inputs: DealScoreInputs): DealScoreResult {
     ? signal(Math.round(clamp(motivVal / 10, 0, 1) * 12), 12, `${motivVal}/10`, true)
     : signal(0, 12, "Not assessed", false)
 
-  // ── Gross Yield (0–12 pts) ─────────────────────────────────────────────────
-  // Annual rent / market value. Caps at 10%+.
+  // ── Gross Yield (0–20 pts) ─────────────────────────────────────────────────
+  // Annual rent / market value. Caps at 10%+. Equal weight to BMV: yield IS the deal for BTL/BRRR.
   const rentVal = num(inputs.estimatedMonthlyRent)
   const mvVal   = num(inputs.estimatedMarketValue)
   let yieldSignal: DealScoreSignal
   if (rentVal != null && mvVal != null && mvVal > 0) {
     const grossYield = (rentVal * 12) / mvVal * 100
     yieldSignal = signal(
-      Math.round(clamp(grossYield / 10, 0, 1) * 12),
-      12,
+      Math.round(clamp(grossYield / 10, 0, 1) * 20),
+      20,
       `${grossYield.toFixed(1)}% gross yield`,
       true
     )
   } else {
-    yieldSignal = signal(0, 12, "No rent/value data", false)
+    yieldSignal = signal(0, 20, "No rent/value data", false)
   }
 
-  // ── Photo Condition (0–8 pts) ──────────────────────────────────────────────
+  // ── Photo Condition (0–10 pts) ─────────────────────────────────────────────
   const photoVal = inputs.photoConditionScore
   const photoCondition = photoVal != null
-    ? signal(Math.round(clamp(photoVal / 100, 0, 1) * 8), 8, `${photoVal}/100 condition`, true)
-    : signal(0, 8, "Not analysed", false)
+    ? signal(Math.round(clamp(photoVal / 100, 0, 1) * 10), 10, `${photoVal}/100 condition`, true)
+    : signal(0, 10, "Not analysed", false)
 
-  // ── Comparables (0–8 pts) ──────────────────────────────────────────────────
+  // ── Comparables (0–10 pts) ─────────────────────────────────────────────────
   const compsCount = inputs.comparablesCount ?? null
   const compsConf  = inputs.comparablesConfidence ?? null
   let comparables: DealScoreSignal
   if (compsCount != null && compsCount > 0) {
     // Confidence multiplier: HIGH=1.0, MEDIUM=0.7, LOW=0.4
     const confMulti = compsConf === "HIGH" ? 1.0 : compsConf === "MEDIUM" ? 0.7 : compsConf === "LOW" ? 0.4 : 0.6
-    const basePts   = Math.round(clamp(compsCount / 5, 0, 1) * 8)
+    const basePts   = Math.round(clamp(compsCount / 5, 0, 1) * 10)
     const pts       = Math.round(basePts * confMulti)
     const confLabel = compsConf ?? "unrated"
-    comparables = signal(pts, 8, `${compsCount} comps (${confLabel.toLowerCase()})`, true)
+    comparables = signal(pts, 10, `${compsCount} comps (${confLabel.toLowerCase()})`, true)
   } else {
-    comparables = signal(0, 8, "No comparables", false)
+    comparables = signal(0, 10, "No comparables", false)
   }
 
   // ── Flood Zone (0–7 pts) ───────────────────────────────────────────────────
@@ -174,21 +177,21 @@ export function computeDealScore(inputs: DealScoreInputs): DealScoreResult {
     ? signal(epcPts, 6, `EPC ${epcVal}`, true)
     : signal(0, 6, "No EPC data", false)
 
-  // ── Street View Kerb Appeal (0–5 pts) ─────────────────────────────────────
+  // ── Street View Kerb Appeal (0–3 pts) ─────────────────────────────────────
   const svAnalysis = inputs.streetViewAnalysis as { kerbAppeal?: number; hasStreetViewData?: boolean } | null
   const kerbAppeal = svAnalysis?.kerbAppeal ?? null
   const streetView = kerbAppeal != null && svAnalysis?.hasStreetViewData !== false
-    ? signal(Math.round(clamp(kerbAppeal / 10, 0, 1) * 5), 5, `${kerbAppeal}/10 kerb appeal`, true)
-    : signal(0, 5, "Not analysed", false)
+    ? signal(Math.round(clamp(kerbAppeal / 10, 0, 1) * 3), 3, `${kerbAppeal}/10 kerb appeal`, true)
+    : signal(0, 3, "Not analysed", false)
 
-  // ── Leasehold Penalty (modifier, 0 / −2 / −4 / −8) ───────────────────────
+  // ── Leasehold Penalty (modifier, 0 / −2 / −5 / −10) ──────────────────────
   const tenure = (inputs.tenureType ?? "").toLowerCase()
   const isLeasehold = tenure.includes("leasehold") && !tenure.includes("freehold")
   const lhYears = inputs.leaseholdData?.yearsRemaining ?? null
   let leaseholdPenalty = 0
   if (isLeasehold && lhYears != null) {
-    if      (lhYears < 70) leaseholdPenalty = -8
-    else if (lhYears < 80) leaseholdPenalty = -4
+    if      (lhYears < 70) leaseholdPenalty = -10
+    else if (lhYears < 80) leaseholdPenalty = -5
     else if (lhYears < 85) leaseholdPenalty = -2
   }
 
