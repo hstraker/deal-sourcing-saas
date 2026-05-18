@@ -23,10 +23,11 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { investorId, message, channel = "email" } = body as {
+    const { investorId, message, channel = "email", offerAmountOverride } = body as {
       investorId: string
       message?: string
       channel?: "email" | "sms" | "both"
+      offerAmountOverride?: number   // sourcer-edited offer price to show in the email
     }
 
     if (!investorId) {
@@ -63,10 +64,15 @@ export async function POST(
       [investor.user.firstName, investor.user.lastName].filter(Boolean).join(" ") ||
       investor.user.email
     const propertyAddress = lead.propertyAddress || lead.propertyPostcode || "Property"
-    const offerAmount  = lead.offerAmount ? Number(lead.offerAmount) : 0
-    const askingPrice  = lead.askingPrice ? Number(lead.askingPrice) : 0
-    const marketValue  = lead.estimatedMarketValue ? Number(lead.estimatedMarketValue) : null
+    const dbOfferAmount = lead.offerAmount ? Number(lead.offerAmount) : 0
+    const askingPrice   = lead.askingPrice ? Number(lead.askingPrice) : 0
+    const marketValue   = lead.estimatedMarketValue ? Number(lead.estimatedMarketValue) : null
     const appUrl = process.env.APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000"
+
+    // Use sourcer-overridden offer price if provided, otherwise fall back to DB value
+    const offerAmount = (offerAmountOverride && offerAmountOverride > 0)
+      ? offerAmountOverride
+      : dbOfferAmount
 
     // BMV for the email = offer vs market value (not the stored bmvScore which is asking vs market value)
     // Falls back to offer vs asking price if market value not yet calculated.

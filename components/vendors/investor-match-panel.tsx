@@ -73,18 +73,30 @@ const STAGE_LABEL: Record<string, string> = {
 // ── Investor row ──────────────────────────────────────────────────────────────
 
 function InvestorRow({
-  investor, leadId, channel, onNotified,
+  investor, leadId, channel, onNotified, defaultOfferPrice, defaultMarketValue,
 }: {
   investor: MatchedInvestor
   leadId: string
   channel: "email" | "sms" | "both"
   onNotified: (investorId: string, sentAt: string, channel: string) => void
+  defaultOfferPrice: number | null
+  defaultMarketValue: number | null
 }) {
   const matchPct = Math.round(investor.score * 100)
   const col = scoreColour(matchPct)
   const [sending, setSending] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const alreadySent = !!investor.notification
+
+  // Offer editor state — sourcer can change price before sending
+  const [offerInput, setOfferInput] = useState(
+    defaultOfferPrice ? String(Math.round(defaultOfferPrice)) : ""
+  )
+  const offerNum = parseFloat(offerInput.replace(/,/g, "")) || null
+  const liveOfferBmv =
+    offerNum && defaultMarketValue && defaultMarketValue > 0
+      ? ((defaultMarketValue - offerNum) / defaultMarketValue) * 100
+      : null
 
   // AI pitch state
   const [pitchState, setPitchState] = useState<PitchState>("idle")
@@ -97,7 +109,16 @@ function InvestorRow({
   const NotifyIcon =
     channel === "sms" ? MessageSquare : channel === "both" ? Zap : Mail
 
-  // Generic quick notify (no AI message)
+  function buildNotifyBody(extraMessage?: string) {
+    return {
+      investorId: investor.investorId,
+      channel,
+      ...(offerNum ? { offerAmountOverride: offerNum } : {}),
+      ...(extraMessage ? { message: extraMessage } : {}),
+    }
+  }
+
+  // Generic quick notify — uses current offerInput as override
   async function handleQuickNotify() {
     setSending(true)
     try {
@@ -106,7 +127,7 @@ function InvestorRow({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ investorId: investor.investorId, channel }),
+          body: JSON.stringify(buildNotifyBody()),
         }
       )
       const data = await res.json()
@@ -125,24 +146,17 @@ function InvestorRow({
     }
   }
 
-  // Send with AI-generated (possibly edited) pitch
+  // Send with AI-generated (possibly edited) pitch + current offer price override
   async function handleSendPitch() {
     const messageToSend = editingPitch ? editedMessage : (channel === "sms" ? smsPitch : emailPitch)
     setSending(true)
     try {
-      const body: Record<string, unknown> = {
-        investorId: investor.investorId,
-        channel,
-        message: messageToSend,
-      }
-      if (channel !== "sms" && pitchSubject) body.subject = pitchSubject
-
       const res = await fetch(
         `/api/vendor-pipeline/leads/${leadId}/notify-investor`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
+          body: JSON.stringify(buildNotifyBody(messageToSend)),
         }
       )
       const data = await res.json()
@@ -302,6 +316,54 @@ function InvestorRow({
                 })}
               </span>
             )}
+          </div>
+
+          {/* ── Offer editor ─────────────────────────────────────────── */}
+          <div className="px-4 pb-3">
+            <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-gray-50/60">
+                <span className="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Offer to show investor</span>
+                {liveOfferBmv !== null && (
+                  <span className={cn(
+                    "text-[11px] font-bold px-2 py-0.5 rounded-full",
+                    liveOfferBmv >= 20 ? "bg-green-100 text-green-700" :
+                    liveOfferBmv >= 10 ? "bg-blue-100 text-blue-700" :
+                    liveOfferBmv > 0   ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-500"
+                  )}>
+                    {liveOfferBmv.toFixed(1)}% BMV
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2.5">
+                <span className="text-xs text-gray-400 shrink-0">£</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={offerInput}
+                  onChange={(e) => setOfferInput(e.target.value.replace(/[^0-9,]/g, ""))}
+                  placeholder={defaultOfferPrice ? String(Math.round(defaultOfferPrice)) : "Enter offer price"}
+                  className="flex-1 text-sm font-mono font-bold text-gray-800 bg-transparent focus:outline-none placeholder:text-gray-300"
+                />
+                {defaultMarketValue && (
+                  <span className="text-[10px] text-gray-400 shrink-0">
+                    of {gbp(defaultMarketValue)} MV
+                  </span>
+                )}
+              </div>
+              {offerNum && defaultOfferPrice && offerNum !== Math.round(defaultOfferPrice) && (
+                <div className="px-3 py-1.5 bg-amber-50 border-t border-amber-100 flex items-center justify-between">
+                  <span className="text-[10px] text-amber-700">
+                    Modified from {gbp(defaultOfferPrice)} (original calculated offer)
+                  </span>
+                  <button
+                    onClick={() => setOfferInput(String(Math.round(defaultOfferPrice)))}
+                    className="text-[10px] text-amber-600 underline hover:no-underline"
+                  >
+                    Reset
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* AI Pitch section */}
@@ -676,6 +738,8 @@ export function InvestorMatchPanel({ leadId, validationPassed }: InvestorMatchPa
                     leadId={leadId}
                     channel={channel}
                     onNotified={handleNotified}
+                    defaultOfferPrice={dealValues?.price ?? null}
+                    defaultMarketValue={dealValues?.marketValue ?? null}
                   />
                 ))}
               </div>
