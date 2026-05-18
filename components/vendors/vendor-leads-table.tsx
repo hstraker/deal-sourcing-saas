@@ -158,6 +158,7 @@ export interface VendorLead {
   estimatedMarketValue: string | number | null
   bmvScore: string | number | null
   comparablesCount: number | null
+  comparablesConfidence: string | null    // "HIGH" | "MEDIUM" | "LOW"
   avgComparablePrice: string | number | null
   offerAmount: string | number | null
   offerPercentage: string | number | null
@@ -1568,6 +1569,7 @@ function PortalCheckRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete,
           {lead.latestCheckedAt ? fmtDate(lead.latestCheckedAt) : "—"}
         </span>
       </Td>
+      <Td><DealScoreCell lead={lead} /></Td>
       <ActionsCell
         lead={lead} onView={onView} onEdit={onEdit} onArchive={onArchive} onDelete={onDelete}
         checkAction={onCheck ? { icon: ShieldCheck, title: "Run Portal Check", onClick: onCheck, loading: isChecking } : undefined}
@@ -1581,27 +1583,49 @@ function PortalCheckRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete,
 
 function DealScoreCell({ lead }: { lead: VendorLead }) {
   const score = computeDealScore({
-    bmvScore: lead.bmvScore,
-    estimatedMonthlyRent: lead.estimatedMonthlyRent,
-    estimatedMarketValue: lead.estimatedMarketValue,
-    motivationScore: lead.motivationScore,
-    comparablesCount: lead.comparablesCount,
-    photoConditionScore: lead.photoConditionScore,
+    // Core financials
+    bmvScore:               lead.bmvScore,
+    estimatedMonthlyRent:   lead.estimatedMonthlyRent,
+    estimatedMarketValue:   lead.estimatedMarketValue,
+    // AI conversation
+    motivationScore:        lead.motivationScore,
+    // Comparables
+    comparablesCount:       lead.comparablesCount,
+    comparablesConfidence:  lead.comparablesConfidence,
+    // Photo AI
+    photoConditionScore:    lead.photoConditionScore,
+    // Portal risk
+    latestCheckRisk:        lead.latestCheckRisk,
+    // Flood zone
+    floodRiskZone:          lead.floodRiskZone,
+    // EPC
+    epcRating:              lead.epcRating,
+    // Street view AI
+    streetViewAnalysis:     lead.streetViewAnalysis as Record<string, unknown> | null,
+    // Leasehold modifier
+    tenureType:             lead.tenureType,
+    leaseholdData:          lead.leaseholdData,
   })
 
-  if (!score) return <span className="text-xs text-gray-300">—</span>
-
   const cls = dealScoreClasses(score.colour)
-  const breakdown = [
-    `BMV: ${score.bmvPts}/40`,
-    `Yield: ${score.yieldPts}/20`,
-    `Motivation: ${score.motivationPts}/20`,
-    `Comps: ${score.compsPts}/10`,
-    `Condition: ${score.conditionPts}/10`,
-  ].join("\n")
+
+  const lines = [
+    `${score.label} — ${score.total}/100  (${score.signalsAvailable}/${score.signalsTotal} signals)`,
+    ``,
+    `BMV:          ${score.bmv.pts}/${score.bmv.maxPts}  ${score.bmv.display}`,
+    `Portal Risk:  ${score.portalRisk.pts}/${score.portalRisk.maxPts}  ${score.portalRisk.display}`,
+    `Motivation:   ${score.motivation.pts}/${score.motivation.maxPts}  ${score.motivation.display}`,
+    `Yield:        ${score.yield.pts}/${score.yield.maxPts}  ${score.yield.display}`,
+    `Photos:       ${score.photoCondition.pts}/${score.photoCondition.maxPts}  ${score.photoCondition.display}`,
+    `Comps:        ${score.comparables.pts}/${score.comparables.maxPts}  ${score.comparables.display}`,
+    `Flood Zone:   ${score.floodZone.pts}/${score.floodZone.maxPts}  ${score.floodZone.display}`,
+    `EPC:          ${score.epc.pts}/${score.epc.maxPts}  ${score.epc.display}`,
+    `Street View:  ${score.streetView.pts}/${score.streetView.maxPts}  ${score.streetView.display}`,
+    score.leaseholdPenalty !== 0 ? `Leasehold:    ${score.leaseholdPenalty} penalty` : null,
+  ].filter(Boolean).join("\n")
 
   return (
-    <Tip text={`${score.label} — ${score.total}/100\n${breakdown}`}>
+    <Tip text={lines}>
       <span
         className={cn(
           "inline-flex cursor-default items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold",
@@ -1609,6 +1633,7 @@ function DealScoreCell({ lead }: { lead: VendorLead }) {
         )}
       >
         {score.total}
+        <span className="text-[9px] font-normal opacity-70">{score.label}</span>
       </span>
     </Tip>
   )
@@ -2187,6 +2212,7 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
         <Th className="w-24"><Tip text="Individual, UK company, or overseas entity. Corporate/overseas = potential complications">Owner Type</Tip></Th>
         <Th><Tip text="Last recorded sale price from Land Registry">Last Sale Price</Tip></Th>
         <Th><Tip text="When portal check was last run. Refresh if >30 days old — listings change frequently">Last Checked</Tip></Th>
+        <Th><Tip text="AI Deal Score (0–100) across 9 signals: BMV, portal risk, motivation, yield, photos, comps, flood zone, EPC, street view. Hover for full breakdown.">Score</Tip></Th>
         {stickyRight}
       </tr>
 
