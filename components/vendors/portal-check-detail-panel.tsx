@@ -715,11 +715,12 @@ interface FloodAIAnalysis {
 }
 
 // Module-level cache so analysis survives modal close/reopen
-const _floodCache = new Map<string, {
+interface FloodCacheEntry {
   result: FloodRiskResult
   aiAnalysis?: FloodAIAnalysis
   aiAnalysedAt?: string
-}>()
+}
+const _floodCache = new Map<string, FloodCacheEntry>()
 
 const FLOOD_ZONE_CONFIG: Record<
   FloodRiskResult["zone"],
@@ -781,7 +782,8 @@ export function FloodRiskCard({
       }
       const newResult = data as FloodRiskResult
       setResult(newResult)
-      _floodCache.set(leadId, { ..._floodCache.get(leadId), result: newResult })
+      const existing = _floodCache.get(leadId) ?? {} as FloodCacheEntry
+      _floodCache.set(leadId, { ...existing, result: newResult })
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unexpected error")
     } finally {
@@ -817,8 +819,9 @@ export function FloodRiskCard({
       const at = json.analysedAt as string
       setAiAnalysis(newAnalysis)
       setAiAnalysedAt(at)
+      const existingAi = _floodCache.get(leadId) ?? {} as FloodCacheEntry
       _floodCache.set(leadId, {
-        ..._floodCache.get(leadId),
+        ...existingAi,
         result,
         aiAnalysis: newAnalysis,
         aiAnalysedAt: at,
