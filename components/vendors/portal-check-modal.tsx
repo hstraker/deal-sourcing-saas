@@ -17,7 +17,7 @@ import type { VendorLead } from "./vendor-leads-table"
 // ─── types ────────────────────────────────────────────────────────────────────
 
 type RiskLevel = "clear" | "caution" | "red_flag"
-type Tab = "portal" | "ownership" | "history" | "leasehold" | "flood"
+type Tab = "risk" | "flood" | "ownership" | "leasehold" | "activity"
 
 // ─── risk config ──────────────────────────────────────────────────────────────
 
@@ -619,7 +619,7 @@ function OwnershipTab({ ownership, lead }: {
   return (
     <div className="p-5 space-y-4 overflow-y-auto">
       <div>
-        <h3 className="text-sm font-bold text-gray-900 mb-0.5">Ownership Intelligence</h3>
+        <h3 className="text-sm font-bold text-gray-900 mb-0.5">Ownership</h3>
         <p className="text-xs text-gray-500">Land Registry, Companies House &amp; PropertyData /freeholds</p>
       </div>
 
@@ -893,8 +893,8 @@ function HistoryTab({ lead }: { lead: VendorLead }) {
   return (
     <div className="p-5 space-y-4">
       <div>
-        <h3 className="text-sm font-bold text-gray-900 mb-0.5">Check History</h3>
-        <p className="text-xs text-gray-500">Portal checks run on this property</p>
+        <h3 className="text-sm font-bold text-gray-900 mb-0.5">Activity</h3>
+        <p className="text-xs text-gray-500">Checks and events for this property</p>
       </div>
 
       {hasCheck ? (
@@ -944,7 +944,7 @@ function HistoryTab({ lead }: { lead: VendorLead }) {
         <div className="flex flex-col items-center justify-center h-48 text-center">
           <Clock className="h-10 w-10 text-gray-300 mb-3" />
           <p className="text-sm font-semibold text-gray-600">No Checks Run Yet</p>
-          <p className="mt-1 text-xs text-gray-400">Run a portal check from the Portal tab</p>
+          <p className="mt-1 text-xs text-gray-400">Run a portal check from the Risk Check tab</p>
         </div>
       )}
     </div>
@@ -962,7 +962,7 @@ export function PortalCheckModal({
   onClose: () => void
   onRiskUpdated?: (newRisk: string | null, newDate: string | null) => void
 }) {
-  const [activeTab, setActiveTab] = useState<Tab>("portal")
+  const [activeTab, setActiveTab] = useState<Tab>("risk")
 
   const risk   = lead.latestCheckRisk as RiskLevel | null
   const config = risk ? RISK_CONFIG[risk] : null
@@ -1017,6 +1017,23 @@ export function PortalCheckModal({
   const riskFlagCount = riskFlags.length
   const hasFlags     = riskFlagCount > 0   // amber only for actual risk flags
 
+  // ── Leasehold summary (used in left panel + tab dot) ──────────────────────
+  const ld           = lead.leaseholdData as any
+  const lhYears      = ld?.yearsRemaining as number | null
+  const lhFlagCount  = [ld?.isGroundRentDoubling, ld?.isSection20Pending, ld?.hasMaintenanceArrears].filter(Boolean).length
+  const tenureLower  = (lead.tenureType ?? (lead.latestPortalCheck?.ownershipCheckRaw as any)?.tenure as string | null ?? "").toLowerCase()
+  const showLeaseholdWarning = tenureLower.includes("leasehold") && (!lhYears || lhYears < 85 || lhFlagCount > 0)
+
+  // ── Ownership summary (used in left panel) ─────────────────────────────────
+  const ownershipYearsOwned = ownership?.lastSaleDate
+    ? Math.floor((Date.now() - new Date(ownership.lastSaleDate).getTime()) / (1000 * 60 * 60 * 24 * 365))
+    : null
+
+  // ── Flood dot (tab indicator) ──────────────────────────────────────────────
+  const floodDot = lead.floodRiskZone === "zone3" ? "bg-red-500"
+                 : lead.floodRiskZone === "zone2" ? "bg-amber-400"
+                 : undefined
+
   // ── Left panel ────────────────────────────────────────────────────────────
   const leftPanel = (
     <div className="flex h-full flex-col overflow-y-auto p-5">
@@ -1043,7 +1060,7 @@ export function PortalCheckModal({
         </div>
       </div>
 
-      {/* ── FLOOD TAB — flood-specific left panel ── */}
+      {/* ── TAB-CONTEXTUAL LEFT PANEL ── */}
       {activeTab === "flood" ? (
         <>
           <div className="mb-2 flex items-center gap-1.5">
@@ -1127,9 +1144,157 @@ export function PortalCheckModal({
             </a>
           </div>
         </>
+      ) : activeTab === "ownership" ? (
+        <>
+          {/* ── OWNERSHIP TAB ── */}
+          <div className="mb-2 flex items-center gap-1.5">
+            <Building2 className="h-3 w-3 text-slate-500" />
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Ownership</p>
+          </div>
+
+          <div className="mb-4 space-y-2">
+            {/* Tenure */}
+            {(() => {
+              const t = ownership?.tenure ?? (ownership?.freeholds?.inferredTenure && ownership.freeholds.inferredTenure !== "unknown" ? ownership.freeholds.inferredTenure + " (inferred)" : null)
+              const isLH = t?.toLowerCase().includes("leasehold")
+              return t ? (
+                <div className={cn("flex items-center justify-between rounded-lg border px-3 py-2", isLH ? "bg-amber-500/10 border-amber-500/20" : "bg-green-500/10 border-green-500/20")}>
+                  <span className="text-[10px] text-slate-400">Tenure</span>
+                  <span className={cn("text-[11px] font-bold capitalize", isLH ? "text-amber-400" : "text-green-400")}>{t}</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                  <span className="text-[10px] text-slate-400">Tenure</span>
+                  <span className="text-[11px] font-bold text-slate-500">Unknown</span>
+                </div>
+              )
+            })()}
+
+            {/* Years owned */}
+            {ownershipYearsOwned !== null && (
+              <div className={cn("flex items-center justify-between rounded-lg border px-3 py-2", ownershipYearsOwned >= 10 ? "bg-green-500/10 border-green-500/20" : "bg-white/5 border-white/10")}>
+                <span className="text-[10px] text-slate-400">Years owned</span>
+                <span className={cn("text-[11px] font-bold", ownershipYearsOwned >= 10 ? "text-green-400" : "text-slate-300")}>
+                  ~{ownershipYearsOwned}yr{ownershipYearsOwned !== 1 ? "s" : ""}{ownershipYearsOwned >= 10 && " ✓"}
+                </span>
+              </div>
+            )}
+
+            {/* Last sold */}
+            {ownership?.lastSalePrice != null && (
+              <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                <span className="text-[10px] text-slate-400">Last sold</span>
+                <span className="text-[11px] font-bold text-slate-300">{fmtCurrency(ownership.lastSalePrice)}</span>
+              </div>
+            )}
+
+            {/* Equity estimate */}
+            {ownership?.equityEstimate != null && (
+              <div className={cn("flex items-center justify-between rounded-lg border px-3 py-2",
+                ownership.equityEstimate >= 50_000 ? "bg-green-500/10 border-green-500/20" :
+                ownership.equityEstimate >= 20_000 ? "bg-amber-500/10 border-amber-500/20" :
+                                                     "bg-red-500/10 border-red-500/20"
+              )}>
+                <span className="text-[10px] text-slate-400">Est. equity</span>
+                <span className={cn("text-[11px] font-bold",
+                  ownership.equityEstimate >= 50_000 ? "text-green-400" :
+                  ownership.equityEstimate >= 20_000 ? "text-amber-400" : "text-red-400"
+                )}>{fmtCurrency(ownership.equityEstimate)}</span>
+              </div>
+            )}
+
+            {/* Ownership flags */}
+            {(ownership?.isCorporateOwned || ownership?.isOverseasOwned || ownership?.isPortfolioOwner) && (
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2">
+                <p className="text-[10px] font-semibold text-amber-400">
+                  ⚠ {[ownership.isCorporateOwned && "Corporate", ownership.isOverseasOwned && "Overseas", ownership.isPortfolioOwner && "Portfolio"].filter(Boolean).join(" · ")}
+                </p>
+              </div>
+            )}
+
+            {!ownership && (
+              <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-3 text-center">
+                <p className="text-[10px] text-slate-500">Run a portal check to load ownership data</p>
+              </div>
+            )}
+          </div>
+        </>
+
+      ) : activeTab === "leasehold" ? (
+        <>
+          {/* ── LEASEHOLD TAB ── */}
+          <div className="mb-2 flex items-center gap-1.5">
+            <Key className="h-3 w-3 text-slate-500" />
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Leasehold</p>
+          </div>
+
+          {/* Lease years hero */}
+          {lhYears ? (
+            <div className={cn("mb-3 rounded-xl border p-4 text-center",
+              lhYears < 70 ? "border-red-500/30 bg-red-500/10" :
+              lhYears < 80 ? "border-orange-500/30 bg-orange-500/10" :
+              lhYears < 85 ? "border-amber-500/30 bg-amber-500/10" :
+              lhYears < 90 ? "border-blue-500/30 bg-blue-500/10" :
+                             "border-green-500/30 bg-green-500/10"
+            )}>
+              <p className={cn("text-3xl font-extrabold leading-none",
+                lhYears < 70 ? "text-red-400" : lhYears < 80 ? "text-orange-400" :
+                lhYears < 85 ? "text-amber-400" : lhYears < 90 ? "text-blue-400" : "text-green-400"
+              )}>
+                {lhYears}<span className="text-base font-semibold">yr</span>
+              </p>
+              <p className="mt-1 text-[10px] text-slate-400">Years remaining</p>
+              <p className={cn("mt-1.5 text-[10px] font-bold",
+                lhYears < 70 ? "text-red-400" : lhYears < 80 ? "text-orange-400" :
+                lhYears < 85 ? "text-amber-400" : lhYears < 90 ? "text-blue-400" : "text-green-400"
+              )}>
+                {lhYears < 70 ? "⛔ Critical" : lhYears < 80 ? "🔴 Urgent" :
+                 lhYears < 85 ? "⚠ Caution" : lhYears < 90 ? "ℹ Low" : "✓ OK"}
+              </p>
+            </div>
+          ) : (
+            <div className="mb-3 rounded-xl border border-white/10 bg-white/5 p-4 text-center">
+              <Key className="h-6 w-6 mx-auto mb-1.5 text-slate-600" />
+              <p className="text-base font-extrabold text-slate-400 leading-none">NOT ENTERED</p>
+              <p className="mt-1 text-[10px] text-slate-500">Enter lease years in this tab</p>
+            </div>
+          )}
+
+          <div className="mb-4 space-y-2">
+            {ld?.groundRent != null && (
+              <div className={cn("flex items-center justify-between rounded-lg border px-3 py-2",
+                ld.groundRent > 1000 ? "bg-red-500/10 border-red-500/20" :
+                ld.groundRent > 250  ? "bg-amber-500/10 border-amber-500/20" :
+                                       "bg-white/5 border-white/10"
+              )}>
+                <span className="text-[10px] text-slate-400">Ground rent</span>
+                <span className={cn("text-[11px] font-bold",
+                  ld.groundRent > 1000 ? "text-red-400" : ld.groundRent > 250 ? "text-amber-400" : "text-slate-300"
+                )}>£{Number(ld.groundRent).toLocaleString("en-GB")}/yr</span>
+              </div>
+            )}
+            {ld?.serviceCharge != null && (
+              <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                <span className="text-[10px] text-slate-400">Service charge</span>
+                <span className="text-[11px] font-bold text-slate-300">£{Number(ld.serviceCharge).toLocaleString("en-GB")}/yr</span>
+              </div>
+            )}
+            {lhFlagCount > 0 && (
+              <div className={cn("flex items-center justify-between rounded-lg border px-3 py-2",
+                lhFlagCount >= 2 ? "bg-red-500/10 border-red-500/20" : "bg-amber-500/10 border-amber-500/20"
+              )}>
+                <span className="text-[10px] text-slate-400">Risk flags</span>
+                <span className={cn("text-[11px] font-bold", lhFlagCount >= 2 ? "text-red-400" : "text-amber-400")}>
+                  {lhFlagCount} flag{lhFlagCount !== 1 ? "s" : ""} ⚠
+                </span>
+              </div>
+            )}
+          </div>
+        </>
+
       ) : (
         <>
-          {/* ── PORTAL / OTHER TABS — existing portal check left panel ── */}
+          {/* ── RISK CHECK / ACTIVITY TABS ── */}
           <div className="mb-4">
             <div className="flex items-center gap-1.5 mb-2">
               <Shield className="h-3 w-3 text-slate-500" />
@@ -1183,9 +1348,8 @@ export function PortalCheckModal({
               <span className="text-[11px] font-bold text-slate-300">{lastChecked}</span>
             </div>
             {(() => {
-              const t = (lead.tenureType ?? (lead.latestPortalCheck?.ownershipCheckRaw as any)?.tenure as string | null ?? null)?.toLowerCase()
-              const ld = lead.leaseholdData as any
-              const yr = ld?.yearsRemaining as number | null
+              const t = tenureLower || null
+              const yr = lhYears
               const isFH = t?.includes("freehold") && !t?.includes("leasehold")
               const isLH = t?.includes("leasehold")
               const lhColor = !isLH ? null : !yr ? "bg-green-500/10 border-green-500/20" : yr < 70 ? "bg-red-500/10 border-red-500/20" : yr < 85 ? "bg-amber-500/10 border-amber-500/20" : "bg-green-500/10 border-green-500/20"
@@ -1272,20 +1436,13 @@ export function PortalCheckModal({
     </div>
   )
 
-  // ── Tab content ────────────────────────────────────────────────────────────
-  // Leasehold tab badge — show warning dot when leasehold with short lease or flags
-  const ld = lead.leaseholdData as any
-  const lhYears = ld?.yearsRemaining as number | null
-  const lhFlagCount = [ld?.isGroundRentDoubling, ld?.isSection20Pending, ld?.hasMaintenanceArrears].filter(Boolean).length
-  const tenureLower = (lead.tenureType ?? (lead.latestPortalCheck?.ownershipCheckRaw as any)?.tenure as string | null ?? "").toLowerCase()
-  const showLeaseholdWarning = tenureLower.includes("leasehold") && (!lhYears || lhYears < 85 || lhFlagCount > 0)
-
+  // ── Tabs ───────────────────────────────────────────────────────────────────
   const tabs: { id: Tab; label: string; dot?: string }[] = [
-    { id: "portal",    label: "Portal" },
+    { id: "risk",      label: "Risk Check" },
+    { id: "flood",     label: "Flood Risk", dot: floodDot },
     { id: "ownership", label: "Ownership" },
-    { id: "history",   label: "History" },
     { id: "leasehold", label: "Leasehold", dot: showLeaseholdWarning ? (lhYears && lhYears < 70 ? "bg-red-500" : "bg-amber-400") : undefined },
-    { id: "flood",     label: "Flood Risk" },
+    { id: "activity",  label: "Activity" },
   ]
 
   return (
@@ -1322,7 +1479,7 @@ export function PortalCheckModal({
 
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto">
-        {activeTab === "portal" && (
+        {activeTab === "risk" && (
           <div className="p-4 pt-3">
             <PortalCheckDetailPanel
               leadId={lead.id}
@@ -1333,19 +1490,19 @@ export function PortalCheckModal({
             />
           </div>
         )}
-        {activeTab === "ownership" && (
-          <OwnershipTab ownership={ownership} lead={lead} />
-        )}
-        {activeTab === "history" && (
-          <HistoryTab lead={lead} />
-        )}
-        {activeTab === "leasehold" && (
-          <LeaseholdTab lead={lead} onSaved={onRiskUpdated ? () => onRiskUpdated(lead.latestCheckRisk, lead.latestCheckedAt ?? null) : undefined} />
-        )}
         {activeTab === "flood" && (
           <div className="p-4 pt-3">
             <FloodRiskCard leadId={lead.id} postcode={lead.propertyPostcode ?? null} />
           </div>
+        )}
+        {activeTab === "ownership" && (
+          <OwnershipTab ownership={ownership} lead={lead} />
+        )}
+        {activeTab === "leasehold" && (
+          <LeaseholdTab lead={lead} onSaved={onRiskUpdated ? () => onRiskUpdated(lead.latestCheckRisk, lead.latestCheckedAt ?? null) : undefined} />
+        )}
+        {activeTab === "activity" && (
+          <HistoryTab lead={lead} />
         )}
       </div>
     </ModalShell>
