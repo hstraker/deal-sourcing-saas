@@ -1,6 +1,6 @@
 /**
  * POST /api/vendor-pipeline/leads/[id]/notify-investor
- * Send a deal-alert email to a specific investor about this vendor lead.
+ * Send a deal-alert email and/or SMS to a specific investor about this vendor lead.
  * Works without a linked Deal — uses raw lead data.
  */
 
@@ -9,6 +9,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { sendOfferToInvestorEmail } from "@/lib/email"
+import { TwilioService } from "@/lib/vendor-pipeline/twilio"
 
 export async function POST(
   request: NextRequest,
@@ -22,7 +23,11 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { investorId, message } = body as { investorId: string; message?: string }
+    const { investorId, message, channel = "email" } = body as {
+      investorId: string
+      message?: string
+      channel?: "email" | "sms" | "both"
+    }
 
     if (!investorId) {
       return NextResponse.json({ error: "investorId is required" }, { status: 400 })
@@ -43,12 +48,12 @@ export async function POST(
     })
     if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 })
 
-    // Fetch investor
+    // Fetch investor (including phone for SMS)
     const investor = await prisma.investor.findUnique({
       where: { id: investorId },
       select: {
         id: true,
-        user: { select: { firstName: true, lastName: true, email: true } },
+        user: { select: { firstName: true, lastName: true, email: true, phone: true } },
       },
     })
     if (!investor) return NextResponse.json({ error: "Investor not found" }, { status: 404 })
@@ -73,7 +78,7 @@ export async function POST(
     let emailSuccess = false
     let noSmtp = false
 
-    if (investor.user.email) {
+    if ((channel === "email" || channel === "both") && investor.user.email) {
       const result = await sendOfferToInvestorEmail({
         to: investor.user.email,
         investorName,
@@ -88,6 +93,22 @@ export async function POST(
       noSmtp = result.noSmtp ?? false
     }
 
+    // Send SMS
+    let smsSuccess = false
+    const smsPhone = investor.user.phone ?? null
+
+    if ((channel === "sms" || channel === "both") && smsPhone) {
+      try {
+        const smsMessage = `DealStack: New deal match — ${propertyAddress}${lead.bedrooms ? ` ${lead.bedrooms}bd` : ""}${bmvPct > 0 ? ` at ${bmvPct.toFixed(0)}% BMV` : ""}. Login: ${appUrl}/investor/marketplace`
+        const twilio = new TwilioService()
+        const smsResult = await twilio.sendSMS(smsPhone, smsMessage)
+        smsSuccess = !smsResult.error
+      } catch {
+        // Twilio not configured — silently skip
+        smsSuccess = false
+      }
+    }
+
     // Log notification in pipeline events
     await prisma.pipelineEvent.create({
       data: {
@@ -97,9 +118,11 @@ export async function POST(
           investorId: investor.id,
           investorName,
           investorEmail: investor.user.email,
-          channel: "email",
+          channel,
           emailSuccess,
           noSmtp,
+          smsSuccess,
+          smsPhone,
           message: defaultMessage,
           sentBy: session.user.id,
         },
@@ -110,7 +133,9 @@ export async function POST(
     return NextResponse.json({
       success: true,
       emailDelivered: emailSuccess,
+      smsDelivered: smsSuccess,
       noSmtp,
+      channel,
     })
   } catch (error: any) {
     console.error("[notify-investor] Error:", error)

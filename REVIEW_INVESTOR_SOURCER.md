@@ -286,6 +286,13 @@ The `.env` has `STRIPE_SECRET_KEY="sk_test_..."` — placeholder only. The entir
 | 2026-05-16 | **Refurb line-item breakdown** | `refurb_line_items` table; CRUD API; Refurb tab (tab 9) with 12 categories, inline edit/delete, "Generate from Assessment" AI estimate, 10% contingency, category bar chart |
 | 2026-05-17 | **Investor portal — full build** | `/investor/marketplace`, `/investor/deals/[id]`, `/investor/dashboard`; role-based middleware; deal browsing + search + filters; register interest (no-Stripe reservation); favourites; dashboard with reservation status tracking |
 | 2026-05-17 | **Login role-based redirect** | Investors now land at `/investor/marketplace` after sign-in instead of bouncing off the sourcer dashboard |
+| 2026-05-17 | **Investor portal API fixes** | Removed non-existent `description`/`highlights` fields; fixed `s3Url` vs `url` mapping on DealPhoto; both deals list and deal detail routes now return clean JSON |
+| 2026-05-17 | **AI deal summary (AI Pack tab)** | 10th tab "AI Pack" (violet, Sparkles icon) on vendor lead modal; `POST /api/vendor-leads/[id]/deal-summary` calls Claude; 3-paragraph investment case (opportunity, income, exit); uses validated PropertyData rent over raw estimate; editable textarea + copy-to-clipboard; persisted to DB |
+| 2026-05-17 | **Manage Lead — Option B layout** | Full single-window redesign replacing the broken double-modal; 272px dark navy identity panel (avatar, pipeline stage, 2×2 deal metric grid, gross yield, property summary, validation status, quick-action links, Manage Lead / Save pinned to bottom) + full 10-tab workspace on the right; no more overlay; zero TypeScript errors |
+| 2026-05-18 | **Flood risk check** | `POST /api/vendor-leads/[id]/flood-risk`; postcodes.io → lat/lng → EA Flood Monitoring API (free, no key); Zone 1/2/3 classification with green/amber/red badges; lists nearby flood alert areas by name; GOV.UK Flood Map link + Coal Authority mining link; card added to bottom of Due Diligence tab — no new tab created |
+| 2026-05-18 | **Floorplan upload + AI analysis** | New amber section at bottom of Photos tab; `POST /api/vendor-leads/[id]/floorplan` (presign→S3→confirm, images + PDFs); `POST /api/vendor-leads/[id]/floorplan/analyse` calls Claude Vision → extracts sqft, sqm, beds, baths, receptions, storeys, layout type, extension/loft/garage/garden flags, notes; stored as `PropertyPhoto` with `source: "floorplan_upload"` — no schema changes |
+| 2026-05-18 | **Bulk investor notify — SMS / Email / Both** | Segmented Email·SMS·Both channel picker in Investor Match panel header; individual Notify + Notify All both respect selected channel; SMS via existing Twilio (graceful fallback if unconfigured); button icon changes Mail→MessageSquare→Zap; pipeline event logs channel + delivery status; API updated to accept `channel` param with `"email"` default for backward compat |
+| 2026-05-18 | **Duplicate lead detection** | `GET /api/vendor-pipeline/leads/check-duplicate?phone=...`; normalises UK phone formats (07xxx, +447xxx, 447xxx); 600ms debounced check on Add Lead form phone field → amber inline warning with matching vendor name + stage; amber **Dupe** badge on table rows where phone matches another lead in current view |
 
 ---
 
@@ -293,17 +300,23 @@ The `.env` has `STRIPE_SECRET_KEY="sk_test_..."` — placeholder only. The entir
 
 | Priority | Feature | Est. Effort | Revenue Impact |
 |----------|---------|------------|----------------|
-| 🔴 1 | Stripe payment integration | 1 day | Very High — investors can register interest but no fee collected yet |
-| 🟠 2 | AI-generated deal summary | 0.5 day | Medium — "Generate Summary" button sends deal metrics to Claude → editable 3-paragraph investment case for investor pack |
-| 🟠 3 | Flood risk / mining subsidence check | 1 day | Medium — Environment Agency API; flags Zone 2/3 in portal check scorecard |
-| 🟠 4 | Floorplan upload + viewer | 0.5 day | Medium — S3 upload with zoomable viewer; `DocumentType.floorplan` already in schema |
-| 🔵 5 | Bulk investor SMS when deal goes live | 0.5 day | Medium — one-click notify all matched investors when deal status hits `listed` |
-| 🔵 6 | Duplicate phone/address detection | 0.5 day | Low-Medium — warn on lead creation if phone/address already exists |
-| 🔵 7 | Post-completion feedback loop | 1 day | Low — `DealOutcome` record; actual purchase price, real yield, investor rating; follow-up email trigger |
-| 🔵 8 | Street view embed in map modal | 0.5 day | Low — Google Maps Street View iframe using property coordinates |
-| 🔵 9 | Auction workflow | 2 days | Low — auction-specific fields, `AUCTION_MONITORING` pipeline stage, pre-auction reminders |
-| 🔵 10 | Area demand / days-on-market | 0.5 day | Low — PropertyData `/demand` endpoint; surface in Comparables tab |
+| 🔴 1 | **Stripe payment integration** | 1 day | Very High — investors can register interest but no reservation fee is collected yet; blocks B2C revenue entirely |
+| 🔵 2 | **Post-completion feedback loop** | 1 day | Medium — `DealOutcome` record (actual purchase price, real yield, investor rating); follow-up email 6 weeks after lock-out; builds case-study library for investor trust |
+| 🔵 3 | **Street view embed in map modal** | 0.5 day | Low — Google Maps Street View iframe using property coordinates; sourcers pre-screen without site visits |
+| 🔵 4 | **Auction properties workflow** | 2 days | Low — auction-specific fields, `AUCTION_MONITORING` stage, pre-auction reminder alerts at 7/3/1 day |
+| 🔵 5 | **Area demand / days-on-market** | 0.5 day | Low — PropertyData `/demand` endpoint; surface avg days to sell + months of stock in Comparables tab |
 
 ---
 
-*Last updated 2026-05-17 after Sprint 1 + Sprint 2 + Sprint 3 + Investor Portal. Original review: 2026-05-15.*
+## Architecture Watch-list
+
+| Item | Risk | Action Needed |
+|------|------|--------------|
+| Stripe not wired | 🔴 Critical — zero revenue collection | Priority 1 |
+| `runVendorLeadAutoTriggers` sequential chain | 🟡 Timeout risk under PropertyData load | Move to job queue (BullMQ / `vendor_jobs` table) before scale |
+| VendorLead table indexes | 🟡 Performance degrades at >10k leads | Add `@@index` on `pipelineStage`, `validationPassed`, `propertyPostcode` |
+| AI provider key rotation | 🟡 Single key, no fallback | Add OpenAI as fallback in `AIProviderService` |
+
+---
+
+*Last updated 2026-05-18 after Sprint 5 (Flood risk, Floorplan AI, Bulk notify SMS/email, Duplicate detection). Original review: 2026-05-15.*

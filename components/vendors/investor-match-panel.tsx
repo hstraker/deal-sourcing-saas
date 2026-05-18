@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react"
 import {
   Users, Send, CheckCircle2, Clock, RefreshCw, ChevronDown, ChevronRight,
-  Mail, Phone, Zap, AlertCircle,
+  Mail, Phone, Zap, AlertCircle, MessageSquare,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -68,17 +68,21 @@ const STAGE_LABEL: Record<string, string> = {
 // ── Investor row ──────────────────────────────────────────────────────────────
 
 function InvestorRow({
-  investor, leadId, onNotified,
+  investor, leadId, channel, onNotified,
 }: {
   investor: MatchedInvestor
   leadId: string
-  onNotified: (investorId: string, sentAt: string) => void
+  channel: "email" | "sms" | "both"
+  onNotified: (investorId: string, sentAt: string, channel: string) => void
 }) {
   const pct = Math.round(investor.score * 100)
   const col = scoreColour(pct)
   const [sending, setSending] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const alreadySent = !!investor.notification
+
+  const NotifyIcon =
+    channel === "sms" ? MessageSquare : channel === "both" ? Zap : Mail
 
   async function handleNotify() {
     setSending(true)
@@ -88,18 +92,18 @@ function InvestorRow({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ investorId: investor.investorId }),
+          body: JSON.stringify({ investorId: investor.investorId, channel }),
         }
       )
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed")
 
-      if (data.noSmtp) {
+      if (data.noSmtp && channel !== "sms") {
         toast.info(`Notification logged for ${investor.name} (no SMTP configured — email not sent)`)
       } else {
-        toast.success(`Deal alert sent to ${investor.name}`)
+        toast.success(`Deal alert sent to ${investor.name} via ${channel}`)
       }
-      onNotified(investor.investorId, new Date().toISOString())
+      onNotified(investor.investorId, new Date().toISOString(), channel)
     } catch (err: any) {
       toast.error(err.message || "Failed to send notification")
     } finally {
@@ -149,7 +153,9 @@ function InvestorRow({
             <div className="flex items-center gap-1 text-green-600 bg-green-50 border border-green-200 rounded-lg px-2.5 py-1.5">
               <CheckCircle2 className="h-3.5 w-3.5" />
               <span className="text-[11px] font-semibold">
-                Sent {timeAgo(investor.notification!.sentAt)}
+                Sent{investor.notification!.channel && investor.notification!.channel !== "email"
+                  ? ` via ${investor.notification!.channel}`
+                  : ""} {timeAgo(investor.notification!.sentAt)}
               </span>
             </div>
           ) : (
@@ -160,7 +166,7 @@ function InvestorRow({
             >
               {sending
                 ? <RefreshCw className="h-3 w-3 animate-spin" />
-                : <Send className="h-3 w-3" />
+                : <NotifyIcon className="h-3 w-3" />
               }
               {sending ? "Sending…" : "Notify"}
             </button>
@@ -219,6 +225,7 @@ export function InvestorMatchPanel({ leadId, validationPassed }: InvestorMatchPa
   const [dealValues, setDealValues] = useState<DealValues | null>(null)
   const [sendingAll, setSendingAll] = useState(false)
   const [filter, setFilter] = useState<"all" | "unsent">("all")
+  const [channel, setChannel] = useState<"email" | "sms" | "both">("email")
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -236,11 +243,11 @@ export function InvestorMatchPanel({ leadId, validationPassed }: InvestorMatchPa
     }
   }, [leadId])
 
-  function handleNotified(investorId: string, sentAt: string) {
+  function handleNotified(investorId: string, sentAt: string, notifChannel: string = "email") {
     setMatches((prev) =>
       prev.map((m) =>
         m.investorId === investorId
-          ? { ...m, notification: { sentAt, channel: "email" } }
+          ? { ...m, notification: { sentAt, channel: notifChannel } }
           : m
       )
     )
@@ -261,17 +268,17 @@ export function InvestorMatchPanel({ leadId, validationPassed }: InvestorMatchPa
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ investorId: inv.investorId }),
+            body: JSON.stringify({ investorId: inv.investorId, channel }),
           }
         )
         if (res.ok) {
-          handleNotified(inv.investorId, new Date().toISOString())
+          handleNotified(inv.investorId, new Date().toISOString(), channel)
           sent++
         }
       } catch {}
     }
     setSendingAll(false)
-    toast.success(`Notified ${sent} of ${unsent.length} investors`)
+    toast.success(`Notified ${sent} of ${unsent.length} investors via ${channel}`)
   }
 
   const displayed = filter === "unsent" ? matches.filter((m) => !m.notification) : matches
@@ -291,6 +298,23 @@ export function InvestorMatchPanel({ leadId, validationPassed }: InvestorMatchPa
           )}
         </div>
         <div className="flex items-center gap-2">
+          {/* Channel picker — visible once matches are loaded */}
+          {loaded && matches.length > 0 && (
+            <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden text-xs">
+              {(["email", "sms", "both"] as const).map((ch) => (
+                <button
+                  key={ch}
+                  onClick={() => setChannel(ch)}
+                  className={cn(
+                    "px-2.5 py-1.5 font-medium transition-colors border-r border-gray-200 last:border-r-0",
+                    channel === ch ? "bg-blue-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"
+                  )}
+                >
+                  {ch === "email" ? "Email" : ch === "sms" ? "SMS" : "Both"}
+                </button>
+              ))}
+            </div>
+          )}
           {loaded && (
             <button
               onClick={load}
@@ -422,6 +446,7 @@ export function InvestorMatchPanel({ leadId, validationPassed }: InvestorMatchPa
                     key={inv.investorId}
                     investor={inv}
                     leadId={leadId}
+                    channel={channel}
                     onNotified={handleNotified}
                   />
                 ))}

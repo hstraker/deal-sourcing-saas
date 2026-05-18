@@ -16,6 +16,15 @@ import {
   Shield,
   ArrowUpDown,
   ZoomIn,
+  LayoutDashboard,
+  Upload,
+  X,
+  FileImage,
+  Home,
+  BedDouble,
+  Bath,
+  Sofa,
+  Layers,
 } from "lucide-react"
 import { ProPhotoViewer } from "./lead-photo-strip"
 import { Badge } from "@/components/ui/badge"
@@ -50,6 +59,21 @@ interface LeadPhotoData {
   photoAnalysisCompletedAt: string | null
   photoUploadToken: string | null
   photoUploadExpiresAt: string | null
+}
+
+interface FloorplanAnalysis {
+  totalSqFt: number | null
+  totalSqM: number | null
+  bedrooms: number | null
+  bathrooms: number | null
+  receptions: number | null
+  layoutType: "open_plan" | "traditional" | "mixed" | null
+  hasGarage: boolean
+  hasGarden: boolean
+  hasExtensionPotential: boolean
+  hasLoftPotential: boolean
+  storeys: number | null
+  notes: string | null
 }
 
 const CONDITION_COLOURS: Record<string, string> = {
@@ -94,6 +118,13 @@ export function PhotoAnalysisTab({
   const [sortWorstFirst, setSortWorstFirst] = useState(true)
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
 
+  // ── Floorplan state ────────────────────────────────────────────────────
+  const [floorplans, setFloorplans] = useState<PropertyPhoto[]>([])
+  const [floorplanAnalysis, setFloorplanAnalysis] = useState<FloorplanAnalysis | null>(null)
+  const [uploadingFloorplan, setUploadingFloorplan] = useState(false)
+  const [analysingFloorplan, setAnalysingFloorplan] = useState(false)
+  const floorplanInputRef = useRef<HTMLInputElement>(null)
+
   const fetchData = useCallback(async (showLoader = false) => {
     if (showLoader) setLoading(true)
     try {
@@ -115,11 +146,28 @@ export function PhotoAnalysisTab({
         console.error("[PhotoAnalysisTab] lead fetch failed:", leadRes.status, text)
       }
 
+      const allPhotos: PropertyPhoto[] = photosData.photos ?? []
+
       // Preserve existing signed URLs to prevent image flicker on polls —
       // only replace the URL when a photo is newly analysed or newly added.
       setPhotos((prev) => {
         const prevMap = Object.fromEntries(prev.map((p) => [p.id, p]))
-        return (photosData.photos ?? []).map((p: PropertyPhoto) => {
+        return allPhotos
+          .filter((p) => p.source !== "floorplan_upload")
+          .map((p) => {
+            const existing = prevMap[p.id]
+            if (existing && existing.aiAnalysedAt === p.aiAnalysedAt && existing.url) {
+              return { ...p, url: existing.url }
+            }
+            return p
+          })
+      })
+
+      // Separate floorplan photos and parse the analysis from the first analysed one
+      const fp = allPhotos.filter((p) => p.source === "floorplan_upload")
+      setFloorplans((prev) => {
+        const prevMap = Object.fromEntries(prev.map((p) => [p.id, p]))
+        return fp.map((p) => {
           const existing = prevMap[p.id]
           if (existing && existing.aiAnalysedAt === p.aiAnalysedAt && existing.url) {
             return { ...p, url: existing.url }
@@ -127,6 +175,16 @@ export function PhotoAnalysisTab({
           return p
         })
       })
+      const analysedFloorplan = fp.find((p) => p.aiDescription && p.aiAnalysedAt)
+      if (analysedFloorplan?.aiDescription) {
+        try {
+          setFloorplanAnalysis(JSON.parse(analysedFloorplan.aiDescription) as FloorplanAnalysis)
+        } catch {
+          setFloorplanAnalysis(null)
+        }
+      } else {
+        setFloorplanAnalysis(null)
+      }
 
       const newLeadData: LeadPhotoData = {
         photoConditionScore: leadFull.photoConditionScore ?? null,
@@ -138,7 +196,7 @@ export function PhotoAnalysisTab({
       }
       setLeadData(newLeadData)
       if (onDataLoaded) {
-        onDataLoaded(photosData.photos ?? [], newLeadData)
+        onDataLoaded(allPhotos.filter((p) => p.source !== "floorplan_upload"), newLeadData)
       }
     } catch (err) {
       console.error("[PhotoAnalysisTab] fetchData error:", err)
@@ -211,6 +269,99 @@ export function PhotoAnalysisTab({
     setPhotos((prev) => prev.filter((p) => p.id !== photoId))
     if (selectedPhoto?.id === photoId) setSelectedPhoto(null)
     toast.success("Photo deleted")
+  }
+
+  // ── Floorplan handlers ─────────────────────────────────────────────────
+
+  async function uploadFloorplan(file: File) {
+    setUploadingFloorplan(true)
+    try {
+      // 1. Presign
+      const presignRes = await fetch(`/api/vendor-leads/${leadId}/floorplan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "presign",
+          filename: file.name,
+          contentType: file.type,
+          sizeBytes: file.size,
+        }),
+      })
+      if (!presignRes.ok) {
+        const err = await presignRes.json().catch(() => ({}))
+        throw new Error(err.error ?? "Failed to get upload URL")
+      }
+      const { uploadUrl, s3Key } = await presignRes.json()
+
+      // 2. Upload directly to S3
+      const uploadRes = await fetch(uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      })
+      if (!uploadRes.ok) throw new Error("S3 upload failed")
+
+      // 3. Confirm
+      const confirmRes = await fetch(`/api/vendor-leads/${leadId}/floorplan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "confirm",
+          s3Key,
+          filename: file.name,
+          contentType: file.type,
+          sizeBytes: file.size,
+        }),
+      })
+      if (!confirmRes.ok) throw new Error("Failed to save floorplan record")
+
+      toast.success("Floorplan uploaded")
+      await fetchData(false)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed")
+    } finally {
+      setUploadingFloorplan(false)
+    }
+  }
+
+  async function deleteFloorplan(photoId: string) {
+    try {
+      const res = await fetch(`/api/vendor-leads/${leadId}/floorplan?photoId=${photoId}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) throw new Error("Delete failed")
+      setFloorplans((prev) => prev.filter((p) => p.id !== photoId))
+      setFloorplanAnalysis(null)
+      toast.success("Floorplan deleted")
+    } catch {
+      toast.error("Failed to delete floorplan")
+    }
+  }
+
+  async function analyseFloorplan(photoId: string) {
+    setAnalysingFloorplan(true)
+    try {
+      const res = await fetch(`/api/vendor-leads/${leadId}/floorplan/analyse`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photoId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Analysis failed")
+      setFloorplanAnalysis(data.analysis as FloorplanAnalysis)
+      await fetchData(false)
+      toast.success("Floorplan analysed")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Analysis failed")
+    } finally {
+      setAnalysingFloorplan(false)
+    }
+  }
+
+  function handleFloorplanFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) uploadFloorplan(file)
+    e.target.value = ""
   }
 
   async function updateConditionOverride(value: string) {
@@ -519,6 +670,209 @@ export function PhotoAnalysisTab({
           </Button>
         )}
       </div>
+
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/* ── Floorplan Section ────────────────────────────────────────────── */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+
+      {/* Hidden file input */}
+      <input
+        ref={floorplanInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,application/pdf"
+        className="hidden"
+        onChange={handleFloorplanFileChange}
+      />
+
+      {/* Section header */}
+      <div className="flex items-center gap-2 pt-1">
+        <div className="h-px flex-1 bg-amber-200" />
+        <div className="flex items-center gap-1.5 text-amber-700">
+          <LayoutDashboard className="h-3.5 w-3.5" />
+          <span className="text-xs font-semibold uppercase tracking-wide">Floorplan</span>
+        </div>
+        <div className="h-px flex-1 bg-amber-200" />
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => floorplanInputRef.current?.click()}
+          disabled={uploadingFloorplan}
+          className="text-[11px] h-7 px-2 border-amber-300 text-amber-700 hover:bg-amber-50 shrink-0"
+        >
+          {uploadingFloorplan
+            ? <><Loader2 className="mr-1 h-3 w-3 animate-spin" />Uploading…</>
+            : <><Upload className="mr-1 h-3 w-3" />Upload Floorplan</>}
+        </Button>
+      </div>
+
+      {/* Floorplan content */}
+      {floorplans.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-8 text-center text-gray-400 space-y-2 rounded-lg border border-dashed border-amber-200 bg-amber-50/40">
+          <FileImage className="h-8 w-8 text-amber-300" />
+          <p className="text-sm font-medium text-amber-700">No floorplan yet</p>
+          <p className="text-xs text-amber-600/70">Upload a floorplan to extract room sizes and layout</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {/* Floorplan thumbnail + delete */}
+          {floorplans.map((fp) => (
+            <div key={fp.id} className="rounded-lg border border-amber-200 bg-amber-50/30 overflow-hidden">
+              <div className="flex items-start gap-3 p-3">
+                {/* Thumbnail */}
+                {fp.mimeType === "application/pdf" ? (
+                  <a
+                    href={fp.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-shrink-0 flex flex-col items-center justify-center w-24 h-24 rounded border border-amber-200 bg-amber-100 text-amber-600 text-xs gap-1 hover:bg-amber-200 transition-colors"
+                  >
+                    <FileImage className="h-6 w-6" />
+                    <span>PDF</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                ) : (
+                  <a href={fp.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
+                    <img
+                      src={fp.url}
+                      alt="Floorplan"
+                      className="w-24 h-24 object-cover rounded border border-amber-200 hover:opacity-80 transition-opacity"
+                    />
+                  </a>
+                )}
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs font-medium text-gray-700 truncate">{fp.filename ?? "Floorplan"}</p>
+                    <button
+                      onClick={() => deleteFloorplan(fp.id)}
+                      className="flex-shrink-0 h-6 w-6 rounded-full bg-gray-100 hover:bg-red-100 flex items-center justify-center transition-colors"
+                      title="Delete floorplan"
+                    >
+                      <X className="h-3.5 w-3.5 text-gray-500 hover:text-red-600" />
+                    </button>
+                  </div>
+                  {fp.mimeType === "application/pdf" && !fp.aiAnalysedAt && (
+                    <p className="text-[11px] text-amber-600 mt-1">
+                      PDF floorplans cannot be AI-analysed. Convert to an image to enable analysis.
+                    </p>
+                  )}
+                  {fp.mimeType !== "application/pdf" && !fp.aiAnalysedAt && (
+                    <Button
+                      size="sm"
+                      onClick={() => analyseFloorplan(fp.id)}
+                      disabled={analysingFloorplan}
+                      className="mt-2 text-[11px] h-7 bg-amber-600 hover:bg-amber-700 text-white"
+                    >
+                      {analysingFloorplan
+                        ? <><Loader2 className="mr-1 h-3 w-3 animate-spin" />Analysing…</>
+                        : <><Sparkles className="mr-1 h-3 w-3" />Analyse with AI</>}
+                    </Button>
+                  )}
+                  {fp.aiAnalysedAt && (
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <CheckCircle2 className="h-3 w-3 text-green-500" />
+                      <span className="text-[11px] text-green-600">Analysed</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => analyseFloorplan(fp.id)}
+                        disabled={analysingFloorplan}
+                        className="text-[11px] h-5 px-1.5 text-gray-400 hover:text-gray-600"
+                        title="Re-run analysis"
+                      >
+                        {analysingFloorplan ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Analysis result card */}
+              {floorplanAnalysis && fp.aiAnalysedAt && (
+                <div className="border-t border-amber-200 bg-white p-3 space-y-3">
+                  {/* Key metrics grid */}
+                  <div className="grid grid-cols-5 gap-2">
+                    {[
+                      {
+                        icon: <Home className="h-3.5 w-3.5" />,
+                        label: "Area",
+                        value: floorplanAnalysis.totalSqFt != null
+                          ? `${floorplanAnalysis.totalSqFt} ft²`
+                          : floorplanAnalysis.totalSqM != null
+                          ? `${floorplanAnalysis.totalSqM} m²`
+                          : "—",
+                      },
+                      {
+                        icon: <BedDouble className="h-3.5 w-3.5" />,
+                        label: "Beds",
+                        value: floorplanAnalysis.bedrooms ?? "—",
+                      },
+                      {
+                        icon: <Bath className="h-3.5 w-3.5" />,
+                        label: "Baths",
+                        value: floorplanAnalysis.bathrooms ?? "—",
+                      },
+                      {
+                        icon: <Sofa className="h-3.5 w-3.5" />,
+                        label: "Recepts",
+                        value: floorplanAnalysis.receptions ?? "—",
+                      },
+                      {
+                        icon: <Layers className="h-3.5 w-3.5" />,
+                        label: "Storeys",
+                        value: floorplanAnalysis.storeys ?? "—",
+                      },
+                    ].map(({ icon, label, value }) => (
+                      <div
+                        key={label}
+                        className="flex flex-col items-center gap-0.5 rounded-md bg-amber-50 border border-amber-100 py-2 px-1"
+                      >
+                        <span className="text-amber-500">{icon}</span>
+                        <span className="text-sm font-semibold text-gray-800">{String(value)}</span>
+                        <span className="text-[10px] text-gray-400">{label}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Badges row */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {floorplanAnalysis.layoutType && (
+                      <Badge className="text-[11px] border bg-amber-100 text-amber-800 border-amber-200 capitalize">
+                        {floorplanAnalysis.layoutType.replace("_", " ")}
+                      </Badge>
+                    )}
+                    {floorplanAnalysis.hasExtensionPotential && (
+                      <Badge className="text-[11px] border bg-green-100 text-green-800 border-green-200">
+                        Extension potential
+                      </Badge>
+                    )}
+                    {floorplanAnalysis.hasLoftPotential && (
+                      <Badge className="text-[11px] border bg-blue-100 text-blue-800 border-blue-200">
+                        Loft potential
+                      </Badge>
+                    )}
+                    {floorplanAnalysis.hasGarage && (
+                      <Badge className="text-[11px] border bg-gray-100 text-gray-700 border-gray-200">
+                        Garage
+                      </Badge>
+                    )}
+                    {floorplanAnalysis.hasGarden && (
+                      <Badge className="text-[11px] border bg-emerald-100 text-emerald-800 border-emerald-200">
+                        Garden
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Notes */}
+                  {floorplanAnalysis.notes && (
+                    <p className="text-[11px] text-gray-600 italic leading-relaxed">{floorplanAnalysis.notes}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
     </div>
   )

@@ -53,6 +53,8 @@ import {
   Search,
   X,
   Camera,
+  AlertTriangle,
+  Copy,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { VendorPipelineKanbanBoard } from "./vendor-pipeline-kanban-board"
@@ -1116,7 +1118,7 @@ function Td({ children, className }: { children: React.ReactNode; className?: st
  * Replaces the old two-column (VendorName + Address) layout, saving ~180px
  * of fixed width and giving more room for the scrollable data columns.
  */
-function VendorAddressCell({ lead, isSelected }: { lead: VendorLead; isSelected?: boolean }) {
+function VendorAddressCell({ lead, isSelected, isDupe }: { lead: VendorLead; isSelected?: boolean; isDupe?: boolean }) {
   // Parse portal source from leadSource (e.g. "Scraper: RM" → "Rightmove")
   const scraperMatch = lead.leadSource?.match(/^Scraper:\s*(.+)$/)
   const sourceBadge  = scraperMatch ? scraperMatch[1].trim() : null
@@ -1193,6 +1195,12 @@ function VendorAddressCell({ lead, isSelected }: { lead: VendorLead; isSelected?
           {lead.pipelineStage === "OFFER_REJECTED" && (
             <span className="mt-1 inline-flex items-center gap-0.5 rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700 whitespace-nowrap">
               <XCircle className="h-2.5 w-2.5" /> Rejected
+            </span>
+          )}
+          {isDupe && (
+            <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-300 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 whitespace-nowrap">
+              <Copy className="h-2.5 w-2.5" />
+              Dupe
             </span>
           )}
         </div>
@@ -1299,7 +1307,7 @@ function resolvePostcode(lead: { propertyPostcode: string | null; propertyAddres
 // Per-tab Row renderers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function MapViewRow({ lead, onRowClick, onView, onDelete, isSelected, onToggleSelect }: RowRendererProps) {
+function MapViewRow({ lead, onRowClick, onView, onDelete, isSelected, onToggleSelect, isDupe }: RowRendererProps) {
   const createdAt = new Date(lead.createdAt)
   const leadAgeDays = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24))
 
@@ -1323,7 +1331,7 @@ function MapViewRow({ lead, onRowClick, onView, onDelete, isSelected, onToggleSe
       <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
-      <VendorAddressCell lead={lead} isSelected={isSelected} />
+      <VendorAddressCell lead={lead} isSelected={isSelected} isDupe={isDupe} />
       <Td><span className="font-mono text-xs">{resolvePostcode(lead) ?? "—"}</span></Td>
       <Td><span className="text-xs text-gray-700">{lead.propertyType ?? <span className="text-gray-400">—</span>}</span></Td>
       <Td><span className="font-mono text-xs">{lead.bedrooms !== null ? `${lead.bedrooms}bd` : "—"}</span></Td>
@@ -1422,7 +1430,7 @@ function MapViewRow({ lead, onRowClick, onView, onDelete, isSelected, onToggleSe
   )
 }
 
-function PropertyDetailsRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline }: RowRendererProps) {
+function PropertyDetailsRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline, isDupe }: RowRendererProps) {
   const ownershipTenure = (lead.latestPortalCheck?.ownershipCheckRaw as any)?.tenure ?? null
   const tenure = lead.tenureType ?? ownershipTenure
   const annualRent = toNum(lead.estimatedAnnualRent)
@@ -1434,7 +1442,7 @@ function PropertyDetailsRow({ lead, onRowClick, onView, onEdit, onArchive, onDel
       <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
-      <VendorAddressCell lead={lead} isSelected={isSelected} />
+      <VendorAddressCell lead={lead} isSelected={isSelected} isDupe={isDupe} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{resolvePostcode(lead) ?? "—"}</span></Td>
       <Td><span className="text-xs text-gray-700">{lead.propertyType ?? <span className="text-gray-400">—</span>}</span></Td>
@@ -1469,7 +1477,7 @@ function PropertyDetailsRow({ lead, onRowClick, onView, onEdit, onArchive, onDel
   )
 }
 
-function PortalCheckRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline }: RowRendererProps) {
+function PortalCheckRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline, isDupe }: RowRendererProps) {
   const ownership = lead.latestPortalCheck?.ownershipCheckRaw as any
   const ownerType = ownership?.isCorporateOwned
     ? ownership?.isOverseasOwned ? "Overseas Corp" : "Corporate"
@@ -1481,7 +1489,7 @@ function PortalCheckRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete,
       <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
-      <VendorAddressCell lead={lead} isSelected={isSelected} />
+      <VendorAddressCell lead={lead} isSelected={isSelected} isDupe={isDupe} />
       <Td><OverallRiskBadge risk={lead.latestCheckRisk} /></Td>
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{resolvePostcode(lead) ?? "—"}</span></Td>
@@ -1545,7 +1553,7 @@ function DealScoreCell({ lead }: { lead: VendorLead }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ValidationRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline }: RowRendererProps) {
+function ValidationRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline, isDupe }: RowRendererProps) {
   const rentNum = toNum(lead.estimatedMonthlyRent)
   const netCashflow = rentNum ? rentNum * 0.8 : null
   const annualRent = toNum(lead.estimatedAnnualRent)
@@ -1557,7 +1565,7 @@ function ValidationRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, 
       <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
-      <VendorAddressCell lead={lead} isSelected={isSelected} />
+      <VendorAddressCell lead={lead} isSelected={isSelected} isDupe={isDupe} />
       <Td><ValidationResultBadge passed={lead.validationPassed} validationNotes={lead.validationNotes} /></Td>
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{resolvePostcode(lead) ?? "—"}</span></Td>
@@ -1594,7 +1602,7 @@ function ValidationRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, 
   )
 }
 
-function ComparableRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline }: RowRendererProps) {
+function ComparableRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline, isDupe }: RowRendererProps) {
   const annualRent = toNum(lead.estimatedAnnualRent)
   const price = toNum(lead.askingPrice)
   const avgPrice = toNum(lead.avgComparablePrice)
@@ -1614,7 +1622,7 @@ function ComparableRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, 
       <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
-      <VendorAddressCell lead={lead} isSelected={isSelected} />
+      <VendorAddressCell lead={lead} isSelected={isSelected} isDupe={isDupe} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{resolvePostcode(lead) ?? "—"}</span></Td>
       <Td><span className="text-xs text-gray-700">{lead.propertyType ?? <span className="text-gray-400">—</span>}</span></Td>
@@ -1666,7 +1674,7 @@ function ComparableRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, 
   )
 }
 
-function OfferAnalysisRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline }: RowRendererProps) {
+function OfferAnalysisRow({ lead, onRowClick, onView, onEdit, onArchive, onDelete, onCheck, isChecking, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline, isDupe }: RowRendererProps) {
   // Build offer chain: initial offer → retries → projected ladder
   const retries = lead.offerRetries ?? []
   // initialOffer: always the first offer sent to the vendor
@@ -1699,7 +1707,7 @@ function OfferAnalysisRow({ lead, onRowClick, onView, onEdit, onArchive, onDelet
       <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
-      <VendorAddressCell lead={lead} isSelected={isSelected} />
+      <VendorAddressCell lead={lead} isSelected={isSelected} isDupe={isDupe} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td><span className="font-mono text-xs">{resolvePostcode(lead) ?? "—"}</span></Td>
       <Td><span className="text-xs text-gray-700">{lead.propertyType ?? <span className="text-gray-400">—</span>}</span></Td>
@@ -1771,7 +1779,7 @@ function OfferAnalysisRow({ lead, onRowClick, onView, onEdit, onArchive, onDelet
   )
 }
 
-function AiConversationRow({ lead, onView, onEdit, onArchive, onDelete, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline }: RowRendererProps) {
+function AiConversationRow({ lead, onView, onEdit, onArchive, onDelete, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline, isDupe }: RowRendererProps) {
   const convState = (lead.conversationState ?? {}) as Record<string, any>
   const isComplete = !!convState.conversationComplete
   const messageCount = lead._count?.smsMessages ?? lead.smsMessages?.length ?? 0
@@ -1794,7 +1802,7 @@ function AiConversationRow({ lead, onView, onEdit, onArchive, onDelete, isSelect
       <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
-      <VendorAddressCell lead={lead} isSelected={isSelected} />
+      <VendorAddressCell lead={lead} isSelected={isSelected} isDupe={isDupe} />
       <Td><StageBadge stage={lead.pipelineStage} /></Td>
       <Td>
         <span className={cn("font-mono text-xs font-semibold", messageCount > 0 ? "text-blue-600" : "text-gray-400")}>
@@ -1909,7 +1917,7 @@ const PHOTO_SCORE_COLOURS: Record<string, string> = {
   poor:                "bg-red-100 text-red-800",
 }
 
-function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, onCheck, isChecking, onOpenDetail, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline }: RowRendererProps) {
+function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, onCheck, isChecking, onOpenDetail, isSelected, onToggleSelect, onRerunPipeline, isRerunningPipeline, isDupe }: RowRendererProps) {
   const status       = lead.photoAnalysisStatus ?? "pending"
   const conditionKey = lead.photoConditionOverride
     ?? conditionFromPhotoScore(lead.photoConditionScore ?? null)
@@ -1932,7 +1940,7 @@ function PhotoAnalysisRow({ lead, onView, onEdit, onArchive, onDelete, onCheck, 
       <td className={cn("sticky left-0 z-10 w-10 px-3 py-[11px]", isSelected ? "bg-blue-50 group-hover:bg-blue-100" : "bg-white group-hover:bg-[#f3f4f6]")} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={!!isSelected} onChange={() => onToggleSelect?.()} className="h-3.5 w-3.5 cursor-pointer accent-blue-600" />
       </td>
-      <VendorAddressCell lead={lead} isSelected={isSelected} />
+      <VendorAddressCell lead={lead} isSelected={isSelected} isDupe={isDupe} />
 
       {/* Photos — count + analysis status — single inline row */}
       <Td>
@@ -2037,6 +2045,7 @@ interface RowRendererProps {
   onToggleSelect?: () => void
   onRerunPipeline?: () => void
   isRerunningPipeline?: boolean
+  isDupe?: boolean
 }
 
 function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
@@ -2361,6 +2370,29 @@ export function VendorLeadsTable() {
   })
   const [addLeadSubmitting, setAddLeadSubmitting] = useState(false)
   const [addLeadError, setAddLeadError] = useState<string | null>(null)
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    vendorName: string; pipelineStage: string; id: string
+  } | null>(null)
+  const [checkingDuplicate, setCheckingDuplicate] = useState(false)
+
+  // Debounced duplicate check whenever the phone field changes
+  useEffect(() => {
+    const phone = addLeadForm.vendorPhone.trim()
+    if (phone.length < 7) { setDuplicateWarning(null); return }
+    const timer = setTimeout(async () => {
+      setCheckingDuplicate(true)
+      try {
+        const res = await fetch(`/api/vendor-pipeline/leads/check-duplicate?phone=${encodeURIComponent(phone)}`)
+        const data = await res.json()
+        setDuplicateWarning(data.isDuplicate ? data.existingLead : null)
+      } catch {}
+      finally { setCheckingDuplicate(false) }
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [addLeadForm.vendorPhone])
+
+  // Deduplicate set — phones that appear more than once in the loaded leads
+  const [duplicatePhones, setDuplicatePhones] = useState<Set<string>>(new Set())
 
   const handleAddLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -2403,6 +2435,7 @@ export function VendorLeadsTable() {
       }
 
       setShowAddLead(false)
+      setDuplicateWarning(null)
       setAddLeadForm({ vendorName: "", vendorPhone: "", vendorEmail: "", propertyAddress: "", propertyPostcode: "", askingPrice: "", propertyType: "", bedrooms: "" })
       fetchLeads()
     } catch (err: any) {
@@ -2420,6 +2453,16 @@ export function VendorLeadsTable() {
       const data = await res.json()
       const freshLeads: VendorLead[] = data.leads ?? []
       setLeads(freshLeads)
+      // Compute duplicate phone set
+      const phoneCounts: Record<string, number> = {}
+      freshLeads.forEach((l) => {
+        const phone = (l.vendorPhone ?? "").replace(/\D/g, "").slice(-10)
+        if (phone.length >= 7) phoneCounts[phone] = (phoneCounts[phone] ?? 0) + 1
+      })
+      const dupes = new Set(
+        Object.entries(phoneCounts).filter(([, c]) => c > 1).map(([p]) => p)
+      )
+      setDuplicatePhones(dupes)
       // Sync any open modal lead so it reflects fresh data immediately
       setValidationModalLead((prev) =>
         prev ? (freshLeads.find((l) => l.id === prev.id) ?? prev) : null
@@ -2900,6 +2943,7 @@ export function VendorLeadsTable() {
                   onToggleSelect: () => handleToggleSelect(lead.id),
                   onRerunPipeline: () => handleRerunPipeline(lead.id),
                   isRerunningPipeline: rerunningIds.has(lead.id),
+                  isDupe: duplicatePhones.has((lead.vendorPhone ?? "").replace(/\D/g, "").slice(-10)),
                 }
 
                 switch (activeTab) {
@@ -3061,7 +3105,7 @@ export function VendorLeadsTable() {
                 <p className="text-xs text-gray-400 mt-0.5">Manually add a vendor lead to the pipeline</p>
               </div>
               <button
-                onClick={() => setShowAddLead(false)}
+                onClick={() => { setShowAddLead(false); setDuplicateWarning(null) }}
                 className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600"
               >
                 <X className="h-4 w-4" />
@@ -3105,6 +3149,24 @@ export function VendorLeadsTable() {
                   />
                 </div>
               </div>
+
+              {/* Duplicate phone warning */}
+              {checkingDuplicate && (
+                <p className="text-xs text-gray-400 -mt-2 flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Checking for duplicates…
+                </p>
+              )}
+              {duplicateWarning && !checkingDuplicate && (
+                <div className="-mt-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-semibold text-amber-800">Possible duplicate</p>
+                    <p className="text-xs text-amber-700">
+                      {duplicateWarning.vendorName} already exists · {duplicateWarning.pipelineStage.replace(/_/g, " ")}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Email */}
               <div className="space-y-1.5">
@@ -3197,7 +3259,7 @@ export function VendorLeadsTable() {
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
                 <button
                   type="button"
-                  onClick={() => setShowAddLead(false)}
+                  onClick={() => { setShowAddLead(false); setDuplicateWarning(null) }}
                   disabled={addLeadSubmitting}
                   className="flex h-8 items-center px-4 rounded-md border border-gray-200 bg-white text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                 >

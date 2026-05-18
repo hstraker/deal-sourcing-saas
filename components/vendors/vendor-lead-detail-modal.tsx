@@ -2765,6 +2765,7 @@ export function VendorLeadDetailModal({
           <TabsContent value="portal-check" className="flex-1 overflow-y-auto min-h-0 space-y-4 pt-2 pb-6 px-0.5">
             <PortalCheckDetailPanel
               leadId={currentLead.id}
+              postcode={currentLead.propertyPostcode ?? null}
               latestCheckRisk={currentLead.latestCheckRisk ?? null}
               latestCheckedAt={
                 currentLead.latestCheckedAt

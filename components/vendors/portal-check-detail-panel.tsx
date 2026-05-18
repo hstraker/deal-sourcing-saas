@@ -14,7 +14,8 @@ import { Badge } from "@/components/ui/badge"
 import {
   RefreshCw, Loader2, ExternalLink, ShieldCheck, ShieldAlert,
   AlertTriangle, Building2, Clock, TrendingDown, FlaskConical, Calendar,
-  Search, Phone, Wifi, WifiOff, CheckCircle2, XCircle, MinusCircle
+  Search, Phone, Wifi, WifiOff, CheckCircle2, XCircle, MinusCircle,
+  Droplets, Mountain
 } from "lucide-react"
 import { PortalCheckBadge } from "./portal-check-badge"
 import { formatDistanceToNow, format } from "date-fns"
@@ -135,6 +136,7 @@ interface CheckRecord {
 
 interface PortalCheckDetailPanelProps {
   leadId: string
+  postcode?: string | null
   latestCheckRisk: string | null
   latestCheckedAt: string | null
   onRiskUpdated?: (newRisk: string | null, newDate: string | null) => void
@@ -162,6 +164,7 @@ const FLAG_ICON: Record<string, React.ReactNode> = {
 
 export function PortalCheckDetailPanel({
   leadId,
+  postcode,
   latestCheckRisk,
   latestCheckedAt,
   onRiskUpdated,
@@ -416,6 +419,10 @@ export function PortalCheckDetailPanel({
           </div>
         </>
       )}
+
+      {/* Flood & Environmental Risk */}
+      <div className="border-t border-[var(--ds-border)]" />
+      <FloodRiskCard leadId={leadId} postcode={postcode ?? null} />
     </div>
   )
 }
@@ -658,6 +665,194 @@ function ScrapedListingCard({ listing }: { listing: ScrapedPortalListing }) {
             {listing.agent.phone}
           </span>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Flood Risk Card
+// ---------------------------------------------------------------------------
+
+interface FloodRiskResult {
+  zone: "zone1" | "zone2" | "zone3" | "unknown"
+  nearbyAreas: { label: string; riverOrSea: string }[]
+  postcode: string
+  lat: number
+  lng: number
+  checkedAt: string
+  error?: string
+}
+
+const FLOOD_ZONE_CONFIG: Record<
+  FloodRiskResult["zone"],
+  { label: string; badgeClass: string; detail: string; icon: React.ReactNode }
+> = {
+  zone1: {
+    label: "Low Risk (Zone 1)",
+    badgeClass: "border-green-200 bg-green-50 text-green-800",
+    detail: "Less than 0.1% annual probability of flooding.",
+    icon: <Droplets className="h-4 w-4 text-green-600" />,
+  },
+  zone2: {
+    label: "Medium Risk (Zone 2)",
+    badgeClass: "border-amber-200 bg-amber-50 text-amber-800",
+    detail: "0.1–1% annual probability of flooding. Consider flood-resilient build measures.",
+    icon: <Droplets className="h-4 w-4 text-amber-600" />,
+  },
+  zone3: {
+    label: "High Risk (Zone 3)",
+    badgeClass: "border-red-200 bg-red-50 text-red-800",
+    detail: "Greater than 1% annual probability. May affect mortgage availability and insurance premiums.",
+    icon: <Droplets className="h-4 w-4 text-red-600" />,
+  },
+  unknown: {
+    label: "Unknown",
+    badgeClass: "border-gray-200 bg-gray-50 text-gray-700",
+    detail: "Could not determine flood zone — check manually using the GOV.UK flood map.",
+    icon: <Droplets className="h-4 w-4 text-gray-400" />,
+  },
+}
+
+function FloodRiskCard({
+  leadId,
+  postcode,
+}: {
+  leadId: string
+  postcode: string | null
+}) {
+  const [result, setResult] = useState<FloodRiskResult | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const runCheck = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/vendor-leads/${leadId}/flood-risk`, { method: "POST" })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? "Flood risk check failed")
+        return
+      }
+      setResult(data as FloodRiskResult)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Unexpected error")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const zoneCfg = result ? FLOOD_ZONE_CONFIG[result.zone] : null
+
+  return (
+    <div className="space-y-3">
+      {/* Section header */}
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5">
+          <Droplets className="h-3.5 w-3.5" />
+          Flood &amp; Environmental Risk
+        </h4>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={runCheck}
+          disabled={loading || !postcode}
+          className="flex items-center gap-1.5"
+          title={!postcode ? "Add a postcode to this lead first" : "Run flood risk check"}
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          {loading ? "Checking…" : result ? "Re-run" : "Run Check"}
+        </Button>
+      </div>
+
+      {/* No postcode warning */}
+      {!postcode && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 flex items-center gap-2">
+          <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+          Add a full postcode to this lead to enable flood risk checking.
+        </div>
+      )}
+
+      {/* API error */}
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 flex items-start gap-2">
+          <XCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* Result */}
+      {result && zoneCfg && (
+        <div className="space-y-3">
+          {/* Zone badge */}
+          <div className={`rounded-lg border p-3 flex items-start gap-3 ${zoneCfg.badgeClass}`}>
+            <div className="flex-shrink-0 mt-0.5">{zoneCfg.icon}</div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">{zoneCfg.label}</p>
+              <p className="text-xs opacity-80 mt-0.5">{zoneCfg.detail}</p>
+              {result.error && (
+                <p className="text-xs opacity-70 mt-1 italic">{result.error}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Nearby flood alert areas */}
+          {result.nearbyAreas.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-gray-500">
+                Nearby flood alert areas (within 2km):
+              </p>
+              <div className="space-y-1">
+                {result.nearbyAreas.slice(0, 3).map((area, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-2 text-xs text-gray-600 rounded border border-gray-100 bg-gray-50 px-2.5 py-1.5"
+                  >
+                    <Droplets className="h-3 w-3 text-blue-400 flex-shrink-0" />
+                    <span className="font-medium truncate">{area.label || area.riverOrSea}</span>
+                    {area.riverOrSea && area.label && (
+                      <span className="text-gray-400 truncate">· {area.riverOrSea}</span>
+                    )}
+                  </div>
+                ))}
+                {result.nearbyAreas.length > 3 && (
+                  <p className="text-[10px] text-gray-400 pl-1">
+                    + {result.nearbyAreas.length - 3} more area{result.nearbyAreas.length - 3 > 1 ? "s" : ""}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Checked at */}
+          <p className="text-[10px] text-gray-400">
+            Checked {format(new Date(result.checkedAt), "d MMM yyyy HH:mm")} · {result.postcode}
+            {result.lat != null && ` · ${result.lat.toFixed(4)}, ${result.lng.toFixed(4)}`}
+          </p>
+        </div>
+      )}
+
+      {/* External links — always shown */}
+      <div className="flex flex-wrap gap-3">
+        <a
+          href="https://check-flood-risk.service.gov.uk/map"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+        >
+          <ExternalLink className="h-3 w-3" />
+          GOV.UK Flood Map
+        </a>
+        <a
+          href="https://beta.coalauthority.org.uk/coal-mining-risk-assessment-service/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 hover:underline"
+        >
+          <Mountain className="h-3 w-3" />
+          Coal Mining Risk Assessment
+        </a>
       </div>
     </div>
   )
