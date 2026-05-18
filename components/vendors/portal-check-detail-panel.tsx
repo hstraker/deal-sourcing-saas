@@ -861,8 +861,8 @@ export function FloodRiskCard({
 
       {/* ── Header row ──────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-          <Droplets className="h-4 w-4 text-blue-500" />
+        <h4 className="text-xs font-semibold text-gray-500 flex items-center gap-2 uppercase tracking-widest">
+          <Droplets className="h-3.5 w-3.5 text-blue-400" />
           Flood &amp; Environmental Risk
         </h4>
         <Button
@@ -870,11 +870,11 @@ export function FloodRiskCard({
           variant="outline"
           onClick={runCheck}
           disabled={loading || !postcode}
-          className="flex items-center gap-1.5"
+          className="h-7 text-xs flex items-center gap-1.5"
           title={!postcode ? "Add a postcode to this lead first" : "Run flood risk check"}
         >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          {loading ? "Checking…" : result ? "Re-run Check" : "Run Check"}
+          {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          {loading ? "Checking…" : result ? "Re-run" : "Run Check"}
         </Button>
       </div>
 
@@ -899,25 +899,22 @@ export function FloodRiskCard({
         <div className="space-y-4">
 
           {/* Zone badge */}
-          <div className={`rounded-xl border p-4 flex items-start gap-3 ${zoneCfg.badgeClass}`}>
-            <div className="flex-shrink-0 mt-0.5">{zoneCfg.icon}</div>
+          <div className={`rounded-xl border p-3 flex items-center gap-3 ${zoneCfg.badgeClass}`}>
+            <div className="flex-shrink-0">{zoneCfg.icon}</div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold">{zoneCfg.label}</p>
-              <p className="text-xs opacity-80 mt-0.5">{zoneCfg.detail}</p>
-              {result.error && (
-                <p className="text-xs opacity-70 mt-1 italic">{result.error}</p>
-              )}
-              <p className="text-[10px] opacity-60 mt-1.5">
-                Checked {format(new Date(result.checkedAt), "d MMM yyyy HH:mm")}
-                {result.lat != null && ` · ${result.lat.toFixed(4)}, ${result.lng.toFixed(4)}`}
-              </p>
+              <p className="text-xs font-bold">{zoneCfg.label}</p>
+              <p className="text-xs opacity-75 mt-0.5">{zoneCfg.detail}</p>
+              {result.error && <p className="text-xs opacity-60 mt-1 italic">{result.error}</p>}
             </div>
+            <p className="text-[10px] opacity-50 text-right shrink-0 leading-tight">
+              {format(new Date(result.checkedAt), "d MMM HH:mm")}
+            </p>
           </div>
 
           {/* ── Live flood warnings ───────────────────────────────────────── */}
           {result.activeWarnings && result.activeWarnings.length > 0 ? (
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 flex items-center gap-1.5">
                 <span className={`h-2 w-2 rounded-full animate-pulse ${warningStyle?.dot ?? "bg-amber-400"}`} />
                 Active Flood Warnings
               </p>
@@ -945,7 +942,7 @@ export function FloodRiskCard({
           {/* ── Interactive map ───────────────────────────────────────────── */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 flex items-center gap-1.5">
                 <MapIcon className="h-3.5 w-3.5" />
                 Flood Zone Map
               </p>
@@ -978,7 +975,7 @@ export function FloodRiskCard({
           {/* ── AI investor analysis ──────────────────────────────────────── */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
                 AI Investor Analysis
               </p>
@@ -1029,34 +1026,34 @@ export function FloodRiskCard({
                   <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold capitalize ${verdictStyle.chip}`}>
                     {verdictStyle.icon} {aiAnalysis.verdict}
                   </span>
-                  <p className="text-xs text-gray-600 flex-1">{aiAnalysis.verdictReason}</p>
+                  <p className="text-xs text-gray-500 flex-1 leading-relaxed">{aiAnalysis.verdictReason}</p>
                 </div>
 
-                {/* Narrative */}
+                {/* Assessment narrative */}
                 <div className="px-4 py-3">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Assessment</p>
-                  <p className="text-sm text-gray-700 leading-relaxed">{aiAnalysis.narrative}</p>
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Assessment</p>
+                  <p className="text-xs text-gray-700 leading-relaxed">{aiAnalysis.narrative}</p>
                 </div>
 
-                {/* Mortgage + Insurance impacts */}
-                <div className="grid grid-cols-2 divide-x divide-gray-100 px-0">
-                  <div className="px-4 py-3">
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Mortgage Impact</p>
-                    <p className="text-xs text-gray-600 leading-relaxed">{aiAnalysis.mortgageImpact}</p>
-                  </div>
-                  <div className="px-4 py-3">
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Insurance Impact</p>
-                    <p className="text-xs text-gray-600 leading-relaxed">{aiAnalysis.insuranceImpact}</p>
-                  </div>
+                {/* Mortgage impact */}
+                <div className="px-4 py-3">
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Mortgage Impact</p>
+                  <p className="text-xs text-gray-700 leading-relaxed">{aiAnalysis.mortgageImpact}</p>
+                </div>
+
+                {/* Insurance impact */}
+                <div className="px-4 py-3">
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Insurance Impact</p>
+                  <p className="text-xs text-gray-700 leading-relaxed">{aiAnalysis.insuranceImpact}</p>
                 </div>
 
                 {/* Due diligence checklist */}
                 {aiAnalysis.dueDiligence.length > 0 && (
                   <div className="px-4 py-3">
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Due Diligence</p>
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Due Diligence</p>
                     <ul className="space-y-1.5">
                       {aiAnalysis.dueDiligence.map((item, i) => (
-                        <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
+                        <li key={i} className="flex items-start gap-2 text-xs text-gray-700 leading-relaxed">
                           <CheckCircle2 className="h-3.5 w-3.5 text-indigo-400 flex-shrink-0 mt-0.5" />
                           {item}
                         </li>
@@ -1067,7 +1064,7 @@ export function FloodRiskCard({
 
                 {/* Timestamp */}
                 {aiAnalysedAt && (
-                  <div className="px-4 py-2">
+                  <div className="px-4 py-2 bg-gray-50 rounded-b-xl">
                     <p className="text-[10px] text-gray-400">
                       AI analysed {format(new Date(aiAnalysedAt), "d MMM yyyy HH:mm")}
                     </p>
@@ -1080,7 +1077,7 @@ export function FloodRiskCard({
           {/* ── Nearby flood alert areas ──────────────────────────────────── */}
           {result.nearbyAreas.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
                 EA Flood Alert Areas within 2km ({result.nearbyAreas.length})
               </p>
               <div className="space-y-1">

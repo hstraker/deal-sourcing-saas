@@ -3,7 +3,7 @@
 import { useState } from "react"
 import {
   X, Phone, Mail, Building2, AlertTriangle, Shield, CheckCircle, Clock,
-  ExternalLink, Loader2, Save, Calculator, Key,
+  ExternalLink, Loader2, Save, Calculator, Key, Droplets, CheckCircle2,
 } from "lucide-react"
 import { format, formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
@@ -60,6 +60,15 @@ const RISK_CONFIG: Record<
     iconClass: "text-red-400",
     kpiClass:  "bg-red-500/10 border-red-500/20 text-red-400",
   },
+}
+
+// ─── flood zone left-panel config ─────────────────────────────────────────────
+
+const FLOOD_LEFT: Record<string, { label: string; boxClass: string; textClass: string; sub: string }> = {
+  zone1:   { label: "Low Risk",    boxClass: "border-green-500/30 bg-green-500/10",  textClass: "text-green-400",  sub: "Zone 1 · <0.1% annual chance" },
+  zone2:   { label: "Med Risk",    boxClass: "border-amber-500/30 bg-amber-500/10",  textClass: "text-amber-400",  sub: "Zone 2 · 0.1–1% annual chance" },
+  zone3:   { label: "High Risk",   boxClass: "border-red-500/30 bg-red-500/10",      textClass: "text-red-400",    sub: "Zone 3 · >1% annual chance" },
+  unknown: { label: "Unknown",     boxClass: "border-white/10 bg-white/5",           textClass: "text-slate-400",  sub: "Could not classify zone" },
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -1012,7 +1021,7 @@ export function PortalCheckModal({
   const leftPanel = (
     <div className="flex h-full flex-col overflow-y-auto p-5">
 
-      {/* Property address — compact at top */}
+      {/* Property address — same on every tab */}
       <div className="mb-4">
         <p className="text-xs font-bold leading-snug text-slate-100">
           {lead.propertyAddress ?? lead.vendorName}
@@ -1034,139 +1043,167 @@ export function PortalCheckModal({
         </div>
       </div>
 
-      {/* ── BIG Risk verdict ── */}
-      <div className="mb-4">
-        <div className="flex items-center gap-1.5 mb-2">
-          <Shield className="h-3 w-3 text-slate-500" />
-          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Risk Verdict</p>
-        </div>
-
-        {config ? (
-          <div className={config.boxClass}>
-            {risk === "clear" && (
-              <CheckCircle className={cn("h-7 w-7 mx-auto mb-1.5", config.iconClass)} />
-            )}
-            {risk === "caution" && (
-              <AlertTriangle className={cn("h-7 w-7 mx-auto mb-1.5", config.iconClass)} />
-            )}
-            {risk === "red_flag" && (
-              <AlertTriangle className={cn("h-7 w-7 mx-auto mb-1.5", config.iconClass)} />
-            )}
-            <p className={config.textClass}>{config.label}</p>
-            <p className={config.subClass}>
-              {risk === "clear"
-                ? riskFlagCount > 0
-                  ? `${riskFlagCount} risk flag${riskFlagCount > 1 ? "s" : ""}`
-                  : infoFlags.length > 0
-                    ? `${infoFlags.length} info flag${infoFlags.length > 1 ? "s" : ""}`
-                    : "No flags found"
-                : config.subtitle}
-            </p>
+      {/* ── FLOOD TAB — flood-specific left panel ── */}
+      {activeTab === "flood" ? (
+        <>
+          <div className="mb-2 flex items-center gap-1.5">
+            <Droplets className="h-3 w-3 text-slate-500" />
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Flood Risk</p>
           </div>
-        ) : (
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
-            <Shield className="h-7 w-7 mx-auto mb-1.5 text-slate-600" />
-            <p className="text-lg font-extrabold text-slate-400 leading-none">NOT RUN</p>
-            <p className="mt-1 text-[10px] text-slate-500">Run a portal check</p>
-          </div>
-        )}
-      </div>
 
-      {/* ── 3 KPI pills ── */}
-      <div className="mb-4 space-y-2">
-        {/* Listed */}
-        <div className={cn(
-          "flex items-center justify-between rounded-lg border px-3 py-2",
-          lead.latestPortalCheck
-            ? isListed ? "bg-red-500/10 border-red-500/20" : "bg-green-500/10 border-green-500/20"
-            : "bg-white/5 border-white/10"
-        )}>
-          <span className="text-[10px] text-slate-400">Listed on portals</span>
-          <span className={cn(
-            "text-[11px] font-bold",
-            lead.latestPortalCheck
-              ? isListed ? "text-red-400" : "text-green-400"
-              : "text-slate-500"
-          )}>
-            {lead.latestPortalCheck ? (isListed ? "Yes ⚠" : "No ✓") : "—"}
-          </span>
-        </div>
+          {/* Zone card */}
+          {lead.floodRiskZone ? (() => {
+            const fc = FLOOD_LEFT[lead.floodRiskZone] ?? FLOOD_LEFT.unknown
+            return (
+              <div className={cn("mb-3 rounded-xl border p-4 text-center", fc.boxClass)}>
+                <Droplets className={cn("h-6 w-6 mx-auto mb-1.5", fc.textClass)} />
+                <p className={cn("text-xl font-extrabold leading-none", fc.textClass)}>{fc.label}</p>
+                <p className="mt-1 text-[10px] text-slate-400">{fc.sub}</p>
+              </div>
+            )
+          })() : (
+            <div className="mb-3 rounded-xl border border-white/10 bg-white/5 p-4 text-center">
+              <Droplets className="h-6 w-6 mx-auto mb-1.5 text-slate-600" />
+              <p className="text-base font-extrabold text-slate-400 leading-none">NOT CHECKED</p>
+              <p className="mt-1 text-[10px] text-slate-500">Run a flood risk check</p>
+            </div>
+          )}
 
-        {/* Flags */}
-        <div className={cn(
-          "flex items-center justify-between rounded-lg border px-3 py-2",
-          lead.latestPortalCheck
-            ? hasFlags ? "bg-amber-500/10 border-amber-500/20" : "bg-green-500/10 border-green-500/20"
-            : "bg-white/5 border-white/10"
-        )}>
-          <span className="text-[10px] text-slate-400">Flags found</span>
-          <span className={cn(
-            "text-[11px] font-bold",
-            lead.latestPortalCheck
-              ? hasFlags ? "text-amber-400" : "text-green-400"
-              : "text-slate-500"
-          )}>
-            {lead.latestPortalCheck
-              ? hasFlags
-                ? `${riskFlagCount} risk flag${riskFlagCount > 1 ? "s" : ""}`
-                : infoFlags.length > 0
-                  ? `${infoFlags.length} info ✓`
-                  : "None ✓"
-              : "—"}
-          </span>
-        </div>
-
-        {/* Last checked */}
-        <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-          <span className="text-[10px] text-slate-400">Last checked</span>
-          <span className="text-[11px] font-bold text-slate-300">{lastChecked}</span>
-        </div>
-
-        {/* Tenure / Leasehold */}
-        {(() => {
-          const t = (lead.tenureType ?? (lead.latestPortalCheck?.ownershipCheckRaw as any)?.tenure as string | null ?? null)?.toLowerCase()
-          const ld = lead.leaseholdData as any
-          const yr = ld?.yearsRemaining as number | null
-          const isFH = t?.includes("freehold") && !t?.includes("leasehold")
-          const isLH = t?.includes("leasehold")
-          const lhColor =
-            !isLH           ? null :
-            !yr             ? "bg-green-500/10 border-green-500/20 text-green-400" :  // confirmed leasehold, years TBC
-            yr < 70         ? "bg-red-500/10 border-red-500/20 text-red-400" :
-            yr < 85         ? "bg-amber-500/10 border-amber-500/20 text-amber-400" :
-                              "bg-green-500/10 border-green-500/20 text-green-400"
-          const lhLabel =
-            isFH            ? "Freehold ✓" :
-            isLH && yr      ? `Leasehold ${yr}yr${yr < 70 ? " ⛔" : yr < 85 ? " ⚠" : " ✓"}` :
-            isLH            ? "Leasehold (enter terms)" :
-                              "Tenure unknown"
-          return (
-            <div
-              className={cn(
-                "flex items-center justify-between rounded-lg border px-3 py-2 cursor-pointer",
-                isFH ? "bg-green-500/10 border-green-500/20" :
-                lhColor || "bg-white/5 border-white/10"
-              )}
-              onClick={() => {}}
-              title="Click Leasehold tab for full details"
-            >
-              <span className="text-[10px] text-slate-400">Tenure</span>
+          {/* KPI pills */}
+          <div className="mb-4 space-y-2">
+            <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+              <span className="text-[10px] text-slate-400">Postcode</span>
+              <span className="text-[11px] font-bold font-mono text-slate-300">{lead.propertyPostcode ?? "—"}</span>
+            </div>
+            <div className={cn(
+              "flex items-center justify-between rounded-lg border px-3 py-2",
+              lead.floodRiskZone
+                ? lead.floodRiskZone === "zone1" ? "bg-green-500/10 border-green-500/20"
+                : lead.floodRiskZone === "zone3" ? "bg-red-500/10 border-red-500/20"
+                : "bg-amber-500/10 border-amber-500/20"
+                : "bg-white/5 border-white/10"
+            )}>
+              <span className="text-[10px] text-slate-400">EA Zone</span>
               <span className={cn(
-                "text-[11px] font-bold",
-                isFH ? "text-green-400" :
-                lhColor?.includes("red") ? "text-red-400" :
-                lhColor?.includes("amber") ? "text-amber-400" :
-                lhColor?.includes("green") ? "text-green-400" :
-                "text-slate-400"
+                "text-[11px] font-bold capitalize",
+                lead.floodRiskZone === "zone1" ? "text-green-400"
+                : lead.floodRiskZone === "zone3" ? "text-red-400"
+                : lead.floodRiskZone === "zone2" ? "text-amber-400"
+                : "text-slate-500"
               )}>
-                {t ? lhLabel : "—"}
+                {lead.floodRiskZone ? lead.floodRiskZone.replace("zone", "Zone ") : "—"}
               </span>
             </div>
-          )
-        })()}
-      </div>
+            {lead.floodRiskCheckedAt && (
+              <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                <span className="text-[10px] text-slate-400">Last checked</span>
+                <span className="text-[11px] font-bold text-slate-300">
+                  {formatDistanceToNow(new Date(lead.floodRiskCheckedAt as string), { addSuffix: true })}
+                </span>
+              </div>
+            )}
+          </div>
 
-      <div className="mb-4 h-px bg-white/10" />
+          {/* Quick links */}
+          <div className="mb-4 space-y-1.5">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-2">Quick Links</p>
+            {lead.propertyPostcode && (
+              <a
+                href={`https://check-long-term-flood-risk.service.gov.uk/postcode?postcode=${encodeURIComponent(lead.propertyPostcode)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-[10px] font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <ExternalLink className="h-3 w-3" /> GOV.UK Flood Map
+              </a>
+            )}
+            <a
+              href="https://beta.coalauthority.org.uk/coal-mining-risk-assessment-service/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-[10px] font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <ExternalLink className="h-3 w-3" /> Coal Mining Risk
+            </a>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* ── PORTAL / OTHER TABS — existing portal check left panel ── */}
+          <div className="mb-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Shield className="h-3 w-3 text-slate-500" />
+              <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Risk Verdict</p>
+            </div>
+
+            {config ? (
+              <div className={config.boxClass}>
+                {risk === "clear" && <CheckCircle className={cn("h-7 w-7 mx-auto mb-1.5", config.iconClass)} />}
+                {(risk === "caution" || risk === "red_flag") && <AlertTriangle className={cn("h-7 w-7 mx-auto mb-1.5", config.iconClass)} />}
+                <p className={config.textClass}>{config.label}</p>
+                <p className={config.subClass}>
+                  {risk === "clear"
+                    ? riskFlagCount > 0 ? `${riskFlagCount} risk flag${riskFlagCount > 1 ? "s" : ""}`
+                    : infoFlags.length > 0 ? `${infoFlags.length} info flag${infoFlags.length > 1 ? "s" : ""}`
+                    : "No flags found"
+                    : config.subtitle}
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
+                <Shield className="h-7 w-7 mx-auto mb-1.5 text-slate-600" />
+                <p className="text-lg font-extrabold text-slate-400 leading-none">NOT RUN</p>
+                <p className="mt-1 text-[10px] text-slate-500">Run a portal check</p>
+              </div>
+            )}
+          </div>
+
+          {/* KPI pills */}
+          <div className="mb-4 space-y-2">
+            <div className={cn(
+              "flex items-center justify-between rounded-lg border px-3 py-2",
+              lead.latestPortalCheck ? isListed ? "bg-red-500/10 border-red-500/20" : "bg-green-500/10 border-green-500/20" : "bg-white/5 border-white/10"
+            )}>
+              <span className="text-[10px] text-slate-400">Listed on portals</span>
+              <span className={cn("text-[11px] font-bold", lead.latestPortalCheck ? isListed ? "text-red-400" : "text-green-400" : "text-slate-500")}>
+                {lead.latestPortalCheck ? (isListed ? "Yes ⚠" : "No ✓") : "—"}
+              </span>
+            </div>
+            <div className={cn(
+              "flex items-center justify-between rounded-lg border px-3 py-2",
+              lead.latestPortalCheck ? hasFlags ? "bg-amber-500/10 border-amber-500/20" : "bg-green-500/10 border-green-500/20" : "bg-white/5 border-white/10"
+            )}>
+              <span className="text-[10px] text-slate-400">Flags found</span>
+              <span className={cn("text-[11px] font-bold", lead.latestPortalCheck ? hasFlags ? "text-amber-400" : "text-green-400" : "text-slate-500")}>
+                {lead.latestPortalCheck ? hasFlags ? `${riskFlagCount} risk flag${riskFlagCount > 1 ? "s" : ""}` : infoFlags.length > 0 ? `${infoFlags.length} info ✓` : "None ✓" : "—"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+              <span className="text-[10px] text-slate-400">Last checked</span>
+              <span className="text-[11px] font-bold text-slate-300">{lastChecked}</span>
+            </div>
+            {(() => {
+              const t = (lead.tenureType ?? (lead.latestPortalCheck?.ownershipCheckRaw as any)?.tenure as string | null ?? null)?.toLowerCase()
+              const ld = lead.leaseholdData as any
+              const yr = ld?.yearsRemaining as number | null
+              const isFH = t?.includes("freehold") && !t?.includes("leasehold")
+              const isLH = t?.includes("leasehold")
+              const lhColor = !isLH ? null : !yr ? "bg-green-500/10 border-green-500/20" : yr < 70 ? "bg-red-500/10 border-red-500/20" : yr < 85 ? "bg-amber-500/10 border-amber-500/20" : "bg-green-500/10 border-green-500/20"
+              const lhLabel = isFH ? "Freehold ✓" : isLH && yr ? `Leasehold ${yr}yr${yr < 70 ? " ⛔" : yr < 85 ? " ⚠" : " ✓"}` : isLH ? "Leasehold (enter terms)" : "Tenure unknown"
+              return (
+                <div className={cn("flex items-center justify-between rounded-lg border px-3 py-2", isFH ? "bg-green-500/10 border-green-500/20" : lhColor || "bg-white/5 border-white/10")}>
+                  <span className="text-[10px] text-slate-400">Tenure</span>
+                  <span className={cn("text-[11px] font-bold", isFH ? "text-green-400" : lhColor?.includes("red") ? "text-red-400" : lhColor?.includes("amber") ? "text-amber-400" : lhColor?.includes("green") ? "text-green-400" : "text-slate-400")}>
+                    {t ? lhLabel : "—"}
+                  </span>
+                </div>
+              )
+            })()}
+          </div>
+
+          <div className="mb-4 h-px bg-white/10" />
+        </>
+      )}
 
       {/* ── Vendor ── */}
       <div className="mb-4 space-y-2">
