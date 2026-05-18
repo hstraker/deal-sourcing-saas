@@ -420,9 +420,6 @@ export function PortalCheckDetailPanel({
         </>
       )}
 
-      {/* Flood & Environmental Risk */}
-      <div className="border-t border-[var(--ds-border)]" />
-      <FloodRiskCard leadId={leadId} postcode={postcode ?? null} />
     </div>
   )
 }
@@ -714,7 +711,7 @@ const FLOOD_ZONE_CONFIG: Record<
   },
 }
 
-function FloodRiskCard({
+export function FloodRiskCard({
   leadId,
   postcode,
 }: {

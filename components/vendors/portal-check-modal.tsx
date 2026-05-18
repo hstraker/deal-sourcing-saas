@@ -11,13 +11,13 @@ import { toast } from "sonner"
 import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { ModalShell } from "./modal-shell"
-import { PortalCheckDetailPanel } from "./portal-check-detail-panel"
+import { PortalCheckDetailPanel, FloodRiskCard } from "./portal-check-detail-panel"
 import type { VendorLead } from "./vendor-leads-table"
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
 type RiskLevel = "clear" | "caution" | "red_flag"
-type Tab = "portal" | "ownership" | "history" | "leasehold"
+type Tab = "portal" | "ownership" | "history" | "leasehold" | "flood"
 
 // ─── risk config ──────────────────────────────────────────────────────────────
 
@@ -1248,6 +1248,7 @@ export function PortalCheckModal({
     { id: "ownership", label: "Ownership" },
     { id: "history",   label: "History" },
     { id: "leasehold", label: "Leasehold", dot: showLeaseholdWarning ? (lhYears && lhYears < 70 ? "bg-red-500" : "bg-amber-400") : undefined },
+    { id: "flood",     label: "Flood Risk" },
   ]
 
   return (
@@ -1288,6 +1289,7 @@ export function PortalCheckModal({
           <div className="p-4 pt-3">
             <PortalCheckDetailPanel
               leadId={lead.id}
+              postcode={lead.propertyPostcode ?? null}
               latestCheckRisk={lead.latestCheckRisk}
               latestCheckedAt={lead.latestCheckedAt}
               onRiskUpdated={onRiskUpdated}
@@ -1302,6 +1304,11 @@ export function PortalCheckModal({
         )}
         {activeTab === "leasehold" && (
           <LeaseholdTab lead={lead} onSaved={onRiskUpdated ? () => onRiskUpdated(lead.latestCheckRisk, lead.latestCheckedAt ?? null) : undefined} />
+        )}
+        {activeTab === "flood" && (
+          <div className="p-4 pt-3">
+            <FloodRiskCard leadId={lead.id} postcode={lead.propertyPostcode ?? null} />
+          </div>
         )}
       </div>
     </ModalShell>
