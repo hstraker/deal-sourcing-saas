@@ -6,17 +6,19 @@ import type React from "react"
 interface ModalShellProps {
   onClose: () => void
   leftPanel: React.ReactNode
-  maxWidth?: "2xl" | "3xl" | "4xl" | "5xl" | "6xl"
+  maxWidth?: "2xl" | "3xl" | "4xl" | "5xl" | "6xl" | "7xl" | "full"
   rightPanelClassName?: string
   children: React.ReactNode
 }
 
 const MAX_WIDTH: Record<string, string> = {
-  "2xl": "max-w-2xl",
-  "3xl": "max-w-3xl",
-  "4xl": "max-w-4xl",
-  "5xl": "max-w-5xl",
-  "6xl": "max-w-6xl",
+  "2xl":  "max-w-2xl",
+  "3xl":  "max-w-3xl",
+  "4xl":  "max-w-4xl",
+  "5xl":  "max-w-5xl",
+  "6xl":  "max-w-6xl",
+  "7xl":  "max-w-7xl",
+  "full": "max-w-[96vw]",
 }
 
 export function ModalShell({

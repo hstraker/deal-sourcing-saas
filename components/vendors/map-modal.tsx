@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import type { ReactNode, ElementType } from "react"
-import { ExternalLink, Search, Map, Layers, Camera, Sparkles, X } from "lucide-react"
+import { ExternalLink, Search, Map, Layers, Camera, Sparkles, X, Maximize2, Minimize2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -63,6 +63,8 @@ export function MapModal({
   // lat,lng resolved from postcode via postcodes.io — required for streetview embed
   const [svCoords, setSvCoords] = useState<string | null>(null)
   const [svCoordsLoading, setSvCoordsLoading] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [showFullAnalysis, setShowFullAnalysis] = useState(false)
 
   // ── lat/lng resolution ───────────────────────────────────────────────────
   async function resolveCoords() {
@@ -378,9 +380,17 @@ export function MapModal({
               </div>
             )}
             {svAnalysis.narrative && (
-              <p className="mt-1 text-[10px] leading-relaxed text-slate-500 italic">
-                &ldquo;{svAnalysis.narrative.slice(0, 120)}{svAnalysis.narrative.length > 120 ? '…' : ''}&rdquo;
-              </p>
+              <button
+                onClick={() => setShowFullAnalysis(true)}
+                className="mt-1 w-full text-left group"
+              >
+                <p className="text-[10px] leading-relaxed text-slate-500 italic group-hover:text-slate-300 transition-colors">
+                  &ldquo;{svAnalysis.narrative.slice(0, 110)}{svAnalysis.narrative.length > 110 ? '…' : ''}&rdquo;
+                </p>
+                <span className="text-[9px] text-indigo-400 group-hover:text-indigo-300 underline">
+                  View full report →
+                </span>
+              </button>
             )}
             <div className="flex items-center justify-between pt-0.5">
               {svAnalysedAt && (
@@ -449,41 +459,53 @@ export function MapModal({
   )
 
   return (
-    <ModalShell onClose={onClose} leftPanel={leftPanel} maxWidth="3xl" rightPanelClassName="p-0 relative">
-      {/* Map / Satellite / Street View toggle — floats over the top-right corner of the iframe */}
-      <div className="absolute right-3 top-3 z-10 flex overflow-hidden rounded-lg border border-white/20 shadow-lg">
+    <>
+    <ModalShell onClose={onClose} leftPanel={leftPanel} maxWidth={expanded ? "full" : "5xl"} rightPanelClassName="p-0 relative">
+      {/* Map / Satellite / Street View toggle + expand button */}
+      <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
+        {/* Map type switcher */}
+        <div className="flex overflow-hidden rounded-lg border border-white/20 shadow-lg">
+          <button
+            onClick={() => setMapTypeAndReset("roadmap")}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold transition-colors",
+              mapType === "roadmap"
+                ? "bg-white text-gray-900"
+                : "bg-black/50 text-white hover:bg-black/70"
+            )}
+          >
+            <Map className="h-3 w-3" /> Map
+          </button>
+          <button
+            onClick={() => setMapTypeAndReset("satellite")}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold transition-colors",
+              mapType === "satellite"
+                ? "bg-white text-gray-900"
+                : "bg-black/50 text-white hover:bg-black/70"
+            )}
+          >
+            <Layers className="h-3 w-3" /> Satellite
+          </button>
+          <button
+            onClick={() => setMapTypeAndReset("streetview")}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold transition-colors",
+              mapType === "streetview"
+                ? "bg-white text-gray-900"
+                : "bg-black/50 text-white hover:bg-black/70"
+            )}
+          >
+            <Camera className="h-3 w-3" /> Street View
+          </button>
+        </div>
+        {/* Expand / minimise */}
         <button
-          onClick={() => setMapTypeAndReset("roadmap")}
-          className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold transition-colors",
-            mapType === "roadmap"
-              ? "bg-white text-gray-900"
-              : "bg-black/50 text-white hover:bg-black/70"
-          )}
+          onClick={() => setExpanded(!expanded)}
+          className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white shadow-lg hover:bg-black/70 transition-colors"
+          title={expanded ? "Minimise" : "Expand"}
         >
-          <Map className="h-3 w-3" /> Map
-        </button>
-        <button
-          onClick={() => setMapTypeAndReset("satellite")}
-          className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold transition-colors",
-            mapType === "satellite"
-              ? "bg-white text-gray-900"
-              : "bg-black/50 text-white hover:bg-black/70"
-          )}
-        >
-          <Layers className="h-3 w-3" /> Satellite
-        </button>
-        <button
-          onClick={() => setMapTypeAndReset("streetview")}
-          className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold transition-colors",
-            mapType === "streetview"
-              ? "bg-white text-gray-900"
-              : "bg-black/50 text-white hover:bg-black/70"
-          )}
-        >
-          <Camera className="h-3 w-3" /> Street View
+          {expanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
         </button>
       </div>
 
@@ -586,5 +608,127 @@ export function MapModal({
         </div>
       )}
     </ModalShell>
+
+    {/* Full analysis popup — opens when user clicks the truncated narrative */}
+    {showFullAnalysis && svAnalysis && (
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"
+        onClick={() => setShowFullAnalysis(false)}
+      >
+        <div
+          className="w-full max-w-lg overflow-hidden rounded-2xl bg-gray-900 shadow-2xl border border-white/10"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-indigo-400" />
+              <span className="text-sm font-bold text-slate-100">AI Frontage Analysis</span>
+            </div>
+            <button
+              onClick={() => setShowFullAnalysis(false)}
+              className="rounded-lg p-1 text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="max-h-[70vh] overflow-y-auto p-5 space-y-4">
+            {/* Scores row */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-xl bg-white/5 p-3 text-center">
+                <p className="text-[9px] uppercase tracking-widest text-slate-500 mb-1">Kerb Appeal</p>
+                <p className={cn(
+                  "text-2xl font-bold",
+                  svAnalysis.kerbAppeal != null && svAnalysis.kerbAppeal >= 7 ? "text-green-400"
+                  : svAnalysis.kerbAppeal != null && svAnalysis.kerbAppeal >= 5 ? "text-amber-400"
+                  : "text-red-400"
+                )}>
+                  {svAnalysis.kerbAppeal != null ? svAnalysis.kerbAppeal : "—"}
+                  <span className="text-sm font-normal text-slate-500">/10</span>
+                </p>
+              </div>
+              <div className="rounded-xl bg-white/5 p-3 text-center">
+                <p className="text-[9px] uppercase tracking-widest text-slate-500 mb-1">Frontage</p>
+                <p className={cn(
+                  "text-sm font-semibold capitalize mt-1",
+                  svAnalysis.frontageCondition === "excellent" || svAnalysis.frontageCondition === "good"
+                    ? "text-green-400"
+                    : svAnalysis.frontageCondition === "average"
+                    ? "text-amber-400"
+                    : "text-red-400"
+                )}>
+                  {svAnalysis.frontageCondition?.replace(/_/g, " ") ?? "—"}
+                </p>
+              </div>
+              <div className="rounded-xl bg-white/5 p-3 text-center">
+                <p className="text-[9px] uppercase tracking-widest text-slate-500 mb-1">Area</p>
+                <p className="text-sm font-semibold capitalize text-slate-300 mt-1">
+                  {svAnalysis.neighbourhoodCharacter ?? "—"}
+                </p>
+              </div>
+            </div>
+
+            {/* Full narrative */}
+            {svAnalysis.narrative && (
+              <div className="rounded-xl bg-indigo-950/50 border border-indigo-500/20 p-4">
+                <p className="text-[9px] uppercase tracking-widest text-indigo-400 mb-2">Assessment</p>
+                <p className="text-sm leading-relaxed text-slate-200">{svAnalysis.narrative}</p>
+              </div>
+            )}
+
+            {/* Green flags */}
+            {svAnalysis.greenFlags?.length > 0 && (
+              <div>
+                <p className="text-[9px] uppercase tracking-widest text-slate-500 mb-2">Positive Signals</p>
+                <ul className="space-y-1">
+                  {svAnalysis.greenFlags.map((flag, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-slate-300">
+                      <span className="mt-0.5 text-green-400 flex-shrink-0">✓</span>
+                      {flag}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Concerns */}
+            {svAnalysis.concerns?.length > 0 && (
+              <div>
+                <p className="text-[9px] uppercase tracking-widest text-slate-500 mb-2">Concerns</p>
+                <ul className="space-y-1">
+                  {svAnalysis.concerns.map((concern, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-slate-300">
+                      <span className="mt-0.5 text-red-400 flex-shrink-0">⚠</span>
+                      {concern}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Timestamp + re-analyse */}
+            <div className="flex items-center justify-between border-t border-white/10 pt-3">
+              {svAnalysedAt && (
+                <span className="text-[10px] text-slate-600">
+                  {(() => {
+                    const d = new Date(svAnalysedAt)
+                    const days = Math.floor((Date.now() - d.getTime()) / 86400000)
+                    return days === 0 ? "Analysed today" : `Analysed ${days}d ago`
+                  })()}
+                </span>
+              )}
+              <button
+                onClick={() => { setShowFullAnalysis(false); handleStreetViewAnalyse() }}
+                className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 underline"
+              >
+                <Sparkles className="h-3 w-3" /> Re-analyse
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }
