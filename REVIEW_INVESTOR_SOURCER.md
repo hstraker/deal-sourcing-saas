@@ -293,6 +293,8 @@ The `.env` has `STRIPE_SECRET_KEY="sk_test_..."` — placeholder only. The entir
 | 2026-05-18 | **Floorplan upload + AI analysis** | New amber section at bottom of Photos tab; `POST /api/vendor-leads/[id]/floorplan` (presign→S3→confirm, images + PDFs); `POST /api/vendor-leads/[id]/floorplan/analyse` calls Claude Vision → extracts sqft, sqm, beds, baths, receptions, storeys, layout type, extension/loft/garage/garden flags, notes; stored as `PropertyPhoto` with `source: "floorplan_upload"` — no schema changes |
 | 2026-05-18 | **Bulk investor notify — SMS / Email / Both** | Segmented Email·SMS·Both channel picker in Investor Match panel header; individual Notify + Notify All both respect selected channel; SMS via existing Twilio (graceful fallback if unconfigured); button icon changes Mail→MessageSquare→Zap; pipeline event logs channel + delivery status; API updated to accept `channel` param with `"email"` default for backward compat |
 | 2026-05-18 | **Duplicate lead detection** | `GET /api/vendor-pipeline/leads/check-duplicate?phone=...`; normalises UK phone formats (07xxx, +447xxx, 447xxx); 600ms debounced check on Add Lead form phone field → amber inline warning with matching vendor name + stage; amber **Dupe** badge on table rows where phone matches another lead in current view |
+| 2026-05-18 | **Street View embed + AI Frontage Analysis** | Map modal extended to 3-toggle (Map / Satellite / Street View); Street View uses Google Maps Embed API `streetview` mode — fully interactive panorama inline; "Analyse Frontage with AI" button calls `POST /api/vendor-leads/[id]/street-view-analysis` which fetches the Street View Static API image server-side, sends to Claude Vision, returns: kerb appeal score (1–10), frontage condition, neighbourhood character, up to 5 concerns, up to 5 green flags, and a 2–3 sentence narrative; overlay card appears bottom of right panel with colour-coded badges, dismiss (×), re-analyse; handles no-imagery gracefully |
+| 2026-05-18 | **Area Intelligence + AI Demand Narrative** | New `AreaIntelligenceCard` component inserted at the top of the Comparables tab (before ComparablesAnalysis); always shows 3 derived signal tiles (avg days on market, recent sales in last 6 months, % of comps with price cuts) computed from already-fetched comparables data — zero extra API cost; "Get AI Interpretation" button calls `POST /api/vendor-leads/[id]/area-intelligence` which sends comp signals + deal context (postcode, type, beds, asking price, BMV%, avg price, avg yield) to Claude; returns: liquidity score (1–10 bar), liquidity assessment, demand trend (rising/stable/softening/declining), ranked strategy fit chips (BTL / Flip / HMO etc.), negotiation climate, 3–4 sentence area narrative; propertyType + bedrooms + bmvPercent wired through from lead detail modal |
 
 ---
 
@@ -302,9 +304,7 @@ The `.env` has `STRIPE_SECRET_KEY="sk_test_..."` — placeholder only. The entir
 |----------|---------|------------|----------------|
 | 🔴 1 | **Stripe payment integration** | 1 day | Very High — investors can register interest but no reservation fee is collected yet; blocks B2C revenue entirely |
 | 🔵 2 | **Post-completion feedback loop** | 1 day | Medium — `DealOutcome` record (actual purchase price, real yield, investor rating); follow-up email 6 weeks after lock-out; builds case-study library for investor trust |
-| 🔵 3 | **Street view embed in map modal** | 0.5 day | Low — Google Maps Street View iframe using property coordinates; sourcers pre-screen without site visits |
-| 🔵 4 | **Auction properties workflow** | 2 days | Low — auction-specific fields, `AUCTION_MONITORING` stage, pre-auction reminder alerts at 7/3/1 day |
-| 🔵 5 | **Area demand / days-on-market** | 0.5 day | Low — PropertyData `/demand` endpoint; surface avg days to sell + months of stock in Comparables tab |
+| 🔵 3 | **Auction properties workflow** | 2 days | Low — auction-specific fields, `AUCTION_MONITORING` stage, pre-auction reminder alerts at 7/3/1 day |
 
 ---
 
@@ -319,4 +319,4 @@ The `.env` has `STRIPE_SECRET_KEY="sk_test_..."` — placeholder only. The entir
 
 ---
 
-*Last updated 2026-05-18 after Sprint 5 (Flood risk, Floorplan AI, Bulk notify SMS/email, Duplicate detection). Original review: 2026-05-15.*
+*Last updated 2026-05-18 after Sprint 6 (Street View embed + AI Frontage Analysis, Area Intelligence + AI Demand Narrative). Original review: 2026-05-15.*

@@ -9,11 +9,15 @@ import {
   Home,
   Settings,
   TrendingUp,
+  TrendingDown,
+  Minus,
   Clock,
   ChevronRight,
   ExternalLink,
   Eye,
   EyeOff,
+  Brain,
+  Zap,
 } from "lucide-react"
 import {
   ComparablesAnalysis,
@@ -41,6 +45,27 @@ interface VendorComparablesTabProps {
   vendorLeadId: string
   askingPrice?: number
   propertyPostcode?: string | null
+  // NEW:
+  propertyType?: string | null
+  bedrooms?: number | null
+  bmvPercent?: number | null
+}
+
+interface AreaSignals {
+  avgDom: number | null
+  reductionRate: number | null
+  recentSales: number
+  staleSales: number
+  activeCount: number
+}
+
+interface AreaAnalysis {
+  liquidityScore: number
+  liquidityAssessment: string
+  demandTrend: "rising" | "stable" | "softening" | "declining"
+  strategyFit: string[]
+  priceSensitivity: string
+  narrative: string
 }
 
 interface ComparablesData {
@@ -564,6 +589,262 @@ function ComparablesAccordion({
   )
 }
 
+// ─── area intelligence card ───────────────────────────────────────────────────
+
+function AreaIntelligenceCard({
+  vendorLeadId,
+  comparables,
+  askingPrice,
+  propertyType,
+  bedrooms,
+  postcode,
+  bmvPercent,
+  avgPrice,
+  avgRentalYield,
+}: {
+  vendorLeadId: string
+  comparables: ComparableProperty[]
+  askingPrice?: number
+  propertyType?: string | null
+  bedrooms?: number | null
+  postcode?: string | null
+  bmvPercent?: number | null
+  avgPrice?: number | null
+  avgRentalYield?: number | null
+}) {
+  const [analysis, setAnalysis] = useState<AreaAnalysis | null>(null)
+  const [signals, setSignals] = useState<AreaSignals | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Derive local signals for display (mirrors server computation)
+  const activeComps = comparables.filter((c) => !c.excluded)
+  const now = Date.now()
+  const localRecentSales = activeComps.filter((c) => {
+    try { return (now - new Date(c.saleDate).getTime()) < 6 * 30.44 * 24 * 60 * 60 * 1000 }
+    catch { return false }
+  }).length
+  const withDom = activeComps.filter((c) => c.daysOnMarket != null)
+  const localAvgDom = withDom.length
+    ? Math.round(withDom.reduce((s, c) => s + (c.daysOnMarket ?? 0), 0) / withDom.length)
+    : null
+  const withReductions = activeComps.filter((c) => c.priceReductions != null && c.priceReductions > 0)
+  const localReductionRate = activeComps.length
+    ? Math.round((withReductions.length / activeComps.length) * 100)
+    : null
+
+  async function handleAnalyse() {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/vendor-leads/${vendorLeadId}/area-intelligence`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          comparables,
+          askingPrice,
+          propertyType,
+          bedrooms,
+          postcode,
+          bmvPercent,
+          avgPrice,
+          avgRentalYield,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? "Analysis failed")
+      setAnalysis(json.analysis as AreaAnalysis)
+      setSignals(json.signals as AreaSignals)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Analysis failed")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const demandTrendIcon =
+    analysis?.demandTrend === "rising" ? <TrendingUp className="h-3.5 w-3.5 text-green-500" /> :
+    analysis?.demandTrend === "declining" ? <TrendingDown className="h-3.5 w-3.5 text-red-500" /> :
+    <Minus className="h-3.5 w-3.5 text-amber-500" />
+
+  const demandTrendClass =
+    analysis?.demandTrend === "rising" ? "text-green-600" :
+    analysis?.demandTrend === "declining" ? "text-red-500" :
+    "text-amber-500"
+
+  const liquidityColour =
+    !analysis ? "bg-gray-200" :
+    analysis.liquidityScore >= 7 ? "bg-green-500" :
+    analysis.liquidityScore >= 4 ? "bg-amber-500" :
+    "bg-red-500"
+
+  return (
+    <div className="ds-card overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-[var(--ds-border)] px-5 py-3">
+        <div className="flex items-center gap-2">
+          <Brain className="h-4 w-4 text-indigo-500" />
+          <h4 className="text-sm font-semibold text-gray-900">Area Intelligence</h4>
+        </div>
+        <button
+          onClick={handleAnalyse}
+          disabled={loading || activeComps.length === 0}
+          className={cn(
+            "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            analysis
+              ? "border border-gray-200 text-gray-600 hover:bg-gray-50"
+              : "bg-indigo-600 text-white hover:bg-indigo-700",
+            (loading || activeComps.length === 0) && "cursor-not-allowed opacity-50"
+          )}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Analysing…
+            </>
+          ) : analysis ? (
+            <>
+              <RefreshCw className="h-3 w-3" />
+              Re-analyse
+            </>
+          ) : (
+            <>
+              <Zap className="h-3 w-3" />
+              Get AI Interpretation
+            </>
+          )}
+        </button>
+      </div>
+
+      <div className="p-5">
+        {/* Signal tiles — always shown from local computation */}
+        <div className="mb-4 grid grid-cols-3 gap-3">
+          <div className="rounded-lg bg-gray-50 p-3 text-center">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">Avg Days Listed</p>
+            <p className={cn(
+              "mt-1 text-xl font-bold",
+              localAvgDom == null ? "text-gray-300" :
+              localAvgDom <= 30 ? "text-green-600" :
+              localAvgDom <= 60 ? "text-amber-500" :
+              "text-red-500"
+            )}>
+              {localAvgDom != null ? localAvgDom : "—"}
+            </p>
+            {localAvgDom != null && (
+              <p className="mt-0.5 text-[10px] text-gray-400">days on market</p>
+            )}
+          </div>
+          <div className="rounded-lg bg-gray-50 p-3 text-center">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">Recent Sales</p>
+            <p className={cn(
+              "mt-1 text-xl font-bold",
+              localRecentSales === 0 ? "text-red-500" :
+              localRecentSales >= 3 ? "text-green-600" :
+              "text-amber-500"
+            )}>
+              {localRecentSales}
+            </p>
+            <p className="mt-0.5 text-[10px] text-gray-400">last 6 months</p>
+          </div>
+          <div className="rounded-lg bg-gray-50 p-3 text-center">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">Price Cuts</p>
+            <p className={cn(
+              "mt-1 text-xl font-bold",
+              localReductionRate == null ? "text-gray-300" :
+              localReductionRate === 0 ? "text-green-600" :
+              localReductionRate <= 30 ? "text-amber-500" :
+              "text-red-500"
+            )}>
+              {localReductionRate != null ? `${localReductionRate}%` : "—"}
+            </p>
+            {localReductionRate != null && (
+              <p className="mt-0.5 text-[10px] text-gray-400">of comps had cuts</p>
+            )}
+          </div>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mb-3 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
+            {error}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!analysis && !loading && !error && (
+          <p className="text-center text-xs text-gray-400">
+            Click &ldquo;Get AI Interpretation&rdquo; to get Claude&rsquo;s read on market demand, liquidity, and best exit strategies for this deal.
+          </p>
+        )}
+
+        {/* AI Results */}
+        {analysis && (
+          <div className="space-y-4">
+            {/* Liquidity score bar */}
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="text-xs font-semibold text-gray-700">Liquidity Score</span>
+                <span className={cn(
+                  "text-sm font-bold",
+                  analysis.liquidityScore >= 7 ? "text-green-600" :
+                  analysis.liquidityScore >= 4 ? "text-amber-500" : "text-red-500"
+                )}>
+                  {analysis.liquidityScore}/10
+                </span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                <div
+                  className={cn("h-2 rounded-full transition-all", liquidityColour)}
+                  style={{ width: `${analysis.liquidityScore * 10}%` }}
+                />
+              </div>
+              <p className="mt-1.5 text-xs text-gray-500">{analysis.liquidityAssessment}</p>
+            </div>
+
+            {/* Demand trend + strategy fit */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">Demand Trend</p>
+                <div className="flex items-center gap-1.5">
+                  {demandTrendIcon}
+                  <span className={cn("text-sm font-semibold capitalize", demandTrendClass)}>
+                    {analysis.demandTrend}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">Best Strategies</p>
+                <div className="flex flex-wrap gap-1">
+                  {analysis.strategyFit.map((s, i) => (
+                    <span key={i} className={cn(
+                      "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                      i === 0 ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600"
+                    )}>
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Price sensitivity */}
+            <div className="rounded-lg bg-amber-50 px-4 py-3">
+              <p className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700">Negotiation Climate</p>
+              <p className="text-xs text-amber-800">{analysis.priceSensitivity}</p>
+            </div>
+
+            {/* Narrative */}
+            <div className="rounded-lg bg-gray-50 px-4 py-3">
+              <p className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">Area Summary</p>
+              <p className="text-xs leading-relaxed text-gray-700">{analysis.narrative}</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── main tab component ───────────────────────────────────────────────────────
 
 /**
@@ -574,6 +855,9 @@ export function VendorComparablesTab({
   vendorLeadId,
   askingPrice,
   propertyPostcode,
+  propertyType,
+  bedrooms,
+  bmvPercent,
 }: VendorComparablesTabProps) {
   // Seed state from module cache so re-opens are instant (no spinner, no re-fetch)
   const [data, setData] = useState<ComparablesData | null>(
@@ -845,6 +1129,19 @@ export function VendorComparablesTab({
             }
             return null
           })()}
+
+          {/* Area Intelligence */}
+          <AreaIntelligenceCard
+            vendorLeadId={vendorLeadId}
+            comparables={data.comparables}
+            askingPrice={askingPrice}
+            propertyType={propertyType}
+            bedrooms={bedrooms}
+            postcode={propertyPostcode}
+            bmvPercent={bmvPercent}
+            avgPrice={data.avgPrice ?? undefined}
+            avgRentalYield={data.avgRentalYield ?? undefined}
+          />
 
           {/* Analysis summary (includes bar chart) */}
           <ComparablesAnalysis

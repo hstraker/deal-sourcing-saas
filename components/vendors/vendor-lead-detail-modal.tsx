@@ -2754,6 +2754,9 @@ export function VendorLeadDetailModal({
               vendorLeadId={lead.id}
               askingPrice={typeof currentLead.askingPrice === 'number' ? currentLead.askingPrice : (currentLead.askingPrice ? Number(currentLead.askingPrice) : undefined)}
               propertyPostcode={currentLead.propertyPostcode}
+              propertyType={currentLead.propertyType ?? null}
+              bedrooms={currentLead.bedrooms ?? null}
+              bmvPercent={currentLead.bmvScore != null ? Number(currentLead.bmvScore) : null}
             />
 
             {/* ── Investor Matching ────────────────────────────────────────── */}
