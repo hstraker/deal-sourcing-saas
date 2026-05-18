@@ -27,11 +27,13 @@ export async function GET(
       select: {
         id: true,
         propertyPostcode: true,
+        propertyAddress: true,
         offerAmount: true,
         askingPrice: true,
         bmvScore: true,
         estimatedMonthlyRent: true,
         estimatedAnnualRent: true,
+        estimatedMarketValue: true,
         validationNotes: true,
         validationPassed: true,
         pipelineEvents: {
@@ -81,12 +83,24 @@ export async function GET(
       }
     }
 
-    // Gross yield from rent
+    // Gross yield — two versions:
+    //  grossYield         = annual rent / offer price   (investor's actual return on capital deployed)
+    //  grossYieldVsMarket = annual rent / market value  (industry-standard BTL comparison metric)
+    const annualRentNum = lead.estimatedAnnualRent
+      ? Number(lead.estimatedAnnualRent)
+      : lead.estimatedMonthlyRent
+      ? Number(lead.estimatedMonthlyRent) * 12
+      : null
+    const marketValue = lead.estimatedMarketValue ? Number(lead.estimatedMarketValue) : null
+
     let grossYield: number | null = null
-    if (lead.estimatedAnnualRent && price > 0) {
-      grossYield = (Number(lead.estimatedAnnualRent) / price) * 100
-    } else if (lead.estimatedMonthlyRent && price > 0) {
-      grossYield = (Number(lead.estimatedMonthlyRent) * 12 / price) * 100
+    if (annualRentNum != null && price > 0) {
+      grossYield = (annualRentNum / price) * 100
+    }
+
+    let grossYieldVsMarket: number | null = null
+    if (annualRentNum != null && marketValue && marketValue > 0) {
+      grossYieldVsMarket = (annualRentNum / marketValue) * 100
     }
 
     // Fetch all investors with criteria set
@@ -131,6 +145,7 @@ export async function GET(
 
     const matches = matchInvestors(normalised, {
       postcode: lead.propertyPostcode,
+      propertyAddress: lead.propertyAddress,
       askingPrice: price,
       bmvPercentage: bmvPct,
       grossYield,
@@ -152,7 +167,7 @@ export async function GET(
 
     return NextResponse.json({
       matches: enriched,
-      dealValues: { price, bmvPct, grossYield, recommendedStrategy },
+      dealValues: { price, bmvPct, grossYield, grossYieldVsMarket, marketValue, recommendedStrategy },
     })
   } catch (error: any) {
     console.error("[matching-investors] Error:", error)
