@@ -967,7 +967,7 @@ const TABS: { id: TabId; label: string; step: number }[] = [
   { id: "ai-conversation",  label: "AI Chat",    step: 1 },
   { id: "property-details", label: "Details",    step: 2 },
   { id: "photo-analysis",   label: "Photos",     step: 3 },
-  { id: "portal-check",     label: "Portal",     step: 4 },
+  { id: "portal-check",     label: "Risk Check", step: 4 },
   { id: "comparable",       label: "Comps",      step: 5 },
   { id: "validation",       label: "Validation", step: 6 },
   { id: "offer-analysis",   label: "Offer",      step: 7 },
