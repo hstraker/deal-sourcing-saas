@@ -32,6 +32,19 @@ interface EaFloodResponse {
   items: EaFloodArea[]
 }
 
+interface EaWarning {
+  severity?: string
+  severityLevel?: number
+  description?: string
+  message?: string
+  timeMessageChanged?: string
+  floodArea?: { county?: string; riverOrSea?: string; label?: string }
+}
+
+interface EaWarningsResponse {
+  items: EaWarning[]
+}
+
 export async function POST(
   _request: NextRequest,
   { params }: { params: { id: string } }
@@ -138,6 +151,37 @@ export async function POST(
       riverOrSea: a.riverOrSea ?? "",
     }))
 
+  // ── Fetch live flood warnings (non-blocking) ───────────────────────────────
+  // severityLevel: 1=severe, 2=warning, 3=alert, 4=no longer in force
+  let activeWarnings: {
+    severity: string
+    severityLevel: number
+    description: string
+    area: string
+    riverOrSea: string
+    updated: string
+  }[] = []
+  try {
+    const warnRes = await fetch(
+      `https://environment.data.gov.uk/flood-monitoring/id/floods?lat=${lat}&long=${lng}&dist=5`,
+      { signal: AbortSignal.timeout(8000) }
+    )
+    if (warnRes.ok) {
+      const warnData = await warnRes.json() as EaWarningsResponse
+      activeWarnings = (warnData.items ?? [])
+        .filter((w) => (w.severityLevel ?? 4) <= 3)
+        .slice(0, 5)
+        .map((w) => ({
+          severity:      w.severity ?? "Flood Alert",
+          severityLevel: w.severityLevel ?? 3,
+          description:   w.description ?? w.floodArea?.label ?? "",
+          area:          w.floodArea?.county ?? "",
+          riverOrSea:    w.floodArea?.riverOrSea ?? "",
+          updated:       w.timeMessageChanged ?? "",
+        }))
+    }
+  } catch { /* non-critical */ }
+
   // Persist flood risk zone to lead record
   try {
     await prisma.vendorLead.update({
@@ -152,6 +196,7 @@ export async function POST(
   return NextResponse.json({
     zone,
     nearbyAreas,
+    activeWarnings,
     postcode,
     lat,
     lng,
