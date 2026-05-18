@@ -230,6 +230,14 @@ export interface VendorLead {
   bridgingCostOverride?: string | number | null
   insuranceOverride?: string | number | null
   leadSource?: string | null  // e.g. "Scraper: RM" | "Scraper: Z" | "manual" | "facebook_ads"
+  // Street View AI Analysis
+  streetViewAnalysis?: Record<string, unknown> | null
+  streetViewAnalysedAt?: string | null
+  // Flood Risk
+  floodRiskZone?: string | null
+  floodRiskCheckedAt?: string | null
+  // Postcode demand score (already in DB schema)
+  postcodeDemandScore?: number | null
 }
 
 type TabId = "map-view" | "property-details" | "portal-check" | "validation" | "comparable" | "offer-analysis" | "ai-conversation" | "photo-analysis"
@@ -1307,10 +1315,31 @@ function resolvePostcode(lead: { propertyPostcode: string | null; propertyAddres
 // Per-tab Row renderers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function MapViewRow({ lead, onRowClick, onView, onDelete, isSelected, onToggleSelect, isDupe }: RowRendererProps) {
-  const createdAt = new Date(lead.createdAt)
-  const leadAgeDays = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24))
+// ── Map-view helpers ─────────────────────────────────────────────────────────
 
+function kerbColour(n: number | null | undefined): string {
+  if (n == null) return "text-gray-400"
+  if (n >= 7) return "text-green-600 font-semibold"
+  if (n >= 5) return "text-amber-500 font-semibold"
+  return "text-red-500 font-semibold"
+}
+
+function FloodBadge({ zone }: { zone: string | null | undefined }) {
+  if (!zone) return <span className="text-xs text-gray-400">—</span>
+  const cfg = ({
+    zone1: { label: "Zone 1 ✓", cls: "bg-green-100 text-green-700 border-green-200" },
+    zone2: { label: "Zone 2", cls: "bg-amber-100 text-amber-700 border-amber-200" },
+    zone3: { label: "Zone 3 ⚠", cls: "bg-red-100 text-red-700 border-red-200" },
+    unknown: { label: "Unknown", cls: "bg-gray-100 text-gray-500 border-gray-200" },
+  } as Record<string, { label: string; cls: string }>)[zone] ?? { label: zone, cls: "bg-gray-100 text-gray-500 border-gray-200" }
+  return (
+    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${cfg.cls}`}>
+      {cfg.label}
+    </span>
+  )
+}
+
+function MapViewRow({ lead, onRowClick, onView, onDelete, isSelected, onToggleSelect, isDupe }: RowRendererProps) {
   // Build external map URLs from property address / postcode
   const resolvedPostcode = resolvePostcode(lead)
   const encoded = encodeURIComponent(lead.propertyAddress ?? resolvedPostcode ?? "")
@@ -1333,33 +1362,67 @@ function MapViewRow({ lead, onRowClick, onView, onDelete, isSelected, onToggleSe
       </td>
       <VendorAddressCell lead={lead} isSelected={isSelected} isDupe={isDupe} />
       <Td><span className="font-mono text-xs">{resolvePostcode(lead) ?? "—"}</span></Td>
-      <Td><span className="text-xs text-gray-700">{lead.propertyType ?? <span className="text-gray-400">—</span>}</span></Td>
-      <Td><span className="font-mono text-xs">{lead.bedrooms !== null ? `${lead.bedrooms}bd` : "—"}</span></Td>
-      <Td><StageBadge stage={lead.pipelineStage} /></Td>
-      <Td><BmvCell value={lead.bmvScore} /></Td>
-      <Td><span className="font-mono text-xs">{fmtCurrency(lead.askingPrice)}</span></Td>
+      {/* Type/Beds merged */}
       <Td>
-        {lead.motivationScore !== null
-          ? (
-            <Tip text={`Motivation: ${lead.motivationScore}/10 — ${lead.motivationScore >= 8 ? "Highly motivated" : lead.motivationScore >= 5 ? "Moderately motivated" : "Low motivation"}`}>
-              <span className={cn("font-mono text-xs font-semibold cursor-default",
-                lead.motivationScore >= 8 ? "text-green-700" : lead.motivationScore >= 5 ? "text-amber-700" : "text-gray-500"
-              )}>
-                {lead.motivationScore}/10
-              </span>
+        {(() => {
+          const parts = [lead.propertyType, lead.bedrooms !== null ? `${lead.bedrooms}bd` : null].filter(Boolean)
+          return parts.length > 0
+            ? <span className="text-xs text-gray-600">{parts.join(" ")}</span>
+            : <span className="text-xs text-gray-400">—</span>
+        })()}
+      </Td>
+      {/* Flood Risk */}
+      <Td>
+        {lead.floodRiskZone
+          ? <FloodBadge zone={lead.floodRiskZone} />
+          : (
+            <Tip text="Open lead to run flood check">
+              <span className="cursor-default text-xs text-gray-400">—</span>
             </Tip>
           )
-          : <span className="font-mono text-xs text-gray-400">—</span>}
+        }
       </Td>
-      <Td><UrgencyBadge level={lead.urgencyLevel} /></Td>
+      {/* Kerb Appeal */}
       <Td>
-        <Tip text={`Lead created ${fmtDate(lead.createdAt)}`}>
-          <span className={cn("font-mono text-xs cursor-default",
-            leadAgeDays > 30 ? "text-red-600 font-semibold" : leadAgeDays > 14 ? "text-amber-600" : "text-gray-700"
-          )}>
-            {leadAgeDays}d
-          </span>
-        </Tip>
+        {(() => {
+          const kerbAppeal = (lead.streetViewAnalysis as Record<string, unknown> | null | undefined)?.kerbAppeal
+          const n = typeof kerbAppeal === "number" ? kerbAppeal : null
+          return n !== null
+            ? (
+              <span className={cn("font-mono text-xs", kerbColour(n))}>
+                {n}/10
+              </span>
+            )
+            : (
+              <Tip text="Open map to analyse frontage">
+                <span className="cursor-default text-xs text-gray-400">—</span>
+              </Tip>
+            )
+        })()}
+      </Td>
+      {/* Neighbourhood character */}
+      <Td>
+        {(() => {
+          const nc = (lead.streetViewAnalysis as Record<string, unknown> | null | undefined)?.neighbourhoodCharacter
+          return typeof nc === "string" && nc
+            ? (
+              <span className="rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[10px] capitalize text-gray-600">
+                {nc}
+              </span>
+            )
+            : <span className="text-xs text-gray-400">—</span>
+        })()}
+      </Td>
+      {/* Demand score */}
+      <Td>
+        {lead.postcodeDemandScore !== null && lead.postcodeDemandScore !== undefined
+          ? (
+            <span className={cn("font-mono text-xs", kerbColour(lead.postcodeDemandScore))}>
+              {lead.postcodeDemandScore}/10
+            </span>
+          )
+          : <span className="text-xs text-gray-400">—</span>
+        }
       </Td>
 
       {/* Map-specific actions — no Edit (irrelevant), no Archive (irrelevant here) */}
@@ -2085,12 +2148,12 @@ function TableHeaders({ tab, allSelected, someSelected, onSelectAll }: {
       return <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
         {selectAllTh}
         {vendorAddressHeader}
-        <Th>Postcode</Th><Th>Type</Th><Th><Tip text="Number of bedrooms">Beds</Tip></Th><Th>Status</Th>
-        <Th><Tip text="Below Market Value %. Green ≥15% = excellent, Amber 10-14% = good, Red <10% = weak">BMV %</Tip></Th>
-        <Th><Tip text="Vendor's advertised price — your negotiation starting point">Asking Price</Tip></Th>
-        <Th><Tip text="AI-scored vendor motivation (1-10). Higher = more urgency to sell">Motivation</Tip></Th>
-        <Th><Tip text="How quickly vendor needs to sell: Urgent (&lt;2 weeks), Quick (1-2 months), Moderate, Flexible">Urgency</Tip></Th>
-        <Th><Tip text="How long lead has been in the system. Older leads may need re-engagement">Lead Age</Tip></Th>
+        <Th>Postcode</Th>
+        <Th><Tip text="Property type and bedroom count">Type</Tip></Th>
+        <Th><Tip text="Flood risk zone from Environment Agency data. Zone 1 = low risk, Zone 3 = high risk">Flood</Tip></Th>
+        <Th><Tip text="AI-assessed kerb appeal from Google Street View (1-10). Green ≥7, Amber ≥5, Red &lt;5">Kerb</Tip></Th>
+        <Th><Tip text="AI-assessed neighbourhood character from Street View analysis">Area</Tip></Th>
+        <Th><Tip text="Postcode demand score (1-10). Higher = more buyer/tenant demand in this area">Demand</Tip></Th>
         {stickyRight}
       </tr>
 

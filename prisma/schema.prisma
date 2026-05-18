@@ -1088,6 +1088,14 @@ model VendorLead {
   photoAnalysisCompletedAt DateTime?          @map("photo_analysis_completed_at")
   photoAnalysisNotes      String?             @map("photo_analysis_notes") @db.Text
 
+  // Street View AI Analysis (persisted after Claude Vision analyses the frontage)
+  streetViewAnalysis   Json?     @map("street_view_analysis")
+  streetViewAnalysedAt DateTime? @map("street_view_analysed_at")
+
+  // Flood Risk (persisted after EA Flood Monitoring API check)
+  floodRiskZone      String?   @map("flood_risk_zone")       // "zone1" | "zone2" | "zone3" | "unknown"
+  floodRiskCheckedAt DateTime? @map("flood_risk_checked_at")
+
   // Relations
   smsMessages          SMSMessage[]
   pipelineEvents       PipelineEvent[]

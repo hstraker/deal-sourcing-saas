@@ -51,7 +51,13 @@ export function MapModal({
   onClose: () => void
 }) {
   const [mapType, setMapType] = useState<MapType>("roadmap")
-  const [svAnalysis, setSvAnalysis] = useState<StreetViewAnalysis | null>(null)
+  const [svAnalysis, setSvAnalysis] = useState<StreetViewAnalysis | null>(() => {
+    if (lead.streetViewAnalysis && typeof lead.streetViewAnalysis === 'object') {
+      return lead.streetViewAnalysis as unknown as StreetViewAnalysis
+    }
+    return null
+  })
+  const [svAnalysedAt, setSvAnalysedAt] = useState<string | null>(lead.streetViewAnalysedAt ?? null)
   const [svLoading, setSvLoading] = useState(false)
   const [svError, setSvError] = useState<string | null>(null)
   // lat,lng resolved from postcode via postcodes.io — required for streetview embed
@@ -80,7 +86,7 @@ export function MapModal({
   function setMapTypeAndReset(t: MapType) {
     setMapType(t)
     if (t !== "streetview") {
-      setSvAnalysis(null); setSvError(null)
+      setSvError(null)
     } else if (!svCoords) {
       resolveCoords()
     }
@@ -141,6 +147,7 @@ export function MapModal({
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? "Analysis failed")
       setSvAnalysis(json.analysis as StreetViewAnalysis)
+      setSvAnalysedAt(json.analysedAt ?? new Date().toISOString())
     } catch (err: unknown) {
       setSvError(err instanceof Error ? err.message : "Analysis failed")
     } finally {
@@ -328,6 +335,93 @@ export function MapModal({
         )}
       </div>
 
+      {/* Street Analysis */}
+      <div className="mb-4 h-px bg-white/10" />
+      <div className="mb-4 space-y-2">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Street Analysis</p>
+
+        {svAnalysis ? (
+          <>
+            {/* Kerb appeal */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400">Kerb Appeal</span>
+              <span className={cn(
+                "text-sm font-bold",
+                svAnalysis.kerbAppeal != null && svAnalysis.kerbAppeal >= 7 ? "text-green-400"
+                : svAnalysis.kerbAppeal != null && svAnalysis.kerbAppeal >= 5 ? "text-amber-400"
+                : "text-red-400"
+              )}>
+                {svAnalysis.kerbAppeal != null ? `${svAnalysis.kerbAppeal}/10` : "—"}
+              </span>
+            </div>
+            {svAnalysis.frontageCondition && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400">Frontage</span>
+                <span className={cn(
+                  "rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize",
+                  svAnalysis.frontageCondition === "excellent" || svAnalysis.frontageCondition === "good"
+                    ? "bg-green-500/20 text-green-300"
+                    : svAnalysis.frontageCondition === "average"
+                    ? "bg-amber-500/20 text-amber-300"
+                    : "bg-red-500/20 text-red-300"
+                )}>
+                  {svAnalysis.frontageCondition.replace(/_/g, " ")}
+                </span>
+              </div>
+            )}
+            {svAnalysis.neighbourhoodCharacter && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400">Area</span>
+                <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] capitalize text-slate-300">
+                  {svAnalysis.neighbourhoodCharacter}
+                </span>
+              </div>
+            )}
+            {svAnalysis.narrative && (
+              <p className="mt-1 text-[10px] leading-relaxed text-slate-500 italic">
+                &ldquo;{svAnalysis.narrative.slice(0, 120)}{svAnalysis.narrative.length > 120 ? '…' : ''}&rdquo;
+              </p>
+            )}
+            <div className="flex items-center justify-between pt-0.5">
+              {svAnalysedAt && (
+                <span className="text-[9px] text-slate-600">
+                  {(() => {
+                    const d = new Date(svAnalysedAt)
+                    const days = Math.floor((Date.now() - d.getTime()) / 86400000)
+                    return days === 0 ? "Analysed today" : `Analysed ${days}d ago`
+                  })()}
+                </span>
+              )}
+              <button
+                onClick={() => { setMapTypeAndReset("streetview"); handleStreetViewAnalyse() }}
+                className="text-[9px] text-indigo-400 hover:text-indigo-300 underline"
+              >
+                Re-analyse
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="rounded-lg bg-white/5 px-3 py-2 text-center">
+            <p className="text-[10px] text-slate-500">No frontage analysis yet.</p>
+            <button
+              onClick={() => {
+                if (mapType !== "streetview") {
+                  setMapTypeAndReset("streetview")
+                  setTimeout(handleStreetViewAnalyse, 1500)
+                } else {
+                  handleStreetViewAnalyse()
+                }
+              }}
+              disabled={svLoading}
+              className="mt-1 flex items-center gap-1 text-[10px] text-indigo-400 hover:text-indigo-300 underline disabled:opacity-50 mx-auto"
+            >
+              <Sparkles className="h-2.5 w-2.5" />
+              {svLoading ? "Analysing…" : mapType === "streetview" ? "Analyse now" : "Switch to Street View & Analyse"}
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Quick links + pipeline — pinned to bottom */}
       <div className="mt-auto space-y-2 border-t border-white/10 pt-4">
         <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Quick Links</p>
@@ -451,102 +545,42 @@ export function MapModal({
               {svError}
             </div>
           )}
-          {/* Analysis results card */}
+          {/* Analysis results — compact status strip */}
           {svAnalysis && !svLoading && (
-            <div className="m-3 rounded-xl bg-gray-900/95 p-4 shadow-2xl backdrop-blur-sm border border-white/10">
-              {!svAnalysis.hasStreetViewData ? (
-                <p className="text-xs text-slate-400">{svAnalysis.narrative}</p>
-              ) : (
-                <>
-                  {/* Header row */}
-                  <div className="mb-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
-                      <span className="text-xs font-bold text-slate-100">AI Frontage Analysis</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {/* Kerb appeal score */}
-                      {svAnalysis.kerbAppeal != null && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] text-slate-400">Kerb appeal</span>
-                          <span className={cn(
-                            "text-sm font-bold",
-                            svAnalysis.kerbAppeal >= 7 ? "text-green-400"
-                            : svAnalysis.kerbAppeal >= 5 ? "text-amber-400"
-                            : "text-red-400"
-                          )}>
-                            {svAnalysis.kerbAppeal}/10
-                          </span>
-                        </div>
-                      )}
-                      <button
-                        onClick={() => setSvAnalysis(null)}
-                        className="rounded p-0.5 text-slate-500 hover:text-slate-300"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                  {/* Badges row */}
-                  <div className="mb-3 flex flex-wrap gap-1.5">
-                    {svAnalysis.frontageCondition && (
-                      <span className={cn(
-                        "rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize",
-                        svAnalysis.frontageCondition === "excellent" || svAnalysis.frontageCondition === "good"
-                          ? "bg-green-500/20 text-green-300"
-                          : svAnalysis.frontageCondition === "average"
-                          ? "bg-amber-500/20 text-amber-300"
-                          : "bg-red-500/20 text-red-300"
-                      )}>
-                        {svAnalysis.frontageCondition.replace("_"," ")} frontage
-                      </span>
-                    )}
-                    {svAnalysis.neighbourhoodCharacter && (
-                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] capitalize text-slate-300">
-                        {svAnalysis.neighbourhoodCharacter} neighbourhood
-                      </span>
-                    )}
-                  </div>
-                  {/* Green flags + concerns */}
-                  <div className="mb-3 grid grid-cols-2 gap-3">
-                    {svAnalysis.greenFlags.length > 0 && (
-                      <div>
-                        <p className="mb-1 text-[9px] font-bold uppercase tracking-widest text-green-500">Positives</p>
-                        <ul className="space-y-0.5">
-                          {svAnalysis.greenFlags.map((f, i) => (
-                            <li key={i} className="flex items-start gap-1 text-[10px] text-slate-300">
-                              <span className="mt-0.5 text-green-500">✓</span> {f}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {svAnalysis.concerns.length > 0 && (
-                      <div>
-                        <p className="mb-1 text-[9px] font-bold uppercase tracking-widest text-amber-500">Concerns</p>
-                        <ul className="space-y-0.5">
-                          {svAnalysis.concerns.map((c, i) => (
-                            <li key={i} className="flex items-start gap-1 text-[10px] text-slate-300">
-                              <span className="mt-0.5 text-amber-400">!</span> {c}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                  {/* Narrative */}
-                  <p className="border-t border-white/10 pt-2.5 text-[10px] leading-relaxed text-slate-400">
-                    {svAnalysis.narrative}
-                  </p>
-                  {/* Re-analyse button */}
-                  <button
-                    onClick={handleStreetViewAnalyse}
-                    className="mt-2 text-[10px] text-indigo-400 hover:text-indigo-300 underline"
-                  >
-                    Re-analyse
-                  </button>
-                </>
-              )}
+            <div className="mx-3 mb-3 flex items-center justify-between rounded-lg bg-gray-900/90 px-4 py-2 shadow-lg backdrop-blur-sm border border-white/10">
+              <div className="flex items-center gap-3">
+                <Sparkles className="h-3.5 w-3.5 text-indigo-400 flex-shrink-0" />
+                <span className="text-xs font-semibold text-slate-200">
+                  AI Analysis — Kerb appeal{" "}
+                  <span className={cn(
+                    "font-bold",
+                    svAnalysis.kerbAppeal != null && svAnalysis.kerbAppeal >= 7 ? "text-green-400"
+                    : svAnalysis.kerbAppeal != null && svAnalysis.kerbAppeal >= 5 ? "text-amber-400"
+                    : "text-red-400"
+                  )}>
+                    {svAnalysis.kerbAppeal != null ? `${svAnalysis.kerbAppeal}/10` : "—"}
+                  </span>
+                  {svAnalysis.neighbourhoodCharacter && (
+                    <span className="ml-2 font-normal text-slate-400 capitalize">
+                      · {svAnalysis.neighbourhoodCharacter}
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleStreetViewAnalyse}
+                  className="text-[10px] text-indigo-400 hover:text-indigo-300 underline flex-shrink-0"
+                >
+                  Re-analyse
+                </button>
+                <button
+                  onClick={() => setSvAnalysis(null)}
+                  className="rounded p-0.5 text-slate-500 hover:text-slate-300"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           )}
         </div>

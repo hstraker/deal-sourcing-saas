@@ -138,6 +138,17 @@ export async function POST(
       riverOrSea: a.riverOrSea ?? "",
     }))
 
+  // Persist flood risk zone to lead record
+  try {
+    await prisma.vendorLead.update({
+      where: { id: params.id },
+      data: {
+        floodRiskZone: zone,
+        floodRiskCheckedAt: new Date(),
+      },
+    })
+  } catch { /* non-critical — don't block the response */ }
+
   return NextResponse.json({
     zone,
     nearbyAreas,

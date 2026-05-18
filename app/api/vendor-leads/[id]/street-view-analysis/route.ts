@@ -173,7 +173,16 @@ export async function POST(
       return NextResponse.json({ error: "AI returned invalid JSON", detail: cleaned }, { status: 502 })
     }
 
-    return NextResponse.json({ success: true, analysis })
+    // Persist the analysis to the lead record so any sourcer sees it on next open
+    await prisma.vendorLead.update({
+      where: { id: params.id },
+      data: {
+        streetViewAnalysis: analysis as Record<string, unknown>,
+        streetViewAnalysedAt: new Date(),
+      },
+    })
+
+    return NextResponse.json({ success: true, analysis, analysedAt: new Date().toISOString() })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     console.error("[street-view-analysis] Unexpected error:", message)
