@@ -94,9 +94,12 @@ export function OfferAnalysisModal({
 }) {
   const [offerResult, setOfferResult] = useState<OfferCalculationResult | null>(null)
   const [assumptionLoading, setAssumptionLoading] = useState(false)
+  const [purchaseMode, setPurchaseMode] = useState<"mortgage" | "cash">("mortgage")
 
   // Ref to the panel's recalculate function — set via onAssumptionsReady
   const recalcFnRef = useRef<((overrides: AssumptionsState) => void) | null>(null)
+  // Ref to the panel's setPurchaseMode — set via onControlsReady
+  const setPurchaseModeRef = useRef<((m: "mortgage" | "cash") => void) | null>(null)
 
   // Local assumptions state — seeded from lead data, edited in the left panel form
   const [assumptions, setAssumptions] = useState<AssumptionsState>({
@@ -507,11 +510,32 @@ export function OfferAnalysisModal({
           </div>
       </>
 
-      {/* ── Edit Assumptions ── */}
+      {/* ── Purchase Mode + Edit Assumptions ── */}
       <div className="mt-4 border-t border-white/10 pt-3">
         <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-2">
           Edit Assumptions
         </p>
+        {/* Purchase mode toggle */}
+        <div className="flex rounded-lg border border-white/10 overflow-hidden text-xs mb-3">
+          <button
+            type="button"
+            onClick={() => { setPurchaseMode("mortgage"); setPurchaseModeRef.current?.("mortgage") }}
+            className={`flex-1 flex items-center justify-center gap-1 py-1.5 transition-colors ${
+              purchaseMode === "mortgage" ? "bg-blue-600 text-white font-semibold" : "bg-white/5 text-slate-400 hover:bg-white/10"
+            }`}
+          >
+            🏦 Mortgage
+          </button>
+          <button
+            type="button"
+            onClick={() => { setPurchaseMode("cash"); setPurchaseModeRef.current?.("cash") }}
+            className={`flex-1 flex items-center justify-center gap-1 py-1.5 transition-colors border-l border-white/10 ${
+              purchaseMode === "cash" ? "bg-green-600 text-white font-semibold" : "bg-white/5 text-slate-400 hover:bg-white/10"
+            }`}
+          >
+            💵 Cash
+          </button>
+        </div>
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-1.5">
             <div>
@@ -656,7 +680,9 @@ export function OfferAnalysisModal({
           missingInputsHint={!gdv ? "Run BMV calculation first to populate Market Value." : undefined}
           onResult={handleResult}
           onAssumptionsReady={(fn) => { recalcFnRef.current = fn }}
+          onControlsReady={(fn) => { setPurchaseModeRef.current = fn }}
           hideAssumptionsPanel
+          hideControls
         />
       </div>
     </ModalShell>

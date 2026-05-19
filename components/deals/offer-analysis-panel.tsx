@@ -61,6 +61,13 @@ interface OfferAnalysisPanelProps {
   onAssumptionsReady?: (recalculate: (overrides: AssumptionsState) => void) => void
   /** When true the built-in AssumptionsPanel is not rendered (parent controls it via onAssumptionsReady) */
   hideAssumptionsPanel?: boolean
+  /**
+   * Called once on mount with the panel's setPurchaseMode function.
+   * Allows the parent (modal left panel) to host the Mortgage/Cash toggle.
+   */
+  onControlsReady?: (setPurchaseMode: (mode: "mortgage" | "cash") => void) => void
+  /** When true hides the Mortgage/Cash toggle and Recalculate button from the right panel header */
+  hideControls?: boolean
   // Vendor contact — passed through to the negotiation ladder's Send Offer dialog
   vendorLeadId?: string | null
   vendorName?: string | null
@@ -574,6 +581,8 @@ export function OfferAnalysisPanel({
   onResult,
   onAssumptionsReady,
   hideAssumptionsPanel,
+  onControlsReady,
+  hideControls,
 }: OfferAnalysisPanelProps) {
   const [result, setResult] = useState<OfferCalculationResult | null>(null)
   const [ladders, setLadders] = useState<{
@@ -688,6 +697,7 @@ export function OfferAnalysisPanel({
   // Expose the recalculate handle to the parent (e.g. modal left panel assumptions form)
   useEffect(() => {
     onAssumptionsReady?.((overrides) => runCalculationRef.current(overrides))
+    onControlsReady?.(setPurchaseMode)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // run once on mount — ref keeps it fresh
 
@@ -832,58 +842,54 @@ export function OfferAnalysisPanel({
                 {calculatedAt && ` · Calculated ${calculatedAt}`}
               </p>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Purchase mode toggle */}
-              <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
-                <button
-                  type="button"
-                  onClick={() => setPurchaseMode("mortgage")}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 transition-colors",
-                    purchaseMode === "mortgage"
-                      ? "bg-blue-600 text-white font-semibold"
-                      : "bg-white text-gray-600 hover:bg-gray-50"
-                  )}
-                >
-                  <Building2 className="h-3.5 w-3.5" />
-                  Mortgage
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPurchaseMode("cash")}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 transition-colors border-l border-gray-200",
-                    purchaseMode === "cash"
-                      ? "bg-green-600 text-white font-semibold"
-                      : "bg-white text-gray-600 hover:bg-gray-50"
-                  )}
-                >
-                  <Banknote className="h-3.5 w-3.5" />
-                  Cash
-                </button>
+            {/* Controls shown in header only when parent hasn't taken them over */}
+            {!hideControls && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setPurchaseMode("mortgage")}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 transition-colors",
+                      purchaseMode === "mortgage"
+                        ? "bg-blue-600 text-white font-semibold"
+                        : "bg-white text-gray-600 hover:bg-gray-50"
+                    )}
+                  >
+                    <Building2 className="h-3.5 w-3.5" />
+                    Mortgage
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPurchaseMode("cash")}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 transition-colors border-l border-gray-200",
+                      purchaseMode === "cash"
+                        ? "bg-green-600 text-white font-semibold"
+                        : "bg-white text-gray-600 hover:bg-gray-50"
+                    )}
+                  >
+                    <Banknote className="h-3.5 w-3.5" />
+                    Cash
+                  </button>
+                </div>
+                {purchaseMode === "mortgage" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void runCalculation()}
+                    disabled={loading || !hasRequiredInputs}
+                  >
+                    {loading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                    ) : (
+                      <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                    )}
+                    {result ? "Recalculate" : "Calculate"}
+                  </Button>
+                )}
               </div>
-
-              {purchaseMode === "mortgage" && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void runCalculation()}
-                  disabled={loading || !hasRequiredInputs}
-                  title={
-                    !hasRequiredInputs
-                      ? "Set GDV, rent, and refurb cost on this deal to calculate"
-                      : undefined
-                  }
-                >
-                  {loading ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                  ) : (
-                    <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                  )}
-                  {result ? "Recalculate" : "Calculate"}
-                </Button>
-              )}
-            </div>
+            )}
           </div>
         </div>
 
@@ -942,14 +948,9 @@ export function OfferAnalysisPanel({
           {/* ── Result scorecard ──────────────────────────────────────── */}
           {purchaseMode === "mortgage" && result && (
             <>
-              {/* Asking / GDV pill */}
+              {/* GDV + Recommended pill — Asking Price is already in the left panel */}
               <div className="flex items-center gap-3 text-sm text-gray-400 pb-1 border-b">
-                <span className="flex items-center">
-                  Asking Price<MetricTooltipIcon tooltipKey="askingPrice" />
-                </span>
-                <span className="font-semibold text-gray-900">{fmt(askingPrice)}</span>
-                <span>·</span>
-                <span className="flex items-center">
+                <span className="flex items-center gap-0.5 text-xs">
                   GDV<MetricTooltipIcon tooltipKey="gdv" />
                 </span>
                 <span className="font-semibold text-gray-900">{fmt(result.inputs.gdv)}</span>
@@ -970,12 +971,85 @@ export function OfferAnalysisPanel({
                 )}
               </div>
 
-              {/* Scorecard rows — recommended strategy card shown first */}
+              {/* Scorecard rows — Deal Viability always first, recommended strategy card second */}
               <div className="flex flex-col gap-2">
 
-                {/* ── 1. Flip Strategy ───────────────────────────────── */}
-                {/* When hold is recommended, flip card moves to second position via CSS order */}
-                <div className={isHoldPrim ? "order-2" : "order-1"}>
+                {/* ── 1. Deal Viability ── always at top so sourcers see deal quality immediately */}
+                <div className="order-1">
+                <ScorecardRow
+                  criterion="Deal Viability"
+                  icon={<BarChart2 className="h-3.5 w-3.5" />}
+                  status={viabilityStatus}
+                  summary={viabilitySummary}
+                  defaultOpen={false}
+                >
+                  {result && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <ViabilityDots score={viabilityScore} />
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-xs font-semibold capitalize",
+                            result.dealViability === "strong"   ? "bg-green-100 text-green-700 border-green-200"
+                            : result.dealViability === "marginal" ? "bg-amber-100 text-amber-700 border-amber-200"
+                            :                                       "bg-red-100 text-red-600 border-red-200"
+                          )}
+                        >
+                          {result.dealViability === "pass" ? "No Deal" : result.dealViability}
+                        </Badge>
+                        <span className={cn(
+                          "text-sm font-semibold",
+                          result.dealViability === "strong"   ? "text-green-600"
+                          : result.dealViability === "marginal" ? "text-amber-600"
+                          :                                       "text-red-500"
+                        )}>
+                          {viabilityScore}/100
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-400">Recommended</p>
+                        <p className="text-sm font-bold">
+                          {result.recommendedStrategy === "pass"
+                            ? "No deal"
+                            : result.recommendedStrategy === "both"
+                            ? "Flip or BRRR"
+                            : result.recommendedStrategy === "hold"
+                            ? (isTrueBRRR ? "BRRR" : "BTL")
+                            : "Flip"}
+                        </p>
+                      </div>
+                    </div>
+                    <ul className="space-y-1">
+                      {result.viabilityNotes.map((note, i) => (
+                        <li key={i} className="text-xs text-gray-500 flex items-start gap-1.5">
+                          <span className="mt-0.5 shrink-0">•</span>
+                          <span>{note}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {onReject && !readOnly && (
+                      <div className="pt-2 border-t">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 border-red-300 hover:bg-red-50"
+                          onClick={onReject}
+                        >
+                          <Ban className="h-3.5 w-3.5 mr-1.5" />
+                          Reject Deal
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  )}
+                </ScorecardRow>
+                </div>
+
+                {/* ── 2. Flip Strategy ── order-3 when hold recommended, order-2 otherwise */}
+                {/* When hold is recommended, flip card moves to third position via CSS order */}
+                <div className={isHoldPrim ? "order-3" : "order-2"}>
                 <ScorecardRow
                   criterion="Flip Strategy"
                   icon={<TrendingUp className="h-3.5 w-3.5" />}
@@ -1053,8 +1127,8 @@ export function OfferAnalysisPanel({
                 </div>{/* end flip wrapper */}
 
                 {/* ── 2. BTL / BRRR ──────────────────────────────────── */}
-                {/* When hold is recommended this card moves to first position */}
-                <div className={isHoldPrim ? "order-1" : "order-2"}>
+                {/* When hold is recommended this card moves to second position (after Deal Viability) */}
+                <div className={isHoldPrim ? "order-2" : "order-3"}>
                 <ScorecardRow
                   criterion="BTL / BRRR"
                   icon={<Home className="h-3.5 w-3.5" />}
@@ -1154,8 +1228,8 @@ export function OfferAnalysisPanel({
                 </ScorecardRow>
                 </div>{/* end hold wrapper */}
 
-                {/* ── 3. Negotiation Ladder ──────────────────────────── */}
-                <div className="order-3">
+                {/* ── 4. Negotiation Ladder ──────────────────────────── */}
+                <div className="order-4">
                 {ladders && (
                   <ScorecardRow
                     criterion="Negotiation Ladder"
@@ -1180,8 +1254,8 @@ export function OfferAnalysisPanel({
                 )}
                 </div>{/* end ladder wrapper */}
 
-                {/* ── 4. Financial Breakdown ────────────────────────── */}
-                <div className="order-4">
+                {/* ── 5. Financial Breakdown ────────────────────────── */}
+                <div className="order-5">
                 {bridging && mortgage && cashflow && flip && (
                   <ScorecardRow
                     criterion="Financial Breakdown"
@@ -1367,77 +1441,7 @@ export function OfferAnalysisPanel({
                   </ScorecardRow>
                 )}
 
-                {/* ── 5. Deal Viability ──────────────────────────────── */}
-                <ScorecardRow
-                  criterion="Deal Viability"
-                  icon={<BarChart2 className="h-3.5 w-3.5" />}
-                  status={viabilityStatus}
-                  summary={viabilitySummary}
-                  defaultOpen={false}
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                      <div className="flex items-center gap-2">
-                        <ViabilityDots score={viabilityScore} />
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "text-xs font-semibold capitalize",
-                            result.dealViability === "strong"   ? "bg-green-100 text-green-700 border-green-200"
-                            : result.dealViability === "marginal" ? "bg-amber-100 text-amber-700 border-amber-200"
-                            :                                       "bg-red-100 text-red-600 border-red-200"
-                          )}
-                        >
-                          {result.dealViability === "pass" ? "No Deal" : result.dealViability}
-                        </Badge>
-                        <span className={cn(
-                          "text-sm font-semibold",
-                          result.dealViability === "strong"   ? "text-green-600"
-                          : result.dealViability === "marginal" ? "text-amber-600"
-                          :                                       "text-red-500"
-                        )}>
-                          {viabilityScore}/100
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-gray-400">Recommended</p>
-                        <p className="text-sm font-bold">
-                          {result.recommendedStrategy === "pass"
-                            ? "No deal"
-                            : result.recommendedStrategy === "both"
-                            ? "Flip or BRRR"
-                            : result.recommendedStrategy === "hold"
-                            ? (isTrueBRRR ? "BRRR" : "BTL")
-                            : "Flip"}
-                        </p>
-                      </div>
-                    </div>
-                    <ul className="space-y-1">
-                      {result.viabilityNotes.map((note, i) => (
-                        <li key={i} className="text-xs text-gray-500 flex items-start gap-1.5">
-                          <span className="mt-0.5 shrink-0">•</span>
-                          <span>{note}</span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    {onReject && !readOnly && (
-                      <div className="pt-2 border-t">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 border-red-300 hover:bg-red-50"
-                          onClick={onReject}
-                        >
-                          <Ban className="h-3.5 w-3.5 mr-1.5" />
-                          Reject Deal
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </ScorecardRow>
-
-                </div>{/* end financial-breakdown + viability wrapper */}
+                </div>{/* end financial-breakdown wrapper */}
 
               </div>{/* end flex flex-col scorecard container */}
             </>

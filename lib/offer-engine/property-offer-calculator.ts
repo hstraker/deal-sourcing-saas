@@ -578,16 +578,36 @@ function computeViability(
   }
 
   // Flip profit margin bonus
+  // Compute recommendation first so notes can be strategy-aware
+  const recommendedStrategy: OfferCalculationResult["recommendedStrategy"] =
+    flipViable && holdViable ? "both" :
+    flipViable ? "flip" :
+    holdViable ? "hold" :
+    flipHasPrice && holdHasPrice ? "both" :
+    flipHasPrice ? "flip" :
+    holdHasPrice ? "hold" :
+    "pass"
+
+  const holdIsRec = recommendedStrategy === "hold" || recommendedStrategy === "both"
+  const flipIsRec = recommendedStrategy === "flip" || recommendedStrategy === "both"
+
+  // Flip profit margin bonus + note
   if (flipHasPrice) {
     const excessPOC = flip.profitOnCost - 0.20
     if (excessPOC >= 0.05) score += 15
     else if (excessPOC >= 0) score += 8
     if (!flip.viewingCriteriaMet) {
-      notes.push(`Flip max offer (${Math.round(flip.maxPurchasePrice).toLocaleString("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 })}) needs ${(flip.discountPercent * 100).toFixed(1)}% discount — above 20% threshold, requires motivated seller`)
+      // Only surface the steep-discount warning when flip is the recommended strategy.
+      // When BRRR/BTL is recommended, mention flip as a secondary note rather than a headline concern.
+      if (flipIsRec) {
+        notes.push(`Flip max offer (${Math.round(flip.maxPurchasePrice).toLocaleString("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 })}) needs ${(flip.discountPercent * 100).toFixed(1)}% discount — above 20% threshold, requires motivated seller`)
+      } else {
+        notes.push(`Flip strategy also viable at ${Math.round(flip.maxPurchasePrice).toLocaleString("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 })} but needs ${(flip.discountPercent * 100).toFixed(1)}% discount — not the recommended route`)
+      }
     }
   }
 
-  // ROCE bonus
+  // ROCE bonus + note
   if (holdHasPrice) {
     if (hold.roceMultiple >= 3) score += 15
     else if (hold.roceMultiple >= 2.5) score += 8
@@ -600,15 +620,8 @@ function computeViability(
     notes.push("No viable offer price found for either strategy at any purchase price")
   }
 
-  // Recommendation uses "has price" logic — steep discount is a challenge, not a disqualifier
-  const recommendedStrategy: OfferCalculationResult["recommendedStrategy"] =
-    flipViable && holdViable ? "both" :
-    flipViable ? "flip" :
-    holdViable ? "hold" :
-    flipHasPrice && holdHasPrice ? "both" :
-    flipHasPrice ? "flip" :
-    holdHasPrice ? "hold" :
-    "pass"
+  // Suppress secondary strategy note when primary is clearly viable — keeps bullets focused
+  void holdIsRec
 
   const dealViability: OfferCalculationResult["dealViability"] =
     score >= 70 ? "strong" :
