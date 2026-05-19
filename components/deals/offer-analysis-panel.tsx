@@ -598,6 +598,9 @@ export function OfferAnalysisPanel({
   const [error, setError] = useState<string | null>(null)
   const [calculatedAt, setCalculatedAt] = useState<string | null>(null)
   const [purchaseMode, setPurchaseMode] = useState<"mortgage" | "cash">("mortgage")
+  // Financial Breakdown price-basis toggle (Opening Offer / Max Ceiling / Custom)
+  const [priceBasis, setPriceBasis] = useState<"opening" | "ceiling" | "custom">("opening")
+  const [customPriceStr, setCustomPriceStr] = useState("")
 
   const refurbDefault = !totalRefurbishment && gdv ? Math.round(gdv * 0.1) : null
   const effectiveRefurb = totalRefurbishment ?? refurbDefault
@@ -785,6 +788,20 @@ export function OfferAnalysisPanel({
   const isHoldPrim = result?.recommendedStrategy === "hold" || result?.recommendedStrategy === "both"
   // Financial Breakdown uses the recommended strategy's purchase-price-based costs
   const displayStrategy = (isHoldPrim && hold) ? hold : flip
+
+  // ── Financial Breakdown price-basis toggle ─────────────────────────────────
+  // fbCeiling = the recommended strategy's goal-seek ceiling
+  const fbCeiling = isHoldPrim && holdCeiling > 0 ? holdCeiling : flipCeiling > 0 ? flipCeiling : askingPrice
+  const fbOpening = fbCeiling > 0 ? Math.round((fbCeiling * 0.88) / 50) * 50 : 0
+  const fbCustom  = parseFloat(customPriceStr.replace(/[£,]/g, "")) || 0
+  const fbPrice   =
+    priceBasis === "opening" ? fbOpening :
+    priceBasis === "custom"  ? fbCustom  :
+    fbCeiling
+  // Re-run bridging + acquisition at the chosen price (mortgage/cashflow don't change — they use GDV)
+  const activeFinancials = result && fbPrice > 0
+    ? computeMetricsAtPrice(fbPrice, result.inputs)
+    : null
 
   // Ladder summary shows the RECOMMENDED strategy's numbers, not always flip
   const recOpening = isHoldPrim && holdHasPrice ? holdOpening : flipHasPrice ? flipOpening : holdOpening
@@ -1269,10 +1286,48 @@ export function OfferAnalysisPanel({
                     criterion="Financial Breakdown"
                     icon={<DollarSign className="h-3.5 w-3.5" />}
                     status="info"
-                    summary={`Bridge ${fmt(bridging.totalCosts)} · Equity ${fmt(displayStrategy?.totalEquityInvested ?? 0)} · Mortgage ${fmt(mortgage.monthlyPayment)}/mo`}
+                    summary={`Bridge ${fmt(activeFinancials?.bridging.totalCosts ?? bridging.totalCosts)} · Equity ${fmt(activeFinancials?.totalEquityInvested ?? 0)} · Mortgage ${fmt(mortgage.monthlyPayment)}/mo`}
                     defaultOpen={false}
                     tooltipKey="financialBreakdown"
                   >
+                    {/* ── Price-basis toggle ── */}
+                    <div className="flex flex-wrap items-center gap-2 mb-4 pb-3 border-b border-gray-200">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 shrink-0">Price basis</span>
+                      <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+                        {(["opening", "ceiling", "custom"] as const).map((basis) => {
+                          const labels = { opening: `Opening (${fmt(fbOpening)})`, ceiling: `Ceiling (${fmt(fbCeiling)})`, custom: "Custom" }
+                          return (
+                            <button
+                              key={basis}
+                              onClick={() => setPriceBasis(basis)}
+                              className={cn(
+                                "px-2.5 py-1 transition-colors",
+                                priceBasis === basis
+                                  ? "bg-blue-600 text-white"
+                                  : "bg-white text-gray-600 hover:bg-gray-50"
+                              )}
+                            >
+                              {labels[basis]}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      {priceBasis === "custom" && (
+                        <input
+                          type="number"
+                          placeholder="Enter price £"
+                          value={customPriceStr}
+                          onChange={(e) => setCustomPriceStr(e.target.value)}
+                          className="w-36 rounded-md border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      )}
+                      {fbPrice > 0 && (
+                        <span className="text-[10px] text-gray-400 ml-auto">
+                          Showing deal stack at <span className="font-semibold text-gray-600">{fmt(fbPrice)}</span>
+                        </span>
+                      )}
+                    </div>
+
                     <div className="grid md:grid-cols-2 gap-6 text-sm">
                       {/* Bridging */}
                       <div>
@@ -1282,13 +1337,13 @@ export function OfferAnalysisPanel({
                         </p>
                         <div className="space-y-1.5">
                           {[
-                            ["Gross Loan (75% LTV)", fmt(bridging.grossLoan), "bridgingGrossLoan"],
-                            ["Net Advance",           fmt(bridging.netLoanAdvance), "bridgingNetLoanAdvance"],
-                            ["Deposit",               fmt(bridging.deposit), "bridgingDeposit"],
-                            ["Arrangement Fee",       fmt(bridging.arrangementFee), null],
-                            ["Monthly Interest",      fmt(bridging.monthlyInterest), null],
-                            ["Total Interest",        fmt(bridging.totalInterest), null],
-                            ["Exit Fee",              fmt(bridging.exitFee), null],
+                            ["Gross Loan (75% LTV)", fmt(activeFinancials?.bridging.grossLoan ?? bridging.grossLoan), "bridgingGrossLoan"],
+                            ["Net Advance",           fmt(activeFinancials?.bridging.netLoanAdvance ?? bridging.netLoanAdvance), "bridgingNetLoanAdvance"],
+                            ["Deposit",               fmt(activeFinancials?.bridging.deposit ?? bridging.deposit), "bridgingDeposit"],
+                            ["Arrangement Fee",       fmt(activeFinancials?.bridging.arrangementFee ?? bridging.arrangementFee), null],
+                            ["Monthly Interest",      fmt(activeFinancials?.bridging.monthlyInterest ?? bridging.monthlyInterest), null],
+                            ["Total Interest",        fmt(activeFinancials?.bridging.totalInterest ?? bridging.totalInterest), null],
+                            ["Exit Fee",              fmt(activeFinancials?.bridging.exitFee ?? bridging.exitFee), null],
                           ].map(([label, val, tip]) => (
                             <div key={label} className="flex justify-between items-center">
                               <span className="text-gray-400 flex items-center">
@@ -1300,7 +1355,7 @@ export function OfferAnalysisPanel({
                           ))}
                           <div className="flex justify-between border-t pt-1 font-semibold">
                             <span>Total Bridging Costs</span>
-                            <span>{fmt(bridging.totalCosts)}</span>
+                            <span>{fmt(activeFinancials?.bridging.totalCosts ?? bridging.totalCosts)}</span>
                           </div>
                         </div>
                       </div>
@@ -1396,30 +1451,31 @@ export function OfferAnalysisPanel({
                         <div className="space-y-1.5">
                           <div className="flex justify-between">
                             <span className="text-gray-400">Deposit</span>
-                            <span className="font-medium">{fmt(displayStrategy?.acquisitionCosts.deposit ?? 0)}</span>
+                            <span className="font-medium">{fmt(activeFinancials?.acquisitionCosts.deposit ?? displayStrategy?.acquisitionCosts.deposit ?? 0)}</span>
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-gray-400 flex items-center">
                               Stamp Duty
                               <MetricTooltipIcon tooltipKey="stampDuty" />
                             </span>
-                            <span className="font-medium">{fmt(displayStrategy?.acquisitionCosts.stampDuty ?? 0)}</span>
+                            <span className="font-medium">{fmt(activeFinancials?.acquisitionCosts.stampDuty ?? displayStrategy?.acquisitionCosts.stampDuty ?? 0)}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-400">Solicitor / Searches</span>
                             <span className="font-medium">
                               {fmt(
-                                (displayStrategy?.acquisitionCosts.solicitorFees ?? 0) +
-                                (displayStrategy?.acquisitionCosts.searches ?? 0) +
-                                (displayStrategy?.acquisitionCosts.buildingControl ?? 0)
+                                (activeFinancials?.acquisitionCosts.solicitorFees ?? displayStrategy?.acquisitionCosts.solicitorFees ?? 0) +
+                                (activeFinancials?.acquisitionCosts.searches ?? displayStrategy?.acquisitionCosts.searches ?? 0) +
+                                (activeFinancials?.acquisitionCosts.buildingControl ?? displayStrategy?.acquisitionCosts.buildingControl ?? 0)
                               )}
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-400">Acquisition Total</span>
-                            <span className="font-medium">{fmt(displayStrategy?.acquisitionCosts.total ?? 0)}</span>
+                            <span className="font-medium">{fmt(activeFinancials?.acquisitionCosts.total ?? displayStrategy?.acquisitionCosts.total ?? 0)}</span>
                           </div>
                           <div className="border-t pt-1" />
+                          {/* Project costs don't change with purchase price */}
                           <div className="flex justify-between">
                             <span className="text-gray-400">Refurbishment</span>
                             <span className="font-medium">{fmt(displayStrategy?.projectCosts.refurbishment ?? 0)}</span>
@@ -1442,7 +1498,7 @@ export function OfferAnalysisPanel({
                           </div>
                           <div className="flex justify-between border-t pt-1 font-semibold">
                             <span>Total Equity Invested</span>
-                            <span>{fmt(displayStrategy?.totalEquityInvested ?? 0)}</span>
+                            <span>{fmt(activeFinancials?.totalEquityInvested ?? displayStrategy?.totalEquityInvested ?? 0)}</span>
                           </div>
                         </div>
                       </div>

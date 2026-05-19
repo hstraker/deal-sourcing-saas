@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useRef } from "react"
+import { toast } from "sonner"
 import { X, Phone, Mail, TrendingUp, Home, AlertTriangle, Camera, RefreshCw, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
@@ -100,33 +101,46 @@ export function OfferAnalysisModal({
   const recalcFnRef = useRef<((overrides: AssumptionsState) => void) | null>(null)
   // Ref to the panel's setPurchaseMode — set via onControlsReady
   const setPurchaseModeRef = useRef<((m: "mortgage" | "cash") => void) | null>(null)
+  // Tracks latest assumptions so handleResult (stable ref) can read them
+  const assumptionsRef = useRef<AssumptionsState | null>(null)
 
-  // Local assumptions state — seeded from lead data, edited in the left panel form
+  // Local assumptions state — seeded from persisted calculatorAssumptions (if saved),
+  // otherwise falls back to raw lead data fields.
+  const saved = lead.calculatorAssumptions as Record<string, string> | null | undefined
   const [assumptions, setAssumptions] = useState<AssumptionsState>({
-    gdv:               lead.estimatedMarketValue ? String(Math.round(Number(lead.estimatedMarketValue))) : "",
-    estimatedRent:     lead.estimatedMonthlyRent ? String(Math.round(Number(lead.estimatedMonthlyRent)))
-                       : lead.localAverageRent   ? String(Math.round(Number(lead.localAverageRent))) : "",
-    totalRefurbishment: lead.estimatedRefurbCost  ? String(Math.round(Number(lead.estimatedRefurbCost)))
-                       : lead.estimatedMarketValue ? String(Math.round(Number(lead.estimatedMarketValue) * 0.1)) : "",
-    bridgingMonths:    "12",
-    mortgageRate:      "4.59",
+    gdv: saved?.gdv ??
+      (lead.estimatedMarketValue ? String(Math.round(Number(lead.estimatedMarketValue))) : ""),
+    estimatedRent: saved?.estimatedRent ??
+      (lead.estimatedMonthlyRent ? String(Math.round(Number(lead.estimatedMonthlyRent)))
+        : lead.localAverageRent  ? String(Math.round(Number(lead.localAverageRent))) : ""),
+    totalRefurbishment: saved?.totalRefurbishment ??
+      (lead.estimatedRefurbCost   ? String(Math.round(Number(lead.estimatedRefurbCost)))
+        : lead.estimatedMarketValue ? String(Math.round(Number(lead.estimatedMarketValue) * 0.1)) : ""),
+    bridgingMonths: saved?.bridgingMonths ?? "12",
+    mortgageRate:   saved?.mortgageRate   ?? "4.59",
   })
 
   const handleRecalculate = useCallback(() => {
     if (!recalcFnRef.current) return
     setAssumptionLoading(true)
+    assumptionsRef.current = assumptions  // capture latest before result fires
     recalcFnRef.current(assumptions)
     // Loading state cleared by the panel's onResult callback
   }, [assumptions])
 
   // Stable callback — won't trigger useCallback re-runs in the panel.
-  // Also syncs the recommended opening offer back to the VendorLead so the
-  // pipeline table (which reads lead.offerAmount / offerPercentage) stays current.
+  // Persists assumptions + syncs recommended opening offer back to VendorLead.
   const handleResult = useCallback((r: OfferCalculationResult) => {
     setOfferResult(r)
-    setAssumptionLoading(false)  // clear loading after recalc completes
+    setAssumptionLoading(false)
 
-    // Don't overwrite if no viable strategy
+    // Only toast when the user explicitly clicked Recalculate (assumptionsRef was set)
+    const snapshotAssumptions = assumptionsRef.current
+    if (snapshotAssumptions) {
+      toast.success("Deal recalculated", { description: "Assumptions saved." })
+      assumptionsRef.current = null  // reset so auto-runs don't toast
+    }
+
     if (r.recommendedStrategy === "pass") return
 
     const isHold = r.recommendedStrategy === "hold"
@@ -137,18 +151,18 @@ export function OfferAnalysisModal({
     if (opening <= 0) return
 
     const gdvNum = r.inputs.gdv
-    // offerPercentage = BMV% = how far the offer is below market value
     const offerPercentage = gdvNum > 0 ? ((gdvNum - opening) / gdvNum) * 100 : null
 
-    // Fire-and-forget — non-critical, table will refresh on next load
+    // Persist opening offer + assumptions (only when triggered by Recalculate)
     fetch(`/api/vendor-pipeline/leads/${lead.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         offerAmount: opening,
         ...(offerPercentage !== null ? { offerPercentage } : {}),
+        ...(snapshotAssumptions ? { calculatorAssumptions: snapshotAssumptions } : {}),
       }),
-    }).catch(() => { /* silent — table still shows correct values in the panel */ })
+    }).catch(() => { /* silent */ })
   }, [lead.id])
 
   // Raw inputs for the panel

@@ -229,7 +229,7 @@ function calculateStampDuty(purchasePrice: number): number {
 // Core metric calculation for a given purchase price
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface ResolvedInputs {
+export interface ResolvedInputs {
   gdv: number
   estimatedRent: number
   totalRefurbishment: number
@@ -259,7 +259,7 @@ interface ResolvedInputs {
   voidsMonthsPerYear: number
 }
 
-interface MetricsAtPrice {
+export interface MetricsAtPrice {
   profitOnCost: number
   roceMultiple: number
   totalCost: number
@@ -277,7 +277,7 @@ interface MetricsAtPrice {
   projectCosts: StrategyMetrics["projectCosts"]
 }
 
-function computeMetrics(purchasePrice: number, inp: ResolvedInputs): MetricsAtPrice {
+export function computeMetrics(purchasePrice: number, inp: ResolvedInputs): MetricsAtPrice {
   // ── 1. Bridging Finance ────────────────────────────────────────────────────
   const grossLoan = purchasePrice * inp.bridgingLTV
   const arrangementFee = grossLoan * inp.bridgingArrangementFee
@@ -685,6 +685,20 @@ export function computeMetricsAtPrice(
     netMonthlyCashflow: m.netMonthlyCashflow,
     moneyLeftIn: m.moneyLeftIn,
   }
+}
+
+/**
+ * Public helper — re-run the core price-sensitive metrics at any purchase price.
+ * Accepts `result.inputs` directly (the resolved inputs object from OfferCalculationResult).
+ * Useful for the Financial Breakdown price-basis toggle in the UI.
+ */
+export function computeMetricsAtPrice(
+  purchasePrice: number,
+  inputs: OfferCalculationResult["inputs"]
+): MetricsAtPrice {
+  // result.inputs is a superset of ResolvedInputs; the cast is safe —
+  // extra keys are ignored and the optional stampDutyOverride falls back to calculateStampDuty.
+  return computeMetrics(purchasePrice, inputs as unknown as ResolvedInputs)
 }
 
 export function calculatePropertyOffer(rawInputs: OfferEngineInputs): OfferCalculationResult {

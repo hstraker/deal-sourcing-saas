@@ -239,6 +239,8 @@ export interface VendorLead {
   floodRiskCheckedAt?: string | null
   // Postcode demand score (already in DB schema)
   postcodeDemandScore?: number | null
+  // Persisted calculator assumptions (sourcer edits)
+  calculatorAssumptions?: Record<string, string> | null
 }
 
 type TabId = "map-view" | "property-details" | "portal-check" | "validation" | "comparable" | "offer-analysis" | "ai-conversation" | "photo-analysis"

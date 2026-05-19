@@ -978,6 +978,9 @@ model VendorLead {
   avgComparablePrice      Decimal?  @map("avg_comparable_price") @db.Decimal(10, 2)
   comparablesConfidence   String?   @map("comparables_confidence") // 'HIGH', 'MEDIUM', 'LOW'
 
+  // Offer Engine — persisted assumptions (sourcer edits from the modal left panel)
+  calculatorAssumptions Json? @map("calculator_assumptions")
+
   // Offer Management
   offerAmount        Decimal?  @map("offer_amount") @db.Decimal(12, 2)
   offerPercentage    Decimal?  @map("offer_percentage") @db.Decimal(5, 2)
