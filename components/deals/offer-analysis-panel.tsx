@@ -745,6 +745,9 @@ export function OfferAnalysisPanel({
   const flipOpening = flipHasPrice ? opening(flipCeiling) : 0
   const holdOpening = holdHasPrice ? opening(holdCeiling) : 0
 
+  // True when the recommended strategy is hold/BTL/BRRR — used to reorder strategy cards and default the ladder tab
+  const isHoldPrim = result?.recommendedStrategy === "hold" || result?.recommendedStrategy === "both"
+
   // Ladder summary shows the RECOMMENDED strategy's numbers, not always flip
   const recOpening = isHoldPrim && holdHasPrice ? holdOpening : flipHasPrice ? flipOpening : holdOpening
   const recCeiling = isHoldPrim && holdHasPrice ? holdCeiling : flipHasPrice ? flipCeiling : holdCeiling
