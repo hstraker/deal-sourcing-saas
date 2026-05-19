@@ -640,13 +640,17 @@ function computeViability(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Compute key return metrics at a specific purchase price.
- * Useful for the negotiation ladder to check returns at each rung price.
+ * Public helper — re-run the core price-sensitive metrics at any purchase price.
+ *
+ * Accepts either raw `OfferEngineInputs` (used by the negotiation ladder, where optional
+ * fields are resolved against defaults here) or the richer `OfferCalculationResult["inputs"]`
+ * (used by the Financial Breakdown price-basis toggle, where all fields are already resolved).
+ * Returns the full MetricsAtPrice object in both cases.
  */
 export function computeMetricsAtPrice(
   purchasePrice: number,
   rawInputs: OfferEngineInputs
-): { profitOnCost: number; roceMultiple: number; profit: number; netMonthlyCashflow: number; moneyLeftIn: number } {
+): MetricsAtPrice {
   const d = DEFAULT_OFFER_ENGINE_INPUTS
   const resolved: ResolvedInputs = {
     gdv: rawInputs.gdv,
@@ -677,28 +681,7 @@ export function computeMetricsAtPrice(
     buildingInsuranceMonthly: rawInputs.buildingInsuranceMonthly ?? d.buildingInsuranceMonthly,
     voidsMonthsPerYear: rawInputs.voidsMonthsPerYear ?? d.voidsMonthsPerYear,
   }
-  const m = computeMetrics(purchasePrice, resolved)
-  return {
-    profitOnCost: m.profitOnCost,
-    roceMultiple: m.roceMultiple,
-    profit: m.profit,
-    netMonthlyCashflow: m.netMonthlyCashflow,
-    moneyLeftIn: m.moneyLeftIn,
-  }
-}
-
-/**
- * Public helper — re-run the core price-sensitive metrics at any purchase price.
- * Accepts `result.inputs` directly (the resolved inputs object from OfferCalculationResult).
- * Useful for the Financial Breakdown price-basis toggle in the UI.
- */
-export function computeMetricsAtPrice(
-  purchasePrice: number,
-  inputs: OfferCalculationResult["inputs"]
-): MetricsAtPrice {
-  // result.inputs is a superset of ResolvedInputs; the cast is safe —
-  // extra keys are ignored and the optional stampDutyOverride falls back to calculateStampDuty.
-  return computeMetrics(purchasePrice, inputs as unknown as ResolvedInputs)
+  return computeMetrics(purchasePrice, resolved)
 }
 
 export function calculatePropertyOffer(rawInputs: OfferEngineInputs): OfferCalculationResult {
