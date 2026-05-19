@@ -34,6 +34,7 @@ export function MetricTooltipIcon({ tooltipKey, override, className }: MetricToo
       <TooltipTrigger asChild>
         <span
           className={`ml-1 cursor-help text-gray-400 hover:text-gray-900 inline-flex items-center ${className ?? ""}`}
+          onClick={(e) => e.stopPropagation()}
         >
           <Info className="h-3.5 w-3.5" />
         </span>

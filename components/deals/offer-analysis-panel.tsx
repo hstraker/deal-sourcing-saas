@@ -122,6 +122,7 @@ function ScorecardRow({
   summary,
   children,
   defaultOpen = false,
+  tooltipKey,
 }: {
   criterion: string
   icon?: React.ReactNode
@@ -129,6 +130,7 @@ function ScorecardRow({
   summary: string
   children?: React.ReactNode
   defaultOpen?: boolean
+  tooltipKey?: string
 }) {
   const [open, setOpen] = useState(defaultOpen)
   const c = SCORECARD_CFG[status]
@@ -142,7 +144,10 @@ function ScorecardRow({
         <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", c.dot)} />
         {icon && <span className="text-gray-400 shrink-0">{icon}</span>}
         <span className="flex-1 min-w-0">
-          <span className="text-xs font-semibold text-gray-700">{criterion}</span>
+          <span className="inline-flex items-center text-xs font-semibold text-gray-700">
+            {criterion}
+            {tooltipKey && <MetricTooltipIcon tooltipKey={tooltipKey} />}
+          </span>
           {summary && (
             <span className="ml-2 text-xs text-gray-400 truncate">{summary}</span>
           )}
@@ -1238,7 +1243,8 @@ export function OfferAnalysisPanel({
                     icon={<Layers className="h-3.5 w-3.5" />}
                     status="info"
                     summary={ladderSummary}
-                    defaultOpen={true}
+                    defaultOpen={false}
+                    tooltipKey="negotiationLadder"
                   >
                     <NegotiationLadderPanel
                       flipLadder={ladders.flip}
@@ -1265,6 +1271,7 @@ export function OfferAnalysisPanel({
                     status="info"
                     summary={`Bridge ${fmt(bridging.totalCosts)} · Equity ${fmt(displayStrategy?.totalEquityInvested ?? 0)} · Mortgage ${fmt(mortgage.monthlyPayment)}/mo`}
                     defaultOpen={false}
+                    tooltipKey="financialBreakdown"
                   >
                     <div className="grid md:grid-cols-2 gap-6 text-sm">
                       {/* Bridging */}

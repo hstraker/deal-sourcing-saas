@@ -270,4 +270,39 @@ export const OFFER_TOOLTIPS: Record<string, MetricTooltip> = {
     whyItMatters:
       "The ceiling is not a negotiating position — it is a mathematical fact. Exceeding it means the deal fails your investment criteria regardless of how good the property looks.",
   },
+
+  negotiationLadder: {
+    term: "Negotiation Ladder",
+    definition:
+      "A structured sequence of pre-calculated offers anchored to your maximum purchase price ceiling. Each rung is a ready-to-use number — no guesswork on the day.",
+    calculation:
+      "Opening Offer = Ceiling × 88% (12% headroom)\n" +
+      "Counter 1 = Opening + 45% of headroom\n" +
+      "Counter 2 = Counter 1 + 40% of remaining gap\n" +
+      "Best & Final = Ceiling (your hard mathematical limit)\n" +
+      "All values rounded to nearest £50 for credibility.",
+    whyItMatters:
+      "Tapering concessions signal to the vendor that you are genuinely approaching your limit. Equal-sized steps make it look like you have unlimited room — tapering tells a believable story and gets deals agreed faster.",
+    goodRange:
+      "Opening at 12% below ceiling gives room for two meaningful moves. If you need more than 4 rounds to agree, the vendor is not motivated — consider walking away.",
+    negotiationTip:
+      "Never jump straight to your ceiling. Use the ladder in order — each concession should feel like a genuine effort, not a rounding error.",
+  },
+
+  financialBreakdown: {
+    term: "Financial Breakdown",
+    definition:
+      "A full deal stack showing every £ in and out — from bridging deposit through to monthly cashflow. Numbers are based on the recommended strategy's purchase price ceiling.",
+    calculation:
+      "Bridging: calculated on the recommended purchase price (not GDV).\n" +
+      "Exit Mortgage: always calculated on GDV (what the lender values after works).\n" +
+      "Cashflow: Rent − Mortgage − Management − Maintenance − Insurance − Void Allowance.\n" +
+      "Total Equity = Deposit + Stamp Duty + Solicitor Fees + Bridging Costs + Refurb.",
+    whyItMatters:
+      "Shows your sourcer's fee is justified — the investor can see exactly what they are putting in and what comes back. Bridging numbers change if the agreed price differs from the ceiling; always recalculate before presenting to an investor.",
+    goodRange:
+      "Total equity in should be recoverable via the exit mortgage on a BRRR deal. Positive monthly cashflow after all costs = strong hold. Profit on cost ≥20% = viable flip.",
+    negotiationTip:
+      "If the vendor counters above your ceiling, show them this breakdown — not to negotiate, but to explain why higher prices genuinely don't work. Numbers are harder to argue with than opinions.",
+  },
 }
