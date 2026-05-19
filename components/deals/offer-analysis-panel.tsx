@@ -960,7 +960,7 @@ export function OfferAnalysisPanel({
                   icon={<TrendingUp className="h-3.5 w-3.5" />}
                   status={flipStatus}
                   summary={flipSummary}
-                  defaultOpen={flipStatus !== "pass"}
+                  defaultOpen={false}
                 >
                   {/* KPI grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
@@ -1039,7 +1039,7 @@ export function OfferAnalysisPanel({
                   icon={<Home className="h-3.5 w-3.5" />}
                   status={holdStatus}
                   summary={holdSummary}
-                  defaultOpen={holdStatus !== "pass"}
+                  defaultOpen={false}
                 >
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
                     <KpiMini

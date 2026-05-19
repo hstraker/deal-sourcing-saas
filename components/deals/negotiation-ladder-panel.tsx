@@ -19,6 +19,8 @@ import {
   MessageSquare,
   AlertTriangle,
   ArrowDown,
+  ChevronDown,
+  ChevronUp,
   Loader2,
   TrendingDown,
   Mail,
@@ -102,6 +104,7 @@ function LadderRung({
   onAccepted,
   onRejected,
   sendingRound,
+  defaultCollapsed = false,
 }: {
   rungState: RungState
   isActive: boolean
@@ -110,7 +113,10 @@ function LadderRung({
   onAccepted: () => void
   onRejected: () => void
   sendingRound: number | null
+  /** Counter rounds start collapsed; only the opening offer is expanded by default */
+  defaultCollapsed?: boolean
 }) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed)
   const { rung, status } = rungState
   const isSending = sendingRound === rung.round
 
@@ -131,10 +137,13 @@ function LadderRung({
       : `${rung.returnAtThisPrice.toFixed(2)}x`
 
   return (
-    <div className={`rounded-lg border-2 p-4 transition-all ${borderClass}`}>
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div>
+    <div className={`rounded-lg border-2 transition-all ${borderClass} ${collapsed ? "p-3" : "p-4"}`}>
+      {/* Header — always visible, clickable to expand/collapse on counter rounds */}
+      <div
+        className={`flex items-center justify-between gap-3 ${collapsed ? "" : "mb-3"} ${defaultCollapsed ? "cursor-pointer select-none" : ""}`}
+        onClick={defaultCollapsed ? () => setCollapsed((c) => !c) : undefined}
+      >
+        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
               Round {rung.round}
@@ -163,100 +172,114 @@ function LadderRung({
               <Badge variant="secondary">Awaiting Response</Badge>
             )}
           </div>
-          <p className="text-2xl font-bold mt-1">{fmt(rung.offerPrice)}</p>
+          <p className={`font-bold mt-0.5 ${collapsed ? "text-lg" : "text-2xl"}`}>{fmt(rung.offerPrice)}</p>
         </div>
 
-        <div className="text-right shrink-0">
-          <p className="text-xs text-gray-400">Below asking</p>
-          <p className="text-sm font-semibold">{pct(rung.discountPercent)}</p>
-          <p className="text-xs text-gray-400 mt-1">
-            {pct(rung.ceilingPercent * 1)} of ceiling
-          </p>
-        </div>
-      </div>
-
-      {/* Return metrics */}
-      <div className="flex items-center gap-3 mb-3 flex-wrap">
-        <div
-          className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded ${
-            rung.returnMeetsCriteria
-              ? "bg-green-100 text-green-700"
-              : "bg-red-100 text-red-700"
-          }`}
-        >
-          {rung.returnMeetsCriteria ? (
-            <CheckCircle2 className="h-3 w-3" />
-          ) : (
-            <XCircle className="h-3 w-3" />
-          )}
-          {rung.returnLabel}: {returnDisplay}
-        </div>
-
-        {rung.headroomRemaining > 0 && (
-          <span className="text-xs text-gray-400">
-            {fmt(rung.headroomRemaining)} headroom left
-          </span>
-        )}
-
-        {rung.round > 0 && rung.stepUpFromPrevious > 0 && (
-          <span className="text-xs text-gray-400">
-            Step: +{fmt(rung.stepUpFromPrevious)}
-          </span>
-        )}
-      </div>
-
-      {/* Tactical note */}
-      <div className="rounded bg-gray-100 px-3 py-2 mb-3">
-        <p className="text-xs text-gray-400 italic leading-relaxed">
-          &ldquo;{rung.negotiatingNote}&rdquo;
-        </p>
-      </div>
-
-      {/* Best & final warning */}
-      {rung.isAbsoluteMaximum && isActive && status !== "accepted" && (
-        <div className="flex items-start gap-2 rounded bg-amber-100 px-3 py-2 mb-3">
-          <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-800 font-medium">
-            YOUR CEILING — DO NOT EXCEED. Walk away if rejected.
-          </p>
-        </div>
-      )}
-
-      {/* Action buttons */}
-      {!isLocked && isActive && status === "pending" && (
-        <div className="flex gap-2 flex-wrap">
-          <Button size="sm" onClick={onSend} disabled={isSending}>
-            {isSending ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-            ) : (
-              <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="text-right">
+            <p className="text-xs text-gray-400">Below asking</p>
+            <p className="text-sm font-semibold">{pct(rung.discountPercent)}</p>
+            {!collapsed && (
+              <p className="text-xs text-gray-400 mt-1">
+                {pct(rung.ceilingPercent * 1)} of ceiling
+              </p>
             )}
-            {rung.isAbsoluteMaximum ? "Send Best & Final" : "Send This Offer"}
-          </Button>
+          </div>
+          {defaultCollapsed && (
+            collapsed
+              ? <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
+              : <ChevronUp className="h-4 w-4 text-gray-400 shrink-0" />
+          )}
         </div>
-      )}
+      </div>
 
-      {!isLocked && isActive && status === "sent" && (
-        <div className="flex gap-2 flex-wrap">
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-green-700 border-green-300 hover:bg-green-50"
-            onClick={onAccepted}
-          >
-            <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-            Accepted
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-red-600 border-red-300 hover:bg-red-50"
-            onClick={onRejected}
-          >
-            <XCircle className="h-3.5 w-3.5 mr-1.5" />
-            Rejected — Next Counter
-          </Button>
-        </div>
+      {/* Expandable body — hidden when collapsed */}
+      {!collapsed && (
+        <>
+          {/* Return metrics */}
+          <div className="flex items-center gap-3 mb-3 flex-wrap">
+            <div
+              className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded ${
+                rung.returnMeetsCriteria
+                  ? "bg-green-100 text-green-700"
+                  : "bg-red-100 text-red-700"
+              }`}
+            >
+              {rung.returnMeetsCriteria ? (
+                <CheckCircle2 className="h-3 w-3" />
+              ) : (
+                <XCircle className="h-3 w-3" />
+              )}
+              {rung.returnLabel}: {returnDisplay}
+            </div>
+
+            {rung.headroomRemaining > 0 && (
+              <span className="text-xs text-gray-400">
+                {fmt(rung.headroomRemaining)} headroom left
+              </span>
+            )}
+
+            {rung.round > 0 && rung.stepUpFromPrevious > 0 && (
+              <span className="text-xs text-gray-400">
+                Step: +{fmt(rung.stepUpFromPrevious)}
+              </span>
+            )}
+          </div>
+
+          {/* Tactical note */}
+          <div className="rounded bg-gray-100 px-3 py-2 mb-3">
+            <p className="text-xs text-gray-400 italic leading-relaxed">
+              &ldquo;{rung.negotiatingNote}&rdquo;
+            </p>
+          </div>
+
+          {/* Best & final warning */}
+          {rung.isAbsoluteMaximum && isActive && status !== "accepted" && (
+            <div className="flex items-start gap-2 rounded bg-amber-100 px-3 py-2 mb-3">
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800 font-medium">
+                YOUR CEILING — DO NOT EXCEED. Walk away if rejected.
+              </p>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          {!isLocked && isActive && status === "pending" && (
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" onClick={onSend} disabled={isSending}>
+                {isSending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                ) : (
+                  <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                {rung.isAbsoluteMaximum ? "Send Best & Final" : "Send This Offer"}
+              </Button>
+            </div>
+          )}
+
+          {!isLocked && isActive && status === "sent" && (
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-green-700 border-green-300 hover:bg-green-50"
+                onClick={onAccepted}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                Accepted
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-red-600 border-red-300 hover:bg-red-50"
+                onClick={onRejected}
+              >
+                <XCircle className="h-3.5 w-3.5 mr-1.5" />
+                Rejected — Next Counter
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )
@@ -565,6 +588,7 @@ function LadderView({
                   onAccepted={() => handleAccepted(i)}
                   onRejected={() => handleRejected(i)}
                   sendingRound={sendingRound}
+                  defaultCollapsed={i > 0}
                 />
               </div>
             )
