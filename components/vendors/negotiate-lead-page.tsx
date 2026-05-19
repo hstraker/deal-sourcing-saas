@@ -176,6 +176,52 @@ function CoachProgressLoader({ phase }: { phase: "engine" | "coach" }) {
   )
 }
 
+// ─── motivation pill ─────────────────────────────────────────────────────────
+
+const UNKNOWN_MOTIVATION_PATTERNS = [
+  /unknown/i,
+  /diagnostic/i,
+  /unclear/i,
+  /not (yet )?known/i,
+  /insufficient/i,
+  /no (data|info|information)/i,
+]
+
+function normaliseMotivation(emoji: string, label: string): { emoji: string; label: string; unknown: boolean } {
+  const isUnknown = !label || UNKNOWN_MOTIVATION_PATTERNS.some(re => re.test(label))
+  if (isUnknown) return { emoji: "🔍", label: "Motivation unclear", unknown: true }
+  return { emoji: emoji || "💬", label, unknown: false }
+}
+
+function MotivationPill({ emoji, label }: { emoji: string; label: string }) {
+  const { emoji: e, label: l, unknown } = normaliseMotivation(emoji, label)
+  return (
+    <div className="relative group">
+      <div className={cn(
+        "flex items-center gap-2 rounded-full border px-3 py-1.5",
+        unknown
+          ? "border-slate-200 bg-slate-50"
+          : "border-purple-200 bg-purple-50"
+      )}>
+        <span className="text-base">{e}</span>
+        <span className={cn("text-xs font-semibold", unknown ? "text-slate-500" : "text-purple-800")}>
+          {l}
+        </span>
+      </div>
+      {unknown && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10 w-56">
+          <div className="rounded-lg bg-slate-800 px-3 py-2 text-center shadow-lg">
+            <p className="text-[11px] text-slate-200 leading-relaxed">
+              Not enough vendor intel yet. Ask why they&apos;re selling to unlock a sharper strategy.
+            </p>
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── score ring ───────────────────────────────────────────────────────────────
 
 function ScoreRing({ score }: { score: number }) {
@@ -825,10 +871,10 @@ export function NegotiateLeadPage({
             {/* Coach profile pill */}
             {coach && (
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3 py-1.5">
-                  <span className="text-base">{coach.vendorProfile.motivationEmoji}</span>
-                  <span className="text-xs font-semibold text-purple-800">{coach.vendorProfile.motivationLabel}</span>
-                </div>
+                <MotivationPill
+                  emoji={coach.vendorProfile.motivationEmoji}
+                  label={coach.vendorProfile.motivationLabel}
+                />
                 <ScoreRing score={coach.negotiationScore} />
               </div>
             )}
