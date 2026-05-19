@@ -99,7 +99,8 @@ function useProgressCycler(active: boolean, intervalMs = 2600) {
   const [idx, setIdx] = useState(0)
   useEffect(() => {
     if (!active) { setIdx(0); return }
-    const id = setInterval(() => setIdx(i => (i + 1) % COACH_STEPS.length), intervalMs)
+    // Advance through steps but STOP at the last one — never wrap back to 0
+    const id = setInterval(() => setIdx(i => Math.min(i + 1, COACH_STEPS.length - 1)), intervalMs)
     return () => clearInterval(id)
   }, [active, intervalMs])
   return COACH_STEPS[idx]
@@ -111,7 +112,7 @@ function CoachProgressLoader({ phase }: { phase: "engine" | "coach" }) {
 
   useEffect(() => {
     if (phase !== "engine") { setEngineStep(0); return }
-    const id = setInterval(() => setEngineStep(i => (i + 1) % ENGINE_STEPS.length), 1800)
+    const id = setInterval(() => setEngineStep(i => Math.min(i + 1, ENGINE_STEPS.length - 1)), 1800)
     return () => clearInterval(id)
   }, [phase])
 
