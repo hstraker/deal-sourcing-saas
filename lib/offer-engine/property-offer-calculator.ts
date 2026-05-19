@@ -360,8 +360,37 @@ function computeMetrics(purchasePrice: number, inp: ResolvedInputs): MetricsAtPr
   const annualCashflow = netMonthlyCashflow * 12
 
   // ── 7. Key Metrics ─────────────────────────────────────────────────────────
+  //
+  // totalCost = everything spent that does NOT come back from the sale/refinance.
+  //
+  // Cash flow for a flip:
+  //   Out: purchasePrice (deposit + bridging loan advance)
+  //        bridging fees (arrangement, interest, exit, legal, valuation)
+  //        acquisition costs (stamp duty, solicitor, searches, building control)
+  //        project costs (refurb, utilities, council tax, furnishing)
+  //        mortgage exit costs (arrangement fee, broker fee)
+  //   In:  GDV sale proceeds (from which the bridging loan principal is repaid)
+  //
+  // The bridging loan principal cancels out (paid out at purchase, repaid from GDV),
+  // so it is not a net cost. The DEPOSIT, however, is permanently at risk — but it is
+  // already embedded in purchasePrice (purchasePrice = deposit + netLoanAdvance).
+  //
+  // ⚠ Bug guard: acquisitionCosts.total includes `deposit` for the UI breakdown
+  // (showing investors total cash needed upfront). We must NOT add it again via
+  // purchasePrice, or the deposit is double-counted, inflating totalCost by ~26% of
+  // the purchase price and making the goal-seek produce unrealistically low offers.
+  //
+  // Correct formula:
+  //   totalCost = purchasePrice               (deposit + bridging loan, both "spent")
+  //             + totalBridgingCosts           (fees only — loan principal netted out above)
+  //             + (totalAcquisitionCosts - deposit)  (stamp + solicitor + searches + buildCtrl)
+  //             + totalProjectCosts            (refurb + utilities + council tax + furnishing)
+  //             + totalMortgageCosts           (exit mortgage arrangement + broker fees)
+  //
+  // Equivalent to:
+  //   totalCost = purchasePrice + bridgingFees + acqFeesExcludingDeposit + projectCosts + mortgageFees
   const totalCost =
-    purchasePrice + totalBridgingCosts + totalAcquisitionCosts + totalProjectCosts + totalMortgageCosts
+    purchasePrice + totalBridgingCosts + (totalAcquisitionCosts - deposit) + totalProjectCosts + totalMortgageCosts
   const totalEquityInvested = totalAcquisitionCosts + totalProjectCosts + totalMortgageCosts
   const profit = inp.gdv - totalCost
   const profitOnCost = totalCost > 0 ? profit / totalCost : -Infinity

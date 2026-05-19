@@ -116,7 +116,7 @@ export async function POST(
 
     if ((channel === "sms" || channel === "both") && smsPhone) {
       try {
-        const smsMessage = `DealStack: New deal match — ${propertyAddress}${lead.bedrooms ? ` ${lead.bedrooms}bd` : ""}${bmvPct > 0 ? ` at ${bmvPct.toFixed(0)}% BMV` : ""}. Login: ${appUrl}/investor/marketplace`
+        const smsMessage = `DealStack: New deal match — ${propertyAddress}${lead.bedrooms ? ` ${lead.bedrooms}bd` : ""}${offerBmvPct > 0 ? ` at ${offerBmvPct.toFixed(0)}% BMV` : ""}. Login: ${appUrl}/investor/marketplace`
         const twilio = new TwilioService()
         const smsResult = await twilio.sendSMS(smsPhone, smsMessage)
         smsSuccess = !smsResult.error
