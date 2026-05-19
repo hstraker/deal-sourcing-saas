@@ -76,6 +76,105 @@ function CopyButton({ text }: { text: string }) {
   )
 }
 
+// ─── animated progress steps ─────────────────────────────────────────────────
+
+const ENGINE_STEPS = [
+  "Running offer engine…",
+  "Calculating deal metrics…",
+  "Deriving negotiation ceiling…",
+]
+
+const COACH_STEPS = [
+  { label: "Analysing deal assumptions…",       sub: "Deal metrics, yield, ceiling" },
+  { label: "Profiling vendor motivation…",       sub: "Urgency signals & psychology" },
+  { label: "Applying Voss framework…",           sub: "Tactical empathy & calibrated questions" },
+  { label: "Building Klaff pitch stack…",        sub: "Frame control & prizing strategy" },
+  { label: "Crafting Dawson concession tactics…", sub: "Tapering offers & higher authority" },
+  { label: "Generating offer round scripts…",    sub: "SMS & call scripts per round" },
+  { label: "Calibrating objection handlers…",   sub: "Vendor pushback responses" },
+  { label: "Finalising negotiation playbook…",  sub: "Assembling your strategy" },
+]
+
+function useProgressCycler(active: boolean, intervalMs = 2600) {
+  const [idx, setIdx] = useState(0)
+  useEffect(() => {
+    if (!active) { setIdx(0); return }
+    const id = setInterval(() => setIdx(i => (i + 1) % COACH_STEPS.length), intervalMs)
+    return () => clearInterval(id)
+  }, [active, intervalMs])
+  return COACH_STEPS[idx]
+}
+
+function CoachProgressLoader({ phase }: { phase: "engine" | "coach" }) {
+  const step = useProgressCycler(phase === "coach")
+  const [engineStep, setEngineStep] = useState(0)
+
+  useEffect(() => {
+    if (phase !== "engine") { setEngineStep(0); return }
+    const id = setInterval(() => setEngineStep(i => (i + 1) % ENGINE_STEPS.length), 1800)
+    return () => clearInterval(id)
+  }, [phase])
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-6 py-24">
+      {/* Pulsing brain orb */}
+      <div className="relative flex h-20 w-20 items-center justify-center">
+        <div className="absolute inset-0 animate-ping rounded-full bg-purple-200 opacity-25" style={{ animationDuration: "1.5s" }} />
+        <div className="absolute inset-2 animate-pulse rounded-full bg-purple-100 opacity-50" style={{ animationDuration: "2s" }} />
+        <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-purple-100">
+          <Brain className="h-7 w-7 text-purple-600" />
+        </div>
+      </div>
+
+      {phase === "engine" ? (
+        <div className="text-center">
+          <p className="text-sm font-semibold text-slate-700 transition-all duration-500">
+            {ENGINE_STEPS[engineStep]}
+          </p>
+          <p className="mt-1 text-xs text-slate-400">Preparing deal data for AI Coach</p>
+        </div>
+      ) : (
+        <div className="text-center space-y-1">
+          <p key={step.label} className="text-sm font-semibold text-slate-700 animate-fade-in">
+            {step.label}
+          </p>
+          <p key={step.sub} className="text-xs text-slate-400 animate-fade-in">
+            {step.sub}
+          </p>
+        </div>
+      )}
+
+      {/* Progress trail */}
+      {phase === "coach" && (
+        <div className="w-64 space-y-1.5">
+          {COACH_STEPS.map((s, i) => {
+            const current = COACH_STEPS.indexOf(step)
+            const done = i < current
+            const active = i === current
+            return (
+              <div key={s.label} className="flex items-center gap-2">
+                <div className={cn(
+                  "h-1.5 w-1.5 shrink-0 rounded-full transition-all duration-500",
+                  done ? "bg-purple-500" : active ? "bg-purple-400 animate-pulse" : "bg-slate-200"
+                )} />
+                <span className={cn(
+                  "text-[10px] truncate transition-all duration-500",
+                  done ? "text-purple-500" : active ? "text-slate-600 font-medium" : "text-slate-300"
+                )}>
+                  {s.label}
+                </span>
+                {done && <span className="text-[10px] text-purple-400 ml-auto shrink-0">✓</span>}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      <p className="text-[10px] text-slate-300 mt-2">Applying Voss · Klaff · Dawson frameworks</p>
+    </div>
+  )
+}
+
 // ─── score ring ───────────────────────────────────────────────────────────────
 
 function ScoreRing({ score }: { score: number }) {
@@ -502,7 +601,23 @@ export function NegotiateLeadPage({ lead }: { lead: VendorLead }) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.error || `HTTP ${res.status}`)
       }
-      setCoach(await res.json())
+
+      // The playbook endpoint streams plain text — accumulate all chunks then parse JSON
+      if (!res.body) throw new Error("No response body")
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let accumulated = ""
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        accumulated += decoder.decode(value, { stream: true })
+      }
+      // Strip any markdown code fences Claude may emit
+      const clean = accumulated
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```$/, "")
+        .trim()
+      setCoach(JSON.parse(clean))
     } catch (e: any) {
       setCoachError(e.message || "Failed to generate playbook")
     } finally {
@@ -738,20 +853,7 @@ export function NegotiateLeadPage({ lead }: { lead: VendorLead }) {
 
           {/* Loading state */}
           {(coachLoading || (!offerResult && !coachError)) && (
-            <div className="flex flex-col items-center justify-center gap-4 py-24">
-              <div className="relative flex h-16 w-16 items-center justify-center">
-                <div className="absolute inset-0 animate-ping rounded-full bg-purple-200 opacity-30" />
-                <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-purple-100">
-                  <Brain className="h-6 w-6 text-purple-600" />
-                </div>
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-semibold text-slate-700">
-                  {!offerResult ? "Running offer engine…" : "Building negotiation strategy…"}
-                </p>
-                <p className="mt-1 text-xs text-slate-400">Applying Voss, Klaff &amp; Dawson frameworks</p>
-              </div>
-            </div>
+            <CoachProgressLoader phase={!offerResult ? "engine" : "coach"} />
           )}
 
           {/* Engine ran but no viable strategy */}

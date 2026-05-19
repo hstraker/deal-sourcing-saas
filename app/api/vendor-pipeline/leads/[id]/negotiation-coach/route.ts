@@ -199,27 +199,42 @@ export async function POST(
       conversationSnippet,
     })
 
-    const response = await client.messages.create({
+    // ── Stream the response back so the client sees life immediately ──────────
+    // We pipe Claude's token stream directly to the HTTP response.
+    // The client accumulates the chunks and parses JSON when the stream closes.
+    const anthropicStream = await client.messages.stream({
       model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5",
       max_tokens: 8192,
       system: buildCoachSystemPrompt(),
       messages: [{ role: "user", content: userPrompt }],
     })
 
-    const rawText = response.content[0].type === "text" ? response.content[0].text.trim() : ""
+    const readable = new ReadableStream({
+      async start(controller) {
+        const enc = new TextEncoder()
+        try {
+          for await (const event of anthropicStream) {
+            if (
+              event.type === "content_block_delta" &&
+              event.delta.type === "text_delta"
+            ) {
+              controller.enqueue(enc.encode(event.delta.text))
+            }
+          }
+          controller.close()
+        } catch (err) {
+          controller.error(err)
+        }
+      },
+    })
 
-    let parsed: CoachOutput
-    try {
-      parsed = JSON.parse(extractJson(rawText))
-    } catch {
-      console.error("[negotiation-coach] JSON parse error. Raw:", rawText.slice(0, 500))
-      return NextResponse.json(
-        { error: "Claude returned malformed JSON", raw: rawText.slice(0, 500) },
-        { status: 502 }
-      )
-    }
-
-    return NextResponse.json(parsed)
+    return new Response(readable, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache",
+        "X-Content-Type-Options": "nosniff",
+      },
+    })
   } catch (error: any) {
     console.error("[negotiation-coach] Error:", error)
     return NextResponse.json(
