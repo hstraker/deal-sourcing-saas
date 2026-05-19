@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -53,6 +53,14 @@ interface OfferAnalysisPanelProps {
   readOnly?: boolean
   /** Fired every time a calculation completes — lets the modal left panel stay in sync */
   onResult?: (result: OfferCalculationResult) => void
+  /**
+   * Called once on mount with a stable handle to `runCalculation`.
+   * Allows the parent (e.g. modal left panel) to trigger a recalculation
+   * with custom overrides without needing to manage the assumptions state itself.
+   */
+  onAssumptionsReady?: (recalculate: (overrides: AssumptionsState) => void) => void
+  /** When true the built-in AssumptionsPanel is not rendered (parent controls it via onAssumptionsReady) */
+  hideAssumptionsPanel?: boolean
   // Vendor contact — passed through to the negotiation ladder's Send Offer dialog
   vendorLeadId?: string | null
   vendorName?: string | null
@@ -400,7 +408,7 @@ function CashPurchasePanel({
 // Assumptions override panel
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface AssumptionsState {
+export interface AssumptionsState {
   gdv: string
   estimatedRent: string
   totalRefurbishment: string
@@ -564,6 +572,8 @@ export function OfferAnalysisPanel({
   vendorEmail,
   vendorPhone,
   onResult,
+  onAssumptionsReady,
+  hideAssumptionsPanel,
 }: OfferAnalysisPanelProps) {
   const [result, setResult] = useState<OfferCalculationResult | null>(null)
   const [ladders, setLadders] = useState<{
@@ -669,6 +679,17 @@ export function OfferAnalysisPanel({
     },
     [dealId, askingPrice, gdv, estimatedRent, totalRefurbishment]
   )
+
+  // Keep a stable ref to runCalculation so the parent can hold a reference
+  // that never goes stale even if the callback's deps change.
+  const runCalculationRef = useRef(runCalculation)
+  useEffect(() => { runCalculationRef.current = runCalculation }, [runCalculation])
+
+  // Expose the recalculate handle to the parent (e.g. modal left panel assumptions form)
+  useEffect(() => {
+    onAssumptionsReady?.((overrides) => runCalculationRef.current(overrides))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // run once on mount — ref keeps it fresh
 
   useEffect(() => {
     if (dealId) return
@@ -1352,7 +1373,7 @@ export function OfferAnalysisPanel({
                   icon={<BarChart2 className="h-3.5 w-3.5" />}
                   status={viabilityStatus}
                   summary={viabilitySummary}
-                  defaultOpen={true}
+                  defaultOpen={false}
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -1380,12 +1401,14 @@ export function OfferAnalysisPanel({
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-gray-400">Recommended</p>
-                        <p className="text-sm font-bold capitalize">
+                        <p className="text-sm font-bold">
                           {result.recommendedStrategy === "pass"
                             ? "No deal"
                             : result.recommendedStrategy === "both"
-                            ? "Flip or Hold"
-                            : result.recommendedStrategy}
+                            ? "Flip or BRRR"
+                            : result.recommendedStrategy === "hold"
+                            ? (isTrueBRRR ? "BRRR" : "BTL")
+                            : "Flip"}
                         </p>
                       </div>
                     </div>
@@ -1420,8 +1443,8 @@ export function OfferAnalysisPanel({
             </>
           )}
 
-          {/* ── Assumptions override — mortgage mode only ── */}
-          {purchaseMode === "mortgage" && hasRequiredInputs && (
+          {/* ── Assumptions override — mortgage mode only, hidden when parent controls it ── */}
+          {!hideAssumptionsPanel && purchaseMode === "mortgage" && hasRequiredInputs && (
             <AssumptionsPanel
               defaults={assumptionDefaults}
               onRecalculate={runCalculation}

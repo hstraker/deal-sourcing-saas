@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useCallback } from "react"
-import { X, Phone, Mail, TrendingUp, Home, AlertTriangle, Camera } from "lucide-react"
+import { useState, useCallback, useRef } from "react"
+import { X, Phone, Mail, TrendingUp, Home, AlertTriangle, Camera, RefreshCw, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { ModalShell } from "./modal-shell"
 import { OfferAnalysisPanel } from "../deals/offer-analysis-panel"
+import type { AssumptionsState } from "../deals/offer-analysis-panel"
 import type { OfferCalculationResult } from "@/lib/offer-engine/property-offer-calculator"
 import { LeftPanelPhotoThumbs, CONDITION_LABELS, CONDITION_COLOURS, estimateRefurbFromScore } from "./lead-photo-strip"
 import type { VendorLead } from "./vendor-leads-table"
@@ -92,12 +93,35 @@ export function OfferAnalysisModal({
   onClose: () => void
 }) {
   const [offerResult, setOfferResult] = useState<OfferCalculationResult | null>(null)
+  const [assumptionLoading, setAssumptionLoading] = useState(false)
+
+  // Ref to the panel's recalculate function — set via onAssumptionsReady
+  const recalcFnRef = useRef<((overrides: AssumptionsState) => void) | null>(null)
+
+  // Local assumptions state — seeded from lead data, edited in the left panel form
+  const [assumptions, setAssumptions] = useState<AssumptionsState>({
+    gdv:               lead.estimatedMarketValue ? String(Math.round(Number(lead.estimatedMarketValue))) : "",
+    estimatedRent:     lead.estimatedMonthlyRent ? String(Math.round(Number(lead.estimatedMonthlyRent)))
+                       : lead.localAverageRent   ? String(Math.round(Number(lead.localAverageRent))) : "",
+    totalRefurbishment: lead.estimatedRefurbCost  ? String(Math.round(Number(lead.estimatedRefurbCost)))
+                       : lead.estimatedMarketValue ? String(Math.round(Number(lead.estimatedMarketValue) * 0.1)) : "",
+    bridgingMonths:    "12",
+    mortgageRate:      "4.59",
+  })
+
+  const handleRecalculate = useCallback(() => {
+    if (!recalcFnRef.current) return
+    setAssumptionLoading(true)
+    recalcFnRef.current(assumptions)
+    // Loading state cleared by the panel's onResult callback
+  }, [assumptions])
 
   // Stable callback — won't trigger useCallback re-runs in the panel.
   // Also syncs the recommended opening offer back to the VendorLead so the
   // pipeline table (which reads lead.offerAmount / offerPercentage) stays current.
   const handleResult = useCallback((r: OfferCalculationResult) => {
     setOfferResult(r)
+    setAssumptionLoading(false)  // clear loading after recalc completes
 
     // Don't overwrite if no viable strategy
     if (r.recommendedStrategy === "pass") return
@@ -483,8 +507,80 @@ export function OfferAnalysisModal({
           </div>
       </>
 
+      {/* ── Edit Assumptions ── */}
+      <div className="mt-4 border-t border-white/10 pt-3">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-2">
+          Edit Assumptions
+        </p>
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-1.5">
+            <div>
+              <label className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 block mb-0.5">GDV (£)</label>
+              <input
+                type="number"
+                value={assumptions.gdv}
+                onChange={(e) => setAssumptions((a) => ({ ...a, gdv: e.target.value }))}
+                placeholder="e.g. 88900"
+                className="w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 block mb-0.5">Rent PCM (£)</label>
+              <input
+                type="number"
+                value={assumptions.estimatedRent}
+                onChange={(e) => setAssumptions((a) => ({ ...a, estimatedRent: e.target.value }))}
+                placeholder="e.g. 854"
+                className="w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 block mb-0.5">Refurb (£)</label>
+              <input
+                type="number"
+                value={assumptions.totalRefurbishment}
+                onChange={(e) => setAssumptions((a) => ({ ...a, totalRefurbishment: e.target.value }))}
+                placeholder="e.g. 20500"
+                className="w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 block mb-0.5">Bridge (mo)</label>
+              <input
+                type="number"
+                value={assumptions.bridgingMonths}
+                onChange={(e) => setAssumptions((a) => ({ ...a, bridgingMonths: e.target.value }))}
+                placeholder="12"
+                className="w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 block mb-0.5">Mortgage Rate (%)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={assumptions.mortgageRate}
+                onChange={(e) => setAssumptions((a) => ({ ...a, mortgageRate: e.target.value }))}
+                placeholder="4.59"
+                className="w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+          </div>
+          <button
+            onClick={handleRecalculate}
+            disabled={assumptionLoading || !recalcFnRef.current}
+            className="flex w-full items-center justify-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            {assumptionLoading
+              ? <><Loader2 className="h-3 w-3 animate-spin" /> Calculating…</>
+              : <><RefreshCw className="h-3 w-3" /> Recalculate</>
+            }
+          </button>
+        </div>
+      </div>
+
       {/* Pipeline stage — pinned to bottom */}
-      <div className="mt-auto border-t border-white/10 pt-3">
+      <div className="mt-4 border-t border-white/10 pt-3">
         <div className="flex items-center justify-between">
           <span className="text-[10px] text-slate-500">Pipeline Stage</span>
           <StatusBadge
@@ -559,6 +655,8 @@ export function OfferAnalysisModal({
           vendorPhone={lead.vendorPhone}
           missingInputsHint={!gdv ? "Run BMV calculation first to populate Market Value." : undefined}
           onResult={handleResult}
+          onAssumptionsReady={(fn) => { recalcFnRef.current = fn }}
+          hideAssumptionsPanel
         />
       </div>
     </ModalShell>
