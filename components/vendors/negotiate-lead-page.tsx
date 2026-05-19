@@ -381,11 +381,31 @@ function LiveCopilotPanel({ leadId, rungs, ceiling, vendorMotivation }: {
 
 type Tab = "playbook" | "rounds" | "objections" | "copilot"
 
-const TABS: { key: Tab; label: string; icon: ReactNode }[] = [
-  { key: "playbook",    label: "Playbook",      icon: <BookOpen className="h-3.5 w-3.5" /> },
-  { key: "rounds",     label: "Round Scripts",  icon: <MessageSquare className="h-3.5 w-3.5" /> },
-  { key: "objections", label: "Objections",     icon: <Shield className="h-3.5 w-3.5" /> },
-  { key: "copilot",    label: "Live Copilot",   icon: <Zap className="h-3.5 w-3.5" /> },
+const TABS: { key: Tab; label: string; description: string; icon: ReactNode }[] = [
+  {
+    key: "playbook",
+    label: "Playbook",
+    description: "Strategy, vendor intel & tactics",
+    icon: <BookOpen className="h-3.5 w-3.5" />,
+  },
+  {
+    key: "rounds",
+    label: "Offer Scripts",
+    description: "Word-for-word SMS & call scripts",
+    icon: <MessageSquare className="h-3.5 w-3.5" />,
+  },
+  {
+    key: "objections",
+    label: "Objections",
+    description: "Handle vendor pushback",
+    icon: <Shield className="h-3.5 w-3.5" />,
+  },
+  {
+    key: "copilot",
+    label: "Live Copilot",
+    description: "Paste a reply → get next move",
+    icon: <Zap className="h-3.5 w-3.5" />,
+  },
 ]
 
 export function NegotiateLeadPage({ lead }: { lead: VendorLead }) {
@@ -698,9 +718,17 @@ export function NegotiateLeadPage({ lead }: { lead: VendorLead }) {
         <div className="flex border-b border-slate-100 shrink-0">
           {TABS.map(t => (
             <button key={t.key} type="button" onClick={() => setTab(t.key)}
-              className={cn("flex flex-1 items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors border-b-2",
-                tab === t.key ? "border-purple-600 bg-purple-50 text-purple-700" : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50")}>
-              {t.icon}{t.label}
+              className={cn(
+                "flex flex-1 flex-col items-center justify-center gap-0.5 px-3 py-3 transition-colors border-b-2",
+                tab === t.key ? "border-purple-600 bg-purple-50 text-purple-700" : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+              )}>
+              <div className="flex items-center gap-1.5">
+                {t.icon}
+                <span className="text-xs font-semibold">{t.label}</span>
+              </div>
+              <span className={cn("text-[10px] leading-tight", tab === t.key ? "text-purple-500" : "text-slate-400")}>
+                {t.description}
+              </span>
             </button>
           ))}
         </div>
