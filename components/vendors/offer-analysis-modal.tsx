@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react"
 import { toast } from "sonner"
-import { X, Phone, Mail, TrendingUp, Home, AlertTriangle, Camera, RefreshCw, Loader2, Brain } from "lucide-react"
+import { X, Phone, Mail, TrendingUp, Home, AlertTriangle, Camera, RefreshCw, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -12,8 +12,6 @@ import type { AssumptionsState } from "../deals/offer-analysis-panel"
 import type { OfferCalculationResult } from "@/lib/offer-engine/property-offer-calculator"
 import { LeftPanelPhotoThumbs, CONDITION_LABELS, CONDITION_COLOURS, estimateRefurbFromScore } from "./lead-photo-strip"
 import type { VendorLead } from "./vendor-leads-table"
-import { NegotiationCoachModal } from "./negotiation-coach-modal"
-import { generateNegotiationLadder } from "@/lib/offer-engine/negotiation-ladder"
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -98,7 +96,6 @@ export function OfferAnalysisModal({
   const [offerResult, setOfferResult] = useState<OfferCalculationResult | null>(null)
   const [assumptionLoading, setAssumptionLoading] = useState(false)
   const [purchaseMode, setPurchaseMode] = useState<"mortgage" | "cash">("mortgage")
-  const [showCoach, setShowCoach] = useState(false)
 
   // Ref to the panel's recalculate function — set via onAssumptionsReady
   const recalcFnRef = useRef<((overrides: AssumptionsState) => void) | null>(null)
@@ -636,58 +633,10 @@ export function OfferAnalysisModal({
     </div>
   )
 
-  // Derive coach props from offer result
-  const coachProps = (() => {
-    if (!offerResult || offerResult.recommendedStrategy === "pass") return null
-    const isHold = offerResult.recommendedStrategy === "hold"
-    const coachStrategy: "flip" | "hold" | "both" =
-      offerResult.recommendedStrategy === "both" ? "both"
-      : offerResult.recommendedStrategy
-    const coachCeiling = isHold
-      ? (offerResult.hold.maxPurchasePrice > 0 ? offerResult.hold.maxPurchasePrice : offerResult.flip.maxPurchasePrice)
-      : (offerResult.flip.maxPurchasePrice > 0 ? offerResult.flip.maxPurchasePrice : offerResult.hold.maxPurchasePrice)
-    const ladderStrategy: "flip" | "hold" = isHold ? "hold" : "flip"
-    const ladder = generateNegotiationLadder(offerResult, ladderStrategy)
-    return {
-      strategy: coachStrategy,
-      ceiling: coachCeiling,
-      rungs: ladder?.rungs ?? [],
-      gdv: offerResult.inputs.gdv > 0 ? offerResult.inputs.gdv : null,
-      monthlyRent: offerResult.inputs.estimatedRent > 0 ? offerResult.inputs.estimatedRent : null,
-      grossYield: offerResult.hold.grossYield ?? null,
-      refurbCost: offerResult.inputs.totalRefurbishment > 0 ? offerResult.inputs.totalRefurbishment : null,
-    }
-  })()
-
   return (
-    <>
-    {showCoach && coachProps && (
-      <NegotiationCoachModal
-        lead={lead}
-        strategy={coachProps.strategy}
-        ceiling={coachProps.ceiling}
-        rungs={coachProps.rungs}
-        gdv={coachProps.gdv}
-        monthlyRent={coachProps.monthlyRent}
-        grossYield={coachProps.grossYield}
-        refurbCost={coachProps.refurbCost}
-        onClose={() => setShowCoach(false)}
-      />
-    )}
-
     <ModalShell onClose={onClose} leftPanel={leftPanel} maxWidth="5xl">
-      {/* Close button + Coach button */}
-      <div className="-mr-1 -mt-1 flex items-center justify-end gap-2 p-4 pb-0">
-        {/* Coach button — only shown once offer is calculated and viable */}
-        {offerResult && offerResult.recommendedStrategy !== "pass" && (
-          <button
-            onClick={() => setShowCoach(true)}
-            className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700 transition-colors"
-          >
-            <Brain className="h-3.5 w-3.5" />
-            Negotiation Coach
-          </button>
-        )}
+      {/* Close button */}
+      <div className="-mr-1 -mt-1 flex justify-end p-4 pb-0">
         <button
           onClick={onClose}
           className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
@@ -751,6 +700,5 @@ export function OfferAnalysisModal({
         />
       </div>
     </ModalShell>
-    </>
   )
 }
