@@ -407,11 +407,12 @@ function ObjectionCard({ objection }: { objection: CoachObjection }) {
   )
 }
 
-function LiveCopilotPanel({ leadId, rungs, ceiling, vendorMotivation }: {
+function LiveCopilotPanel({ leadId, rungs, ceiling, vendorMotivation, initialRound = 0, initialMessage = "" }: {
   leadId: string; rungs: NegotiationRung[]; ceiling: number; vendorMotivation: string
+  initialRound?: number; initialMessage?: string
 }) {
-  const [round, setRound] = useState(0)
-  const [message, setMessage] = useState("")
+  const [round, setRound] = useState(initialRound)
+  const [message, setMessage] = useState(initialMessage)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<CopilotResponse | null>(null)
 
@@ -614,6 +615,10 @@ export function NegotiateLeadPage({
       }),
     }).catch(() => {})
   }, [lead.id])
+
+  // ── Negotiation inputs (live panel state) ────────────────────────────────
+  const [vendorCounter, setVendorCounter] = useState("")   // vendor's counter offer £
+  const [currentRound, setCurrentRound]   = useState(0)   // which round we're on
 
   // ── Coach state ───────────────────────────────────────────────────────────
   const [coach, setCoach] = useState<CoachOutput | null>(savedCoach)
@@ -818,6 +823,81 @@ export function NegotiateLeadPage({
 
           <div className="h-px bg-white/10" />
 
+          {/* Active negotiation inputs */}
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-2">Active Negotiation</p>
+
+            {/* Current round selector */}
+            {inputs && inputs.rungs.length > 0 && (
+              <div className="mb-2.5">
+                <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 mb-1.5">Current Round</p>
+                <div className="flex gap-1 flex-wrap">
+                  {inputs.rungs.map(r => (
+                    <button
+                      key={r.round}
+                      type="button"
+                      onClick={() => setCurrentRound(r.round)}
+                      className={cn(
+                        "rounded px-2 py-1 text-[10px] font-semibold transition-colors",
+                        currentRound === r.round
+                          ? "bg-blue-600 text-white"
+                          : "bg-white/10 text-slate-300 hover:bg-white/20"
+                      )}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+                {inputs.rungs[currentRound] && (
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    Our offer: <span className="text-green-400 font-semibold">{gbp(inputs.rungs[currentRound]?.offerPrice ?? 0)}</span>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Vendor counter offer */}
+            <div>
+              <label className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 block mb-0.5">
+                Vendor Counter Offer (£)
+              </label>
+              <input
+                type="number"
+                value={vendorCounter}
+                onChange={e => setVendorCounter(e.target.value)}
+                placeholder="e.g. 82000"
+                className="w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-200 placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+              />
+              {/* Show gap between counter and our offer */}
+              {vendorCounter && inputs?.rungs[currentRound] && (() => {
+                const counter = parseFloat(vendorCounter)
+                const ours    = inputs.rungs[currentRound]?.offerPrice ?? 0
+                const gap     = counter - ours
+                const pct     = ours > 0 ? ((gap / ours) * 100).toFixed(1) : null
+                if (!counter || isNaN(counter)) return null
+                return (
+                  <div className="mt-1.5 rounded-lg bg-white/5 border border-white/10 px-2.5 py-2 space-y-1">
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-slate-400">Gap to close</span>
+                      <span className="font-semibold text-amber-400">{gbp(gap)}</span>
+                    </div>
+                    {pct && (
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-slate-400">% above our offer</span>
+                        <span className="font-semibold text-red-400">+{pct}%</span>
+                      </div>
+                    )}
+                    <p className="text-[9px] text-slate-500 pt-0.5">
+                      Switch to Live Copilot → paste their message to get your exact reply.
+                    </p>
+                  </div>
+                )
+              })()}
+            </div>
+          </div>
+
+          <div className="h-px bg-white/10" />
+
           {/* Assumptions form */}
           <div>
             <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-3">Deal Assumptions</p>
@@ -911,7 +991,6 @@ export function NegotiateLeadPage({
               <button
                 onClick={() => { coachFetchedRef.current = true; fetchCoach(true) }}
                 className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-500 hover:border-purple-300 hover:text-purple-600 transition-colors"
-                title="Regenerate strategy"
               >
                 <RefreshCw className="h-3 w-3" /> Regenerate
               </button>
@@ -1091,6 +1170,8 @@ export function NegotiateLeadPage({
                   leadId={lead.id}
                   rungs={inputs.rungs}
                   ceiling={inputs.ceiling}
+                  initialRound={currentRound}
+                  initialMessage={vendorCounter ? `Vendor countered at £${vendorCounter}` : ""}
                   vendorMotivation={coach.vendorProfile.motivationType}
                 />
               )}
