@@ -57,6 +57,8 @@ interface LadderState {
 interface NegotiationLadderPanelProps {
   flipLadder: NegotiationLadder | null
   holdLadder: NegotiationLadder | null
+  /** Which strategy tab to open by default (uses whichever ladder exists if omitted) */
+  recommendedStrategy?: "flip" | "hold"
   dealId?: string | null
   onOfferSent?: (offerPrice: number, strategy: "flip" | "hold", round: number) => void
   onWalkAway?: (strategy: "flip" | "hold") => void
@@ -738,6 +740,7 @@ function LadderView({
 export function NegotiationLadderPanel({
   flipLadder,
   holdLadder,
+  recommendedStrategy,
   dealId,
   onOfferSent,
   onWalkAway,
@@ -747,8 +750,9 @@ export function NegotiationLadderPanel({
   vendorEmail,
   vendorPhone,
 }: NegotiationLadderPanelProps) {
+  // Default to recommendedStrategy if provided, otherwise whichever ladder exists
   const defaultStrategy =
-    flipLadder ? "flip" : holdLadder ? "hold" : null
+    recommendedStrategy ?? (flipLadder ? "flip" : holdLadder ? "hold" : null)
 
   const [activeStrategy, setActiveStrategy] = useState<"flip" | "hold">(
     defaultStrategy ?? "flip"

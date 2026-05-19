@@ -745,8 +745,11 @@ export function OfferAnalysisPanel({
   const flipOpening = flipHasPrice ? opening(flipCeiling) : 0
   const holdOpening = holdHasPrice ? opening(holdCeiling) : 0
 
-  const ladderSummary = flipHasPrice || holdHasPrice
-    ? `Open ${fmt(flipHasPrice ? flipOpening : holdOpening)} → Max ${fmt(flipHasPrice ? flipCeiling : holdCeiling)}`
+  // Ladder summary shows the RECOMMENDED strategy's numbers, not always flip
+  const recOpening = isHoldPrim && holdHasPrice ? holdOpening : flipHasPrice ? flipOpening : holdOpening
+  const recCeiling = isHoldPrim && holdHasPrice ? holdCeiling : flipHasPrice ? flipCeiling : holdCeiling
+  const ladderSummary = (flipHasPrice || holdHasPrice)
+    ? `Open ${fmt(recOpening)} → Max ${fmt(recCeiling)}`
     : "No viable ceiling"
 
   const viabilityLabel =
@@ -943,10 +946,12 @@ export function OfferAnalysisPanel({
                 )}
               </div>
 
-              {/* Scorecard rows */}
-              <div className="space-y-2">
+              {/* Scorecard rows — recommended strategy card shown first */}
+              <div className="flex flex-col gap-2">
 
                 {/* ── 1. Flip Strategy ───────────────────────────────── */}
+                {/* When hold is recommended, flip card moves to second position via CSS order */}
+                <div className={isHoldPrim ? "order-2" : "order-1"}>
                 <ScorecardRow
                   criterion="Flip Strategy"
                   icon={<TrendingUp className="h-3.5 w-3.5" />}
@@ -1021,8 +1026,11 @@ export function OfferAnalysisPanel({
                     </div>
                   )}
                 </ScorecardRow>
+                </div>{/* end flip wrapper */}
 
                 {/* ── 2. BTL / BRRR ──────────────────────────────────── */}
+                {/* When hold is recommended this card moves to first position */}
+                <div className={isHoldPrim ? "order-1" : "order-2"}>
                 <ScorecardRow
                   criterion="BTL / BRRR"
                   icon={<Home className="h-3.5 w-3.5" />}
@@ -1120,8 +1128,10 @@ export function OfferAnalysisPanel({
                     </div>
                   )}
                 </ScorecardRow>
+                </div>{/* end hold wrapper */}
 
                 {/* ── 3. Negotiation Ladder ──────────────────────────── */}
+                <div className="order-3">
                 {ladders && (
                   <ScorecardRow
                     criterion="Negotiation Ladder"
@@ -1133,6 +1143,7 @@ export function OfferAnalysisPanel({
                     <NegotiationLadderPanel
                       flipLadder={ladders.flip}
                       holdLadder={ladders.hold}
+                      recommendedStrategy={isHoldPrim ? "hold" : "flip"}
                       dealId={dealId}
                       onOfferSent={onOfferSent}
                       readOnly={readOnly}
@@ -1143,8 +1154,10 @@ export function OfferAnalysisPanel({
                     />
                   </ScorecardRow>
                 )}
+                </div>{/* end ladder wrapper */}
 
                 {/* ── 4. Financial Breakdown ────────────────────────── */}
+                <div className="order-4">
                 {bridging && mortgage && cashflow && flip && (
                   <ScorecardRow
                     criterion="Financial Breakdown"
@@ -1398,7 +1411,9 @@ export function OfferAnalysisPanel({
                   </div>
                 </ScorecardRow>
 
-              </div>
+                </div>{/* end financial-breakdown + viability wrapper */}
+
+              </div>{/* end flex flex-col scorecard container */}
             </>
           )}
 
