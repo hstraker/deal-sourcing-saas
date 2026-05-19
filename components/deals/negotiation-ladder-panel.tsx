@@ -495,9 +495,13 @@ function LadderView({
         </div>
         <div className="text-right">
           <span className="text-xs text-gray-400">Ceiling is</span>
-          <p className="text-sm font-semibold text-amber-700">
-            {askingDiscountPct.toFixed(1)}% below asking
-          </p>
+          {askingDiscountPct < 0.05 ? (
+            <p className="text-sm font-semibold text-green-700">At asking price</p>
+          ) : (
+            <p className="text-sm font-semibold text-amber-700">
+              {askingDiscountPct.toFixed(1)}% below asking
+            </p>
+          )}
         </div>
       </div>
 

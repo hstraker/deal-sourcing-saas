@@ -419,7 +419,7 @@ function AssumptionsPanel({
   loading: boolean
   hasDefaultedRefurb?: boolean
 }) {
-  const [editMode, setEditMode] = useState(true)
+  const [editMode, setEditMode] = useState(false)
   const [vals, setVals] = useState<AssumptionsState>(defaults)
 
   const set = (key: keyof AssumptionsState) => (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -93,10 +93,36 @@ export function OfferAnalysisModal({
 }) {
   const [offerResult, setOfferResult] = useState<OfferCalculationResult | null>(null)
 
-  // Stable callback — won't trigger useCallback re-runs in the panel
+  // Stable callback — won't trigger useCallback re-runs in the panel.
+  // Also syncs the recommended opening offer back to the VendorLead so the
+  // pipeline table (which reads lead.offerAmount / offerPercentage) stays current.
   const handleResult = useCallback((r: OfferCalculationResult) => {
     setOfferResult(r)
-  }, [])
+
+    // Don't overwrite if no viable strategy
+    if (r.recommendedStrategy === "pass") return
+
+    const isHold = r.recommendedStrategy === "hold"
+    const recCeiling = isHold
+      ? (r.hold.maxPurchasePrice > 0 ? r.hold.maxPurchasePrice : r.flip.maxPurchasePrice)
+      : (r.flip.maxPurchasePrice > 0 ? r.flip.maxPurchasePrice : r.hold.maxPurchasePrice)
+    const opening = recCeiling > 0 ? Math.round((recCeiling * 0.88) / 50) * 50 : 0
+    if (opening <= 0) return
+
+    const gdvNum = r.inputs.gdv
+    // offerPercentage = BMV% = how far the offer is below market value
+    const offerPercentage = gdvNum > 0 ? ((gdvNum - opening) / gdvNum) * 100 : null
+
+    // Fire-and-forget — non-critical, table will refresh on next load
+    fetch(`/api/vendor-pipeline/leads/${lead.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        offerAmount: opening,
+        ...(offerPercentage !== null ? { offerPercentage } : {}),
+      }),
+    }).catch(() => { /* silent — table still shows correct values in the panel */ })
+  }, [lead.id])
 
   // Raw inputs for the panel
   const askingPrice = toNum(lead.askingPrice) ?? 0
@@ -256,12 +282,22 @@ export function OfferAnalysisModal({
                   ? "border border-amber-500/30 bg-amber-500/10"
                   : "border border-green-500/30 bg-green-500/10"
               )}>
-                <span className={isSteep ? "text-amber-300" : "text-green-300"}>
-                  {isSteep ? "⚠ Steep discount needed" : "✓ Discount achievable"}
-                </span>
-                <span className={cn("font-bold", discountColour)}>
-                  {fmtPct(discountRaw)}
-                </span>
+                {discountRaw < 0.001 ? (
+                  // Ceiling equals asking price (e.g. BRRR deal that works at full asking)
+                  <>
+                    <span className="text-green-300">✓ No discount needed</span>
+                    <span className="font-bold text-green-400">Works at asking</span>
+                  </>
+                ) : (
+                  <>
+                    <span className={isSteep ? "text-amber-300" : "text-green-300"}>
+                      {isSteep ? "⚠ Steep discount needed" : "✓ Discount achievable"}
+                    </span>
+                    <span className={cn("font-bold", discountColour)}>
+                      {fmtPct(discountRaw)}
+                    </span>
+                  </>
+                )}
               </div>
             )}
 
