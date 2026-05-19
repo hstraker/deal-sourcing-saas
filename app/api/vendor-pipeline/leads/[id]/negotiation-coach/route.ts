@@ -74,6 +74,8 @@ export async function POST(
     const mode = (body.mode ?? "playbook") as "playbook" | "copilot"
 
     // ── Fetch lead ────────────────────────────────────────────────────────────
+    const forceRegenerate = body.force === true
+
     const lead = await prisma.vendorLead.findUnique({
       where: { id: params.id },
       select: {
@@ -87,6 +89,8 @@ export async function POST(
         reasonForSelling: true,
         timelineDays: true,
         competingOffers: true,
+        negotiationCoach: true,
+        negotiationCoachAt: true,
         smsMessages: {
           orderBy: { createdAt: "asc" },
           take: 12,
@@ -101,6 +105,11 @@ export async function POST(
 
     if (!lead) {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 })
+    }
+
+    // ── Return cached coach if available (and not forcing regeneration) ────────
+    if (mode === "playbook" && !forceRegenerate && lead.negotiationCoach) {
+      return NextResponse.json(lead.negotiationCoach)
     }
 
     const askingPrice = lead.askingPrice ? Number(lead.askingPrice) : 0
@@ -209,9 +218,11 @@ export async function POST(
       messages: [{ role: "user", content: userPrompt }],
     })
 
+    const leadId = params.id
     const readable = new ReadableStream({
       async start(controller) {
         const enc = new TextEncoder()
+        let fullText = ""
         try {
           for await (const event of anthropicStream) {
             if (
@@ -219,7 +230,26 @@ export async function POST(
               event.delta.type === "text_delta"
             ) {
               controller.enqueue(enc.encode(event.delta.text))
+              fullText += event.delta.text
             }
+          }
+          // Persist the coach output to DB so future visits load instantly
+          try {
+            const clean = fullText
+              .replace(/^```(?:json)?\s*/i, "")
+              .replace(/\s*```$/, "")
+              .trim()
+            const parsed: CoachOutput = JSON.parse(clean)
+            await prisma.vendorLead.update({
+              where: { id: leadId },
+              data: {
+                negotiationCoach:   parsed,
+                negotiationCoachAt: new Date(),
+              },
+            })
+          } catch {
+            // Non-fatal — the client still received the full stream
+            console.error("[negotiation-coach] Failed to persist coach output")
           }
           controller.close()
         } catch (err) {

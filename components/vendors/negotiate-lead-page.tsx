@@ -508,7 +508,15 @@ const TABS: { key: Tab; label: string; description: string; icon: ReactNode }[] 
   },
 ]
 
-export function NegotiateLeadPage({ lead }: { lead: VendorLead }) {
+export function NegotiateLeadPage({
+  lead,
+  savedCoach = null,
+  savedCoachAt = null,
+}: {
+  lead: VendorLead
+  savedCoach?: CoachOutput | null
+  savedCoachAt?: string | null
+}) {
   const router = useRouter()
 
   // ── Offer engine state ───────────────────────────────────────────────────
@@ -562,7 +570,7 @@ export function NegotiateLeadPage({ lead }: { lead: VendorLead }) {
   }, [lead.id])
 
   // ── Coach state ───────────────────────────────────────────────────────────
-  const [coach, setCoach] = useState<CoachOutput | null>(null)
+  const [coach, setCoach] = useState<CoachOutput | null>(savedCoach)
   const [coachLoading, setCoachLoading] = useState(false)
   const [coachError, setCoachError] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>("playbook")
@@ -588,15 +596,16 @@ export function NegotiateLeadPage({ lead }: { lead: VendorLead }) {
     }
   }, [offerResult])
 
-  const fetchCoach = useCallback(async () => {
+  const fetchCoach = useCallback(async (force = false) => {
     const inputs = coachInputs()
     if (!inputs) return
     setCoachLoading(true); setCoachError(null)
+    if (force) setCoach(null)
     try {
       const res = await fetch(`/api/vendor-pipeline/leads/${lead.id}/negotiation-coach`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: "playbook", ...inputs }),
+        body: JSON.stringify({ mode: "playbook", force, ...inputs }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
@@ -626,8 +635,9 @@ export function NegotiateLeadPage({ lead }: { lead: VendorLead }) {
     }
   }, [lead.id, coachInputs])
 
-  // Auto-fetch coach once we have a viable offer result
-  const coachFetchedRef = useRef(false)
+  // Auto-fetch coach once we have a viable offer result.
+  // Pre-set to true if we loaded a cached coach from the server (no need to call AI).
+  const coachFetchedRef = useRef(!!savedCoach)
   useEffect(() => {
     if (offerResult && offerResult.recommendedStrategy !== "pass" && !coachFetchedRef.current && !coach) {
       coachFetchedRef.current = true
@@ -793,16 +803,36 @@ export function NegotiateLeadPage({ lead }: { lead: VendorLead }) {
             </div>
           </div>
 
-          {/* Coach profile pill — shown once loaded */}
-          {coach && (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3 py-1.5">
-                <span className="text-base">{coach.vendorProfile.motivationEmoji}</span>
-                <span className="text-xs font-semibold text-purple-800">{coach.vendorProfile.motivationLabel}</span>
+          {/* Right side: cache badge + profile pill + score + regenerate */}
+          <div className="flex items-center gap-3">
+            {/* Cached badge */}
+            {coach && savedCoachAt && !coachLoading && (
+              <div className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] text-slate-400">
+                <Check className="h-3 w-3 text-green-500" />
+                Saved {new Date(savedCoachAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
               </div>
-              <ScoreRing score={coach.negotiationScore} />
-            </div>
-          )}
+            )}
+            {/* Regenerate button */}
+            {coach && !coachLoading && offerResult && offerResult.recommendedStrategy !== "pass" && (
+              <button
+                onClick={() => { coachFetchedRef.current = true; fetchCoach(true) }}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-500 hover:border-purple-300 hover:text-purple-600 transition-colors"
+                title="Regenerate strategy"
+              >
+                <RefreshCw className="h-3 w-3" /> Regenerate
+              </button>
+            )}
+            {/* Coach profile pill */}
+            {coach && (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3 py-1.5">
+                  <span className="text-base">{coach.vendorProfile.motivationEmoji}</span>
+                  <span className="text-xs font-semibold text-purple-800">{coach.vendorProfile.motivationLabel}</span>
+                </div>
+                <ScoreRing score={coach.negotiationScore} />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Signal bars row — shown once loaded */}

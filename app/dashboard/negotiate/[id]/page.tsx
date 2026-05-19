@@ -43,6 +43,8 @@ export default async function NegotiationCoachLeadPage({
       competingOffers: true,
       pipelineStage: true,
       calculatorAssumptions: true,
+      negotiationCoach: true,
+      negotiationCoachAt: true,
       dealId: true,
       tenureType: true,
       condition: true,
@@ -59,5 +61,14 @@ export default async function NegotiationCoachLeadPage({
   // Cast to VendorLead shape (Prisma Decimal → serialisable number via JSON round-trip)
   const serialised = JSON.parse(JSON.stringify(lead))
 
-  return <NegotiateLeadPage lead={serialised} />
+  // Extract and remove the coach cache from the lead object (passed separately)
+  const { negotiationCoach, negotiationCoachAt, ...leadData } = serialised
+
+  return (
+    <NegotiateLeadPage
+      lead={leadData}
+      savedCoach={negotiationCoach ?? null}
+      savedCoachAt={negotiationCoachAt ?? null}
+    />
+  )
 }
