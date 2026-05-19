@@ -692,10 +692,21 @@ export function NegotiateLeadPage({
   }, [offerResult, coach, fetchCoach])
 
   // ── Derived display values ────────────────────────────────────────────────
-  const askingPrice = toNum(lead.askingPrice) ?? 0
-  const gdv         = toNum(lead.estimatedMarketValue)
+  const askingPrice   = toNum(lead.askingPrice) ?? 0
+  const gdv           = toNum(lead.estimatedMarketValue)
   const estimatedRent = toNum(lead.estimatedMonthlyRent) ?? toNum(lead.localAverageRent)
-  const totalRefurb = toNum(lead.estimatedRefurbCost)
+  const totalRefurb   = toNum(lead.estimatedRefurbCost)
+
+  // Price stats derived from offer engine result
+  const offerCeiling = offerResult && offerResult.recommendedStrategy !== "pass"
+    ? (offerResult.recommendedStrategy === "hold"
+        ? (offerResult.hold.maxPurchasePrice > 0 ? offerResult.hold.maxPurchasePrice : offerResult.flip.maxPurchasePrice)
+        : (offerResult.flip.maxPurchasePrice > 0 ? offerResult.flip.maxPurchasePrice : offerResult.hold.maxPurchasePrice))
+    : null
+  const openingBid = offerCeiling ? Math.round((offerCeiling * 0.88) / 50) * 50 : null
+  const discountPct = openingBid && askingPrice > 0
+    ? Math.round(((askingPrice - openingBid) / askingPrice) * 100)
+    : null
 
   const inputs = coachInputs()
 
@@ -766,6 +777,43 @@ export function NegotiateLeadPage({
                 </span>
               </div>
             )}
+          </div>
+
+          <div className="h-px bg-white/10" />
+
+          {/* Price overview */}
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-2">Prices</p>
+            <div className="space-y-1">
+              {/* Asking price — always visible */}
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-slate-400">Asking price</span>
+                <span className="text-[11px] font-semibold text-white">
+                  {askingPrice > 0 ? gbp(askingPrice) : "—"}
+                </span>
+              </div>
+              {/* Max offer ceiling — shows once offer engine has run */}
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-slate-400">Max offer</span>
+                <span className="text-[11px] font-semibold text-amber-400">
+                  {offerCeiling ? gbp(offerCeiling) : <span className="text-slate-600 italic">calculating…</span>}
+                </span>
+              </div>
+              {/* Opening bid */}
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-slate-400">Opening bid</span>
+                <span className="text-[11px] font-bold text-green-400">
+                  {openingBid ? gbp(openingBid) : <span className="text-slate-600 italic">calculating…</span>}
+                </span>
+              </div>
+              {/* Discount % badge */}
+              {discountPct != null && (
+                <div className="mt-1.5 flex items-center justify-between rounded-lg bg-white/5 px-2.5 py-1.5">
+                  <span className="text-[10px] text-slate-400">Discount from asking</span>
+                  <span className="text-[11px] font-bold text-red-400">-{discountPct}%</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="h-px bg-white/10" />

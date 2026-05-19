@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { Brain, RefreshCw, Loader2, ChevronRight, AlertTriangle } from "lucide-react"
+import { SparklesIcon } from "@heroicons/react/24/outline"
 import { cn } from "@/lib/utils"
 import type { VendorLead } from "./vendor-leads-table"
 
@@ -16,6 +17,27 @@ function gbp(n: number | string | null | undefined): string {
     currency: "GBP",
     maximumFractionDigits: 0,
   }).format(num)
+}
+
+function toNum(v: string | number | null | undefined): number | null {
+  if (v == null) return null
+  const n = Number(v)
+  return isNaN(n) ? null : n
+}
+
+const REASON_LABELS: Record<string, string> = {
+  financial_difficulty:  "💸 Financial difficulty",
+  relocation:            "✈️ Relocating",
+  divorce:               "⚖️ Divorce / separation",
+  probate:               "📋 Probate",
+  downsizing:            "📦 Downsizing",
+  upsizing:              "🏠 Upsizing",
+  investment_exit:       "💼 Investment exit",
+  rental_issues:         "🔑 Rental issues",
+  health:                "🏥 Health reasons",
+  emigrating:            "🌍 Emigrating",
+  chain_break:           "🔗 Chain break",
+  other:                 "📌 Other",
 }
 
 const STAGE_LABELS: Record<string, string> = {
@@ -184,24 +206,45 @@ function LeadCard({ lead }: { lead: VendorLead }) {
   const stageColour = STAGE_COLOUR[lead.pipelineStage] ?? "bg-gray-100 text-gray-600"
   const motivation  = lead.motivationScore != null ? Number(lead.motivationScore) : null
   const hasOffer    = lead.offerAmount != null && Number(lead.offerAmount) > 0
+  const coach       = lead.negotiationCoach ?? null
+
+  // Discount % from asking price
+  const askingNum = toNum(lead.askingPrice)
+  const offerNum  = toNum(lead.offerAmount)
+  const discountPct = askingNum && offerNum && askingNum > 0
+    ? Math.round(((askingNum - offerNum) / askingNum) * 100)
+    : null
+
+  // Coach intel: motivation label/emoji + strategy name
+  const coachMotivationLabel = coach?.vendorProfile?.motivationLabel
+  const coachMotivationEmoji = coach?.vendorProfile?.motivationEmoji
+  const UNKNOWN_PATTERNS = [/unknown/i, /diagnostic/i, /unclear/i, /insufficient/i]
+  const isUnknownMotivation = !coachMotivationLabel || UNKNOWN_PATTERNS.some(r => r.test(coachMotivationLabel))
+
+  // Fallback intel: reason for selling
+  const reasonLabel = lead.reasonForSelling ? REASON_LABELS[lead.reasonForSelling] : null
 
   return (
     <Link
       href={`/dashboard/negotiate/${lead.id}`}
       className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm hover:border-purple-300 hover:shadow-md transition-all group"
     >
-      {/* Motivation orb */}
-      <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold",
+      {/* Left orb: motivation score */}
+      <div className={cn(
+        "flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-full text-sm font-bold",
         motivation != null && motivation >= 8 ? "bg-green-100 text-green-700"
         : motivation != null && motivation >= 5 ? "bg-amber-100 text-amber-700"
-        : "bg-gray-100 text-gray-500")}>
+        : "bg-gray-100 text-gray-500"
+      )}>
         {motivation ?? "—"}
       </div>
 
-      {/* Info */}
-      <div className="flex-1 min-w-0">
+      {/* Lead identity */}
+      <div className="min-w-0 w-44 shrink-0">
         <div className="flex items-center gap-2 mb-0.5">
           <p className="text-sm font-semibold text-gray-900 truncate">{lead.vendorName}</p>
+        </div>
+        <div className="flex items-center gap-1.5 flex-wrap">
           <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0", stageColour)}>
             {stageLabel}
           </span>
@@ -211,24 +254,71 @@ function LeadCard({ lead }: { lead: VendorLead }) {
             </span>
           )}
         </div>
-        <p className="text-xs text-gray-500 truncate">
+        <p className="text-[11px] text-gray-400 truncate mt-0.5">
           {lead.propertyAddress ?? lead.propertyPostcode ?? "Address not set"}
         </p>
       </div>
 
-      {/* Stats */}
-      <div className="hidden sm:flex items-center gap-6 text-xs shrink-0">
-        <div>
+      {/* Middle: coach intel or reason for selling */}
+      <div className="hidden lg:flex flex-1 min-w-0 flex-col justify-center px-2 border-l border-gray-100 ml-1">
+        {coach ? (
+          <>
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <SparklesIcon className="h-3 w-3 text-purple-400 shrink-0" />
+              <span className="text-[11px] font-medium text-gray-700 truncate">
+                {isUnknownMotivation
+                  ? <span className="text-gray-400 italic">Motivation unclear</span>
+                  : <>{coachMotivationEmoji} {coachMotivationLabel}</>}
+              </span>
+            </div>
+            {coach.strategyName && (
+              <p className="text-[10px] text-gray-400 truncate">{coach.strategyName}</p>
+            )}
+          </>
+        ) : reasonLabel ? (
+          <>
+            <p className="text-[11px] font-medium text-gray-700 truncate">{reasonLabel}</p>
+            <p className="text-[10px] text-gray-400">Reason for selling</p>
+          </>
+        ) : (
+          <p className="text-[10px] text-gray-400 italic">No coach strategy yet</p>
+        )}
+      </div>
+
+      {/* Right stats */}
+      <div className="hidden sm:flex items-center gap-5 text-xs shrink-0">
+        {/* Asking */}
+        <div className="text-right">
           <p className="text-[10px] text-gray-400 mb-0.5">Asking</p>
           <p className="font-semibold text-gray-700">{gbp(lead.askingPrice)}</p>
         </div>
+
+        {/* Our offer + discount */}
         {hasOffer && (
-          <div>
+          <div className="text-right">
             <p className="text-[10px] text-gray-400 mb-0.5">Our Offer</p>
             <p className="font-semibold text-purple-700">{gbp(lead.offerAmount)}</p>
+            {discountPct != null && (
+              <p className="text-[9px] text-red-400 font-medium">-{discountPct}% asking</p>
+            )}
           </div>
         )}
-        <div>
+
+        {/* BMV score */}
+        {lead.bmvScore != null && (
+          <div className="text-right">
+            <p className="text-[10px] text-gray-400 mb-0.5">BMV</p>
+            <p className={cn("font-semibold",
+              Number(lead.bmvScore) >= 20 ? "text-green-600"
+              : Number(lead.bmvScore) >= 10 ? "text-amber-500"
+              : "text-gray-500")}>
+              {Number(lead.bmvScore).toFixed(0)}%
+            </p>
+          </div>
+        )}
+
+        {/* Urgency */}
+        <div className="text-right">
           <p className="text-[10px] text-gray-400 mb-0.5">Urgency</p>
           <p className={cn("font-semibold capitalize",
             lead.urgencyLevel === "high" ? "text-red-500"
@@ -237,8 +327,10 @@ function LeadCard({ lead }: { lead: VendorLead }) {
             {lead.urgencyLevel ?? "—"}
           </p>
         </div>
+
+        {/* Property */}
         {lead.bedrooms != null && (
-          <div>
+          <div className="text-right">
             <p className="text-[10px] text-gray-400 mb-0.5">Property</p>
             <p className="font-semibold text-gray-700 capitalize">
               {lead.bedrooms}bd {lead.propertyType ?? ""}
@@ -246,6 +338,18 @@ function LeadCard({ lead }: { lead: VendorLead }) {
           </div>
         )}
       </div>
+
+      {/* Coach score badge — shown when coach has run */}
+      {coach?.negotiationScore != null && (
+        <div className={cn(
+          "hidden xl:flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold border-2",
+          coach.negotiationScore >= 70 ? "border-green-300 bg-green-50 text-green-700"
+          : coach.negotiationScore >= 45 ? "border-amber-300 bg-amber-50 text-amber-700"
+          : "border-red-300 bg-red-50 text-red-700"
+        )}>
+          {coach.negotiationScore}
+        </div>
+      )}
 
       {/* Arrow */}
       <ChevronRight className="h-4 w-4 text-gray-400 shrink-0 group-hover:text-purple-500 transition-colors" />

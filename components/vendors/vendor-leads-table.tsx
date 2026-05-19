@@ -241,6 +241,18 @@ export interface VendorLead {
   postcodeDemandScore?: number | null
   // Persisted calculator assumptions (sourcer edits)
   calculatorAssumptions?: Record<string, string> | null
+  // AI Negotiation Coach cached output
+  negotiationCoach?: {
+    strategyName?: string
+    negotiationScore?: number
+    vendorProfile?: {
+      motivationLabel?: string
+      motivationEmoji?: string
+      urgencySignal?: string
+      priceFlexibility?: string
+    }
+  } | null
+  negotiationCoachAt?: string | null
 }
 
 type TabId = "map-view" | "property-details" | "portal-check" | "validation" | "comparable" | "offer-analysis" | "ai-conversation" | "photo-analysis"
