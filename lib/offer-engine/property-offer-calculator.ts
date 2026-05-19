@@ -754,10 +754,12 @@ export function calculatePropertyOffer(rawInputs: OfferEngineInputs): OfferCalcu
     holdMaxPurchasePrice, askingPrice, resolved, offerNegotiationBuffer, maxViewingDiscountPercent
   )
 
-  // ── Shared financials (use flip price for display, or asking if flip=0) ──
+  // ── Shared financials (prefer hold/BRRR price; fall back to flip, then asking) ──
+  // Using hold ceiling when available ensures bridging/mortgage figures reflect the
+  // recommended BRRR purchase price rather than the (often lower) flip ceiling.
   const displayPrice =
-    flipMaxPurchasePrice > 0 ? flipMaxPurchasePrice :
     holdMaxPurchasePrice > 0 ? holdMaxPurchasePrice :
+    flipMaxPurchasePrice > 0 ? flipMaxPurchasePrice :
     askingPrice
   const shared = computeMetrics(displayPrice, resolved)
 

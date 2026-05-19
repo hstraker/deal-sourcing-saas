@@ -778,6 +778,8 @@ export function OfferAnalysisPanel({
 
   // True when the recommended strategy is hold/BTL/BRRR — used to reorder strategy cards and default the ladder tab
   const isHoldPrim = result?.recommendedStrategy === "hold" || result?.recommendedStrategy === "both"
+  // Financial Breakdown uses the recommended strategy's purchase-price-based costs
+  const displayStrategy = (isHoldPrim && hold) ? hold : flip
 
   // Ladder summary shows the RECOMMENDED strategy's numbers, not always flip
   const recOpening = isHoldPrim && holdHasPrice ? holdOpening : flipHasPrice ? flipOpening : holdOpening
@@ -1261,7 +1263,7 @@ export function OfferAnalysisPanel({
                     criterion="Financial Breakdown"
                     icon={<DollarSign className="h-3.5 w-3.5" />}
                     status="info"
-                    summary={`Bridge ${fmt(bridging.totalCosts)} · Equity ${fmt(flip.totalEquityInvested)} · Mortgage ${fmt(mortgage.monthlyPayment)}/mo`}
+                    summary={`Bridge ${fmt(bridging.totalCosts)} · Equity ${fmt(displayStrategy?.totalEquityInvested ?? 0)} · Mortgage ${fmt(mortgage.monthlyPayment)}/mo`}
                     defaultOpen={false}
                   >
                     <div className="grid md:grid-cols-2 gap-6 text-sm">
@@ -1387,53 +1389,53 @@ export function OfferAnalysisPanel({
                         <div className="space-y-1.5">
                           <div className="flex justify-between">
                             <span className="text-gray-400">Deposit</span>
-                            <span className="font-medium">{fmt(flip.acquisitionCosts.deposit)}</span>
+                            <span className="font-medium">{fmt(displayStrategy?.acquisitionCosts.deposit ?? 0)}</span>
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-gray-400 flex items-center">
                               Stamp Duty
                               <MetricTooltipIcon tooltipKey="stampDuty" />
                             </span>
-                            <span className="font-medium">{fmt(flip.acquisitionCosts.stampDuty)}</span>
+                            <span className="font-medium">{fmt(displayStrategy?.acquisitionCosts.stampDuty ?? 0)}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-400">Solicitor / Searches</span>
                             <span className="font-medium">
                               {fmt(
-                                flip.acquisitionCosts.solicitorFees +
-                                flip.acquisitionCosts.searches +
-                                flip.acquisitionCosts.buildingControl
+                                (displayStrategy?.acquisitionCosts.solicitorFees ?? 0) +
+                                (displayStrategy?.acquisitionCosts.searches ?? 0) +
+                                (displayStrategy?.acquisitionCosts.buildingControl ?? 0)
                               )}
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-400">Acquisition Total</span>
-                            <span className="font-medium">{fmt(flip.acquisitionCosts.total)}</span>
+                            <span className="font-medium">{fmt(displayStrategy?.acquisitionCosts.total ?? 0)}</span>
                           </div>
                           <div className="border-t pt-1" />
                           <div className="flex justify-between">
                             <span className="text-gray-400">Refurbishment</span>
-                            <span className="font-medium">{fmt(flip.projectCosts.refurbishment)}</span>
+                            <span className="font-medium">{fmt(displayStrategy?.projectCosts.refurbishment ?? 0)}</span>
                           </div>
-                          {flip.projectCosts.contingency > 0 && (
+                          {(displayStrategy?.projectCosts.contingency ?? 0) > 0 && (
                             <div className="flex justify-between">
                               <span className="text-gray-400">Contingency</span>
-                              <span className="font-medium">{fmt(flip.projectCosts.contingency)}</span>
+                              <span className="font-medium">{fmt(displayStrategy?.projectCosts.contingency ?? 0)}</span>
                             </div>
                           )}
                           <div className="flex justify-between">
                             <span className="text-gray-400">Holding / Furnishing</span>
                             <span className="font-medium">
                               {fmt(
-                                flip.projectCosts.utilities +
-                                flip.projectCosts.councilTax +
-                                flip.projectCosts.furnishing
+                                (displayStrategy?.projectCosts.utilities ?? 0) +
+                                (displayStrategy?.projectCosts.councilTax ?? 0) +
+                                (displayStrategy?.projectCosts.furnishing ?? 0)
                               )}
                             </span>
                           </div>
                           <div className="flex justify-between border-t pt-1 font-semibold">
                             <span>Total Equity Invested</span>
-                            <span>{fmt(flip.totalEquityInvested)}</span>
+                            <span>{fmt(displayStrategy?.totalEquityInvested ?? 0)}</span>
                           </div>
                         </div>
                       </div>
