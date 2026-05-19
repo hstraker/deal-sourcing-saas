@@ -21,6 +21,7 @@ import {
   ArchiveBoxIcon,
   MegaphoneIcon,
   ChatBubbleLeftRightIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline"
 
 export const NAV_SECTIONS = [
@@ -34,6 +35,17 @@ export const NAV_SECTIONS = [
     icon: ChartBarIcon,
     title: "Invest",
     groups: [
+      {
+        label: "🧠 AI Coach",
+        items: [
+          {
+            label: "Negotiation Coach",
+            href: "/dashboard/negotiate",
+            icon: SparklesIcon,
+            tooltip: "AI-powered negotiation command centre — scripts, objection handlers, and live copilot for every active deal. Powered by Voss, Klaff & Dawson frameworks.",
+          },
+        ],
+      },
       {
         label: "Pipeline",
         items: [

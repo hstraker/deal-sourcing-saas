@@ -92,7 +92,7 @@ export async function POST(
           take: 12,
           select: {
             direction: true,
-            body: true,
+            messageBody: true,
             createdAt: true,
           },
         },
@@ -109,7 +109,7 @@ export async function POST(
     const conversationSnippet = lead.smsMessages
       .map((m) => {
         const who = m.direction === "outbound" ? "Sourcer" : "Vendor"
-        return `${who}: ${m.body}`
+        return `${who}: ${m.messageBody}`
       })
       .join("\n")
 
