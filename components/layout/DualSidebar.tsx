@@ -5,6 +5,7 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 import React, { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import {
   Bars3Icon,
   XMarkIcon,
@@ -158,11 +159,11 @@ function UserAccountMenu() {
         </span>
       </button>
 
-      {/* Dropdown — fixed so it escapes the sidebar's overflow-hidden */}
-      {open && (
+      {/* Dropdown — rendered via portal so it escapes the sidebar's stacking context */}
+      {open && typeof document !== "undefined" && createPortal(
         <>
           {/* Backdrop */}
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />
           <div
             className="fixed z-[9999] w-72 rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden"
             style={{ left: dropPos.left, bottom: dropPos.bottom }}
@@ -252,7 +253,8 @@ function UserAccountMenu() {
               </button>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   )
