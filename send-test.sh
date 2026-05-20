@@ -6,8 +6,8 @@ curl -X POST http://localhost:3000/api/facebook-leads/webhook \
     "isTest": true,
     "testScenario": "CLEAR_NEVER_LISTED",
     "field_data": [
-      { "name": "full_name",         "values": ["Henry Straker"] },
-      { "name": "phone_number",      "values": ["+447595354573"] },
+      { "name": "full_name",         "values": ["Henry Smith"] },
+      { "name": "phone_number",      "values": ["+4407595354573"] },
       { "name": "property_address",  "values": ["Victoria Road, Port Talbot"] },
       { "name": "property_postcode", "values": ["SA12 6AD"] },
       { "name": "email",             "values": ["henrystraker@gmail.com"] },
