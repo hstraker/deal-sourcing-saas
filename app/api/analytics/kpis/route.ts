@@ -13,7 +13,7 @@ function parseFromDate(url: string): Date | undefined {
 }
 
 // Stages that represent a dead/lost lead — excluded from "active" count
-const DEAD_STAGES = ["DEAD_LEAD", "OFFER_REJECTED"] as const
+const DEAD_STAGES = ["DEAD_LEAD", "OFFER_REJECTED"]
 
 export async function GET(request: NextRequest) {
   try {

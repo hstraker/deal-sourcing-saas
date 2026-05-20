@@ -149,7 +149,7 @@ function UserAccountMenu() {
         <>
           {/* Backdrop */}
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="fixed bottom-16 left-16 z-50 w-72 rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+          <div className="fixed bottom-4 left-[320px] z-[9999] w-72 rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
             {/* User info header */}
             <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
               <div className="flex items-center gap-3">
