@@ -37,7 +37,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   if (!photoId) return NextResponse.json({ error: "Missing photoId" }, { status: 400 })
 
   const photo = await prisma.propertyPhoto.findUnique({ where: { id: photoId } })
-  if (!photo || photo.vendorLeadId !== lead.id || photo.source !== "floorplan_upload") {
+  if (!photo || photo.vendorLeadId !== lead.id) {
     return NextResponse.json({ error: "Floorplan not found" }, { status: 404 })
   }
 
