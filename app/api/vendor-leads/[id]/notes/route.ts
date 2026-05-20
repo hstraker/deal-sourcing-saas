@@ -73,10 +73,7 @@ export async function POST(
   if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 })
 
   const user = session.user
-  const displayName =
-    [user.firstName, user.lastName].filter(Boolean).join(" ") ||
-    user.email ||
-    "Unknown"
+  const displayName = user.name || user.email || "Unknown"
 
   const note = await prisma.leadNote.create({
     data: {
