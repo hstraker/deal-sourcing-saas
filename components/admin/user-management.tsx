@@ -16,6 +16,8 @@ import {
   DollarSign,
   Settings,
   Telescope,
+  KeyRound,
+  Clock,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -537,6 +539,7 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
     email: string
   } | null>(null)
   const [resendingId, setResendingId] = useState<string | null>(null)
+  const [sendingResetId, setSendingResetId] = useState<string | null>(null)
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -590,6 +593,19 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
       toast.error(err instanceof Error ? err.message : "Failed to resend invite")
     } finally {
       setResendingId(null)
+    }
+  }
+
+  const handleSendReset = async (user: StaffUser) => {
+    setSendingResetId(user.id)
+    try {
+      const res = await fetch(`/api/users/${user.id}/send-reset`, { method: "POST" })
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Failed")
+      toast.success(`Password reset email sent to ${user.email}`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send reset email")
+    } finally {
+      setSendingResetId(null)
     }
   }
 
@@ -716,15 +732,30 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
 
                       {/* Last Login */}
                       <td className="table-cell text-sm text-gray-500">
-                        {user.isPending
-                          ? "—"
-                          : user.lastLogin
-                          ? new Date(user.lastLogin).toLocaleDateString("en-GB", {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                            })
-                          : "Never"}
+                        {user.isPending ? (
+                          <span className="text-gray-300">—</span>
+                        ) : user.lastLogin ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="flex items-center gap-1 cursor-default">
+                                <Clock className="h-3 w-3 text-gray-300" />
+                                {(() => {
+                                  const diff = Date.now() - new Date(user.lastLogin).getTime()
+                                  const m = Math.floor(diff / 60000)
+                                  if (m < 60) return `${m}m ago`
+                                  const h = Math.floor(m / 60)
+                                  if (h < 24) return `${h}h ago`
+                                  return `${Math.floor(h / 24)}d ago`
+                                })()}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {new Date(user.lastLogin).toLocaleString("en-GB")}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <span className="text-gray-300">Never logged in</span>
+                        )}
                       </td>
 
                       {/* Actions */}
@@ -746,7 +777,27 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
                                   )}
                                 </button>
                               </TooltipTrigger>
-                              <TooltipContent>Resend invite</TooltipContent>
+                              <TooltipContent>Resend invite email</TooltipContent>
+                            </Tooltip>
+                          )}
+
+                          {/* Send password reset — only for active (non-pending) users */}
+                          {!user.isPending && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  className="rounded p-1.5 text-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-colors disabled:opacity-40"
+                                  onClick={() => handleSendReset(user)}
+                                  disabled={sendingResetId === user.id}
+                                >
+                                  {sendingResetId === user.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <KeyRound className="h-3.5 w-3.5" />
+                                  )}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>Send password reset email</TooltipContent>
                             </Tooltip>
                           )}
 
@@ -759,7 +810,7 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
                             </TooltipTrigger>
-                            <TooltipContent>Edit</TooltipContent>
+                            <TooltipContent>Edit user</TooltipContent>
                           </Tooltip>
 
                           <Tooltip>
@@ -773,7 +824,7 @@ export function UserManagement({ currentUserId }: { currentUserId: string }) {
                               </button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              {isSelf ? "Cannot remove yourself" : "Remove"}
+                              {isSelf ? "Cannot remove yourself" : "Remove user"}
                             </TooltipContent>
                           </Tooltip>
                         </div>

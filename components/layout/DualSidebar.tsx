@@ -89,23 +89,156 @@ function CompanyName() {
   return <>{name}</>
 }
 
-// ── UserAvatar: uses NextAuth session ──────────────────────────────────────
+// ── UserAccountMenu: avatar + dropdown ────────────────────────────────────
 
-function UserAvatar() {
+function UserAccountMenu() {
   const { data: session } = useSession()
-  const name = session?.user?.name || session?.user?.email || "U"
-  const initials = name.charAt(0).toUpperCase()
+  const [open, setOpen] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const userId = (session?.user as any)?.id as string | undefined
+
+  // Fetch profile picture once session is ready
+  useEffect(() => {
+    if (!userId) return
+    fetch(`/api/users/${userId}/profile-picture/url`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.url) setAvatarUrl(d.url) })
+      .catch(() => {})
+  }, [userId])
+
+  const name     = session?.user?.name || session?.user?.email || "My Account"
+  const email    = session?.user?.email || ""
+  const role     = (session?.user as any)?.role as string | undefined
+  const initials = name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()
+
+  const ROLE_COLOURS: Record<string, string> = {
+    admin:    "bg-purple-100 text-purple-700",
+    sourcer:  "bg-blue-100 text-blue-700",
+    investor: "bg-green-100 text-green-700",
+  }
+  const roleColour = role ? (ROLE_COLOURS[role] ?? "bg-gray-100 text-gray-600") : ""
 
   return (
-    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0">
-      <span className="text-white text-xs font-semibold">{initials}</span>
+    <div className="relative">
+      {/* Trigger */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2.5 px-2 py-2 w-full rounded-lg hover:bg-white/10 transition-colors"
+      >
+        {/* Avatar orb */}
+        <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-white/20">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
+              <span className="text-white text-xs font-semibold">{initials}</span>
+            </div>
+          )}
+        </div>
+        <span className="
+          text-sm font-medium text-gray-300 whitespace-nowrap truncate
+          opacity-100 md:opacity-0 md:group-hover:opacity-100
+          transition-opacity duration-150 delay-75
+        ">
+          {name}
+        </span>
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <>
+          {/* Backdrop */}
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute bottom-full left-0 mb-2 z-50 w-64 rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+            {/* User info header */}
+            <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-gray-200">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
+                      <span className="text-white text-sm font-bold">{initials}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{name}</p>
+                  <p className="text-xs text-gray-500 truncate">{email}</p>
+                </div>
+              </div>
+              {role && (
+                <span className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-semibold capitalize ${roleColour}`}>
+                  {role}
+                </span>
+              )}
+            </div>
+
+            {/* Menu items */}
+            <div className="py-1">
+              <Link href="/dashboard/account"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50">
+                  <svg className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-medium">My Account</p>
+                  <p className="text-xs text-gray-400">Profile, password & preferences</p>
+                </div>
+              </Link>
+
+              {role === "admin" && (
+                <Link href="/dashboard/admin/users"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-50">
+                    <svg className="h-4 w-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium">Manage Users</p>
+                    <p className="text-xs text-gray-400">Invite, edit roles & permissions</p>
+                  </div>
+                </Link>
+              )}
+
+              <Link href="/dashboard/settings"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100">
+                  <svg className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-medium">Settings</p>
+                  <p className="text-xs text-gray-400">App preferences & configuration</p>
+                </div>
+              </Link>
+            </div>
+
+            {/* Sign out */}
+            <div className="border-t border-gray-100 py-1">
+              <button
+                onClick={() => { setOpen(false); signOut({ callbackUrl: "/login" }) }}
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50">
+                  <ArrowRightStartOnRectangleIcon className="h-4 w-4 text-red-500" />
+                </div>
+                <span className="font-medium">Sign out</span>
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
-}
-
-function UserName() {
-  const { data: session } = useSession()
-  return <>{session?.user?.name || session?.user?.email || "My Account"}</>
 }
 
 // ── DualSidebar ────────────────────────────────────────────────────────────
@@ -338,18 +471,7 @@ export default function DualSidebar({ mobileNavOpen, setMobileNavOpen }: DualSid
             </span>
           </button>
 
-          <div className="flex items-center gap-2.5 px-2 py-2">
-            <UserAvatar />
-            <span
-              className="
-                text-sm font-medium text-gray-300 whitespace-nowrap truncate
-                opacity-100 md:opacity-0 md:group-hover:opacity-100
-                transition-opacity duration-150 delay-75
-              "
-            >
-              <UserName />
-            </span>
-          </div>
+          <UserAccountMenu />
         </div>
       </aside>
 

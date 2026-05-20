@@ -251,6 +251,8 @@ model User {
   lastName                  String?   @map("last_name")
   phone                     String?
   profilePictureS3Key       String?   @map("profile_picture_s3_key")
+  bio                       String?   @db.Text
+  timezone                  String?   @default("Europe/London")
   createdAt                 DateTime  @default(now()) @map("created_at")
   lastLogin                 DateTime? @map("last_login")
   isActive                  Boolean   @default(true) @map("is_active")
