@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useSidebar } from "@/context/SidebarContext"
-import DualSidebar from "./DualSidebar"
+import DualSidebar, { UserAccountMenu } from "./DualSidebar"
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { secondaryOpen } = useSidebar()
@@ -10,8 +10,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[#F4F5F7]">
-      {/* Mobile overlay — semi-transparent backdrop behind the sidebar on small screens.
-          Tapping it closes the nav. Hidden on md+ where the sidebar is always visible. */}
+      {/* Mobile overlay */}
       <div
         className={`fixed inset-0 z-20 bg-black/50 md:hidden transition-opacity duration-300 ${
           mobileNavOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
@@ -21,13 +20,22 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <DualSidebar mobileNavOpen={mobileNavOpen} setMobileNavOpen={setMobileNavOpen} />
 
+      {/* Top header bar — sits above main content, shifts with sidebar */}
+      <header
+        className={`fixed top-0 right-0 z-30 h-14 flex items-center justify-end px-4 gap-3 transition-all duration-300 ml-0 ${
+          secondaryOpen ? "md:left-[316px]" : "md:left-14"
+        }`}
+      >
+        <UserAccountMenu />
+      </header>
+
       <main
         className={`min-h-screen transition-all duration-300 ml-0 ${
           secondaryOpen ? "md:ml-[316px]" : "md:ml-14"
         }`}
       >
-        {/* p-4 on mobile, p-8 on md+ — preserves desktop layout */}
-        <div className="p-4 md:p-8">{children}</div>
+        {/* pt-14 to clear the header, p-4 on mobile, p-8 on md+ */}
+        <div className="pt-14 p-4 md:p-8 md:pt-[4.5rem]">{children}</div>
       </main>
     </div>
   )
