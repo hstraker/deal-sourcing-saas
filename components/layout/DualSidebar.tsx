@@ -4,7 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import {
   Bars3Icon,
   XMarkIcon,
@@ -95,6 +95,8 @@ function UserAccountMenu() {
   const { data: session } = useSession()
   const [open, setOpen] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [dropPos, setDropPos] = useState<{ left: number; bottom: number }>({ left: 0, bottom: 0 })
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const userId = (session?.user as any)?.id as string | undefined
 
   // Fetch profile picture once session is ready
@@ -118,11 +120,23 @@ function UserAccountMenu() {
   }
   const roleColour = role ? (ROLE_COLOURS[role] ?? "bg-gray-100 text-gray-600") : ""
 
+  const handleToggle = () => {
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setDropPos({
+        left: rect.right + 8,
+        bottom: window.innerHeight - rect.bottom,
+      })
+    }
+    setOpen(v => !v)
+  }
+
   return (
     <div className="relative">
       {/* Trigger */}
       <button
-        onClick={() => setOpen(v => !v)}
+        ref={triggerRef}
+        onClick={handleToggle}
         className="flex items-center gap-2.5 px-2 py-2 w-full rounded-lg hover:bg-white/10 transition-colors"
       >
         {/* Avatar orb */}
@@ -149,7 +163,10 @@ function UserAccountMenu() {
         <>
           {/* Backdrop */}
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="fixed bottom-4 left-[320px] z-[9999] w-72 rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+          <div
+            className="fixed z-[9999] w-72 rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden"
+            style={{ left: dropPos.left, bottom: dropPos.bottom }}
+          >
             {/* User info header */}
             <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
               <div className="flex items-center gap-3">
