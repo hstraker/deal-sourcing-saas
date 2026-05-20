@@ -54,7 +54,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       const photo = await prisma.propertyPhoto.create({
         data: {
           vendorLeadId: lead.id,
-          source: "floorplan_upload",
+          source: "vendor_upload",
           s3Key,
           url: getPublicUrl(s3Key),
           filename,
@@ -82,7 +82,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   if (!photoId) return NextResponse.json({ error: "Missing photoId" }, { status: 400 })
 
   const photo = await prisma.propertyPhoto.findUnique({ where: { id: photoId } })
-  if (!photo || photo.vendorLeadId !== params.id || photo.source !== "floorplan_upload") {
+  if (!photo || photo.vendorLeadId !== params.id) {
     return NextResponse.json({ error: "Floorplan not found" }, { status: 404 })
   }
 
