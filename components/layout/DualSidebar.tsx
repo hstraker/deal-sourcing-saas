@@ -144,12 +144,12 @@ function UserAccountMenu() {
         </span>
       </button>
 
-      {/* Dropdown */}
+      {/* Dropdown — fixed so it escapes the sidebar's overflow-hidden */}
       {open && (
         <>
           {/* Backdrop */}
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute bottom-full left-0 mb-2 z-50 w-64 rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+          <div className="fixed bottom-16 left-16 z-50 w-72 rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
             {/* User info header */}
             <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
               <div className="flex items-center gap-3">
