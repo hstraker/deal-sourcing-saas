@@ -39,7 +39,7 @@ export async function GET(_request: NextRequest) {
           photos: {
             where: { isCover: true },
             take: 1,
-            select: { url: true, s3Key: true },
+            select: { s3Url: true, s3Key: true },
           },
         },
       },
