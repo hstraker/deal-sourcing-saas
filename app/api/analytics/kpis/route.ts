@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
+import { PipelineStage } from "@prisma/client"
 
 function parseFromDate(url: string): Date | undefined {
   const { searchParams } = new URL(url)
@@ -13,7 +14,7 @@ function parseFromDate(url: string): Date | undefined {
 }
 
 // Stages that represent a dead/lost lead — excluded from "active" count
-const DEAD_STAGES = ["DEAD_LEAD", "OFFER_REJECTED"]
+const DEAD_STAGES: PipelineStage[] = ["DEAD_LEAD", "OFFER_REJECTED"]
 
 export async function GET(request: NextRequest) {
   try {
