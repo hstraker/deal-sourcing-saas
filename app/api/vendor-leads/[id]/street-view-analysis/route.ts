@@ -165,7 +165,7 @@ export async function POST(
     const raw = response.content[0].type === "text" ? response.content[0].text : ""
     const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim()
 
-    let analysis: unknown
+    let analysis: any
     try {
       analysis = JSON.parse(cleaned)
     } catch {
@@ -177,7 +177,7 @@ export async function POST(
     await prisma.vendorLead.update({
       where: { id: params.id },
       data: {
-        streetViewAnalysis: analysis as Record<string, unknown>,
+        streetViewAnalysis: analysis,
         streetViewAnalysedAt: new Date(),
       },
     })
