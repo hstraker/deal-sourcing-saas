@@ -438,25 +438,6 @@ export default function DualSidebar({ mobileNavOpen, setMobileNavOpen }: DualSid
           ))}
         </div>
 
-        {/* Sign out */}
-        <div className="border-t border-[var(--sidebar-border)] mt-2 pt-2 px-2 min-w-[200px]">
-          <button
-            type="button"
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            className="flex items-center gap-3 w-full px-2 py-2 rounded-xl text-gray-400 hover:bg-[var(--sidebar-hover)] hover:text-white transition-all duration-150"
-          >
-            <ArrowRightStartOnRectangleIcon className="w-5 h-5 flex-shrink-0" />
-            <span
-              className="
-                text-sm whitespace-nowrap
-                opacity-100 md:opacity-0 md:group-hover:opacity-100
-                transition-opacity duration-150 delay-75
-              "
-            >
-              Sign Out
-            </span>
-          </button>
-        </div>
       </aside>
 
       {/* ═══════════════════════════════════════════════════
