@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
+import dynamic from "next/dynamic"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
@@ -23,6 +23,7 @@ import {
   Search,
   LayoutGrid,
   Table2,
+  Map,
   Check,
   X,
   Trash2,
@@ -42,8 +43,18 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { PropertyDetailModal } from "./property-detail-modal"
-import { PropertyReviewCard } from "./property-review-card"
+import { PropertyCard } from "./property-card"
 import type { PropertyListingForClient, BmvIndicatorsData } from "@/types/property-listing"
+
+// Leaflet requires the browser — load with ssr:false
+const PropertyMap = dynamic(
+  () => import("./property-map").then((m) => m.PropertyMap),
+  { ssr: false, loading: () => (
+    <div className="w-full h-full flex items-center justify-center bg-gray-50 rounded-xl">
+      <Loader2 className="h-6 w-6 animate-spin text-gray-300" />
+    </div>
+  )},
+)
 
 const LIMIT = 20
 
@@ -76,7 +87,7 @@ const STATUS_LABELS: Record<string, string> = {
   REJECTED:     "Rejected",
 }
 
-type ViewMode = "table" | "grid"
+type ViewMode = "table" | "grid" | "map"
 type SortField = "scrapedAt" | "price" | "daysOnMarket" | "title" | "bedrooms" | "propertyType"
 
 interface Filters {
@@ -104,6 +115,7 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
   const [loading, setLoading] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>("table")
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [mapSelectedId, setMapSelectedId] = useState<string | null>(null)
   const [sortField, setSortField] = useState<SortField>("scrapedAt")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
   const [filters, setFilters] = useState<Filters>({ search: "", source: "", reviewStatus: "", category: "", favoritesOnly: false })
@@ -394,6 +406,13 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
               >
                 <LayoutGrid className="h-3.5 w-3.5" /> Grid
               </button>
+              <button
+                type="button"
+                className={`flex items-center gap-1 px-2.5 py-1.5 text-xs transition-colors border-l border-[var(--ds-border)] ${viewMode === "map" ? "bg-[#1A1A1F] text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
+                onClick={() => setViewMode("map")}
+              >
+                <Map className="h-3.5 w-3.5" /> Map
+              </button>
             </div>
           </div>
         </div>
@@ -666,21 +685,95 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {listings.map(listing => (
-              <PropertyReviewCard
+              <PropertyCard
                 key={listing.id}
                 listing={listing}
-                onApprove={id => handleReview(id, "APPROVED")}
-                onReject={id => handleReview(id, "REJECTED")}
-                onViewDetails={() => setSelectedListing(listing)}
-                isSubmitting={submittingIds.has(listing.id)}
+                isSelected={selectedListing?.id === listing.id}
+                onSelect={(l) => setSelectedListing(l)}
+                onFavorite={toggleFavorite}
+                onAddToPipeline={(l) => setSelectedListing(l)}
               />
             ))}
           </div>
         )
       )}
 
-      {/* ── Pagination ── */}
-      {pagination.totalPages > 1 && (
+      {/* ── Map View — split pane ── */}
+      {viewMode === "map" && (
+        <div
+          className="flex gap-4 overflow-hidden rounded-xl"
+          style={{ height: "calc(100vh - 280px)", minHeight: 500 }}
+        >
+          {/* Left: scrollable card list */}
+          <div className="w-[380px] flex-shrink-0 overflow-y-auto space-y-3 pr-1">
+            {loading ? (
+              <div className="flex items-center justify-center py-16 text-gray-400">
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                Loading…
+              </div>
+            ) : listings.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center text-gray-400">
+                <p className="text-sm">No properties found</p>
+              </div>
+            ) : (
+              listings.map((listing) => (
+                <PropertyCard
+                  key={listing.id}
+                  listing={listing}
+                  isSelected={mapSelectedId === listing.id}
+                  compact
+                  onSelect={(l) => {
+                    setMapSelectedId(l.id)
+                    setSelectedListing(l)
+                  }}
+                  onFavorite={toggleFavorite}
+                  onAddToPipeline={(l) => setSelectedListing(l)}
+                />
+              ))
+            )}
+
+            {/* Load more / pagination for map mode */}
+            {pagination.totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 py-3">
+                <Button
+                  variant="outline" size="sm"
+                  disabled={pagination.page <= 1}
+                  onClick={() => fetchListings(pagination.page - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-xs text-gray-500">
+                  {pagination.page} / {pagination.totalPages}
+                </span>
+                <Button
+                  variant="outline" size="sm"
+                  disabled={pagination.page >= pagination.totalPages}
+                  onClick={() => fetchListings(pagination.page + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Right: Leaflet map */}
+          <div className="flex-1 min-w-0">
+            <PropertyMap
+              listings={listings}
+              selectedId={mapSelectedId}
+              onSelect={(id) => {
+                setMapSelectedId(id)
+                const l = listings.find((x) => x.id === id)
+                if (l) setSelectedListing(l)
+              }}
+              className="h-full"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── Pagination (table + grid only) ── */}
+      {viewMode !== "map" && pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-400" suppressHydrationWarning>
             Showing {((pagination.page - 1) * LIMIT) + 1}–{Math.min(pagination.page * LIMIT, pagination.total)} of {pagination.total.toLocaleString()}
