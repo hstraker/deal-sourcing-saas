@@ -359,10 +359,10 @@ export function NotificationBell() {
         ref={btnRef}
         data-notif-btn=""
         onClick={handleToggle}
-        className="relative flex items-center justify-center w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 transition-colors"
+        className="relative flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 ring-2 ring-gray-200 hover:ring-blue-400 transition-all focus:outline-none"
         aria-label="Notifications"
       >
-        <Bell className="w-4 h-4 text-white" />
+        <Bell className="w-4 h-4 text-gray-600" />
         {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-[9px] font-bold text-white leading-none">
             {unreadCount > 99 ? "99+" : unreadCount}
