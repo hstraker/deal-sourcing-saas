@@ -270,6 +270,7 @@ model User {
   comparablesConfig   ComparablesConfig?
   sourcingAlerts      SourcingAlert[]
   notificationPrefs   NotificationPreference?
+  notifications       Notification[]
   watchlist           WatchlistProperty[]
   theme               UserTheme?
 
@@ -2079,6 +2080,39 @@ model ScrapedPhoto {
 
   @@index([propertyListingId])
   @@map("scraped_photos")
+}
+
+// ============================================================================
+// IN-APP NOTIFICATIONS
+// ============================================================================
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Type & grouping
+  type      String   // stuck_lead | lr_stale | lr_import | alert_match | vendor_reply | offer_accepted | offer_rejected | high_distress | price_reduction
+  category  String   // lead | data | ai | team
+
+  // Content
+  title     String
+  body      String   @db.Text
+  link      String?  // Deep-link path (e.g. /vendor-pipeline?lead=xxx)
+
+  // State
+  read      Boolean  @default(false)
+  meta      Json?    @default("{}") // Type-specific payload
+
+  // Deduplication — prevents duplicate notifications per user
+  dedupeKey String?  @map("dedupe_key")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, read])
+  @@index([userId, createdAt])
+  @@map("notifications")
 }
 
 // ============================================================================

@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useSidebar } from "@/context/SidebarContext"
 import DualSidebar, { UserAccountMenu } from "./DualSidebar"
+import { NotificationBell }             from "./NotificationBell"
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { secondaryOpen } = useSidebar()
@@ -26,6 +27,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           secondaryOpen ? "md:left-[316px]" : "md:left-14"
         }`}
       >
+        <NotificationBell />
         <UserAccountMenu />
       </header>
 
