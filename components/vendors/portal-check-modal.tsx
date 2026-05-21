@@ -12,12 +12,13 @@ import { getPipelineStageVarKey } from "@/lib/theme/status-colors"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { ModalShell } from "./modal-shell"
 import { PortalCheckDetailPanel, FloodRiskCard } from "./portal-check-detail-panel"
+import { PropertyHistoryTab } from "./property-history-tab"
 import type { VendorLead } from "./vendor-leads-table"
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
 type RiskLevel = "clear" | "caution" | "red_flag"
-type Tab = "risk" | "flood" | "ownership" | "leasehold" | "activity"
+type Tab = "risk" | "flood" | "ownership" | "leasehold" | "activity" | "history"
 
 // ─── risk config ──────────────────────────────────────────────────────────────
 
@@ -1442,6 +1443,7 @@ export function PortalCheckModal({
     { id: "flood",     label: "Flood Risk", dot: floodDot },
     { id: "ownership", label: "Ownership" },
     { id: "leasehold", label: "Leasehold", dot: showLeaseholdWarning ? (lhYears && lhYears < 70 ? "bg-red-500" : "bg-amber-400") : undefined },
+    { id: "history",   label: "History" },
     { id: "activity",  label: "Activity" },
   ]
 
@@ -1500,6 +1502,14 @@ export function PortalCheckModal({
         )}
         {activeTab === "leasehold" && (
           <LeaseholdTab lead={lead} onSaved={onRiskUpdated ? () => onRiskUpdated(lead.latestCheckRisk, lead.latestCheckedAt ?? null) : undefined} />
+        )}
+        {activeTab === "history" && (
+          <PropertyHistoryTab
+            leadId={lead.id}
+            postcode={lead.propertyPostcode ?? ""}
+            address={lead.propertyAddress ?? ""}
+            cachedData={(lead as any).propertyHistory ?? null}
+          />
         )}
         {activeTab === "activity" && (
           <HistoryTab lead={lead} />

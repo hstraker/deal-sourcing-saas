@@ -253,6 +253,9 @@ export interface VendorLead {
     }
   } | null
   negotiationCoachAt?: string | null
+  // Property History Intelligence (cached)
+  propertyHistory?:   Record<string, unknown> | null
+  propertyHistoryAt?: string | null
 }
 
 type TabId = "map-view" | "property-details" | "portal-check" | "validation" | "comparable" | "offer-analysis" | "ai-conversation" | "photo-analysis"
