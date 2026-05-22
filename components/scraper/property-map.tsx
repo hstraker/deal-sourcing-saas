@@ -97,6 +97,15 @@ export function PropertyMap({ listings, selectedId, onSelect, className = "" }: 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
 
+    // React StrictMode mounts → unmounts → mounts. The first unmount calls
+    // map.remove() which destroys the Leaflet instance but leaves _leaflet_id
+    // on the DOM node, causing "Map container is already initialized" on the
+    // second mount. Wipe the stale id so Leaflet treats it as a fresh container.
+    const container = containerRef.current as any
+    if (container._leaflet_id) {
+      delete container._leaflet_id
+    }
+
     import("leaflet").then((L) => {
       // Fix webpack icon resolution
       delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -175,7 +184,7 @@ export function PropertyMap({ listings, selectedId, onSelect, className = "" }: 
 
     return () => {
       if (mapRef.current) {
-        mapRef.current.remove()
+        try { mapRef.current.remove() } catch { /* ignore */ }
         mapRef.current    = null
         markersRef.current = {}
       }
