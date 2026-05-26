@@ -26,6 +26,12 @@ export async function GET(request: NextRequest) {
     const sortDirection = (searchParams.get("sortDirection") || "desc") as "asc" | "desc"
     const favoritesOnly = searchParams.get("favoritesOnly") === "true"
 
+    // Phase 1 Discover filters
+    const jurisdiction   = searchParams.get("jurisdiction")   // "WALES" | "ENGLAND"
+    const trackerStage   = searchParams.get("trackerStage")   // "watchlist" | "viewing" | "offer" | "rejected"
+    const minMotivation  = searchParams.get("minMotivation")  // number string
+    const signals        = searchParams.getAll("signal")      // e.g. "probate","auction","repossession"
+
     // Build where clause
     const where: any = {}
 
@@ -34,6 +40,32 @@ export async function GET(request: NextRequest) {
     if (reviewStatus) where.reviewStatus = reviewStatus
     if (status) where.status = status
     if (favoritesOnly) where.isFavorited = true
+    if (jurisdiction) {
+      where.jurisdiction = jurisdiction
+    }
+    if (trackerStage === "none") {
+      where.trackerStage = null
+    } else if (trackerStage) {
+      where.trackerStage = trackerStage
+    }
+    if (minMotivation) {
+      where.motivationScore = { gte: parseInt(minMotivation) }
+    }
+    // Signal chip filters — map to bmvIndicators JSON fields via raw Prisma conditions
+    if (signals.length > 0) {
+      const signalConditions: any[] = []
+      if (signals.includes("probate"))      signalConditions.push({ bmvIndicators: { path: ["isProbate"],        equals: true } })
+      if (signals.includes("auction"))      signalConditions.push({ bmvIndicators: { path: ["isAuction"],        equals: true } })
+      if (signals.includes("repossession")) signalConditions.push({ bmvIndicators: { path: ["isRepossession"],   equals: true } })
+      if (signals.includes("cash-only"))    signalConditions.push({ bmvIndicators: { path: ["isCashBuyersOnly"], equals: true } })
+      if (signals.includes("reduced"))      signalConditions.push({ bmvIndicators: { path: ["hasReduction"],     equals: true } })
+      if (signals.includes("chain-free"))   signalConditions.push({ isChainFree: true })
+      if (signals.includes("new-build"))    signalConditions.push({ isNewBuild:  true })
+      if (signals.includes("welsh"))        signalConditions.push({ isWelsh: true })
+      if (signalConditions.length > 0) {
+        where.AND = [...(where.AND ?? []), ...signalConditions]
+      }
+    }
     if (search) {
       where.OR = [
         { title: { contains: search, mode: "insensitive" } },
@@ -42,13 +74,14 @@ export async function GET(request: NextRequest) {
     }
 
     const validSortFields: Record<string, string> = {
-      scrapedAt: "scrapedAt",
-      price: "price",
-      daysOnMarket: "daysOnMarket",
-      title: "title",
-      listedDate: "listedDate",
-      bedrooms: "bedrooms",
-      propertyType: "propertyType",
+      scrapedAt:       "scrapedAt",
+      price:           "price",
+      daysOnMarket:    "daysOnMarket",
+      title:           "title",
+      listedDate:      "listedDate",
+      bedrooms:        "bedrooms",
+      propertyType:    "propertyType",
+      motivationScore: "motivationScore",
     }
     const orderByField = validSortFields[sortField] || "scrapedAt"
     const orderBy = { [orderByField]: sortDirection }

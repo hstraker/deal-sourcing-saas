@@ -4,6 +4,9 @@ import { USER_AGENTS, RIGHTMOVE_SELECTORS } from "./constants"
 import { detectBmvIndicators, detectAmbiguity } from "./bmv-detector"
 import { computeChecksum } from "./checksum"
 import { enrichPropertyWithOwnership, resolvePostcodeFromAddress } from "../land-registry"
+import { computeMotivationScore } from "../motivation-scorer"
+import { computeStrategyViability } from "../strategy-viability"
+import { detectWelshJurisdiction } from "../welsh-detection"
 import type {
   ScraperCriteria,
   ScrapedProperty,
@@ -470,6 +473,37 @@ export abstract class BaseScraper {
       }
     }
 
+    // ── Phase 1 Discover — compute on ingest ──────────────────────────────────
+    const { isWelsh, jurisdiction } = detectWelshJurisdiction(property.address?.postcode)
+
+    const { motivationScore, motivationSignals } = computeMotivationScore({
+      price:         property.price,
+      priceHistory:  (property.priceHistory ?? []) as any,
+      bmvIndicators: property.bmvIndicators as any,
+      epcRating:     property.epcRating,
+      isChainFree:   property.isChainFree,
+      keyFeatures:   property.keyFeatures ?? [],
+      daysOnMarket:  property.daysOnMarket,
+      listedDate:    property.listedDate instanceof Date
+        ? property.listedDate.toISOString()
+        : property.listedDate ?? null,
+    })
+
+    const strategyViability = computeStrategyViability({
+      price:               property.price,
+      bedrooms:            property.bedrooms,
+      propertyType:        property.propertyType,
+      epcRating:           property.epcRating,
+      isChainFree:         property.isChainFree,
+      tenure:              property.tenure,
+      leaseYearsRemaining: property.leaseYearsRemaining,
+      daysOnMarket:        property.daysOnMarket,
+      bmvIndicators:       property.bmvIndicators as any,
+      isWelsh,
+      keyFeatures:         property.keyFeatures ?? [],
+    })
+    // ─────────────────────────────────────────────────────────────────────────
+
     const created = await prisma.propertyListing.create({
       data: {
         sourceId: property.sourceId,
@@ -509,6 +543,12 @@ export abstract class BaseScraper {
         leaseYearsRemaining: property.leaseYearsRemaining,
         groundRent: property.groundRent,
         serviceCharge: property.serviceCharge,
+        // Phase 1 Discover
+        motivationScore,
+        motivationSignals: motivationSignals as any,
+        isWelsh,
+        jurisdiction,
+        strategyViability: strategyViability as any,
       },
     })
 

@@ -1622,6 +1622,20 @@ model PropertyListing {
   isAmbiguous     Boolean          @default(false) @map("is_ambiguous")
   ambiguityReasons Json            @default("[]") @map("ambiguity_reasons")
 
+  // ── Motivation scoring (Phase 2 Discover) ─────────────────────────────────
+  motivationScore   Int?            @default(0)  @map("motivation_score")  // 0-100
+  motivationSignals Json?           @default("[]") @map("motivation_signals") // [{name, points}]
+
+  // ── Welsh / jurisdiction ────────────────────────────────────────────────────
+  isWelsh           Boolean         @default(false) @map("is_welsh")
+  jurisdiction      String?         // "WALES" | "ENGLAND"
+
+  // ── Strategy viability (quick check, no API call required) ─────────────────
+  strategyViability Json?           @default("{}") @map("strategy_viability") // {btl, brrr, hmo, flip}
+
+  // ── Investor tracker stage ─────────────────────────────────────────────────
+  trackerStage      String?         @map("tracker_stage") // null | watchlist | viewing | offer | rejected
+
   // Review queue
   reviewStatus    ReviewStatus     @default(PENDING) @map("review_status")
   reviewNotes     String?          @map("review_notes") @db.Text

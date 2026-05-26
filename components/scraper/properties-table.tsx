@@ -46,6 +46,18 @@ import { PropertyDetailModal } from "./property-detail-modal"
 import { PropertyCard } from "./property-card"
 import type { PropertyListingForClient, BmvIndicatorsData } from "@/types/property-listing"
 
+// ── Signal chip definitions ───────────────────────────────────────────────────
+const SIGNAL_CHIPS = [
+  { id: "probate",       label: "Probate",       style: "bg-purple-100 text-purple-700 border-purple-200" },
+  { id: "auction",       label: "Auction",        style: "bg-rose-100 text-rose-700 border-rose-200" },
+  { id: "repossession",  label: "Repossession",   style: "bg-red-100 text-red-700 border-red-200" },
+  { id: "reduced",       label: "Price Reduced",  style: "bg-pink-100 text-pink-700 border-pink-200" },
+  { id: "cash-only",     label: "Cash Only",      style: "bg-gray-100 text-gray-700 border-gray-200" },
+  { id: "chain-free",    label: "Chain Free",     style: "bg-teal-100 text-teal-700 border-teal-200" },
+  { id: "new-build",     label: "New Build",      style: "bg-sky-100 text-sky-700 border-sky-200" },
+  { id: "welsh",         label: "🏴󠁧󠁢󠁷󠁬󠁳󠁿 Wales",       style: "bg-red-50 text-red-700 border-red-200" },
+] as const
+
 // Leaflet requires the browser — load with ssr:false
 const PropertyMap = dynamic(
   () => import("./property-map").then((m) => m.PropertyMap),
@@ -88,7 +100,7 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 type ViewMode = "table" | "grid" | "map"
-type SortField = "scrapedAt" | "price" | "daysOnMarket" | "title" | "bedrooms" | "propertyType"
+type SortField = "scrapedAt" | "price" | "daysOnMarket" | "title" | "bedrooms" | "propertyType" | "motivationScore"
 
 interface Filters {
   search: string
@@ -96,6 +108,9 @@ interface Filters {
   reviewStatus: string
   category: string
   favoritesOnly: boolean
+  signals: string[]         // active signal chip IDs
+  minMotivation: string     // "0" | "20" | "45" | "70"
+  jurisdiction: string      // "" | "WALES" | "ENGLAND"
 }
 
 interface PaginationInfo {
@@ -118,7 +133,11 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
   const [mapSelectedId, setMapSelectedId] = useState<string | null>(null)
   const [sortField, setSortField] = useState<SortField>("scrapedAt")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
-  const [filters, setFilters] = useState<Filters>({ search: "", source: "", reviewStatus: "", category: "", favoritesOnly: false })
+  const [filters, setFilters] = useState<Filters>({
+    search: "", source: "", reviewStatus: "", category: "",
+    favoritesOnly: false, signals: [], minMotivation: "", jurisdiction: "",
+  })
+  const [newSinceYesterday, setNewSinceYesterday] = useState(0)
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [selectedListing, setSelectedListing] = useState<PropertyListingForClient | null>(null)
   const [submittingIds, setSubmittingIds] = useState<Set<string>>(new Set())
@@ -142,6 +161,9 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
       if (filters.reviewStatus) params.set("reviewStatus", filters.reviewStatus)
       if (filters.category) params.set("category", filters.category)
       if (filters.favoritesOnly) params.set("favoritesOnly", "true")
+      if (filters.minMotivation) params.set("minMotivation", filters.minMotivation)
+      if (filters.jurisdiction) params.set("jurisdiction", filters.jurisdiction)
+      filters.signals.forEach(s => params.append("signal", s))
 
       const res = await fetch(`/api/properties/listings?${params}`)
       const data = await res.json()
@@ -149,6 +171,14 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
         setListings(data.listings)
         setPagination({ page: pageNum, total: data.pagination.total, totalPages: data.pagination.totalPages })
         setSelectedIds(new Set())
+        // Alert banner: how many scraped in last 24 hours
+        if (pageNum === 1) {
+          const yesterday = new Date(Date.now() - 86_400_000).toISOString()
+          const newCount = (data.listings as PropertyListingForClient[]).filter(
+            (l: PropertyListingForClient) => l.scrapedAt > yesterday
+          ).length
+          setNewSinceYesterday(newCount)
+        }
       }
     } catch {
       toast.error("Failed to load properties")
@@ -156,7 +186,7 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
       setLoading(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortField, sortDirection, debouncedSearch, filters.source, filters.reviewStatus, filters.category, filters.favoritesOnly, refreshKey])
+  }, [sortField, sortDirection, debouncedSearch, filters.source, filters.reviewStatus, filters.category, filters.favoritesOnly, filters.minMotivation, filters.jurisdiction, filters.signals.join(","), refreshKey])
 
   useEffect(() => { fetchListings(1) }, [fetchListings])
 
@@ -280,7 +310,17 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
     }
   }
 
-  const activeFilterCount = [filters.source, filters.reviewStatus, filters.category].filter(Boolean).length + (filters.favoritesOnly ? 1 : 0)
+  const activeFilterCount = [filters.source, filters.reviewStatus, filters.category, filters.minMotivation, filters.jurisdiction].filter(Boolean).length
+    + (filters.favoritesOnly ? 1 : 0)
+    + filters.signals.length
+
+  const toggleSignal = (id: string) =>
+    setFilters(prev => ({
+      ...prev,
+      signals: prev.signals.includes(id)
+        ? prev.signals.filter(s => s !== id)
+        : [...prev.signals, id],
+    }))
 
   return (
     <div className="space-y-4">
@@ -354,7 +394,7 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
               <button
                 type="button"
                 className="btn-ghost h-9 text-sm flex items-center gap-1.5"
-                onClick={() => setFilters(prev => ({ ...prev, source: "", reviewStatus: "", category: "", favoritesOnly: false }))}
+                onClick={() => setFilters(prev => ({ ...prev, source: "", reviewStatus: "", category: "", favoritesOnly: false, signals: [], minMotivation: "", jurisdiction: "" }))}
               >
                 <X className="h-3.5 w-3.5" />
                 Clear
@@ -368,12 +408,13 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
             <div className="flex items-center gap-1">
               <ArrowUpDown className="h-3.5 w-3.5 text-gray-400 shrink-0" />
               <Select value={sortField} onValueChange={(v) => { setSortField(v as SortField); setSortDirection("desc") }}>
-                <SelectTrigger className="h-9 w-40 text-sm">
+                <SelectTrigger className="h-9 w-44 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="scrapedAt">Date scraped</SelectItem>
                   <SelectItem value="price">Price</SelectItem>
+                  <SelectItem value="motivationScore">Motivation score</SelectItem>
                   <SelectItem value="daysOnMarket">Days on market</SelectItem>
                   <SelectItem value="bedrooms">Bedrooms</SelectItem>
                   <SelectItem value="propertyType">Property type</SelectItem>
@@ -416,6 +457,66 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ── Alert banner — new properties since yesterday ── */}
+      {newSinceYesterday > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-indigo-50 border border-indigo-200 text-sm text-indigo-800">
+          <span className="text-lg">🆕</span>
+          <span>
+            <span className="font-semibold">{newSinceYesterday} new {newSinceYesterday === 1 ? "property" : "properties"}</span> scraped in the last 24 hours
+          </span>
+          <button
+            type="button"
+            className="ml-auto text-indigo-400 hover:text-indigo-600 transition-colors"
+            onClick={() => setNewSinceYesterday(0)}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {/* ── Signal filter chips ── */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-none">
+        <span className="text-xs font-medium text-gray-400 shrink-0">Signals:</span>
+        {SIGNAL_CHIPS.map(chip => {
+          const active = filters.signals.includes(chip.id)
+          return (
+            <button
+              key={chip.id}
+              type="button"
+              onClick={() => toggleSignal(chip.id)}
+              className={`shrink-0 inline-flex items-center text-[11px] font-medium px-2.5 py-1 rounded-full border transition-all ${
+                active
+                  ? chip.style + " ring-2 ring-offset-1 ring-indigo-400"
+                  : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
+              }`}
+            >
+              {chip.label}
+            </button>
+          )
+        })}
+        {/* Motivation threshold quick filter */}
+        <span className="text-xs font-medium text-gray-400 shrink-0 ml-2">Motivation:</span>
+        {[
+          { value: "",   label: "Any" },
+          { value: "20", label: "20+" },
+          { value: "45", label: "45+" },
+          { value: "70", label: "70+ 🔥" },
+        ].map(opt => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => setFilters(prev => ({ ...prev, minMotivation: opt.value }))}
+            className={`shrink-0 inline-flex items-center text-[11px] font-medium px-2.5 py-1 rounded-full border transition-all ${
+              filters.minMotivation === opt.value
+                ? "bg-[#6366f1] text-white border-[#6366f1]"
+                : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       {/* ── Bulk Actions Bar ── */}
@@ -482,6 +583,11 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
                   </th>
                   <th className="table-header whitespace-nowrap">Beds / Size</th>
                   <th className="table-header">BMV</th>
+                  <th className="table-header whitespace-nowrap">
+                    <button className="flex items-center gap-1 hover:text-gray-600" onClick={() => handleSort("motivationScore")}>
+                      Motivation <SortIcon field="motivationScore" />
+                    </button>
+                  </th>
                   <th className="table-header">Status</th>
                   <th className="table-header">
                     <button className="flex items-center gap-1 hover:text-gray-600 whitespace-nowrap" onClick={() => handleSort("daysOnMarket")}>
@@ -499,14 +605,14 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={11} className="table-cell py-16 text-center text-gray-400">
+                    <td colSpan={12} className="table-cell py-16 text-center text-gray-400">
                       <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
                       Loading properties…
                     </td>
                   </tr>
                 ) : listings.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="table-cell py-16 text-center text-gray-400">
+                    <td colSpan={12} className="table-cell py-16 text-center text-gray-400">
                       No properties found
                     </td>
                   </tr>
@@ -539,6 +645,7 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
                       <td className="table-cell max-w-[220px]">
                         <p className="font-medium text-xs text-gray-800 truncate">{listing.title}</p>
                         <p className="text-gray-400 truncate text-xs mt-0.5">
+                          {listing.isWelsh && <span className="mr-1">🏴󠁧󠁢󠁷󠁬󠁳󠁿</span>}
                           {address?.displayAddress}
                           {address?.postcode && ` · ${address.postcode}`}
                         </p>
@@ -590,6 +697,24 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
                             {bmv?.bmvScore ?? 0}
                           </span>
                         </div>
+                      </td>
+
+                      {/* Motivation Score */}
+                      <td className="table-cell">
+                        {(() => {
+                          const ms = listing.motivationScore ?? 0
+                          if (ms === 0) return <span className="text-xs text-gray-300">—</span>
+                          const color = ms >= 70 ? "bg-red-500" : ms >= 45 ? "bg-orange-500" : "bg-amber-400"
+                          const textColor = ms >= 70 ? "text-red-600" : ms >= 45 ? "text-orange-600" : "text-amber-600"
+                          return (
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-12 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                                <div className={`h-full rounded-full ${color}`} style={{ width: `${ms}%` }} />
+                              </div>
+                              <span className={`text-xs font-semibold ${textColor}`}>{ms}</span>
+                            </div>
+                          )
+                        })()}
                       </td>
 
                       {/* Status */}

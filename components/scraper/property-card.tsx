@@ -20,7 +20,9 @@ import {
   ChevronRight,
   Link2,
 } from "lucide-react"
-import type { PropertyListingForClient, BmvIndicatorsData } from "@/types/property-listing"
+import type { PropertyListingForClient, BmvIndicatorsData, StrategyViabilitySnapshot } from "@/types/property-listing"
+import { motivationLevel } from "@/lib/motivation-scorer"
+import { topStrategies } from "@/lib/strategy-viability"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -50,6 +52,20 @@ function bmvColorClass(score: number): string {
   if (score >= 45) return "bg-amber-100 text-amber-700 border-amber-200"
   if (score >= 20) return "bg-orange-100 text-orange-700 border-orange-200"
   return "bg-blue-50 text-blue-600 border-blue-100"
+}
+
+function motivationColorClass(score: number): string {
+  if (score >= 70) return "bg-red-100 text-red-700 border-red-200"
+  if (score >= 45) return "bg-orange-100 text-orange-700 border-orange-200"
+  if (score >= 20) return "bg-amber-50 text-amber-700 border-amber-200"
+  return "bg-gray-50 text-gray-500 border-gray-200"
+}
+
+const STRATEGY_STYLE: Record<string, string> = {
+  BTL:  "bg-indigo-50 text-indigo-700 border-indigo-200",
+  BRRR: "bg-violet-50 text-violet-700 border-violet-200",
+  HMO:  "bg-teal-50 text-teal-700 border-teal-200",
+  FLIP: "bg-cyan-50 text-cyan-700 border-cyan-200",
 }
 
 function pricePerSqm(listing: PropertyListingForClient): number | null {
@@ -115,14 +131,18 @@ export function PropertyCard({
 }: PropertyCardProps) {
   const [imgIndex, setImgIndex] = useState(0)
 
-  const images    = listing.images as string[]
-  const bmv       = listing.bmvIndicators as BmvIndicatorsData
-  const address   = listing.address as any
-  const ppm2      = pricePerSqm(listing)
-  const sqm       = sqmLabel(listing)
-  const added     = daysAgoLabel(listing.listedDate)
-  const bmvBadges = getBmvBadges(bmv, listing.keyFeatures)
-  const score     = bmv?.bmvScore ?? 0
+  const images       = listing.images as string[]
+  const bmv          = listing.bmvIndicators as BmvIndicatorsData
+  const address      = listing.address as any
+  const ppm2         = pricePerSqm(listing)
+  const sqm          = sqmLabel(listing)
+  const added        = daysAgoLabel(listing.listedDate)
+  const bmvBadges    = getBmvBadges(bmv, listing.keyFeatures)
+  const score        = bmv?.bmvScore ?? 0
+  const motScore     = listing.motivationScore ?? 0
+  const motLevel     = motivationLevel(motScore)
+  const strategies   = topStrategies(listing.strategyViability ?? {}, 3)
+  const isWelsh      = listing.isWelsh ?? false
 
   function prevPhoto(e: React.MouseEvent) {
     e.stopPropagation()
@@ -266,7 +286,7 @@ export function PropertyCard({
           </div>
         )}
 
-        {/* No Chain / New Build tags */}
+        {/* No Chain / New Build / EPC / property type tags */}
         <div className="flex flex-wrap gap-1">
           {listing.isChainFree && (
             <span className="inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
@@ -288,7 +308,32 @@ export function PropertyCard({
               {listing.propertyType.toLowerCase().replace(/_/g, " ")}
             </span>
           )}
+          {/* Welsh jurisdiction badge */}
+          {isWelsh && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
+              🏴󠁧󠁢󠁷󠁬󠁳󠁿 Wales
+            </span>
+          )}
         </div>
+
+        {/* Motivation score + strategy viability chips */}
+        {(motScore > 0 || strategies.length > 0) && (
+          <div className="flex flex-wrap gap-1">
+            {motScore >= 20 && (
+              <span className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border ${motivationColorClass(motScore)}`}>
+                🔥 {motLevel.label} ({motScore})
+              </span>
+            )}
+            {strategies.map(s => (
+              <span
+                key={s}
+                className={`inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full border ${STRATEGY_STYLE[s] ?? "bg-gray-50 text-gray-600 border-gray-200"}`}
+              >
+                {s}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Timing row */}
         <div className="flex items-center justify-between text-[11px] text-[#94a3b8]">

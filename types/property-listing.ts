@@ -49,6 +49,13 @@ export interface PropertyListingForClient {
   leaseYearsRemaining: number | null
   groundRent: number | null
   serviceCharge: number | null
+  // ── Phase 1 Discover fields ─────────────────────────────────────────────────
+  motivationScore:   number
+  motivationSignals: MotivationSignal[]
+  isWelsh:           boolean
+  jurisdiction:      "WALES" | "ENGLAND"
+  strategyViability: StrategyViabilitySnapshot
+  trackerStage:      "watchlist" | "viewing" | "offer" | "rejected" | null
 }
 
 export interface PriceHistoryEntry {
@@ -108,6 +115,27 @@ export interface BmvIndicatorsData {
   ownerCompanyName?: string | null
 }
 
+// ── Phase 1 Discover types ─────────────────────────────────────────────────────
+
+export interface MotivationSignal {
+  name:   string
+  points: number
+}
+
+export interface StrategyResult {
+  viable:   boolean
+  score:    number
+  reasons:  string[]
+  warnings: string[]
+}
+
+export interface StrategyViabilitySnapshot {
+  btl?:  StrategyResult
+  brrr?: StrategyResult
+  hmo?:  StrategyResult
+  flip?: StrategyResult
+}
+
 /** Normalise keyFeatures regardless of whether they were stored as strings or {id, feature} objects */
 function normalizeKeyFeatures(raw: unknown): string[] {
   if (!Array.isArray(raw)) return []
@@ -141,5 +169,12 @@ export function toPropertyListingForClient(listing: any): PropertyListingForClie
     listedDate,
     reviewedAt: listing.reviewedAt instanceof Date ? listing.reviewedAt.toISOString() : listing.reviewedAt || null,
     daysOnMarket,
+    // ── Phase 1 Discover fields ─────────────────────────────────────────────
+    motivationScore:   listing.motivationScore ?? 0,
+    motivationSignals: Array.isArray(listing.motivationSignals) ? listing.motivationSignals : [],
+    isWelsh:           listing.isWelsh ?? false,
+    jurisdiction:      (listing.jurisdiction ?? "ENGLAND") as "WALES" | "ENGLAND",
+    strategyViability: (listing.strategyViability as StrategyViabilitySnapshot) ?? {},
+    trackerStage:      (listing.trackerStage ?? null) as "watchlist" | "viewing" | "offer" | "rejected" | null,
   }
 }
