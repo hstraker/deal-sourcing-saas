@@ -25,8 +25,18 @@ export async function runScraperJob(
     `${LOG_PREFIX} Starting job ${jobId} for source ${source}`
   )
 
-  // Load settings (create default if none)
-  let settings = await prisma.scraperSettings.findFirst()
+  // Load settings for the matching category, falling back to the first row
+  const isCommercialJob = criteria.category === "COMMERCIAL"
+  let settings = isCommercialJob
+    ? await prisma.scraperSettings.findFirst({
+        where: { searchCriteria: { path: ["category"], equals: "COMMERCIAL" } },
+      })
+    : await prisma.scraperSettings.findFirst({
+        where: { NOT: { searchCriteria: { path: ["category"], equals: "COMMERCIAL" } } },
+      })
+  if (!settings) {
+    settings = await prisma.scraperSettings.findFirst()
+  }
   if (!settings) {
     settings = await prisma.scraperSettings.create({
       data: { enabled: true },

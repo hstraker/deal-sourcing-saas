@@ -121,9 +121,10 @@ interface PaginationInfo {
 
 interface PropertiesTableProps {
   refreshKey?: number
+  lockedCategory?: string
 }
 
-export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
+export function PropertiesTable({ refreshKey = 0, lockedCategory }: PropertiesTableProps) {
   const router = useRouter()
   const [listings, setListings] = useState<PropertyListingForClient[]>([])
   const [pagination, setPagination] = useState<PaginationInfo>({ page: 1, total: 0, totalPages: 1 })
@@ -134,7 +135,7 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
   const [sortField, setSortField] = useState<SortField>("scrapedAt")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
   const [filters, setFilters] = useState<Filters>({
-    search: "", source: "", reviewStatus: "", category: "",
+    search: "", source: "", reviewStatus: "", category: lockedCategory ?? "",
     favoritesOnly: false, signals: [], minMotivation: "", jurisdiction: "",
   })
   const [newSinceYesterday, setNewSinceYesterday] = useState(0)
@@ -367,17 +368,19 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
               </SelectContent>
             </Select>
 
-            {/* Category */}
-            <Select value={filters.category || "all"} onValueChange={v => setFilter("category", v === "all" ? "" : v)}>
-              <SelectTrigger className="h-9 w-36 text-sm">
-                <SelectValue placeholder="All categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All categories</SelectItem>
-                <SelectItem value="RESIDENTIAL">Residential</SelectItem>
-                <SelectItem value="COMMERCIAL">Commercial</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Category — hidden when locked by parent */}
+            {!lockedCategory && (
+              <Select value={filters.category || "all"} onValueChange={v => setFilter("category", v === "all" ? "" : v)}>
+                <SelectTrigger className="h-9 w-36 text-sm">
+                  <SelectValue placeholder="All categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All categories</SelectItem>
+                  <SelectItem value="RESIDENTIAL">Residential</SelectItem>
+                  <SelectItem value="COMMERCIAL">Commercial</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
 
             {/* Favourites */}
             <Button
@@ -394,7 +397,7 @@ export function PropertiesTable({ refreshKey = 0 }: PropertiesTableProps) {
               <button
                 type="button"
                 className="btn-ghost h-9 text-sm flex items-center gap-1.5"
-                onClick={() => setFilters(prev => ({ ...prev, source: "", reviewStatus: "", category: "", favoritesOnly: false, signals: [], minMotivation: "", jurisdiction: "" }))}
+                onClick={() => setFilters(prev => ({ ...prev, source: "", reviewStatus: "", category: lockedCategory ?? "", favoritesOnly: false, signals: [], minMotivation: "", jurisdiction: "" }))}
               >
                 <X className="h-3.5 w-3.5" />
                 Clear

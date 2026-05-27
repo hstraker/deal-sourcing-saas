@@ -226,7 +226,9 @@ export function ScraperOverview({
   const getSourceCount = (source: string) =>
     stats.bySource.find((s) => s.source === source)?.count || 0
 
+  const isGlobalEnabled = settings?.enabled ?? false
   const hasCriteria =
+    isGlobalEnabled &&
     settings?.searchCriteria?.locations &&
     settings.searchCriteria.locations.length > 0
 
@@ -319,9 +321,15 @@ export function ScraperOverview({
   }, [])
 
   const triggerScrape = async (source: SourceKey) => {
+    if (!isGlobalEnabled) {
+      toast.error("Scraper is disabled", {
+        description: "Enable the scraper in Settings before running.",
+      })
+      return
+    }
     if (!hasCriteria) {
       toast.error("No search criteria configured", {
-        description: "Go to Settings > Scraper to set locations and filters.",
+        description: "Go to Settings to set locations and filters.",
       })
       return
     }
@@ -522,7 +530,7 @@ export function ScraperOverview({
             </button>
 
             {/* Settings */}
-            <Link href="/dashboard/settings/scraper">
+            <Link href={settings?.searchCriteria?.category === "COMMERCIAL" ? "/dashboard/settings/commercial-scraper" : "/dashboard/settings/scraper"}>
               <button className="rounded-md p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
                 <Settings className="h-3.5 w-3.5" />
               </button>
@@ -533,23 +541,44 @@ export function ScraperOverview({
       </div>
 
       {/* ── 2. Criteria banner ── */}
-      {!hasCriteria ? (
-        <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-          <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-          <p>
-            No search criteria configured. Go to{" "}
-            <Link href="/dashboard/settings/scraper" className="font-medium underline">
-              Scraper Settings
-            </Link>{" "}
-            to set locations and filters before running a scrape.
-          </p>
-        </div>
-      ) : (
-        <div className="text-sm text-gray-400 bg-gray-100 rounded-md px-3 py-2 flex items-center gap-2">
-          <span className="font-medium text-gray-900">Criteria:</span>
-          <span>{formatCriteriaSummary(settings?.searchCriteria ?? null)}</span>
-        </div>
-      )}
+      {(() => {
+        const isCommercial = settings?.searchCriteria?.category === "COMMERCIAL"
+        const settingsHref = isCommercial
+          ? "/dashboard/settings/commercial-scraper"
+          : "/dashboard/settings/scraper"
+        const settingsLabel = isCommercial ? "Commercial Settings" : "Scraper Settings"
+
+        if (!isGlobalEnabled) {
+          return (
+            <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <p>
+                Scraper is disabled. Enable it in{" "}
+                <Link href={settingsHref} className="font-medium underline">{settingsLabel}</Link>{" "}
+                before running a scan.
+              </p>
+            </div>
+          )
+        }
+        if (!hasCriteria) {
+          return (
+            <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <p>
+                No locations configured. Go to{" "}
+                <Link href={settingsHref} className="font-medium underline">{settingsLabel}</Link>{" "}
+                to set locations and filters before running a scan.
+              </p>
+            </div>
+          )
+        }
+        return (
+          <div className="text-sm text-gray-400 bg-gray-100 rounded-md px-3 py-2 flex items-center gap-2">
+            <span className="font-medium text-gray-900">Criteria:</span>
+            <span>{formatCriteriaSummary(settings?.searchCriteria ?? null)}</span>
+          </div>
+        )
+      })()}
 
       {/* ── 3. Live progress banners ── */}
       {activeJobs.length > 0 && (
@@ -652,7 +681,12 @@ export function ScraperOverview({
         ) : null}
 
         {/* All Properties tab */}
-        {activeTab === "all" && <PropertiesTable refreshKey={tableRefreshKey} />}
+        {activeTab === "all" && (
+          <PropertiesTable
+            refreshKey={tableRefreshKey}
+            lockedCategory={settings?.searchCriteria?.category ?? undefined}
+          />
+        )}
 
         {/* Job History tab */}
         {activeTab === "jobs" && (
