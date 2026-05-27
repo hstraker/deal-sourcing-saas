@@ -31,9 +31,15 @@ export class PrimeLocationScraper extends BaseScraper {
   buildSearchUrls(criteria: ScraperCriteria): string[] {
     const urls: string[] = []
 
+    // PrimeLocation is a residential-only portal — no commercial search section
+    if (criteria.category === "COMMERCIAL") {
+      console.log(`${LOG_PREFIX} Skipping commercial search — PrimeLocation does not support commercial property listings`)
+      return urls
+    }
+
     const categories: ("RESIDENTIAL" | "COMMERCIAL")[] =
       criteria.category === "BOTH"
-        ? ["RESIDENTIAL", "COMMERCIAL"]
+        ? ["RESIDENTIAL"]  // BOTH mode: only scrape residential on PrimeLocation
         : [criteria.category as "RESIDENTIAL" | "COMMERCIAL"]
 
     for (const location of criteria.locations) {

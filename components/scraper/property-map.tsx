@@ -97,16 +97,21 @@ export function PropertyMap({ listings, selectedId, onSelect, className = "" }: 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
 
-    // React StrictMode mounts → unmounts → mounts. The first unmount calls
-    // map.remove() which destroys the Leaflet instance but leaves _leaflet_id
-    // on the DOM node, causing "Map container is already initialized" on the
-    // second mount. Wipe the stale id so Leaflet treats it as a fresh container.
+    let cancelled = false
+
+    // Clear stale _leaflet_id left by a previous mount/unmount cycle
     const container = containerRef.current as any
     if (container._leaflet_id) {
       delete container._leaflet_id
     }
 
     import("leaflet").then((L) => {
+      // Cleanup may have run while the async import was in-flight
+      if (cancelled || !containerRef.current) return
+
+      // Clear again in case another mount wrote _leaflet_id during the import
+      const c = containerRef.current as any
+      if (c._leaflet_id) delete c._leaflet_id
       // Fix webpack icon resolution
       delete (L.Icon.Default.prototype as any)._getIconUrl
       L.Icon.Default.mergeOptions({
@@ -183,10 +188,15 @@ export function PropertyMap({ listings, selectedId, onSelect, className = "" }: 
     })
 
     return () => {
+      cancelled = true
       if (mapRef.current) {
         try { mapRef.current.remove() } catch { /* ignore */ }
         mapRef.current    = null
         markersRef.current = {}
+      }
+      // Clear stale ID so the next mount sees a clean container
+      if (containerRef.current) {
+        delete (containerRef.current as any)._leaflet_id
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
