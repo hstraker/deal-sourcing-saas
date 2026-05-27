@@ -23,6 +23,8 @@ import {
   ChatBubbleLeftRightIcon,
   SparklesIcon,
   BriefcaseIcon,
+  HomeModernIcon,
+  BuildingStorefrontIcon,
 } from "@heroicons/react/24/outline"
 
 export const NAV_SECTIONS = [
@@ -57,8 +59,9 @@ export const NAV_SECTIONS = [
       {
         label: "Sourcing",
         items: [
-          { label: "Scraper",       href: "/dashboard/scraper", icon: MagnifyingGlassCircleIcon, tooltip: "Monitor Rightmove and Zoopla for newly listed properties matching your criteria" },
-          { label: "SSAS Scanner",  href: "/dashboard/ssas",    icon: BriefcaseIcon,             tooltip: "Analyse commercial property listings for SSAS pension investment — yield, DSCR, loan-back viability, and risk scoring" },
+          { label: "Residential Finder",  href: "/dashboard/scraper",     icon: HomeModernIcon,           tooltip: "Scan Rightmove, Zoopla, OnTheMarket and PrimeLocation for residential properties matching your buy criteria" },
+          { label: "Commercial Finder",   href: "/dashboard/commercial",  icon: BuildingStorefrontIcon,   tooltip: "Scan all four portals for commercial properties — offices, retail, industrial, warehouses — for SSAS and direct purchase" },
+          { label: "SSAS Analyser",       href: "/dashboard/ssas",        icon: BriefcaseIcon,            tooltip: "Analyse commercial property listings for SSAS pension investment — yield, DSCR, loan-back viability, and risk scoring" },
         ],
       },
     ],
@@ -135,7 +138,8 @@ export const NAV_SECTIONS = [
         items: [
           { label: "Underwriting Engine",     href: "/dashboard/settings/offer-calculator",    icon: CalculatorIcon,                tooltip: "Configure offer thresholds: minimum BMV %, yield, refurb costs, and offer ladder strategy" },
           { label: "AI Conversation",         href: "/dashboard/settings/ai-conversation",    icon: ChatBubbleLeftRightIcon,       tooltip: "Control when the AI SMS agent auto-starts conversations per lead source" },
-          { label: "Scraper Settings",        href: "/dashboard/settings/scraper",            icon: MagnifyingGlassCircleIcon },
+          { label: "Residential Settings",    href: "/dashboard/settings/scraper",              icon: HomeModernIcon },
+          { label: "Commercial Settings",     href: "/dashboard/settings/commercial-scraper",   icon: BuildingStorefrontIcon },
           { label: "Investor Pack Templates", href: "/dashboard/settings/investor-packs",     icon: DocumentDuplicateIcon },
           { label: "Company Profile",         href: "/dashboard/settings/company-profile",    icon: BuildingOffice2Icon },
           { label: "Appearance",              href: "/dashboard/admin/appearance",            icon: SwatchIcon,                  tooltip: "Customise dashboard theme, colours, and company branding" },

@@ -8,32 +8,22 @@ import { toPropertyListingForClient } from "@/types/property-listing"
 
 export const dynamic = "force-dynamic"
 
-/**
- * Compute the next scheduled run time based on schedule type.
- */
 function computeNextRun(scheduleType: string, enabled: boolean): string | null {
   if (!enabled || scheduleType !== "TWICE_DAILY") return null
-
   const now = new Date()
-  const today6am = new Date(now)
-  today6am.setHours(6, 0, 0, 0)
-  const today6pm = new Date(now)
-  today6pm.setHours(18, 0, 0, 0)
-  const tomorrow6am = new Date(now)
-  tomorrow6am.setDate(tomorrow6am.getDate() + 1)
-  tomorrow6am.setHours(6, 0, 0, 0)
-
+  const today6am = new Date(now); today6am.setHours(6, 0, 0, 0)
+  const today6pm = new Date(now); today6pm.setHours(18, 0, 0, 0)
+  const tomorrow6am = new Date(now); tomorrow6am.setDate(tomorrow6am.getDate() + 1); tomorrow6am.setHours(6, 0, 0, 0)
   if (now < today6am) return today6am.toISOString()
   if (now < today6pm) return today6pm.toISOString()
   return tomorrow6am.toISOString()
 }
 
-export default async function ScraperDashboardPage() {
+export default async function CommercialFinderPage() {
   const session = await getServerSession(authOptions)
+  if (!session) return <div>Unauthorized</div>
 
-  if (!session) {
-    return <div>Unauthorized</div>
-  }
+  const commercialWhere = { category: "COMMERCIAL" as const }
 
   const [
     totalListings,
@@ -47,37 +37,45 @@ export default async function ScraperDashboardPage() {
     reviewListings,
     withPropertyData,
   ] = await Promise.all([
-    prisma.propertyListing.count(),
+    prisma.propertyListing.count({ where: commercialWhere }),
     prisma.propertyListing.groupBy({
       by: ["source"],
+      where: commercialWhere,
       _count: true,
     }),
     prisma.propertyListing.groupBy({
       by: ["reviewStatus"],
+      where: commercialWhere,
       _count: true,
     }),
     prisma.propertyListing.count({
-      where: { reviewStatus: "PENDING" },
+      where: { ...commercialWhere, reviewStatus: "PENDING" },
     }),
     prisma.propertyListing.count({
-      where: {
-        isAmbiguous: true,
-        reviewStatus: { in: ["PENDING", "AUTO_APPROVED"] },
-      },
+      where: { ...commercialWhere, isAmbiguous: true, reviewStatus: { in: ["PENDING", "AUTO_APPROVED"] } },
     }),
     prisma.scraperJob.findMany({
+      where: { category: "COMMERCIAL" as any },
       orderBy: { createdAt: "desc" },
       take: 10,
     }),
-    prisma.scraperSettings.findFirst(),
+    // Commercial settings row (identified by COMMERCIAL category in searchCriteria)
+    prisma.scraperSettings.findFirst({
+      where: {
+        searchCriteria: {
+          path: ["category"],
+          equals: "COMMERCIAL",
+        },
+      },
+    }),
     prisma.scraperJob.findFirst({
-      where: { status: "COMPLETED" },
+      where: { category: "COMMERCIAL" as any, status: "COMPLETED" },
       orderBy: { completedAt: "desc" },
       select: { completedAt: true },
     }),
-    // Fetch review queue listings (capped for performance — full list can be huge)
     prisma.propertyListing.findMany({
       where: {
+        ...commercialWhere,
         OR: [
           { reviewStatus: "PENDING" },
           { reviewStatus: "AUTO_APPROVED", isAmbiguous: true },
@@ -86,14 +84,14 @@ export default async function ScraperDashboardPage() {
       orderBy: { scrapedAt: "desc" },
       take: 500,
     }),
-    // Count properties with PropertyData analysis
     prisma.propertyListing.count({
-      where: { NOT: { propertyDataAnalysis: { equals: Prisma.DbNull } } },
+      where: {
+        ...commercialWhere,
+        NOT: { propertyDataAnalysis: { equals: Prisma.DbNull } },
+      },
     }),
   ])
 
-  // Count postcode quality from review listings (cheap — already fetched)
-  // For full dataset we use a lightweight raw query
   const postcodeStats = await prisma.$queryRaw<
     Array<{ has_full: bigint; has_outcode: bigint; has_none: bigint }>
   >`
@@ -103,15 +101,13 @@ export default async function ScraperDashboardPage() {
                          AND address->>'postcode' !~ '^[A-Z]{1,2}[0-9]{1,2}[A-Z]?\\s[0-9][A-Z]{2}$') AS has_outcode,
       COUNT(*) FILTER (WHERE address->>'postcode' IS NULL OR address->>'postcode' = '') AS has_none
     FROM "property_listings"
+    WHERE category = 'COMMERCIAL'
   `
 
   const stats = {
     totalListings,
     bySource: bySource.map((s) => ({ source: s.source, count: s._count })),
-    byReviewStatus: byReviewStatus.map((s) => ({
-      status: s.reviewStatus,
-      count: s._count,
-    })),
+    byReviewStatus: byReviewStatus.map((s) => ({ status: s.reviewStatus, count: s._count })),
     pendingReview,
     ambiguousCount,
   }
@@ -154,10 +150,9 @@ export default async function ScraperDashboardPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Residential Finder"
-        subtitle="Scan portals for residential properties matching your buy criteria"
+        title="Commercial Finder"
+        subtitle="Scan Rightmove, Zoopla, OnTheMarket and PrimeLocation for commercial properties"
       />
-
       <ScraperOverview
         stats={stats}
         recentJobs={jobsForClient as any}

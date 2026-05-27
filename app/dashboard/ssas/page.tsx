@@ -14,7 +14,7 @@ export default async function SsasPage() {
   return (
     <div className="space-y-4 h-full">
       <PageHeader
-        title="SSAS Property Scanner"
+        title="SSAS Analyser"
         description="Analyse commercial property listings for SSAS pension fund investment — yield, DSCR, loan-back viability, and risk scoring."
       />
       <SsasScanner />

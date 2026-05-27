@@ -253,6 +253,7 @@ export const LOCATION_SLUGS: Record<string, string> = {
 
 export const PRIMELOCATION_BASE_URL = "https://www.primelocation.com"
 export const PRIMELOCATION_SALE_SEARCH = "/for-sale/property/"
+export const PRIMELOCATION_COMMERCIAL_SEARCH = "/for-sale/commercial-property/"
 
 export const PRIMELOCATION_SELECTORS = {
   propertyLink: 'a[href*="/details/"]',

@@ -6,6 +6,7 @@ import { extractFeaturesFromText } from "./extract-features"
 import {
   PRIMELOCATION_BASE_URL,
   PRIMELOCATION_SALE_SEARCH,
+  PRIMELOCATION_COMMERCIAL_SEARCH,
   PRIMELOCATION_SELECTORS,
   LOCATION_SLUGS,
   ADDED_SINCE_MAP,
@@ -30,6 +31,11 @@ export class PrimeLocationScraper extends BaseScraper {
   buildSearchUrls(criteria: ScraperCriteria): string[] {
     const urls: string[] = []
 
+    const categories: ("RESIDENTIAL" | "COMMERCIAL")[] =
+      criteria.category === "BOTH"
+        ? ["RESIDENTIAL", "COMMERCIAL"]
+        : [criteria.category as "RESIDENTIAL" | "COMMERCIAL"]
+
     for (const location of criteria.locations) {
       const slug = location.slug || LOCATION_SLUGS[location.displayName]
       if (!slug) {
@@ -39,35 +45,44 @@ export class PrimeLocationScraper extends BaseScraper {
         continue
       }
 
-      const params = new URLSearchParams()
-      params.set("page_size", "25")
-      params.set("pn", "1")
-      params.set("q", slug)
-      params.set("search_source", "home")
+      for (const category of categories) {
+        const basePath =
+          category === "COMMERCIAL"
+            ? PRIMELOCATION_COMMERCIAL_SEARCH
+            : PRIMELOCATION_SALE_SEARCH
 
-      if (criteria.minPrice) params.set("price_min", String(criteria.minPrice))
-      if (criteria.maxPrice) params.set("price_max", String(criteria.maxPrice))
+        const params = new URLSearchParams()
+        params.set("page_size", "25")
+        params.set("pn", "1")
+        params.set("q", slug)
+        params.set("search_source", "home")
 
-      if (criteria.minBedrooms)
-        params.set("beds_min", String(criteria.minBedrooms))
-      if (criteria.maxBedrooms)
-        params.set("beds_max", String(criteria.maxBedrooms))
+        if (criteria.minPrice) params.set("price_min", String(criteria.minPrice))
+        if (criteria.maxPrice) params.set("price_max", String(criteria.maxPrice))
 
-      if (criteria.addedSince) {
-        const days = ADDED_SINCE_MAP[criteria.addedSince]
-        if (days) params.set("added", days)
+        if (category === "RESIDENTIAL") {
+          if (criteria.minBedrooms)
+            params.set("beds_min", String(criteria.minBedrooms))
+          if (criteria.maxBedrooms)
+            params.set("beds_max", String(criteria.maxBedrooms))
+        }
+
+        if (criteria.addedSince) {
+          const days = ADDED_SINCE_MAP[criteria.addedSince]
+          if (days) params.set("added", days)
+        }
+
+        if (!criteria.includeSSTC) {
+          params.set("include_sstc", "false")
+        }
+
+        const url = `${PRIMELOCATION_BASE_URL}${basePath}${slug}/?${params.toString()}`
+        urls.push(url)
+
+        console.log(
+          `${LOG_PREFIX} Search URL [${category}]: ${location.displayName}`
+        )
       }
-
-      if (!criteria.includeSSTC) {
-        params.set("include_sstc", "false")
-      }
-
-      const url = `${PRIMELOCATION_BASE_URL}${PRIMELOCATION_SALE_SEARCH}${slug}/?${params.toString()}`
-      urls.push(url)
-
-      console.log(
-        `${LOG_PREFIX} Search URL: ${location.displayName}`
-      )
     }
 
     return urls
