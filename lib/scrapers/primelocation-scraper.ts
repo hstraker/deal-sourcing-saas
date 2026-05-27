@@ -31,15 +31,9 @@ export class PrimeLocationScraper extends BaseScraper {
   buildSearchUrls(criteria: ScraperCriteria): string[] {
     const urls: string[] = []
 
-    // PrimeLocation is a residential-only portal — no commercial search section
-    if (criteria.category === "COMMERCIAL") {
-      console.log(`${LOG_PREFIX} Skipping commercial search — PrimeLocation does not support commercial property listings`)
-      return urls
-    }
-
     const categories: ("RESIDENTIAL" | "COMMERCIAL")[] =
       criteria.category === "BOTH"
-        ? ["RESIDENTIAL"]  // BOTH mode: only scrape residential on PrimeLocation
+        ? ["RESIDENTIAL", "COMMERCIAL"]
         : [criteria.category as "RESIDENTIAL" | "COMMERCIAL"]
 
     for (const location of criteria.locations) {
@@ -116,10 +110,14 @@ export class PrimeLocationScraper extends BaseScraper {
       if (nextData?.props?.pageProps?.regularListingsFormatted) {
         const listings = nextData.props.pageProps.regularListingsFormatted
         for (const listing of listings) {
-          if (listing.listingId) {
-            urls.push(
-              `${PRIMELOCATION_BASE_URL}/for-sale/details/${listing.listingId}/`
-            )
+          // Use the listing's own detailUrl if available; fall back to constructing it
+          if (listing.detailUrl) {
+            urls.push(listing.detailUrl.startsWith("http")
+              ? listing.detailUrl
+              : `${PRIMELOCATION_BASE_URL}${listing.detailUrl}`)
+          } else if (listing.listingId) {
+            const section = listing.channel === "commercial" ? "commercial" : "for-sale"
+            urls.push(`${PRIMELOCATION_BASE_URL}/${section}/details/${listing.listingId}/`)
           }
         }
         console.log(
@@ -136,10 +134,8 @@ export class PrimeLocationScraper extends BaseScraper {
         for (const link of links) {
           const href = link.getAttribute("href")
           if (href && /\/details\/\d+/.test(href)) {
-            const match = href.match(/\/details\/(\d+)/)
-            if (match) {
-              detailLinks.push(`${baseUrl}/for-sale/details/${match[1]}/`)
-            }
+            // Preserve the full path prefix (for-sale, commercial, to-let, etc.)
+            detailLinks.push(href.startsWith("http") ? href : `${baseUrl}${href}`)
           }
         }
 
