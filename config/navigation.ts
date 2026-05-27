@@ -154,9 +154,10 @@ export const NAV_SECTIONS = [
       {
         label: "Development",
         items: [
-          { label: "Lead Simulator", href: "/dashboard/admin/lead-test", icon: BeakerIcon,            tooltip: "Create test leads to check system behaviour and validate offer calculations" },
-          { label: "Utilities",      href: "/dashboard/settings",         icon: WrenchScrewdriverIcon }, // TODO: dedicated utilities route
-          { label: "Email Test",     href: "/dashboard/settings",         icon: EnvelopeIcon },          // TODO: dedicated email test route
+          { label: "Lead Simulator",    href: "/dashboard/admin/lead-test",          icon: BeakerIcon,            tooltip: "Create test leads to check system behaviour and validate offer calculations" },
+          { label: "Scraper Debugger",  href: "/dashboard/settings/scraper-debug",   icon: WrenchScrewdriverIcon, tooltip: "Test any portal + category combination — see exact URLs, links found, and extracted property data" },
+          { label: "Utilities",         href: "/dashboard/settings",                  icon: WrenchScrewdriverIcon },
+          { label: "Email Test",        href: "/dashboard/settings",                  icon: EnvelopeIcon },
         ],
       },
     ],
