@@ -197,9 +197,10 @@ export class ZooplaScraper extends BaseScraper {
     page: Page,
     url: string
   ): Promise<ScrapedProperty> {
-    await page.goto(url, { waitUntil: "networkidle2", timeout: 45000 })
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 })
     await this.handleZooplaCookieConsent(page)
-    await this.delay(1500)
+    // Brief pause for JS to hydrate (replaces slower networkidle2 wait)
+    await this.delay(2000)
 
     // Extract all property images from raw HTML first.
     // Zoopla now uses Next.js App Router (RSC streaming via self.__next_f.push),
