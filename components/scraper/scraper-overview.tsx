@@ -152,7 +152,7 @@ function formatCriteriaSummary(criteria: SearchCriteria | null): string {
     parts.push(`${min}–${max}`)
   }
 
-  if (criteria.minBedrooms || criteria.maxBedrooms) {
+  if (criteria.category !== "COMMERCIAL" && (criteria.minBedrooms || criteria.maxBedrooms)) {
     const min = criteria.minBedrooms ?? "Any"
     const max = criteria.maxBedrooms ?? "Any"
     parts.push(`${min}–${max} beds`)
@@ -346,18 +346,23 @@ export function ScraperOverview({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           source,
-          criteria: {
-            category: criteria.category ?? "RESIDENTIAL",
-            locations: criteria.locations,
-            ...(criteria.minPrice != null && criteria.minPrice > 0 && { minPrice: criteria.minPrice }),
-            ...(criteria.maxPrice != null && criteria.maxPrice > 0 && { maxPrice: criteria.maxPrice }),
-            ...(criteria.minBedrooms != null && criteria.minBedrooms > 0 && { minBedrooms: criteria.minBedrooms }),
-            ...(criteria.maxBedrooms != null && criteria.maxBedrooms > 0 && { maxBedrooms: criteria.maxBedrooms }),
-            ...(criteria.propertyTypes && criteria.propertyTypes.length > 0 && { propertyTypes: criteria.propertyTypes }),
-            ...(criteria.addedSince && { addedSince: criteria.addedSince }),
-            ...(criteria.includeSSTC != null && { includeSSTC: criteria.includeSSTC }),
-            ...(criteria.maxPages != null && criteria.maxPages > 0 && { maxPages: criteria.maxPages }),
-          },
+          criteria: (() => {
+            const cat = criteria.category ?? "RESIDENTIAL"
+            const isCommercial = cat === "COMMERCIAL"
+            return {
+              category: cat,
+              locations: criteria.locations,
+              ...(criteria.minPrice != null && criteria.minPrice > 0 && { minPrice: criteria.minPrice }),
+              ...(criteria.maxPrice != null && criteria.maxPrice > 0 && { maxPrice: criteria.maxPrice }),
+              // Bedrooms not applicable for commercial searches
+              ...(!isCommercial && criteria.minBedrooms != null && criteria.minBedrooms > 0 && { minBedrooms: criteria.minBedrooms }),
+              ...(!isCommercial && criteria.maxBedrooms != null && criteria.maxBedrooms > 0 && { maxBedrooms: criteria.maxBedrooms }),
+              ...(criteria.propertyTypes && criteria.propertyTypes.length > 0 && { propertyTypes: criteria.propertyTypes }),
+              ...(criteria.addedSince && { addedSince: criteria.addedSince }),
+              ...(criteria.includeSSTC != null && { includeSSTC: criteria.includeSSTC }),
+              ...(criteria.maxPages != null && criteria.maxPages > 0 && { maxPages: criteria.maxPages }),
+            }
+          })(),
         }),
       })
 

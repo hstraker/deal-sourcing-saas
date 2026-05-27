@@ -128,9 +128,14 @@ export async function PUT(request: NextRequest) {
     const data = parsed.data
     const existing = await findOrCreateCommercialSettings()
 
-    // Always enforce category = COMMERCIAL on the criteria
+    // Always enforce category = COMMERCIAL; strip bedroom fields (not applicable to commercial)
     const criteriaToSave = data.searchCriteria
-      ? { ...data.searchCriteria, category: "COMMERCIAL" }
+      ? {
+          ...data.searchCriteria,
+          category: "COMMERCIAL",
+          minBedrooms: undefined,
+          maxBedrooms: undefined,
+        }
       : undefined
 
     const updated = await prisma.scraperSettings.update({
