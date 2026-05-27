@@ -67,10 +67,74 @@ const LOCATIONS: {
   { displayName: "Portsmouth (PO)", outcode: "1167", slug: "portsmouth", postcodes: "PO1–PO41", region: "South East" },
   { displayName: "Reading (RG)", outcode: "1207", slug: "reading", postcodes: "RG1–RG45", region: "South East" },
   { displayName: "Milton Keynes (MK)", outcode: "942", slug: "milton-keynes", postcodes: "MK1–MK19", region: "South East" },
+  { displayName: "Sunderland (SR)", outcode: "1440", slug: "sunderland", postcodes: "SR1–SR8", region: "North East" },
+  { displayName: "Belfast (BT)", outcode: "233", slug: "belfast", postcodes: "BT1–BT94", region: "Northern Ireland" },
+  { displayName: "Bradford (BD)", outcode: "153", slug: "bradford", postcodes: "BD1–BD23", region: "West Yorkshire" },
+  { displayName: "Plymouth (PL)", outcode: "1148", slug: "plymouth", postcodes: "PL1–PL35", region: "South West" },
+  { displayName: "Luton (LU)", outcode: "808", slug: "luton", postcodes: "LU1–LU7", region: "East of England" },
+  { displayName: "Northampton (NN)", outcode: "1033", slug: "northampton", postcodes: "NN1–NN29", region: "East Midlands" },
   { displayName: "Swindon (SN)", outcode: "1361", slug: "swindon", postcodes: "SN1–SN26", region: "South West" },
+  { displayName: "Peterborough (PE)", outcode: "1098", slug: "peterborough", postcodes: "PE1–PE38", region: "East of England" },
   { displayName: "Derby (DE)", outcode: "424", slug: "derby", postcodes: "DE1–DE75", region: "East Midlands" },
   { displayName: "Stoke-on-Trent (ST)", outcode: "1407", slug: "stoke-on-trent", postcodes: "ST1–ST21", region: "West Midlands" },
   { displayName: "Wolverhampton (WV)", outcode: "1631", slug: "wolverhampton", postcodes: "WV1–WV16", region: "West Midlands" },
+  // South West
+  { displayName: "Bath (BA)", outcode: "95", slug: "bath", postcodes: "BA1–BA22", region: "South West" },
+  { displayName: "Exeter (EX)", outcode: "490", slug: "exeter", postcodes: "EX1–EX39", region: "South West" },
+  { displayName: "Bournemouth (BH)", outcode: "190", slug: "bournemouth", postcodes: "BH1–BH25", region: "South West" },
+  { displayName: "Gloucester (GL)", outcode: "547", slug: "gloucester", postcodes: "GL1–GL56", region: "South West" },
+  // South East
+  { displayName: "Brighton/Hove (BN)", outcode: "213", slug: "brighton", postcodes: "BN1–BN50", region: "South East" },
+  { displayName: "Oxford (OX)", outcode: "1063", slug: "oxford", postcodes: "OX1–OX49", region: "South East" },
+  { displayName: "Guildford (GU)", outcode: "571", slug: "guildford", postcodes: "GU1–GU35", region: "South East" },
+  { displayName: "Southend-on-Sea (SS)", outcode: "1385", slug: "southend-on-sea", postcodes: "SS0–SS17", region: "South East" },
+  { displayName: "Slough/Windsor (SL)", outcode: "1346", slug: "slough", postcodes: "SL0–SL9", region: "South East" },
+  // East of England
+  { displayName: "Cambridge (CB)", outcode: "271", slug: "cambridge", postcodes: "CB1–CB25", region: "East of England" },
+  { displayName: "Norwich (NR)", outcode: "1020", slug: "norwich", postcodes: "NR1–NR35", region: "East of England" },
+  { displayName: "Ipswich (IP)", outcode: "635", slug: "ipswich", postcodes: "IP1–IP33", region: "East of England" },
+  { displayName: "Chelmsford (CM)", outcode: "358", slug: "chelmsford", postcodes: "CM0–CM23", region: "East of England" },
+  { displayName: "Colchester (CO)", outcode: "385", slug: "colchester", postcodes: "CO1–CO16", region: "East of England" },
+  // East Midlands
+  { displayName: "Lincoln (LN)", outcode: "790", slug: "lincoln", postcodes: "LN1–LN13", region: "East Midlands" },
+  // West Midlands
+  { displayName: "Telford (TF)", outcode: "1471", slug: "telford", postcodes: "TF1–TF13", region: "West Midlands" },
+  { displayName: "Shrewsbury (SY)", outcode: "1362", slug: "shrewsbury", postcodes: "SY1–SY25", region: "West Midlands" },
+  // Yorkshire
+  { displayName: "York (YO)", outcode: "1671", slug: "york", postcodes: "YO1–YO62", region: "Yorkshire" },
+  { displayName: "Hull (HU)", outcode: "613", slug: "hull", postcodes: "HU1–HU20", region: "Yorkshire" },
+  { displayName: "Doncaster (DN)", outcode: "445", slug: "doncaster", postcodes: "DN1–DN40", region: "South Yorkshire" },
+  { displayName: "Huddersfield (HD)", outcode: "592", slug: "huddersfield", postcodes: "HD1–HD9", region: "West Yorkshire" },
+  { displayName: "Wakefield (WF)", outcode: "1561", slug: "wakefield", postcodes: "WF1–WF17", region: "West Yorkshire" },
+  { displayName: "Harrogate (HG)", outcode: "583", slug: "harrogate", postcodes: "HG1–HG5", region: "North Yorkshire" },
+  // North East
+  { displayName: "Middlesbrough (TS)", outcode: "982", slug: "middlesbrough", postcodes: "TS1–TS29", region: "North East" },
+  // North West
+  { displayName: "Bolton (BL)", outcode: "144", slug: "bolton", postcodes: "BL0–BL9", region: "Greater Manchester" },
+  { displayName: "Wigan (WN)", outcode: "1609", slug: "wigan", postcodes: "WN1–WN8", region: "Greater Manchester" },
+  { displayName: "Stockport (SK)", outcode: "1348", slug: "stockport", postcodes: "SK1–SK23", region: "Greater Manchester" },
+  { displayName: "Oldham (OL)", outcode: "1057", slug: "oldham", postcodes: "OL1–OL16", region: "Greater Manchester" },
+  { displayName: "Blackpool (FY)", outcode: "513", slug: "blackpool", postcodes: "FY1–FY8", region: "Lancashire" },
+  { displayName: "Preston (PR)", outcode: "1172", slug: "preston", postcodes: "PR1–PR26", region: "Lancashire" },
+  { displayName: "Chester (CH)", outcode: "338", slug: "chester", postcodes: "CH1–CH66", region: "Cheshire" },
+  { displayName: "Warrington (WA)", outcode: "1541", slug: "warrington", postcodes: "WA1–WA16", region: "Cheshire" },
+  // Scotland
+  { displayName: "Aberdeen (AB)", outcode: "1", slug: "aberdeen", postcodes: "AB10–AB56", region: "Scotland" },
+  { displayName: "Dundee (DD)", outcode: "418", slug: "dundee", postcodes: "DD1–DD11", region: "Scotland" },
+  { displayName: "Inverness (IV)", outcode: "649", slug: "inverness", postcodes: "IV1–IV63", region: "Scotland" },
+  // Wales
+  { displayName: "Wrexham/N. Wales (LL)", outcode: "REGION^1304", slug: "wrexham", postcodes: "LL11–LL77", region: "North Wales", isPriority: true },
+  { displayName: "Powys (LD)", outcode: "764", slug: "llandrindod-wells", postcodes: "LD1–LD8", region: "Mid Wales", isPriority: true },
+  // Outer London
+  { displayName: "Harrow (HA)", outcode: "587", slug: "harrow", postcodes: "HA0–HA9", region: "London" },
+  { displayName: "Romford (RM)", outcode: "1257", slug: "romford", postcodes: "RM1–RM20", region: "London" },
+  { displayName: "Twickenham (TW)", outcode: "1518", slug: "twickenham", postcodes: "TW1–TW20", region: "London" },
+  { displayName: "Kingston (KT)", outcode: "710", slug: "kingston-upon-thames", postcodes: "KT1–KT24", region: "London" },
+  { displayName: "Croydon (CR)", outcode: "407", slug: "croydon", postcodes: "CR0–CR9", region: "London" },
+  { displayName: "Bromley (BR)", outcode: "218", slug: "bromley", postcodes: "BR1–BR8", region: "London" },
+  { displayName: "Dartford (DA)", outcode: "415", slug: "dartford", postcodes: "DA1–DA18", region: "South East" },
+  { displayName: "Enfield (EN)", outcode: "482", slug: "enfield", postcodes: "EN1–EN11", region: "London" },
+  { displayName: "Watford (WD)", outcode: "1554", slug: "watford", postcodes: "WD1–WD25", region: "East of England" },
 ]
 
 // Commercial property types — replaces the residential bedroom-based types

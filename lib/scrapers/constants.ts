@@ -152,6 +152,64 @@ export const RIGHTMOVE_OUTCODES: Record<string, string> = {
   "Newport (NP)": "REGION^991",
   "Swansea (SA)": "REGION^1305",
   "Swindon (SN)": "1361",
+  "Peterborough (PE)": "1098",
+  // South West
+  "Bath (BA)": "95",
+  "Exeter (EX)": "490",
+  "Bournemouth (BH)": "190",
+  "Gloucester (GL)": "547",
+  // South East
+  "Brighton/Hove (BN)": "213",
+  "Oxford (OX)": "1063",
+  "Guildford (GU)": "571",
+  "Southend-on-Sea (SS)": "1385",
+  "Slough/Windsor (SL)": "1346",
+  // East of England
+  "Cambridge (CB)": "271",
+  "Norwich (NR)": "1020",
+  "Ipswich (IP)": "635",
+  "Chelmsford (CM)": "358",
+  "Colchester (CO)": "385",
+  // East Midlands
+  "Lincoln (LN)": "790",
+  // West Midlands
+  "Telford (TF)": "1471",
+  "Shrewsbury (SY)": "1362",
+  // Yorkshire
+  "York (YO)": "1671",
+  "Hull (HU)": "613",
+  "Doncaster (DN)": "445",
+  "Huddersfield (HD)": "592",
+  "Wakefield (WF)": "1561",
+  "Harrogate (HG)": "583",
+  // North East
+  "Middlesbrough (TS)": "982",
+  // North West
+  "Bolton (BL)": "144",
+  "Blackpool (FY)": "513",
+  "Preston (PR)": "1172",
+  "Wigan (WN)": "1609",
+  "Warrington (WA)": "1541",
+  "Chester (CH)": "338",
+  "Stockport (SK)": "1348",
+  "Oldham (OL)": "1057",
+  // Scotland
+  "Aberdeen (AB)": "1",
+  "Dundee (DD)": "418",
+  "Inverness (IV)": "649",
+  // Wales
+  "Wrexham/N. Wales (LL)": "REGION^1304",
+  "Powys (LD)": "764",
+  // Outer London
+  "Harrow (HA)": "587",
+  "Romford (RM)": "1257",
+  "Twickenham (TW)": "1518",
+  "Kingston (KT)": "710",
+  "Croydon (CR)": "407",
+  "Bromley (BR)": "218",
+  "Dartford (DA)": "415",
+  "Enfield (EN)": "482",
+  "Watford (WD)": "1554",
 }
 
 // Rightmove addedSince parameter mapping
@@ -247,6 +305,64 @@ export const LOCATION_SLUGS: Record<string, string> = {
   "Newport (NP)": "newport",
   "Swansea (SA)": "swansea",
   "Swindon (SN)": "swindon",
+  "Peterborough (PE)": "peterborough",
+  // South West
+  "Bath (BA)": "bath",
+  "Exeter (EX)": "exeter",
+  "Bournemouth (BH)": "bournemouth",
+  "Gloucester (GL)": "gloucester",
+  // South East
+  "Brighton/Hove (BN)": "brighton",
+  "Oxford (OX)": "oxford",
+  "Guildford (GU)": "guildford",
+  "Southend-on-Sea (SS)": "southend-on-sea",
+  "Slough/Windsor (SL)": "slough",
+  // East of England
+  "Cambridge (CB)": "cambridge",
+  "Norwich (NR)": "norwich",
+  "Ipswich (IP)": "ipswich",
+  "Chelmsford (CM)": "chelmsford",
+  "Colchester (CO)": "colchester",
+  // East Midlands
+  "Lincoln (LN)": "lincoln",
+  // West Midlands
+  "Telford (TF)": "telford",
+  "Shrewsbury (SY)": "shrewsbury",
+  // Yorkshire
+  "York (YO)": "york",
+  "Hull (HU)": "hull",
+  "Doncaster (DN)": "doncaster",
+  "Huddersfield (HD)": "huddersfield",
+  "Wakefield (WF)": "wakefield",
+  "Harrogate (HG)": "harrogate",
+  // North East
+  "Middlesbrough (TS)": "middlesbrough",
+  // North West
+  "Bolton (BL)": "bolton",
+  "Blackpool (FY)": "blackpool",
+  "Preston (PR)": "preston",
+  "Wigan (WN)": "wigan",
+  "Warrington (WA)": "warrington",
+  "Chester (CH)": "chester",
+  "Stockport (SK)": "stockport",
+  "Oldham (OL)": "oldham",
+  // Scotland
+  "Aberdeen (AB)": "aberdeen",
+  "Dundee (DD)": "dundee",
+  "Inverness (IV)": "inverness",
+  // Wales
+  "Wrexham/N. Wales (LL)": "wrexham",
+  "Powys (LD)": "llandrindod-wells",
+  // Outer London
+  "Harrow (HA)": "harrow",
+  "Romford (RM)": "romford",
+  "Twickenham (TW)": "twickenham",
+  "Kingston (KT)": "kingston-upon-thames",
+  "Croydon (CR)": "croydon",
+  "Bromley (BR)": "bromley",
+  "Dartford (DA)": "dartford",
+  "Enfield (EN)": "enfield",
+  "Watford (WD)": "watford",
 }
 
 // ---- PrimeLocation Configuration ----
