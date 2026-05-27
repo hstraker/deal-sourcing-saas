@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
       const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 25000 })
       const httpStatus = response?.status()
       log(`HTTP ${httpStatus} — waiting for page to settle...`)
-      await page.waitForTimeout(2000)
+      await new Promise(resolve => setTimeout(resolve, 2000))
 
       // Try cookie consent
       try { await (scraper as any).handleCookieConsent?.(page) } catch {}
