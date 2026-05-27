@@ -1636,6 +1636,10 @@ model PropertyListing {
   // ── Investor tracker stage ─────────────────────────────────────────────────
   trackerStage      String?         @map("tracker_stage") // null | watchlist | viewing | offer | rejected
 
+  // ── SSAS commercial analysis ───────────────────────────────────────────────
+  ssasAnalysis      Json?           @map("ssas_analysis")  // SsasAnalysisResult
+  annualRent        Int?            @map("annual_rent")     // £/year, explicit for SSAS yield
+
   // Review queue
   reviewStatus    ReviewStatus     @default(PENDING) @map("review_status")
   reviewNotes     String?          @map("review_notes") @db.Text

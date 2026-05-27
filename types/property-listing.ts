@@ -56,6 +56,9 @@ export interface PropertyListingForClient {
   jurisdiction:      "WALES" | "ENGLAND"
   strategyViability: StrategyViabilitySnapshot
   trackerStage:      "watchlist" | "viewing" | "offer" | "rejected" | null
+  // ── SSAS ───────────────────────────────────────────────────────────────────
+  ssasAnalysis:      any | null
+  annualRent:        number | null
 }
 
 export interface PriceHistoryEntry {
@@ -176,5 +179,7 @@ export function toPropertyListingForClient(listing: any): PropertyListingForClie
     jurisdiction:      (listing.jurisdiction ?? "ENGLAND") as "WALES" | "ENGLAND",
     strategyViability: (listing.strategyViability as StrategyViabilitySnapshot) ?? {},
     trackerStage:      (listing.trackerStage ?? null) as "watchlist" | "viewing" | "offer" | "rejected" | null,
+    ssasAnalysis:      listing.ssasAnalysis ?? null,
+    annualRent:        listing.annualRent ?? null,
   }
 }

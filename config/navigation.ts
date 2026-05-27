@@ -22,6 +22,7 @@ import {
   MegaphoneIcon,
   ChatBubbleLeftRightIcon,
   SparklesIcon,
+  BriefcaseIcon,
 } from "@heroicons/react/24/outline"
 
 export const NAV_SECTIONS = [
@@ -56,7 +57,8 @@ export const NAV_SECTIONS = [
       {
         label: "Sourcing",
         items: [
-          { label: "Scraper", href: "/dashboard/scraper", icon: MagnifyingGlassCircleIcon, tooltip: "Monitor Rightmove and Zoopla for newly listed properties matching your criteria" },
+          { label: "Scraper",       href: "/dashboard/scraper", icon: MagnifyingGlassCircleIcon, tooltip: "Monitor Rightmove and Zoopla for newly listed properties matching your criteria" },
+          { label: "SSAS Scanner",  href: "/dashboard/ssas",    icon: BriefcaseIcon,             tooltip: "Analyse commercial property listings for SSAS pension investment — yield, DSCR, loan-back viability, and risk scoring" },
         ],
       },
     ],
