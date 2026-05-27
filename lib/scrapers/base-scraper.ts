@@ -164,10 +164,11 @@ export abstract class BaseScraper {
                 detailUrl
               )
 
-              // Post-scrape property type filter (applies to all sources, ensures
-              // OTM/PrimeLocation/Zoopla honour the propertyTypes setting since
-              // those sites don't support native URL-level type filtering)
+              // Post-scrape property type filter (applies to residential only —
+              // commercial property types like "industrial" would never match
+              // residential filter values like "terraced" so we skip it)
               if (
+                property.category !== "COMMERCIAL" &&
                 criteria.propertyTypes &&
                 criteria.propertyTypes.length > 0 &&
                 !this.propertyTypeMatchesFilter(property.propertyType, criteria.propertyTypes)
