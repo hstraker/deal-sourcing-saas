@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
@@ -130,29 +130,6 @@ function fmt12h(d: Date) {
   return `${h % 12 || 12}:${m.toString().padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`
 }
 
-function criteriaSummary(s: ScraperSettingsForClient | null) {
-  const c = s?.searchCriteria
-  if (!c) return "No criteria configured"
-  const parts: string[] = []
-  if (c.locations?.length) {
-    const names = c.locations.map(l => l.displayName.replace(/ \(.*\)/, ""))
-    parts.push(names.length <= 2 ? names.join(", ") : `${names.slice(0, 2).join(", ")} +${names.length - 2} more`)
-  }
-  if (c.minPrice || c.maxPrice) {
-    const lo = c.minPrice ? `£${(c.minPrice / 1000).toFixed(0)}k` : "Any"
-    const hi = c.maxPrice ? `£${(c.maxPrice / 1000).toFixed(0)}k` : "Any"
-    parts.push(`${lo}–${hi}`)
-  }
-  if (c.category !== "COMMERCIAL" && (c.minBedrooms || c.maxBedrooms)) {
-    parts.push(`${c.minBedrooms ?? "Any"}–${c.maxBedrooms ?? "Any"} beds`)
-  }
-  if (c.addedSince) {
-    const map: Record<string, string> = { "24hours": "24h", "3days": "3d", "7days": "7d", "14days": "14d" }
-    parts.push(`Last ${map[c.addedSince] ?? c.addedSince}`)
-  }
-  return parts.join(" · ") || "All properties"
-}
-
 function LastRun({ at }: { at: string | null }) {
   const [txt, setTxt] = useState("")
   useEffect(() => {
@@ -169,30 +146,6 @@ function LastRun({ at }: { at: string | null }) {
     return () => clearInterval(id)
   }, [at])
   return <span suppressHydrationWarning>{txt}</span>
-}
-
-// ─── Sub-component: inline criteria chip ─────────────────────────────────────
-
-function CriteriaChip({ settings, Icon }: { settings: ScraperSettingsForClient | null; Icon: React.ElementType }) {
-  if (!settings) return null
-  if (!settings.enabled) return (
-    <span className="flex items-center gap-1 text-[11px] text-amber-600">
-      <Icon className="h-3 w-3 flex-shrink-0" />
-      <span>disabled</span>
-    </span>
-  )
-  if (!settings.searchCriteria?.locations?.length) return (
-    <span className="flex items-center gap-1 text-[11px] text-amber-600">
-      <Icon className="h-3 w-3 flex-shrink-0" />
-      <span>no locations</span>
-    </span>
-  )
-  return (
-    <span className="flex items-center gap-1 text-[11px] text-gray-400 max-w-[200px] truncate">
-      <Icon className="h-3 w-3 flex-shrink-0 text-gray-300" />
-      <span className="truncate">{criteriaSummary(settings)}</span>
-    </span>
-  )
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -397,22 +350,20 @@ export function UnifiedFinder({
   return (
     <div className="space-y-3">
 
-      {/* ══ ROW 1: Category tabs · Review Queue · Stats · Run · Settings ══ */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
+      {/* ══ Single toolbar: filters · stats · run · settings (one row, no wrap) ══ */}
+      <div className="flex items-center gap-2 min-w-0">
 
-        {/* Left pill group: category filters + review queue toggle */}
-        <div className="flex items-center gap-0.5 p-0.5 bg-gray-100 rounded-lg">
-
-          {/* Category filters */}
+        {/* Pill group: category tabs + review toggle */}
+        <div className="flex items-center gap-0.5 p-0.5 bg-gray-100 rounded-lg flex-shrink-0">
           {([
-            { id: "all",        label: "All",         Icon: Layers,    count: allStats.totalListings },
-            { id: "resi",       label: "Residential", Icon: Home,      count: resiStats.totalListings },
-            { id: "commercial", label: "Commercial",  Icon: Building2, count: commercialStats.totalListings },
+            { id: "all",        label: "All",   Icon: Layers,    count: allStats.totalListings },
+            { id: "resi",       label: "Resi",  Icon: Home,      count: resiStats.totalListings },
+            { id: "commercial", label: "Comm",  Icon: Building2, count: commercialStats.totalListings },
           ] as const).map(({ id, label, Icon, count }) => (
             <button
               key={id}
               onClick={() => { setCategoryView(id as CategoryView); setViewMode("properties") }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-sm font-medium transition-all ${
                 categoryView === id && viewMode === "properties"
                   ? "bg-white shadow-sm text-gray-900"
                   : "text-gray-500 hover:text-gray-700"
@@ -426,13 +377,11 @@ export function UnifiedFinder({
             </button>
           ))}
 
-          {/* Divider */}
           <span className="w-px h-5 bg-gray-300 mx-0.5" />
 
-          {/* Review Queue toggle */}
           <button
             onClick={() => setViewMode(v => v === "review" ? "properties" : "review")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-sm font-medium transition-all ${
               viewMode === "review"
                 ? "bg-white shadow-sm text-gray-900"
                 : "text-gray-500 hover:text-gray-700"
@@ -448,59 +397,46 @@ export function UnifiedFinder({
           </button>
         </div>
 
-        {/* Centre: criteria summary (hidden on small screens) */}
-        <div className="hidden md:flex items-center gap-3 min-w-0">
-          {categoryView !== "commercial" && (
-            <CriteriaChip settings={resiSettings} Icon={Home} />
+        {/* Flexible gap */}
+        <div className="flex-1" />
+
+        {/* Compact stat badges — ✓ approved · ⚠ ambiguous (total is already in tabs) */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {activeStats.approvedCount > 0 && (
+            <span className="flex items-center gap-1 tabular-nums text-[11px] font-medium text-green-700 bg-green-50 border border-green-100 rounded px-1.5 py-0.5">
+              <CheckCircle2 className="h-2.5 w-2.5" />
+              {activeStats.approvedCount}
+            </span>
           )}
-          {categoryView === "all" && resiSettings && commercialSettings && (
-            <span className="text-gray-200 text-xs">·</span>
-          )}
-          {categoryView !== "resi" && (
-            <CriteriaChip settings={commercialSettings} Icon={Building2} />
+          {activeStats.ambiguousCount > 0 && (
+            <span className="flex items-center gap-1 tabular-nums text-[11px] font-medium text-red-600 bg-red-50 border border-red-100 rounded px-1.5 py-0.5">
+              <XCircle className="h-2.5 w-2.5" />
+              {activeStats.ambiguousCount}
+            </span>
           )}
         </div>
 
-        {/* Right: stats + run + settings */}
-        <div className="flex items-center gap-2">
+        <div className="h-4 w-px bg-gray-200 flex-shrink-0" />
 
-          {/* Inline stats */}
-          <div className="hidden sm:flex items-center gap-2 text-xs">
-            <span className="tabular-nums text-gray-500">
-              <span className="font-semibold text-gray-800">{activeStats.totalListings}</span> total
-            </span>
-            <span className="text-gray-200">·</span>
-            <span className="tabular-nums text-gray-500">
-              <span className="font-semibold text-green-600">{activeStats.approvedCount}</span> approved
-            </span>
-            {activeStats.ambiguousCount > 0 && (
-              <>
-                <span className="text-gray-200">·</span>
-                <span className="tabular-nums text-gray-500">
-                  <span className="font-semibold text-red-500">{activeStats.ambiguousCount}</span> ambiguous
-                </span>
-              </>
-            )}
-          </div>
-
-          <div className="hidden sm:block h-4 w-px bg-gray-200" />
-
-          {/* Run buttons */}
+        {/* Run buttons */}
+        <div className="flex items-center gap-1 flex-shrink-0">
           {categoryView === "all" ? (
-            <div className="flex items-center gap-1">
+            <>
               <button
                 onClick={() => triggerAll("RESIDENTIAL")}
                 disabled={!resiReady || activeJobs.some(j => j.category === "RESIDENTIAL")}
                 className="flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                <Home className="h-3 w-3" /> Resi
+                {activeJobs.some(j => j.category === "RESIDENTIAL") ? <Loader2 className="h-3 w-3 animate-spin" /> : <Home className="h-3 w-3" />}
+                Resi
               </button>
               <button
                 onClick={() => triggerAll("COMMERCIAL")}
                 disabled={!commReady || activeJobs.some(j => j.category === "COMMERCIAL")}
                 className="flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                <Building2 className="h-3 w-3" /> Comm
+                {activeJobs.some(j => j.category === "COMMERCIAL") ? <Loader2 className="h-3 w-3 animate-spin" /> : <Building2 className="h-3 w-3" />}
+                Comm
               </button>
               <button
                 onClick={triggerBoth}
@@ -510,7 +446,7 @@ export function UnifiedFinder({
                 {activeJobs.length > 0 ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
                 Both
               </button>
-            </div>
+            </>
           ) : (
             <button
               onClick={() => triggerAll(categoryView === "commercial" ? "COMMERCIAL" : "RESIDENTIAL")}
@@ -523,14 +459,14 @@ export function UnifiedFinder({
               Run All
             </button>
           )}
-
-          {/* Settings icon */}
-          <Link href="/dashboard/settings/finder">
-            <button title="Finder Settings" className="flex items-center justify-center rounded-md border border-gray-200 p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors">
-              <Settings className="h-3.5 w-3.5" />
-            </button>
-          </Link>
         </div>
+
+        {/* Settings icon */}
+        <Link href="/dashboard/settings/finder" className="flex-shrink-0">
+          <button title="Finder Settings" className="flex items-center justify-center rounded-md border border-gray-200 p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors">
+            <Settings className="h-3.5 w-3.5" />
+          </button>
+        </Link>
       </div>
 
       {/* ══ ROW 2: Single-line portal strip ══ */}
