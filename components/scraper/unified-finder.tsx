@@ -363,34 +363,34 @@ export function UnifiedFinder({
             <button
               key={id}
               onClick={() => { setCategoryView(id as CategoryView); setViewMode("properties") }}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-sm font-medium transition-all ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
                 categoryView === id && viewMode === "properties"
                   ? "bg-white shadow-sm text-gray-900"
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >
-              <Icon className="h-3.5 w-3.5" />
+              <Icon className="h-3 w-3" />
               {label}
-              <span className={`tabular-nums text-xs ${categoryView === id && viewMode === "properties" ? "text-gray-500" : "text-gray-400"}`}>
+              <span className={`tabular-nums text-[11px] ${categoryView === id && viewMode === "properties" ? "text-gray-500" : "text-gray-400"}`}>
                 {count}
               </span>
             </button>
           ))}
 
-          <span className="w-px h-5 bg-gray-300 mx-0.5" />
+          <span className="w-px h-4 bg-gray-300 mx-0.5" />
 
           <button
             onClick={() => setViewMode(v => v === "review" ? "properties" : "review")}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-sm font-medium transition-all ${
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
               viewMode === "review"
                 ? "bg-white shadow-sm text-gray-900"
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
-            <ClipboardCheck className="h-3.5 w-3.5" />
+            <ClipboardCheck className="h-3 w-3" />
             Review
             {activeStats.pendingReview > 0 && (
-              <span className={`tabular-nums text-xs font-semibold ${viewMode === "review" ? "text-amber-500" : "text-amber-400"}`}>
+              <span className={`tabular-nums text-[11px] font-semibold ${viewMode === "review" ? "text-amber-500" : "text-amber-400"}`}>
                 {activeStats.pendingReview}
               </span>
             )}
@@ -425,7 +425,7 @@ export function UnifiedFinder({
               <button
                 onClick={() => triggerAll("RESIDENTIAL")}
                 disabled={!resiReady || activeJobs.some(j => j.category === "RESIDENTIAL")}
-                className="flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 {activeJobs.some(j => j.category === "RESIDENTIAL") ? <Loader2 className="h-3 w-3 animate-spin" /> : <Home className="h-3 w-3" />}
                 Resi
@@ -433,7 +433,7 @@ export function UnifiedFinder({
               <button
                 onClick={() => triggerAll("COMMERCIAL")}
                 disabled={!commReady || activeJobs.some(j => j.category === "COMMERCIAL")}
-                className="flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 {activeJobs.some(j => j.category === "COMMERCIAL") ? <Loader2 className="h-3 w-3 animate-spin" /> : <Building2 className="h-3 w-3" />}
                 Comm
@@ -441,7 +441,7 @@ export function UnifiedFinder({
               <button
                 onClick={triggerBoth}
                 disabled={(!resiReady && !commReady) || activeJobs.length > 0}
-                className="flex items-center gap-1.5 rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-1 rounded-md bg-gray-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 {activeJobs.length > 0 ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
                 Both
@@ -451,7 +451,7 @@ export function UnifiedFinder({
             <button
               onClick={() => triggerAll(categoryView === "commercial" ? "COMMERCIAL" : "RESIDENTIAL")}
               disabled={categoryView === "commercial" ? !commReady : !resiReady}
-              className="flex items-center gap-1.5 rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1 rounded-md bg-gray-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {activeJobs.some(j => j.category === (categoryView === "commercial" ? "COMMERCIAL" : "RESIDENTIAL"))
                 ? <Loader2 className="h-3 w-3 animate-spin" />
@@ -463,8 +463,8 @@ export function UnifiedFinder({
 
         {/* Settings icon */}
         <Link href="/dashboard/settings/finder" className="flex-shrink-0">
-          <button title="Finder Settings" className="flex items-center justify-center rounded-md border border-gray-200 p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors">
-            <Settings className="h-3.5 w-3.5" />
+          <button title="Finder Settings" className="flex items-center justify-center rounded-md border border-gray-200 p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors">
+            <Settings className="h-3 w-3" />
           </button>
         </Link>
       </div>
@@ -485,7 +485,7 @@ export function UnifiedFinder({
           const showComm  = categoryView !== "resi"
 
           return (
-            <div key={s.key} className="flex-1 flex items-center gap-1.5 bg-white border border-gray-100 rounded-lg px-2.5 py-1.5 min-w-0">
+            <div key={s.key} className="flex-1 flex items-center gap-1.5 bg-white border border-gray-100 rounded-lg px-2.5 py-1 min-w-0">
               <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${dotCls}`} />
               <span className={`text-xs font-semibold flex-shrink-0 ${cfg.text}`}>{s.label}</span>
               <span className="text-[10px] text-gray-400 flex items-center gap-0.5 flex-1 min-w-0 truncate">
