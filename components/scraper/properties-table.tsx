@@ -42,9 +42,31 @@ import {
   Star,
 } from "lucide-react"
 import { toast } from "sonner"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { PropertyDetailModal } from "./property-detail-modal"
 import { PropertyCard } from "./property-card"
 import type { PropertyListingForClient, BmvIndicatorsData } from "@/types/property-listing"
+
+// ─── Tooltip helper ────────────────────────────────────────────────────────────
+function Tip({ text, children, side = "bottom" }: {
+  text: string
+  children: React.ReactNode
+  side?: "top" | "bottom" | "left" | "right"
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side={side} className="max-w-[220px] text-center text-[11px]">
+        {text}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
 
 // ── Signal chip definitions ───────────────────────────────────────────────────
 const SIGNAL_CHIPS = [
@@ -57,6 +79,24 @@ const SIGNAL_CHIPS = [
   { id: "new-build",     label: "New Build",      style: "bg-sky-100 text-sky-700 border-sky-200" },
   { id: "welsh",         label: "🏴󠁧󠁢󠁷󠁬󠁳󠁿 Wales",       style: "bg-red-50 text-red-700 border-red-200" },
 ] as const
+
+const SIGNAL_TOOLTIPS: Record<string, string> = {
+  probate:       "Estate sale — motivated sellers often seeking quick completion below market value",
+  auction:       "Listed at auction — opportunity to purchase below market value",
+  repossession:  "Bank repossession — highly motivated seller, priced to move quickly",
+  reduced:       "Asking price has been reduced — indicates a flexible or motivated seller",
+  "cash-only":   "Cash buyers only — fewer competing bidders, potential for a discount",
+  "chain-free":  "No upward chain — faster and lower-risk completion",
+  "new-build":   "Newly constructed property — check for developer incentives",
+  welsh:         "Property in Wales — different legal jurisdiction, check LTA rules",
+}
+
+const MOTIVATION_TOOLTIPS: Record<string, string> = {
+  "":   "Show all properties regardless of motivation score",
+  "20": "Score ≥ 20 — some early signs of a motivated seller",
+  "45": "Score ≥ 45 — clear motivation signals, worth investigating",
+  "70": "Score ≥ 70 — highly motivated seller, prioritise these deals",
+}
 
 // Leaflet requires the browser — load with ssr:false
 const PropertyMap = dynamic(
@@ -329,10 +369,10 @@ export function PropertiesTable({ refreshKey = 0, lockedCategory }: PropertiesTa
     }))
 
   return (
-    <div className="space-y-4">
+    <TooltipProvider delayDuration={500}>
+    <div className="space-y-3">
       {/* ── Toolbar ── */}
-      <div className="ds-card px-3 py-2">
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-2 flex-wrap">
           {/* Search */}
           <div className="relative flex-1 min-w-[160px] max-w-xs">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
@@ -387,28 +427,32 @@ export function PropertiesTable({ refreshKey = 0, lockedCategory }: PropertiesTa
           )}
 
           {/* Favourites */}
-          <Button
-            variant={filters.favoritesOnly ? "default" : "outline"}
-            size="sm"
-            className={`h-7 text-xs px-2.5 ${filters.favoritesOnly ? "bg-[#F5A623] hover:bg-[#E09518] border-[#F5A623] text-white" : ""}`}
-            onClick={() => setFilters(prev => ({ ...prev, favoritesOnly: !prev.favoritesOnly }))}
-          >
-            <Star className={`mr-1 h-3 w-3 ${filters.favoritesOnly ? "fill-white" : ""}`} />
-            Favourites
-          </Button>
+          <Tip text="Show only properties you've starred as favourites">
+            <Button
+              variant={filters.favoritesOnly ? "default" : "outline"}
+              size="sm"
+              className={`h-7 text-xs px-2.5 ${filters.favoritesOnly ? "bg-[#F5A623] hover:bg-[#E09518] border-[#F5A623] text-white" : ""}`}
+              onClick={() => setFilters(prev => ({ ...prev, favoritesOnly: !prev.favoritesOnly }))}
+            >
+              <Star className={`mr-1 h-3 w-3 ${filters.favoritesOnly ? "fill-white" : ""}`} />
+              Favourites
+            </Button>
+          </Tip>
 
           {activeFilterCount > 0 && (
-            <button
-              type="button"
-              className="btn-ghost h-7 text-xs flex items-center gap-1 px-2"
-              onClick={() => setFilters(prev => ({ ...prev, source: "", reviewStatus: "", category: lockedCategory ?? "", favoritesOnly: false, signals: [], minMotivation: "", jurisdiction: "" }))}
-            >
-              <X className="h-3 w-3" />
-              Clear
-              <span className="rounded-full bg-gray-200 px-1.5 py-0 text-[10px] font-semibold text-gray-600">
-                {activeFilterCount}
-              </span>
-            </button>
+            <Tip text={`Clear all ${activeFilterCount} active filter${activeFilterCount > 1 ? "s" : ""} and show all properties`}>
+              <button
+                type="button"
+                className="btn-ghost h-7 text-xs flex items-center gap-1 px-2"
+                onClick={() => setFilters(prev => ({ ...prev, source: "", reviewStatus: "", category: lockedCategory ?? "", favoritesOnly: false, signals: [], minMotivation: "", jurisdiction: "" }))}
+              >
+                <X className="h-3 w-3" />
+                Clear
+                <span className="rounded-full bg-gray-200 px-1.5 py-0 text-[10px] font-semibold text-gray-600">
+                  {activeFilterCount}
+                </span>
+              </button>
+            </Tip>
           )}
 
           {/* Spacer */}
@@ -431,42 +475,49 @@ export function PropertiesTable({ refreshKey = 0, lockedCategory }: PropertiesTa
                 <SelectItem value="title">Title</SelectItem>
               </SelectContent>
             </Select>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={() => setSortDirection(d => d === "asc" ? "desc" : "asc")}
-            >
-              {sortDirection === "asc" ? "Asc" : "Desc"}
-            </Button>
+            <Tip text={sortDirection === "asc" ? "Currently ascending — click to sort descending" : "Currently descending — click to sort ascending"}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => setSortDirection(d => d === "asc" ? "desc" : "asc")}
+              >
+                {sortDirection === "asc" ? "Asc" : "Desc"}
+              </Button>
+            </Tip>
           </div>
 
           {/* View toggle */}
           <div className="flex rounded-lg border border-[var(--ds-border)] overflow-hidden">
-            <button
-              type="button"
-              className={`flex items-center gap-1 px-2.5 py-1 text-xs transition-colors ${viewMode === "table" ? "bg-[#1A1A1F] text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
-              onClick={() => setViewMode("table")}
-            >
-              <Table2 className="h-3 w-3" /> Table
-            </button>
-            <button
-              type="button"
-              className={`flex items-center gap-1 px-2.5 py-1 text-xs transition-colors border-l border-[var(--ds-border)] ${viewMode === "grid" ? "bg-[#1A1A1F] text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
-              onClick={() => setViewMode("grid")}
-            >
-              <LayoutGrid className="h-3 w-3" /> Grid
-            </button>
-            <button
-              type="button"
-              className={`flex items-center gap-1 px-2.5 py-1 text-xs transition-colors border-l border-[var(--ds-border)] ${viewMode === "map" ? "bg-[#1A1A1F] text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
-              onClick={() => setViewMode("map")}
-            >
-              <Map className="h-3 w-3" /> Map
-            </button>
+            <Tip text="Table view — all properties in a sortable list with full detail columns">
+              <button
+                type="button"
+                className={`flex items-center gap-1 px-2.5 py-1 text-xs transition-colors ${viewMode === "table" ? "bg-[#1A1A1F] text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
+                onClick={() => setViewMode("table")}
+              >
+                <Table2 className="h-3 w-3" /> Table
+              </button>
+            </Tip>
+            <Tip text="Grid view — visual card layout with property photos and key stats">
+              <button
+                type="button"
+                className={`flex items-center gap-1 px-2.5 py-1 text-xs transition-colors border-l border-[var(--ds-border)] ${viewMode === "grid" ? "bg-[#1A1A1F] text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
+                onClick={() => setViewMode("grid")}
+              >
+                <LayoutGrid className="h-3 w-3" /> Grid
+              </button>
+            </Tip>
+            <Tip text="Map view — properties pinned on an interactive map by location">
+              <button
+                type="button"
+                className={`flex items-center gap-1 px-2.5 py-1 text-xs transition-colors border-l border-[var(--ds-border)] ${viewMode === "map" ? "bg-[#1A1A1F] text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
+                onClick={() => setViewMode("map")}
+              >
+                <Map className="h-3 w-3" /> Map
+              </button>
+            </Tip>
           </div>
         </div>
-      </div>
 
       {/* ── Alert banner — new properties since yesterday ── */}
       {newSinceYesterday > 0 && (
@@ -491,18 +542,19 @@ export function PropertiesTable({ refreshKey = 0, lockedCategory }: PropertiesTa
         {SIGNAL_CHIPS.map(chip => {
           const active = filters.signals.includes(chip.id)
           return (
-            <button
-              key={chip.id}
-              type="button"
-              onClick={() => toggleSignal(chip.id)}
-              className={`shrink-0 inline-flex items-center text-[11px] font-medium px-2.5 py-1 rounded-full border transition-all ${
-                active
-                  ? chip.style + " ring-2 ring-offset-1 ring-indigo-400"
-                  : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
-              }`}
-            >
-              {chip.label}
-            </button>
+            <Tip key={chip.id} text={SIGNAL_TOOLTIPS[chip.id] ?? chip.label} side="bottom">
+              <button
+                type="button"
+                onClick={() => toggleSignal(chip.id)}
+                className={`shrink-0 inline-flex items-center text-[11px] font-medium px-2.5 py-1 rounded-full border transition-all ${
+                  active
+                    ? chip.style + " ring-2 ring-offset-1 ring-indigo-400"
+                    : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
+                }`}
+              >
+                {chip.label}
+              </button>
+            </Tip>
           )
         })}
         {/* Motivation threshold quick filter */}
@@ -513,18 +565,19 @@ export function PropertiesTable({ refreshKey = 0, lockedCategory }: PropertiesTa
           { value: "45", label: "45+" },
           { value: "70", label: "70+ 🔥" },
         ].map(opt => (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => setFilters(prev => ({ ...prev, minMotivation: opt.value }))}
-            className={`shrink-0 inline-flex items-center text-[11px] font-medium px-2.5 py-1 rounded-full border transition-all ${
-              filters.minMotivation === opt.value
-                ? "bg-[#6366f1] text-white border-[#6366f1]"
-                : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
-            }`}
-          >
-            {opt.label}
-          </button>
+          <Tip key={opt.value} text={MOTIVATION_TOOLTIPS[opt.value] ?? opt.label} side="bottom">
+            <button
+              type="button"
+              onClick={() => setFilters(prev => ({ ...prev, minMotivation: opt.value }))}
+              className={`shrink-0 inline-flex items-center text-[11px] font-medium px-2.5 py-1 rounded-full border transition-all ${
+                filters.minMotivation === opt.value
+                  ? "bg-[#6366f1] text-white border-[#6366f1]"
+                  : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
+              }`}
+            >
+              {opt.label}
+            </button>
+          </Tip>
         ))}
       </div>
 
@@ -977,5 +1030,6 @@ export function PropertiesTable({ refreshKey = 0, lockedCategory }: PropertiesTa
         </DialogContent>
       </Dialog>
     </div>
+    </TooltipProvider>
   )
 }

@@ -4,6 +4,12 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
   ClipboardCheck,
   Play, Loader2, CheckCircle2, XCircle,
   Clock, Home, Building2, Layers, Ban,
@@ -11,6 +17,22 @@ import {
 import { toast } from "sonner"
 import { ReviewQueue } from "@/components/scraper/review-queue"
 import { PropertiesTable } from "@/components/scraper/properties-table"
+
+// ─── Tooltip helper ────────────────────────────────────────────────────────────
+function Tip({ text, children, side = "bottom" }: {
+  text: string
+  children: React.ReactNode
+  side?: "top" | "bottom" | "left" | "right"
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side={side} className="max-w-[240px] text-center text-[11px]">
+        {text}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -347,7 +369,8 @@ export function UnifiedFinder({
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-3">
+    <TooltipProvider delayDuration={500}>
+    <div className="space-y-2">
 
       {/* ══ Single control bar: tabs left · portals + stats + run right (Option B) ══ */}
       <div className="flex items-center gap-2 min-w-0">
@@ -355,41 +378,44 @@ export function UnifiedFinder({
         {/* LEFT — Category tabs + review toggle */}
         <div className="flex items-center gap-0.5 p-0.5 bg-gray-100 rounded-lg flex-shrink-0">
           {([
-            { id: "all",        label: "All",   Icon: Layers,    count: allStats.totalListings },
-            { id: "resi",       label: "Resi",  Icon: Home,      count: resiStats.totalListings },
-            { id: "commercial", label: "Comm",  Icon: Building2, count: commercialStats.totalListings },
-          ] as const).map(({ id, label, Icon, count }) => (
-            <button
-              key={id}
-              onClick={() => { setCategoryView(id as CategoryView); setViewMode("properties") }}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-                categoryView === id && viewMode === "properties"
-                  ? "bg-white shadow-sm text-gray-900"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              <Icon className="h-3 w-3" />
-              {label}
-              <span className={`tabular-nums text-[11px] ${categoryView === id && viewMode === "properties" ? "text-gray-500" : "text-gray-400"}`}>
-                {count}
-              </span>
-            </button>
+            { id: "all",        label: "All",   Icon: Layers,    count: allStats.totalListings,        tip: "Show all properties — residential and commercial combined" },
+            { id: "resi",       label: "Resi",  Icon: Home,      count: resiStats.totalListings,       tip: "Show residential properties only (houses, flats, bungalows)" },
+            { id: "commercial", label: "Comm",  Icon: Building2, count: commercialStats.totalListings, tip: "Show commercial properties only (offices, retail, industrial)" },
+          ] as const).map(({ id, label, Icon, count, tip }) => (
+            <Tip key={id} text={tip} side="bottom">
+              <button
+                onClick={() => { setCategoryView(id as CategoryView); setViewMode("properties") }}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                  categoryView === id && viewMode === "properties"
+                    ? "bg-white shadow-sm text-gray-900"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <Icon className="h-3 w-3" />
+                {label}
+                <span className={`tabular-nums text-[11px] ${categoryView === id && viewMode === "properties" ? "text-gray-500" : "text-gray-400"}`}>
+                  {count}
+                </span>
+              </button>
+            </Tip>
           ))}
           <span className="w-px h-4 bg-gray-300 mx-0.5" />
-          <button
-            onClick={() => setViewMode(v => v === "review" ? "properties" : "review")}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-              viewMode === "review" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            <ClipboardCheck className="h-3 w-3" />
-            Review
-            {activeStats.pendingReview > 0 && (
-              <span className={`tabular-nums text-[11px] font-semibold ${viewMode === "review" ? "text-amber-500" : "text-amber-400"}`}>
-                {activeStats.pendingReview}
-              </span>
-            )}
-          </button>
+          <Tip text="Review queue — properties pending manual approval or flagged as ambiguous by AI analysis">
+            <button
+              onClick={() => setViewMode(v => v === "review" ? "properties" : "review")}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                viewMode === "review" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <ClipboardCheck className="h-3 w-3" />
+              Review
+              {activeStats.pendingReview > 0 && (
+                <span className={`tabular-nums text-[11px] font-semibold ${viewMode === "review" ? "text-amber-500" : "text-amber-400"}`}>
+                  {activeStats.pendingReview}
+                </span>
+              )}
+            </button>
+          </Tip>
         </div>
 
         {/* Flexible spacer */}
@@ -428,62 +454,74 @@ export function UnifiedFinder({
         {/* Stat badges */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {activeStats.approvedCount > 0 && (
-            <span className="flex items-center gap-1 tabular-nums text-[11px] font-medium text-green-700 bg-green-50 border border-green-100 rounded px-1.5 py-0.5">
-              <CheckCircle2 className="h-2.5 w-2.5" />
-              {activeStats.approvedCount}
-            </span>
+            <Tip text={`${activeStats.approvedCount} ${activeStats.approvedCount === 1 ? "property" : "properties"} approved — auto-approved by AI or manually reviewed`}>
+              <span className="flex items-center gap-1 tabular-nums text-[11px] font-medium text-green-700 bg-green-50 border border-green-100 rounded px-1.5 py-0.5 cursor-default">
+                <CheckCircle2 className="h-2.5 w-2.5" />
+                {activeStats.approvedCount}
+              </span>
+            </Tip>
           )}
           {activeStats.ambiguousCount > 0 && (
-            <span className="flex items-center gap-1 tabular-nums text-[11px] font-medium text-red-600 bg-red-50 border border-red-100 rounded px-1.5 py-0.5">
-              <XCircle className="h-2.5 w-2.5" />
-              {activeStats.ambiguousCount}
-            </span>
+            <Tip text={`${activeStats.ambiguousCount} ambiguous ${activeStats.ambiguousCount === 1 ? "property" : "properties"} — AI analysis was uncertain, manual review needed`}>
+              <span className="flex items-center gap-1 tabular-nums text-[11px] font-medium text-red-600 bg-red-50 border border-red-100 rounded px-1.5 py-0.5 cursor-default">
+                <XCircle className="h-2.5 w-2.5" />
+                {activeStats.ambiguousCount}
+              </span>
+            </Tip>
           )}
         </div>
 
         {/* Separator */}
         <div className="h-4 w-px bg-gray-200 flex-shrink-0" />
 
-        {/* Run buttons */}
+        {/* Run buttons — disabled only while a job is actively running */}
         <div className="flex items-center gap-1 flex-shrink-0">
           {categoryView === "all" ? (
             <>
-              <button
-                onClick={() => triggerAll("RESIDENTIAL")}
-                disabled={!resiReady || activeJobs.some(j => j.category === "RESIDENTIAL")}
-                className="flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                {activeJobs.some(j => j.category === "RESIDENTIAL") ? <Loader2 className="h-3 w-3 animate-spin" /> : <Home className="h-3 w-3" />}
-                Resi
-              </button>
-              <button
-                onClick={() => triggerAll("COMMERCIAL")}
-                disabled={!commReady || activeJobs.some(j => j.category === "COMMERCIAL")}
-                className="flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                {activeJobs.some(j => j.category === "COMMERCIAL") ? <Loader2 className="h-3 w-3 animate-spin" /> : <Building2 className="h-3 w-3" />}
-                Comm
-              </button>
-              <button
-                onClick={triggerBoth}
-                disabled={(!resiReady && !commReady) || activeJobs.length > 0}
-                className="flex items-center gap-1 rounded-md bg-gray-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                {activeJobs.length > 0 ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
-                Both
-              </button>
+              <Tip text="Scrape residential properties from all enabled portals (Rightmove, Zoopla, OnTheMarket, PrimeLocation)">
+                <button
+                  onClick={() => triggerAll("RESIDENTIAL")}
+                  disabled={activeJobs.some(j => j.category === "RESIDENTIAL")}
+                  className="flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  {activeJobs.some(j => j.category === "RESIDENTIAL") ? <Loader2 className="h-3 w-3 animate-spin" /> : <Home className="h-3 w-3" />}
+                  Resi
+                </button>
+              </Tip>
+              <Tip text="Scrape commercial properties from all enabled portals (offices, retail, industrial)">
+                <button
+                  onClick={() => triggerAll("COMMERCIAL")}
+                  disabled={activeJobs.some(j => j.category === "COMMERCIAL")}
+                  className="flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  {activeJobs.some(j => j.category === "COMMERCIAL") ? <Loader2 className="h-3 w-3 animate-spin" /> : <Building2 className="h-3 w-3" />}
+                  Comm
+                </button>
+              </Tip>
+              <Tip text="Run residential and commercial scrapers simultaneously across all enabled portals">
+                <button
+                  onClick={triggerBoth}
+                  disabled={activeJobs.length > 0}
+                  className="flex items-center gap-1 rounded-md bg-gray-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  {activeJobs.length > 0 ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+                  Both
+                </button>
+              </Tip>
             </>
           ) : (
-            <button
-              onClick={() => triggerAll(categoryView === "commercial" ? "COMMERCIAL" : "RESIDENTIAL")}
-              disabled={categoryView === "commercial" ? !commReady : !resiReady}
-              className="flex items-center gap-1 rounded-md bg-gray-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              {activeJobs.some(j => j.category === (categoryView === "commercial" ? "COMMERCIAL" : "RESIDENTIAL"))
-                ? <Loader2 className="h-3 w-3 animate-spin" />
-                : <Play className="h-3 w-3" />}
-              Run All
-            </button>
+            <Tip text={`Scrape ${categoryView === "commercial" ? "commercial" : "residential"} properties across all enabled portals`}>
+              <button
+                onClick={() => triggerAll(categoryView === "commercial" ? "COMMERCIAL" : "RESIDENTIAL")}
+                disabled={activeJobs.some(j => j.category === (categoryView === "commercial" ? "COMMERCIAL" : "RESIDENTIAL"))}
+                className="flex items-center gap-1 rounded-md bg-gray-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {activeJobs.some(j => j.category === (categoryView === "commercial" ? "COMMERCIAL" : "RESIDENTIAL"))
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : <Play className="h-3 w-3" />}
+                Run All
+              </button>
+            </Tip>
           )}
         </div>
       </div>
@@ -505,13 +543,14 @@ export function UnifiedFinder({
                   : `Running — ${job.totalFound} found, ${job.successful} saved`
                 }
               </span>
-              <button
-                onClick={() => cancelStuckJobs()}
-                title="Cancel this job"
-                className="ml-auto flex items-center gap-1 text-xs text-red-600 hover:text-red-800 border border-red-200 rounded px-2 py-0.5 hover:bg-red-50 transition-colors"
-              >
-                <Ban className="h-3 w-3" /> Cancel
-              </button>
+              <Tip text="Cancel this scrape job — stops it and marks it as cancelled in the job history" side="left">
+                <button
+                  onClick={() => cancelStuckJobs()}
+                  className="ml-auto flex items-center gap-1 text-xs text-red-600 hover:text-red-800 border border-red-200 rounded px-2 py-0.5 hover:bg-red-50 transition-colors"
+                >
+                  <Ban className="h-3 w-3" /> Cancel
+                </button>
+              </Tip>
             </div>
           ))}
         </div>
@@ -569,5 +608,6 @@ export function UnifiedFinder({
         <PropertiesTable refreshKey={tableRefreshKey} lockedCategory={tableLockedCategory} />
       )}
     </div>
+    </TooltipProvider>
   )
 }

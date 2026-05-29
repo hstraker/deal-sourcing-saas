@@ -37,7 +37,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {finderSettingsVisible && (
           <Link
             href="/dashboard/settings/finder"
-            title="Finder Settings"
+            title="Finder Settings — configure portals, schedule and search criteria"
             className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 ring-2 ring-gray-200 hover:ring-blue-400 transition-all text-gray-600"
           >
             <Settings className="w-4 h-4" />
