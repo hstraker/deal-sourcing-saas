@@ -2,12 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import {
   ClipboardCheck,
   Play, Loader2, CheckCircle2, XCircle,
-  Settings, Clock, Home, Building2, Layers, Ban,
+  Clock, Home, Building2, Layers, Ban,
 } from "lucide-react"
 import { toast } from "sonner"
 import { ReviewQueue } from "@/components/scraper/review-queue"
@@ -416,61 +415,11 @@ export function UnifiedFinder({
           )}
         </div>
 
-        <div className="h-4 w-px bg-gray-200 flex-shrink-0" />
-
-        {/* Run buttons */}
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {categoryView === "all" ? (
-            <>
-              <button
-                onClick={() => triggerAll("RESIDENTIAL")}
-                disabled={!resiReady || activeJobs.some(j => j.category === "RESIDENTIAL")}
-                className="flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                {activeJobs.some(j => j.category === "RESIDENTIAL") ? <Loader2 className="h-3 w-3 animate-spin" /> : <Home className="h-3 w-3" />}
-                Resi
-              </button>
-              <button
-                onClick={() => triggerAll("COMMERCIAL")}
-                disabled={!commReady || activeJobs.some(j => j.category === "COMMERCIAL")}
-                className="flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                {activeJobs.some(j => j.category === "COMMERCIAL") ? <Loader2 className="h-3 w-3 animate-spin" /> : <Building2 className="h-3 w-3" />}
-                Comm
-              </button>
-              <button
-                onClick={triggerBoth}
-                disabled={(!resiReady && !commReady) || activeJobs.length > 0}
-                className="flex items-center gap-1 rounded-md bg-gray-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                {activeJobs.length > 0 ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
-                Both
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => triggerAll(categoryView === "commercial" ? "COMMERCIAL" : "RESIDENTIAL")}
-              disabled={categoryView === "commercial" ? !commReady : !resiReady}
-              className="flex items-center gap-1 rounded-md bg-gray-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              {activeJobs.some(j => j.category === (categoryView === "commercial" ? "COMMERCIAL" : "RESIDENTIAL"))
-                ? <Loader2 className="h-3 w-3 animate-spin" />
-                : <Play className="h-3 w-3" />}
-              Run All
-            </button>
-          )}
-        </div>
-
-        {/* Settings icon */}
-        <Link href="/dashboard/settings/finder" className="flex-shrink-0">
-          <button title="Finder Settings" className="flex items-center justify-center rounded-md border border-gray-200 p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors">
-            <Settings className="h-3 w-3" />
-          </button>
-        </Link>
       </div>
 
-      {/* ══ ROW 2: Single-line portal strip ══ */}
+      {/* ══ ROW 2: Portal strip + run buttons (single row) ══ */}
       <div className="flex items-center gap-1.5">
+        {/* Portal cards */}
         {SOURCES.map(s => {
           const lastJob   = lastJobBySource[s.key]
           const cfg       = CHIP_CFG[s.key]
@@ -514,6 +463,52 @@ export function UnifiedFinder({
             </div>
           )
         })}
+
+        {/* Divider */}
+        <div className="h-6 w-px bg-gray-200 flex-shrink-0" />
+
+        {/* Run all buttons — same row as portals */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {categoryView === "all" ? (
+            <>
+              <button
+                onClick={() => triggerAll("RESIDENTIAL")}
+                disabled={!resiReady || activeJobs.some(j => j.category === "RESIDENTIAL")}
+                className="flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {activeJobs.some(j => j.category === "RESIDENTIAL") ? <Loader2 className="h-3 w-3 animate-spin" /> : <Home className="h-3 w-3" />}
+                Resi
+              </button>
+              <button
+                onClick={() => triggerAll("COMMERCIAL")}
+                disabled={!commReady || activeJobs.some(j => j.category === "COMMERCIAL")}
+                className="flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {activeJobs.some(j => j.category === "COMMERCIAL") ? <Loader2 className="h-3 w-3 animate-spin" /> : <Building2 className="h-3 w-3" />}
+                Comm
+              </button>
+              <button
+                onClick={triggerBoth}
+                disabled={(!resiReady && !commReady) || activeJobs.length > 0}
+                className="flex items-center gap-1 rounded-md bg-gray-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {activeJobs.length > 0 ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+                Both
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => triggerAll(categoryView === "commercial" ? "COMMERCIAL" : "RESIDENTIAL")}
+              disabled={categoryView === "commercial" ? !commReady : !resiReady}
+              className="flex items-center gap-1 rounded-md bg-gray-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {activeJobs.some(j => j.category === (categoryView === "commercial" ? "COMMERCIAL" : "RESIDENTIAL"))
+                ? <Loader2 className="h-3 w-3 animate-spin" />
+                : <Play className="h-3 w-3" />}
+              Run All
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── 4. Live progress ── */}

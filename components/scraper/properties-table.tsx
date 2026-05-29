@@ -331,138 +331,139 @@ export function PropertiesTable({ refreshKey = 0, lockedCategory }: PropertiesTa
   return (
     <div className="space-y-4">
       {/* ── Toolbar ── */}
-      <div className="ds-card p-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="ds-card px-3 py-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Search */}
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <div className="relative flex-1 min-w-[160px] max-w-xs">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
             <Input
               placeholder="Search address, title, postcode…"
               value={filters.search}
               onChange={e => setFilter("search", e.target.value)}
-              className="pl-9 h-9 text-sm"
+              className="pl-7 h-7 text-xs"
             />
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Source */}
-            <Select value={filters.source || "all"} onValueChange={v => setFilter("source", v === "all" ? "" : v)}>
-              <SelectTrigger className="h-9 w-36 text-sm">
-                <SelectValue placeholder="All sources" />
+          {/* Source */}
+          <Select value={filters.source || "all"} onValueChange={v => setFilter("source", v === "all" ? "" : v)}>
+            <SelectTrigger className="h-7 w-32 text-xs">
+              <SelectValue placeholder="All sources" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All sources</SelectItem>
+              <SelectItem value="RIGHTMOVE">Rightmove</SelectItem>
+              <SelectItem value="ZOOPLA">Zoopla</SelectItem>
+              <SelectItem value="ONTHEMARKET">OnTheMarket</SelectItem>
+              <SelectItem value="PRIMELOCATION">PrimeLocation</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Status */}
+          <Select value={filters.reviewStatus || "all"} onValueChange={v => setFilter("reviewStatus", v === "all" ? "" : v)}>
+            <SelectTrigger className="h-7 w-28 text-xs">
+              <SelectValue placeholder="All status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All status</SelectItem>
+              <SelectItem value="PENDING">Pending</SelectItem>
+              <SelectItem value="AUTO_APPROVED">Auto-approved</SelectItem>
+              <SelectItem value="APPROVED">Approved</SelectItem>
+              <SelectItem value="REJECTED">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Category — hidden when locked by parent */}
+          {!lockedCategory && (
+            <Select value={filters.category || "all"} onValueChange={v => setFilter("category", v === "all" ? "" : v)}>
+              <SelectTrigger className="h-7 w-32 text-xs">
+                <SelectValue placeholder="All categories" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All sources</SelectItem>
-                <SelectItem value="RIGHTMOVE">Rightmove</SelectItem>
-                <SelectItem value="ZOOPLA">Zoopla</SelectItem>
-                <SelectItem value="ONTHEMARKET">OnTheMarket</SelectItem>
-                <SelectItem value="PRIMELOCATION">PrimeLocation</SelectItem>
+                <SelectItem value="all">All categories</SelectItem>
+                <SelectItem value="RESIDENTIAL">Residential</SelectItem>
+                <SelectItem value="COMMERCIAL">Commercial</SelectItem>
               </SelectContent>
             </Select>
+          )}
 
-            {/* Status */}
-            <Select value={filters.reviewStatus || "all"} onValueChange={v => setFilter("reviewStatus", v === "all" ? "" : v)}>
-              <SelectTrigger className="h-9 w-32 text-sm">
-                <SelectValue placeholder="All status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All status</SelectItem>
-                <SelectItem value="PENDING">Pending</SelectItem>
-                <SelectItem value="AUTO_APPROVED">Auto-approved</SelectItem>
-                <SelectItem value="APPROVED">Approved</SelectItem>
-                <SelectItem value="REJECTED">Rejected</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Favourites */}
+          <Button
+            variant={filters.favoritesOnly ? "default" : "outline"}
+            size="sm"
+            className={`h-7 text-xs px-2.5 ${filters.favoritesOnly ? "bg-[#F5A623] hover:bg-[#E09518] border-[#F5A623] text-white" : ""}`}
+            onClick={() => setFilters(prev => ({ ...prev, favoritesOnly: !prev.favoritesOnly }))}
+          >
+            <Star className={`mr-1 h-3 w-3 ${filters.favoritesOnly ? "fill-white" : ""}`} />
+            Favourites
+          </Button>
 
-            {/* Category — hidden when locked by parent */}
-            {!lockedCategory && (
-              <Select value={filters.category || "all"} onValueChange={v => setFilter("category", v === "all" ? "" : v)}>
-                <SelectTrigger className="h-9 w-36 text-sm">
-                  <SelectValue placeholder="All categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All categories</SelectItem>
-                  <SelectItem value="RESIDENTIAL">Residential</SelectItem>
-                  <SelectItem value="COMMERCIAL">Commercial</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-
-            {/* Favourites */}
-            <Button
-              variant={filters.favoritesOnly ? "default" : "outline"}
-              size="sm"
-              className={`h-9 text-sm ${filters.favoritesOnly ? "bg-[#F5A623] hover:bg-[#E09518] border-[#F5A623] text-white" : ""}`}
-              onClick={() => setFilters(prev => ({ ...prev, favoritesOnly: !prev.favoritesOnly }))}
+          {activeFilterCount > 0 && (
+            <button
+              type="button"
+              className="btn-ghost h-7 text-xs flex items-center gap-1 px-2"
+              onClick={() => setFilters(prev => ({ ...prev, source: "", reviewStatus: "", category: lockedCategory ?? "", favoritesOnly: false, signals: [], minMotivation: "", jurisdiction: "" }))}
             >
-              <Star className={`mr-1.5 h-3.5 w-3.5 ${filters.favoritesOnly ? "fill-white" : ""}`} />
-              Favourites
+              <X className="h-3 w-3" />
+              Clear
+              <span className="rounded-full bg-gray-200 px-1.5 py-0 text-[10px] font-semibold text-gray-600">
+                {activeFilterCount}
+              </span>
+            </button>
+          )}
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Sort */}
+          <div className="flex items-center gap-1">
+            <ArrowUpDown className="h-3 w-3 text-gray-400 shrink-0" />
+            <Select value={sortField} onValueChange={(v) => { setSortField(v as SortField); setSortDirection("desc") }}>
+              <SelectTrigger className="h-7 w-36 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="scrapedAt">Date scraped</SelectItem>
+                <SelectItem value="price">Price</SelectItem>
+                <SelectItem value="motivationScore">Motivation score</SelectItem>
+                <SelectItem value="daysOnMarket">Days on market</SelectItem>
+                <SelectItem value="bedrooms">Bedrooms</SelectItem>
+                <SelectItem value="propertyType">Property type</SelectItem>
+                <SelectItem value="title">Title</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => setSortDirection(d => d === "asc" ? "desc" : "asc")}
+            >
+              {sortDirection === "asc" ? "Asc" : "Desc"}
             </Button>
+          </div>
 
-            {activeFilterCount > 0 && (
-              <button
-                type="button"
-                className="btn-ghost h-9 text-sm flex items-center gap-1.5"
-                onClick={() => setFilters(prev => ({ ...prev, source: "", reviewStatus: "", category: lockedCategory ?? "", favoritesOnly: false, signals: [], minMotivation: "", jurisdiction: "" }))}
-              >
-                <X className="h-3.5 w-3.5" />
-                Clear
-                <span className="rounded-full bg-gray-200 px-1.5 py-0 text-xs font-semibold text-gray-600">
-                  {activeFilterCount}
-                </span>
-              </button>
-            )}
-
-            {/* Sort */}
-            <div className="flex items-center gap-1">
-              <ArrowUpDown className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-              <Select value={sortField} onValueChange={(v) => { setSortField(v as SortField); setSortDirection("desc") }}>
-                <SelectTrigger className="h-9 w-44 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="scrapedAt">Date scraped</SelectItem>
-                  <SelectItem value="price">Price</SelectItem>
-                  <SelectItem value="motivationScore">Motivation score</SelectItem>
-                  <SelectItem value="daysOnMarket">Days on market</SelectItem>
-                  <SelectItem value="bedrooms">Bedrooms</SelectItem>
-                  <SelectItem value="propertyType">Property type</SelectItem>
-                  <SelectItem value="title">Title</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 px-2.5 text-sm"
-                onClick={() => setSortDirection(d => d === "asc" ? "desc" : "asc")}
-              >
-                {sortDirection === "asc" ? "Asc" : "Desc"}
-              </Button>
-            </div>
-
-            {/* View toggle */}
-            <div className="flex rounded-lg border border-[var(--ds-border)] overflow-hidden">
-              <button
-                type="button"
-                className={`flex items-center gap-1 px-2.5 py-1.5 text-xs transition-colors ${viewMode === "table" ? "bg-[#1A1A1F] text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
-                onClick={() => setViewMode("table")}
-              >
-                <Table2 className="h-3.5 w-3.5" /> Table
-              </button>
-              <button
-                type="button"
-                className={`flex items-center gap-1 px-2.5 py-1.5 text-xs transition-colors border-l border-[var(--ds-border)] ${viewMode === "grid" ? "bg-[#1A1A1F] text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
-                onClick={() => setViewMode("grid")}
-              >
-                <LayoutGrid className="h-3.5 w-3.5" /> Grid
-              </button>
-              <button
-                type="button"
-                className={`flex items-center gap-1 px-2.5 py-1.5 text-xs transition-colors border-l border-[var(--ds-border)] ${viewMode === "map" ? "bg-[#1A1A1F] text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
-                onClick={() => setViewMode("map")}
-              >
-                <Map className="h-3.5 w-3.5" /> Map
-              </button>
-            </div>
+          {/* View toggle */}
+          <div className="flex rounded-lg border border-[var(--ds-border)] overflow-hidden">
+            <button
+              type="button"
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs transition-colors ${viewMode === "table" ? "bg-[#1A1A1F] text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
+              onClick={() => setViewMode("table")}
+            >
+              <Table2 className="h-3 w-3" /> Table
+            </button>
+            <button
+              type="button"
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs transition-colors border-l border-[var(--ds-border)] ${viewMode === "grid" ? "bg-[#1A1A1F] text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
+              onClick={() => setViewMode("grid")}
+            >
+              <LayoutGrid className="h-3 w-3" /> Grid
+            </button>
+            <button
+              type="button"
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs transition-colors border-l border-[var(--ds-border)] ${viewMode === "map" ? "bg-[#1A1A1F] text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
+              onClick={() => setViewMode("map")}
+            >
+              <Map className="h-3 w-3" /> Map
+            </button>
           </div>
         </div>
       </div>
