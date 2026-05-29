@@ -644,7 +644,11 @@ export function PropertiesTable({ refreshKey = 0, lockedCategory }: PropertiesTa
                     </button>
                   </th>
                   <th className="table-header whitespace-nowrap">Beds / Size</th>
-                  <th className="table-header">BMV</th>
+                  <th className="table-header">
+                    <Tip text="Below Market Value — green badge shows real % below avg comparable sold price from PropertyData API. Bar shows keyword signal score before enrichment." side="top">
+                      <span className="cursor-default">BMV / Yield</span>
+                    </Tip>
+                  </th>
                   <th className="table-header whitespace-nowrap">
                     <button className="flex items-center gap-1 hover:text-gray-600" onClick={() => handleSort("motivationScore")}>
                       Motivation <SortIcon field="motivationScore" />
@@ -746,19 +750,62 @@ export function PropertiesTable({ refreshKey = 0, lockedCategory }: PropertiesTa
                         )}
                       </td>
 
-                      {/* BMV Score */}
+                      {/* BMV — real % when enriched, keyword score otherwise */}
                       <td className="table-cell">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-12 h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                            <div
-                              className={`h-full rounded-full ${bmv?.bmvScore >= 60 ? "bg-green-500" : bmv?.bmvScore >= 30 ? "bg-yellow-500" : "bg-gray-300"}`}
-                              style={{ width: `${bmv?.bmvScore ?? 0}%` }}
-                            />
-                          </div>
-                          <span className={`text-xs font-semibold ${bmv?.bmvScore >= 60 ? "text-green-600" : bmv?.bmvScore >= 30 ? "text-yellow-600" : "text-gray-400"}`}>
-                            {bmv?.bmvScore ?? 0}
-                          </span>
-                        </div>
+                        {(() => {
+                          const pda = listing.propertyDataAnalysis as any
+                          const realBmvPct: number | undefined = pda?.bmvPercent
+                          const yield_: number | undefined = pda?.grossYieldEstimate
+                          const comparables: number | undefined = pda?.comparablesCount
+                          const confidence: string | undefined = pda?.comparablesConfidence
+
+                          if (realBmvPct !== undefined) {
+                            // Show actual BMV% from comparable sold prices
+                            const isPositive = realBmvPct > 0  // below market = positive BMV
+                            const isNegative = realBmvPct < -5  // above market
+                            const badgeColor = isNegative
+                              ? "bg-red-50 text-red-600 border-red-200"
+                              : realBmvPct >= 15
+                                ? "bg-green-50 text-green-700 border-green-200"
+                                : realBmvPct >= 5
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : "bg-gray-50 text-gray-500 border-gray-200"
+                            const tipText = `${realBmvPct >= 0 ? realBmvPct.toFixed(1) + "% below" : Math.abs(realBmvPct).toFixed(1) + "% above"} avg comparable sold price (${comparables ?? "?"} comps${confidence ? ", " + confidence : ""})`
+                            return (
+                              <Tip text={tipText} side="left">
+                                <div className="space-y-0.5">
+                                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-bold border ${badgeColor} cursor-default`}>
+                                    {isPositive ? "▼" : "▲"} {Math.abs(realBmvPct).toFixed(1)}%
+                                  </span>
+                                  {yield_ !== undefined && (
+                                    <p className="text-[10px] text-gray-400 leading-tight">
+                                      {yield_.toFixed(1)}% yield
+                                    </p>
+                                  )}
+                                </div>
+                              </Tip>
+                            )
+                          }
+
+                          // Fallback: keyword-based BMV score bar
+                          const score = bmv?.bmvScore ?? 0
+                          if (score === 0) return <span className="text-xs text-gray-300">—</span>
+                          return (
+                            <Tip text={`Keyword signal score: ${score}/100. Run enrichment to get real BMV% from comparable sold prices.`} side="left">
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-10 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full ${score >= 60 ? "bg-green-500" : score >= 30 ? "bg-yellow-500" : "bg-gray-300"}`}
+                                    style={{ width: `${score}%` }}
+                                  />
+                                </div>
+                                <span className={`text-xs font-semibold ${score >= 60 ? "text-green-600" : score >= 30 ? "text-yellow-600" : "text-gray-400"}`}>
+                                  {score}
+                                </span>
+                              </div>
+                            </Tip>
+                          )
+                        })()}
                       </td>
 
                       {/* Motivation Score */}

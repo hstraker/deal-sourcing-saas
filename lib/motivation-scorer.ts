@@ -59,10 +59,23 @@ export interface MotivationScorerResult {
 // ─── Keyword detection helpers ────────────────────────────────────────────────
 
 const MOTIVATED_KEYWORDS = [
-  "must sell", "urgent sale", "needs to sell", "quick sale", "quick move",
-  "motivated seller", "open to offers", "below market value", "priced to sell",
-  "immediate sale", "relocation", "chain free quick", "financial difficulties",
-  "sell fast", "below valuation",
+  // Core urgency
+  "must sell", "must be sold", "urgent sale", "urgent sale required",
+  "needs to sell", "keen to sell", "quick sale", "quick move", "sell fast",
+  "needs quick sale", "sell before", "moving quickly",
+  // Price signals
+  "below market value", "below valuation", "below guide price", "priced to sell",
+  "priced for quick sale", "reduced to sell", "open to offers", "price negotiable",
+  // Seller circumstances
+  "motivated seller", "seller motivated", "relocation", "moving abroad",
+  "emigrating", "change of circumstances", "financial difficulties",
+  "financial difficulty", "divorce", "surplus to requirements",
+  // Completion
+  "immediate sale", "immediate exchange", "chain free quick", "vacant possession",
+  "possession immediately", "no onward chain",
+  // Offers
+  "offers invited", "willing to consider all offers", "sealed bids",
+  "serious offers", "sold as seen",
 ]
 
 function containsMotivatedKeyword(text: string): boolean {

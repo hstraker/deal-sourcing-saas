@@ -12,7 +12,7 @@ import {
 import {
   ClipboardCheck,
   Play, Loader2, CheckCircle2, XCircle,
-  Clock, Home, Building2, Layers, Ban,
+  Clock, Home, Building2, Layers, Ban, TrendingUp,
 } from "lucide-react"
 import { toast } from "sonner"
 import { ReviewQueue } from "@/components/scraper/review-queue"
@@ -195,6 +195,7 @@ export function UnifiedFinder({
   const [viewMode, setViewMode]         = useState<"properties" | "review">("properties")
   const [runningJobs, setRunningJobs]   = useState<Record<string, RunningJob>>({})
   const [tableRefreshKey, setTableRefreshKey] = useState(0)
+  const [enriching, setEnriching]       = useState(false)
   const pollIntervals = useRef<Record<string, NodeJS.Timeout>>({})
 
   // ── Derived ───────────────────────────────────────────────────────────────
@@ -343,6 +344,32 @@ export function UnifiedFinder({
     await triggerAll("COMMERCIAL")
   }
 
+  const triggerEnrichment = async () => {
+    setEnriching(true)
+    try {
+      const res = await fetch("/api/scraper/enrich", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: 100 }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(`Enrichment started for ${data.enriched} listing(s)`, {
+          description: "EPC ratings, comparable sold prices & BMV% are being fetched in the background. Refresh the table in ~30 seconds to see results.",
+          duration: 8000,
+        })
+        // Refresh table after a delay to pick up enriched data
+        setTimeout(() => setTableRefreshKey(k => k + 1), 35_000)
+      } else {
+        toast.error(data.error || "Enrichment failed")
+      }
+    } catch {
+      toast.error("Enrichment request failed")
+    } finally {
+      setEnriching(false)
+    }
+  }
+
   const cancelStuckJobs = async () => {
     try {
       const res = await fetch("/api/scraper/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) })
@@ -470,6 +497,21 @@ export function UnifiedFinder({
             </Tip>
           )}
         </div>
+
+        {/* Separator */}
+        <div className="h-4 w-px bg-gray-200 flex-shrink-0" />
+
+        {/* Enrich button — fetches EPC + sold comparables + BMV% from PropertyData */}
+        <Tip text="Enrich listings with real market data: EPC ratings, comparable sold prices and true BMV% from PropertyData API. Runs in background — refresh in ~30s to see results." side="bottom">
+          <button
+            onClick={triggerEnrichment}
+            disabled={enriching}
+            className="flex items-center gap-1 rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 hover:bg-violet-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            {enriching ? <Loader2 className="h-3 w-3 animate-spin" /> : <TrendingUp className="h-3 w-3" />}
+            Enrich
+          </button>
+        </Tip>
 
         {/* Separator */}
         <div className="h-4 w-px bg-gray-200 flex-shrink-0" />

@@ -4,6 +4,7 @@ import { RightmoveScraper } from "./rightmove-scraper"
 import { ZooplaScraper } from "./zoopla-scraper"
 import { OnTheMarketScraper } from "./onthemarket-scraper"
 import { PrimeLocationScraper } from "./primelocation-scraper"
+import { batchEnrichNewListings } from "./batch-enricher"
 import type {
   ScraperCriteria,
   ScraperProgress,
@@ -123,6 +124,13 @@ export async function runScraperJob(
     console.log(
       `${LOG_PREFIX} Job ${jobId} completed: ${progress.successful} properties saved`
     )
+
+    // Fire-and-forget: enrich new listings with PropertyData (EPC, sold comparables, BMV%)
+    if (progress.propertiesFound.length > 0) {
+      batchEnrichNewListings(progress.propertiesFound).catch((err) =>
+        console.warn(`${LOG_PREFIX} PropertyData enrichment error: ${err.message}`)
+      )
+    }
 
     // Fire-and-forget: run alert matching engine after each scrape
     if (progress.successful > 0 && process.env.INTERNAL_API_SECRET) {

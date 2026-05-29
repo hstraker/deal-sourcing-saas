@@ -15,34 +15,62 @@ export const USER_AGENTS = [
 // ---- BMV Keyword Lists ----
 
 export const NEEDS_WORK_KEYWORDS = [
+  // --- Condition ---
   "needs modernisation",
   "modernisation required",
-  "renovation",
-  "renovation project",
   "in need of updating",
-  "refurbishment",
-  "needs work",
-  "needs updating",
-  "fixer-upper",
-  "fixer upper",
   "requires updating",
   "requires modernisation",
+  "needs work",
+  "needs updating",
+  "requires attention",
+  "in need of repair",
+  "in need of tlc",
+  "tlc required",
+  "sold as seen",
+  "unmodernised",
+  "in poor condition",
+  "dated decor",
+  "tired decor",
+  "dated interior",
+  "dated kitchen",
+  "dated bathroom",
+
+  // --- Refurb / renovation ---
+  "refurbishment",
+  "refurbishment required",
+  "full refurbishment",
+  "full refurbishment required",
+  "renovation",
+  "renovation project",
+  "major renovation",
+  "fixer-upper",
+  "fixer upper",
+  "doer upper",
+
+  // --- Development language ---
   "project",
   "development opportunity",
+  "planning potential",
+  "conversion potential",
   "improvement",
   "cosmetic updating",
+
+  // --- Structural / mechanical ---
   "structural work",
   "damp",
+  "damp problems",
   "no central heating",
   "rewire",
   "re-wire",
+  "full rewire",
   "re-plumb",
-  "requires attention",
-  "in need of repair",
-  "doer upper",
+  "new plumbing",
+  "subsidence",
 ]
 
 export const MOTIVATED_SELLER_KEYWORDS = [
+  // --- Core motivation signals ---
   "motivated seller",
   "quick sale",
   "must sell",
@@ -50,25 +78,68 @@ export const MOTIVATED_SELLER_KEYWORDS = [
   "reduced for quick sale",
   "open to offers",
   "price negotiable",
+  "priced to sell",
+  "priced for quick sale",
+  "below market value",
+  "bmv",
+  "below valuation",
+  "below guide price",
+  "below asking",
+  "reduced to sell",
+  "sold as seen",
+
+  // --- Seller circumstances ---
   "vendor relocating",
   "relocation",
+  "moving abroad",
+  "emigrating",
+  "change of circumstances",
   "divorce",
+  "financial difficulty",
+  "financial difficulties",
+  "urgent sale",
+  "urgent sale required",
+  "needs quick sale",
+  "keen to sell",
+  "seller motivated",
+  "surplus to requirements",
+
+  // --- Estate / probate ---
   "probate",
   "deceased estate",
   "inheritance",
-  "repossession",
-  "repossessed",
-  "bank sale",
-  "below market value",
-  "bmv",
-  "chain free",
-  "no chain",
-  "investment opportunity",
-  "below asking",
-  "serious offers",
   "executor sale",
   "executor's sale",
   "executors sale",
+  "estate sale",
+  "grant of probate",
+
+  // --- Repossession / bank ---
+  "repossession",
+  "repossessed",
+  "bank sale",
+  "lender sale",
+  "lpa receiver",
+
+  // --- Chain / completion ---
+  "chain free",
+  "no chain",
+  "no onward chain",
+  "vacant possession",
+  "possession immediately",
+  "immediate exchange",
+
+  // --- Auction / offers ---
+  "serious offers",
+  "offers invited",
+  "willing to consider all offers",
+  "sealed bids",
+  "investment opportunity",
+
+  // --- Explicit urgency ---
+  "must be sold",
+  "sell before",
+  "moving quickly",
 ]
 
 export const AUCTION_KEYWORDS = [
