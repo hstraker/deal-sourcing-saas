@@ -290,6 +290,61 @@ async function genVendorReplies(userId: string): Promise<void> {
   await Promise.allSettled(tasks)
 }
 
+// ─── Scraper health warnings ──────────────────────────────────────────────────
+
+/**
+ * Fires once per week if the residential or commercial scraper is disabled,
+ * or has no locations configured. Helps surface config issues without
+ * cluttering the finder page with inline banners.
+ */
+async function genScraperHealth(userId: string): Promise<void> {
+  const all = await prisma.scraperSettings.findMany()
+  const resi = all.find(s => (s.searchCriteria as any)?.category !== "COMMERCIAL") ?? null
+  const comm = all.find(s => (s.searchCriteria as any)?.category === "COMMERCIAL") ?? null
+
+  // Weekly dedupe key so we don't spam every 10 min
+  const week = `${new Date().getFullYear()}-W${Math.ceil(new Date().getDate() / 7)}`
+  const tasks: Promise<void>[] = []
+
+  if (!resi || !resi.enabled) {
+    tasks.push(upsertNotification({
+      userId,
+      type:      "scraper_disabled",
+      category:  "data",
+      title:     "Residential scraper is disabled",
+      body:      "The residential property scraper is turned off. Enable it in Finder Settings to resume automated scanning.",
+      link:      "/dashboard/settings/finder",
+      dedupeKey: `scraper_disabled:resi:${week}`,
+    }))
+  }
+
+  if (!comm || !comm.enabled) {
+    tasks.push(upsertNotification({
+      userId,
+      type:      "scraper_disabled",
+      category:  "data",
+      title:     "Commercial scraper is disabled",
+      body:      "The commercial property scraper is turned off. Enable it in Finder Settings to resume scanning.",
+      link:      "/dashboard/settings/finder",
+      dedupeKey: `scraper_disabled:comm:${week}`,
+    }))
+  }
+
+  if (resi?.enabled && !(resi.searchCriteria as any)?.locations?.length) {
+    tasks.push(upsertNotification({
+      userId,
+      type:      "scraper_no_locations",
+      category:  "data",
+      title:     "Residential scraper has no locations",
+      body:      "Add at least one search location in Finder Settings so the residential scraper knows where to look.",
+      link:      "/dashboard/settings/finder",
+      dedupeKey: `scraper_no_locations:resi:${week}`,
+    }))
+  }
+
+  await Promise.allSettled(tasks)
+}
+
 // ─── Main entry point ─────────────────────────────────────────────────────────
 
 export async function generateNotificationsForUser(
@@ -305,7 +360,7 @@ export async function generateNotificationsForUser(
   ]
 
   if (isPrivileged) {
-    jobs.push(genLrStaleness(userId), genLrImportEvents(userId))
+    jobs.push(genLrStaleness(userId), genLrImportEvents(userId), genScraperHealth(userId))
   }
 
   // Run all generators in parallel; individual failures don't block others

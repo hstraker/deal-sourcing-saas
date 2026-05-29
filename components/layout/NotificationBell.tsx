@@ -32,6 +32,7 @@ import {
   MessageSquare,
   MapPin,
   TrendingDown,
+  SearchX,
 } from "lucide-react"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -85,7 +86,9 @@ function TypeIcon({ type }: { type: string }) {
     case "lr_import":        return <Database      className={`${cls} text-violet-500`} />
     case "alert_match":      return <MapPin        className={`${cls} text-emerald-500`}/>
     case "price_reduction":  return <TrendingDown  className={`${cls} text-red-400`}    />
-    case "high_distress":    return <Sparkles      className={`${cls} text-purple-500`} />
+    case "high_distress":       return <Sparkles      className={`${cls} text-purple-500`} />
+    case "scraper_disabled":
+    case "scraper_no_locations": return <SearchX    className={`${cls} text-amber-500`}  />
     default:                 return <Bell          className={`${cls} text-gray-400`}   />
   }
 }

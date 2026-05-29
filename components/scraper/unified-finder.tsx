@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import React, { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
@@ -171,40 +171,27 @@ function LastRun({ at }: { at: string | null }) {
   return <span suppressHydrationWarning>{txt}</span>
 }
 
-// ─── Sub-component: criteria banner ──────────────────────────────────────────
+// ─── Sub-component: inline criteria chip ─────────────────────────────────────
 
-function CriteriaBanner({ settings, label }: { settings: ScraperSettingsForClient | null; label: string }) {
-  const isComm = settings?.searchCriteria?.category === "COMMERCIAL"
-  const Icon = isComm ? Building2 : Home
-
-  if (!settings?.enabled) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-        <Icon className="h-3.5 w-3.5 flex-shrink-0" />
-        <span>
-          {label} scraper is disabled.{" "}
-          <Link href="/dashboard/settings/finder" className="font-medium underline">Finder Settings →</Link>
-        </span>
-      </div>
-    )
-  }
-  if (!settings?.searchCriteria?.locations?.length) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-        <Icon className="h-3.5 w-3.5 flex-shrink-0" />
-        <span>
-          No {label.toLowerCase()} locations added.{" "}
-          <Link href="/dashboard/settings/finder" className="font-medium underline">Configure in Finder Settings →</Link>
-        </span>
-      </div>
-    )
-  }
+function CriteriaChip({ settings, Icon }: { settings: ScraperSettingsForClient | null; Icon: React.ElementType }) {
+  if (!settings) return null
+  if (!settings.enabled) return (
+    <span className="flex items-center gap-1 text-[11px] text-amber-600">
+      <Icon className="h-3 w-3 flex-shrink-0" />
+      <span>disabled</span>
+    </span>
+  )
+  if (!settings.searchCriteria?.locations?.length) return (
+    <span className="flex items-center gap-1 text-[11px] text-amber-600">
+      <Icon className="h-3 w-3 flex-shrink-0" />
+      <span>no locations</span>
+    </span>
+  )
   return (
-    <div className="flex items-center gap-2 text-sm bg-gray-50 border border-gray-100 rounded-md px-3 py-2">
-      <Icon className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
-      <span className="font-medium text-gray-700">{label}:</span>
-      <span className="text-gray-400">{criteriaSummary(settings)}</span>
-    </div>
+    <span className="flex items-center gap-1 text-[11px] text-gray-400 max-w-[200px] truncate">
+      <Icon className="h-3 w-3 flex-shrink-0 text-gray-300" />
+      <span className="truncate">{criteriaSummary(settings)}</span>
+    </span>
   )
 }
 
@@ -461,6 +448,19 @@ export function UnifiedFinder({
           </button>
         </div>
 
+        {/* Centre: criteria summary (hidden on small screens) */}
+        <div className="hidden md:flex items-center gap-3 min-w-0">
+          {categoryView !== "commercial" && (
+            <CriteriaChip settings={resiSettings} Icon={Home} />
+          )}
+          {categoryView === "all" && resiSettings && commercialSettings && (
+            <span className="text-gray-200 text-xs">·</span>
+          )}
+          {categoryView !== "resi" && (
+            <CriteriaChip settings={commercialSettings} Icon={Building2} />
+          )}
+        </div>
+
         {/* Right: stats + run + settings */}
         <div className="flex items-center gap-2">
 
@@ -578,57 +578,6 @@ export function UnifiedFinder({
             </div>
           )
         })}
-      </div>
-
-      {/* ══ ROW 3: Inline criteria / status line ══ */}
-      <div className="flex items-center gap-4 flex-wrap">
-        {categoryView !== "commercial" && (() => {
-          if (!resiSettings?.enabled) return (
-            <span className="flex items-center gap-1.5 text-xs text-amber-600">
-              <Home className="h-3 w-3 flex-shrink-0" />
-              <span>Residential: disabled —</span>
-              <Link href="/dashboard/settings/finder" className="font-medium underline underline-offset-2">enable in Finder Settings</Link>
-            </span>
-          )
-          if (!resiSettings?.searchCriteria?.locations?.length) return (
-            <span className="flex items-center gap-1.5 text-xs text-amber-600">
-              <Home className="h-3 w-3 flex-shrink-0" />
-              <span>Residential: no locations set —</span>
-              <Link href="/dashboard/settings/finder" className="font-medium underline underline-offset-2">configure locations</Link>
-            </span>
-          )
-          return (
-            <span className="flex items-center gap-1.5 text-xs text-gray-500">
-              <Home className="h-3 w-3 flex-shrink-0 text-gray-400" />
-              <span className="font-medium text-gray-600">Residential:</span>
-              <span className="text-gray-400">{criteriaSummary(resiSettings)}</span>
-            </span>
-          )
-        })()}
-
-        {categoryView !== "resi" && (() => {
-          if (!commercialSettings?.enabled) return (
-            <span className="flex items-center gap-1.5 text-xs text-amber-600">
-              <Building2 className="h-3 w-3 flex-shrink-0" />
-              <span>Commercial: disabled —</span>
-              <Link href="/dashboard/settings/finder" className="font-medium underline underline-offset-2">enable in Finder Settings</Link>
-            </span>
-          )
-          if (!commercialSettings?.searchCriteria?.locations?.length) return (
-            <span className="flex items-center gap-1.5 text-xs text-amber-600">
-              <Building2 className="h-3 w-3 flex-shrink-0" />
-              <span>Commercial: no locations set —</span>
-              <Link href="/dashboard/settings/finder" className="font-medium underline underline-offset-2">configure locations</Link>
-            </span>
-          )
-          return (
-            <span className="flex items-center gap-1.5 text-xs text-gray-500">
-              <Building2 className="h-3 w-3 flex-shrink-0 text-gray-400" />
-              <span className="font-medium text-gray-600">Commercial:</span>
-              <span className="text-gray-400">{criteriaSummary(commercialSettings)}</span>
-            </span>
-          )
-        })()}
       </div>
 
       {/* ── 4. Live progress ── */}

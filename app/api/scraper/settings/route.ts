@@ -59,6 +59,23 @@ function computeNextRun(scheduleType: string): string | null {
   return tomorrow6am.toISOString()
 }
 
+/**
+ * Find the residential settings row: the row whose searchCriteria.category is NOT "COMMERCIAL".
+ * Creates one with category "RESIDENTIAL" if none exists.
+ */
+async function findOrCreateResidentialSettings() {
+  const all = await prisma.scraperSettings.findMany()
+  // Prefer a row explicitly marked RESIDENTIAL; fall back to any non-COMMERCIAL row
+  const found = all.find(s => (s.searchCriteria as any)?.category === "RESIDENTIAL")
+    ?? all.find(s => (s.searchCriteria as any)?.category !== "COMMERCIAL")
+    ?? null
+  if (found) return found
+  // No residential row — create one
+  return prisma.scraperSettings.create({
+    data: { enabled: true, searchCriteria: { category: "RESIDENTIAL" } as any },
+  })
+}
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
@@ -69,13 +86,7 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    // Get or create default settings
-    let settings = await prisma.scraperSettings.findFirst()
-    if (!settings) {
-      settings = await prisma.scraperSettings.create({
-        data: { enabled: true },
-      })
-    }
+    const settings = await findOrCreateResidentialSettings()
 
     // Get last completed job
     const lastJob = await prisma.scraperJob.findFirst({
@@ -141,13 +152,7 @@ export async function PUT(request: NextRequest) {
 
     const data = validationResult.data
 
-    // Get or create settings
-    let settings = await prisma.scraperSettings.findFirst()
-    if (!settings) {
-      settings = await prisma.scraperSettings.create({
-        data: { enabled: true },
-      })
-    }
+    const settings = await findOrCreateResidentialSettings()
 
     // Update settings
     const updated = await prisma.scraperSettings.update({
