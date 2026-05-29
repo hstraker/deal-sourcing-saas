@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/tooltip"
 import {
   Globe, Clock, Loader2, Save, MapPin, X, Star,
-  Home, Building2, Zap, Shield, HelpCircle, SearchCheck,
+  Home, Building2, Zap, Shield, HelpCircle, SearchCheck, TrendingUp,
 } from "lucide-react"
 import { toast }       from "sonner"
 import { PageHeader }  from "@/components/ui/page-header"
@@ -164,6 +164,99 @@ const RESI_CRITERIA_DEFAULTS: ResiCriteria = {
 const COMM_CRITERIA_DEFAULTS: CommCriteria = {
   category: "COMMERCIAL", locations: [], minPrice: null, maxPrice: null,
   propertyTypes: null, addedSince: "24hours", includeSSTC: false, maxPages: 5,
+}
+
+// ─── Job History Component ────────────────────────────────────────────────────
+
+const JOB_STATUS_COLORS: Record<string, string> = {
+  QUEUED:    "bg-gray-100 text-gray-700",
+  RUNNING:   "bg-blue-100 text-blue-700",
+  COMPLETED: "bg-green-100 text-green-700",
+  FAILED:    "bg-red-100 text-red-700",
+  CANCELLED: "bg-yellow-100 text-yellow-700",
+}
+const JOB_SRC_COLORS: Record<string, string> = {
+  RIGHTMOVE:    "bg-blue-100 text-blue-800",
+  ZOOPLA:       "bg-purple-100 text-purple-800",
+  ONTHEMARKET:  "bg-emerald-100 text-emerald-800",
+  PRIMELOCATION:"bg-orange-100 text-orange-800",
+}
+
+function fmt12h(d: Date) {
+  const h = d.getHours(), m = d.getMinutes()
+  return `${h % 12 || 12}:${m.toString().padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`
+}
+
+function JobHistory() {
+  const [jobs, setJobs]       = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/scraper/jobs?limit=50")
+      .then(r => r.json())
+      .then(d => { if (d.jobs) setJobs(d.jobs) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  return (
+    <div className="ds-card overflow-hidden">
+      <div className="px-5 py-3 border-b border-[var(--ds-border)] flex items-center gap-2">
+        <TrendingUp className="h-4 w-4 text-gray-400" />
+        <h3 className="text-sm font-semibold text-gray-900">Job History</h3>
+        <span className="text-xs text-gray-400 ml-auto">Last 50 scraper runs</span>
+      </div>
+      <div className="overflow-x-auto">
+        {loading ? (
+          <div className="flex items-center justify-center py-8 gap-2 text-sm text-gray-400">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          </div>
+        ) : jobs.length === 0 ? (
+          <p className="text-sm text-gray-400 py-8 text-center">No scraper jobs yet</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left bg-gray-50">
+                <th className="table-header px-4 py-2">Source</th>
+                <th className="table-header px-4 py-2">Category</th>
+                <th className="table-header px-4 py-2">Status</th>
+                <th className="table-header px-4 py-2">Found</th>
+                <th className="table-header px-4 py-2">Saved</th>
+                <th className="table-header px-4 py-2">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {jobs.map((job: any) => (
+                <tr key={job.id} className="border-b last:border-0 hover:bg-gray-50">
+                  <td className="px-4 py-2">
+                    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${JOB_SRC_COLORS[job.source] || "bg-gray-100 text-gray-700"}`}>
+                      {job.source}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2">
+                    <span className="flex items-center gap-1 text-xs text-gray-500">
+                      {job.category === "COMMERCIAL" ? <Building2 className="h-3 w-3" /> : <Home className="h-3 w-3" />}
+                      {job.category === "COMMERCIAL" ? "Commercial" : "Residential"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2">
+                    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${JOB_STATUS_COLORS[job.status] || ""}`}>
+                      {job.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 tabular-nums text-gray-600">{job.totalFound ?? 0}</td>
+                  <td className="px-4 py-2 tabular-nums text-green-600 font-medium">{job.successful ?? 0}</td>
+                  <td className="px-4 py-2 text-gray-400 text-xs" suppressHydrationWarning>
+                    {new Date(job.createdAt).toLocaleDateString()} {fmt12h(new Date(job.createdAt))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  )
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -870,6 +963,9 @@ export default function FinderSettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Job History ── */}
+      <JobHistory />
 
       <ConfirmDialog
         open={showConfirm}

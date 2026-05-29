@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import {
-  Database, ClipboardCheck, TrendingUp,
+  ClipboardCheck,
   Play, Loader2, CheckCircle2, XCircle,
   Settings, Clock, Home, Building2, Layers, Ban,
 } from "lucide-react"
@@ -231,7 +231,7 @@ export function UnifiedFinder({
   }
 
   const [categoryView, setCategoryView] = useState<CategoryView>(initTab)
-  const [contentTab, setContentTab]     = useState<"all" | "review" | "jobs">("all")
+  const [viewMode, setViewMode]         = useState<"properties" | "review">("properties")
   const [runningJobs, setRunningJobs]   = useState<Record<string, RunningJob>>({})
   const [tableRefreshKey, setTableRefreshKey] = useState(0)
   const pollIntervals = useRef<Record<string, NodeJS.Timeout>>({})
@@ -410,61 +410,74 @@ export function UnifiedFinder({
   return (
     <div className="space-y-3">
 
-      {/* ══ ROW 1: Category tabs + inline stats + run buttons + settings ══ */}
+      {/* ══ ROW 1: Category tabs · Review Queue · Stats · Run · Settings ══ */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
 
-        {/* Category pill tabs */}
+        {/* Left pill group: category filters + review queue toggle */}
         <div className="flex items-center gap-0.5 p-0.5 bg-gray-100 rounded-lg">
+
+          {/* Category filters */}
           {([
-            { id: "all",        label: "All",         Icon: Layers,    count: null },
+            { id: "all",        label: "All",         Icon: Layers,    count: allStats.totalListings },
             { id: "resi",       label: "Residential", Icon: Home,      count: resiStats.totalListings },
             { id: "commercial", label: "Commercial",  Icon: Building2, count: commercialStats.totalListings },
           ] as const).map(({ id, label, Icon, count }) => (
             <button
               key={id}
-              onClick={() => setCategoryView(id as CategoryView)}
+              onClick={() => { setCategoryView(id as CategoryView); setViewMode("properties") }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                categoryView === id
+                categoryView === id && viewMode === "properties"
                   ? "bg-white shadow-sm text-gray-900"
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >
               <Icon className="h-3.5 w-3.5" />
               {label}
-              {count !== null && (
-                <span className={`tabular-nums text-xs ${categoryView === id ? "text-gray-500" : "text-gray-400"}`}>
-                  {count}
-                </span>
-              )}
+              <span className={`tabular-nums text-xs ${categoryView === id && viewMode === "properties" ? "text-gray-500" : "text-gray-400"}`}>
+                {count}
+              </span>
             </button>
           ))}
+
+          {/* Divider */}
+          <span className="w-px h-5 bg-gray-300 mx-0.5" />
+
+          {/* Review Queue toggle */}
+          <button
+            onClick={() => setViewMode(v => v === "review" ? "properties" : "review")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+              viewMode === "review"
+                ? "bg-white shadow-sm text-gray-900"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <ClipboardCheck className="h-3.5 w-3.5" />
+            Review
+            {activeStats.pendingReview > 0 && (
+              <span className={`tabular-nums text-xs font-semibold ${viewMode === "review" ? "text-amber-500" : "text-amber-400"}`}>
+                {activeStats.pendingReview}
+              </span>
+            )}
+          </button>
         </div>
 
-        {/* Right side: stats + run + settings */}
+        {/* Right: stats + run + settings */}
         <div className="flex items-center gap-2">
 
-          {/* Inline stats — hidden on small screens */}
-          <div className="hidden sm:flex items-center gap-2.5 text-xs">
-            <span className="tabular-nums">
-              <span className="font-semibold text-gray-800">{activeStats.totalListings}</span>
-              <span className="text-gray-400 ml-1">total</span>
+          {/* Inline stats */}
+          <div className="hidden sm:flex items-center gap-2 text-xs">
+            <span className="tabular-nums text-gray-500">
+              <span className="font-semibold text-gray-800">{activeStats.totalListings}</span> total
             </span>
-            <span className="text-gray-200">|</span>
-            <span className="tabular-nums">
-              <span className="font-semibold text-amber-600">{activeStats.pendingReview}</span>
-              <span className="text-gray-400 ml-1">pending</span>
-            </span>
-            <span className="text-gray-200">|</span>
-            <span className="tabular-nums">
-              <span className="font-semibold text-green-600">{activeStats.approvedCount}</span>
-              <span className="text-gray-400 ml-1">approved</span>
+            <span className="text-gray-200">·</span>
+            <span className="tabular-nums text-gray-500">
+              <span className="font-semibold text-green-600">{activeStats.approvedCount}</span> approved
             </span>
             {activeStats.ambiguousCount > 0 && (
               <>
-                <span className="text-gray-200">|</span>
-                <span className="tabular-nums">
-                  <span className="font-semibold text-red-600">{activeStats.ambiguousCount}</span>
-                  <span className="text-gray-400 ml-1">ambiguous</span>
+                <span className="text-gray-200">·</span>
+                <span className="tabular-nums text-gray-500">
+                  <span className="font-semibold text-red-500">{activeStats.ambiguousCount}</span> ambiguous
                 </span>
               </>
             )}
@@ -506,8 +519,7 @@ export function UnifiedFinder({
             >
               {activeJobs.some(j => j.category === (categoryView === "commercial" ? "COMMERCIAL" : "RESIDENTIAL"))
                 ? <Loader2 className="h-3 w-3 animate-spin" />
-                : <Play className="h-3 w-3" />
-              }
+                : <Play className="h-3 w-3" />}
               Run All
             </button>
           )}
@@ -521,8 +533,8 @@ export function UnifiedFinder({
         </div>
       </div>
 
-      {/* ══ ROW 2: Compact portal strip ══ */}
-      <div className="flex items-stretch gap-1.5">
+      {/* ══ ROW 2: Single-line portal strip ══ */}
+      <div className="flex items-center gap-1.5">
         {SOURCES.map(s => {
           const lastJob   = lastJobBySource[s.key]
           const cfg       = CHIP_CFG[s.key]
@@ -532,43 +544,33 @@ export function UnifiedFinder({
           const commRun   = commJob?.status === "QUEUED" || commJob?.status === "RUNNING"
           const anyRun    = resiRun || commRun
           const isEnabled = !!(resiSettings as any)?.[s.settingsKey] || !!(commercialSettings as any)?.[s.settingsKey]
-          const dotCls    = !isEnabled ? "bg-gray-300" : anyRun ? `${cfg.dot} animate-pulse` : "bg-green-500"
+          const dotCls    = !isEnabled ? "bg-gray-300" : anyRun ? `${cfg.dot} animate-pulse` : "bg-green-400"
           const showResi  = categoryView !== "commercial"
           const showComm  = categoryView !== "resi"
 
           return (
-            <div key={s.key} className="flex-1 flex items-center gap-2 bg-white border border-gray-100 rounded-lg px-2.5 py-2 min-w-0">
-              <span className={`h-2 w-2 rounded-full flex-shrink-0 ${dotCls}`} />
-              <div className="flex-1 min-w-0">
-                <div className={`text-xs font-semibold truncate ${cfg.text}`}>{s.label}</div>
-                <div className="text-[10px] text-gray-400 flex items-center gap-0.5 mt-0.5">
-                  {anyRun ? (
-                    <span className="text-emerald-600">
-                      {(resiJob?.totalFound ?? 0) + (commJob?.totalFound ?? 0)} found · {(resiJob?.successful ?? 0) + (commJob?.successful ?? 0)} saved
-                    </span>
-                  ) : (
-                    <><Clock className="h-2.5 w-2.5" /><LastRun at={lastJob?.completedAt ?? null} /></>
-                  )}
-                </div>
-              </div>
+            <div key={s.key} className="flex-1 flex items-center gap-1.5 bg-white border border-gray-100 rounded-lg px-2.5 py-1.5 min-w-0">
+              <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${dotCls}`} />
+              <span className={`text-xs font-semibold flex-shrink-0 ${cfg.text}`}>{s.label}</span>
+              <span className="text-[10px] text-gray-400 flex items-center gap-0.5 flex-1 min-w-0 truncate">
+                {anyRun ? (
+                  <span className="text-emerald-600">
+                    {(resiJob?.totalFound ?? 0) + (commJob?.totalFound ?? 0)} found · {(resiJob?.successful ?? 0) + (commJob?.successful ?? 0)} saved
+                  </span>
+                ) : (
+                  <><Clock className="h-2 w-2 flex-shrink-0" /><LastRun at={lastJob?.completedAt ?? null} /></>
+                )}
+              </span>
               <div className="flex items-center gap-0.5 flex-shrink-0">
                 {showResi && (
-                  <button
-                    onClick={() => triggerScrape("RESIDENTIAL", s.key)}
-                    disabled={!resiReady || resiRun}
-                    title="Run Residential"
-                    className={`rounded border px-1.5 py-0.5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center ${cfg.btn}`}
-                  >
+                  <button onClick={() => triggerScrape("RESIDENTIAL", s.key)} disabled={!resiReady || resiRun} title="Run Residential"
+                    className={`rounded border px-1 py-0.5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center ${cfg.btn}`}>
                     {resiRun ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Home className="h-2.5 w-2.5" />}
                   </button>
                 )}
                 {showComm && (
-                  <button
-                    onClick={() => triggerScrape("COMMERCIAL", s.key)}
-                    disabled={!commReady || commRun}
-                    title="Run Commercial"
-                    className={`rounded border px-1.5 py-0.5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center ${cfg.btn}`}
-                  >
+                  <button onClick={() => triggerScrape("COMMERCIAL", s.key)} disabled={!commReady || commRun} title="Run Commercial"
+                    className={`rounded border px-1 py-0.5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center ${cfg.btn}`}>
                     {commRun ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Building2 className="h-2.5 w-2.5" />}
                   </button>
                 )}
@@ -696,104 +698,19 @@ export function UnifiedFinder({
         </div>
       )}
 
-      {/* ── 6. Content tabs ── */}
-      <div className="space-y-4">
-        <div className="flex border-b">
-          {[
-            { id: "all",    label: "All Properties", Icon: Database,      count: activeStats.totalListings },
-            { id: "review", label: "Review Queue",   Icon: ClipboardCheck, count: activeStats.pendingReview },
-            { id: "jobs",   label: "Job History",    Icon: TrendingUp,     count: null },
-          ].map(({ id, label, Icon, count }) => (
-            <button
-              key={id}
-              onClick={() => setContentTab(id as any)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                contentTab === id
-                  ? "border-[#2563EB] text-[#2563EB]"
-                  : "border-transparent text-gray-400 hover:text-gray-900"
-              }`}
-            >
-              <Icon className="inline mr-1.5 h-4 w-4" />
-              {label}
-              {count != null && count > 0 && (
-                <Badge variant="secondary" className="ml-2">{count}</Badge>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Review Queue */}
-        {contentTab === "review" && (
-          activeReviewListings.length > 0
-            ? <ReviewQueue listings={activeReviewListings} />
-            : <div className="py-16 text-center text-sm text-gray-400">No properties pending review</div>
-        )}
-
-        {/* All Properties table */}
-        {contentTab === "all" && (
-          <PropertiesTable refreshKey={tableRefreshKey} lockedCategory={tableLockedCategory} />
-        )}
-
-        {/* Job History */}
-        {contentTab === "jobs" && (
-          <div className="ds-card overflow-hidden">
-            <div className="px-6 pt-4 pb-2">
-              <h3 className="text-sm font-semibold text-gray-700">Recent Scraper Jobs</h3>
+      {/* ══ Content: Review Queue or Properties Table (no tab bar) ══ */}
+      {viewMode === "review" ? (
+        activeReviewListings.length > 0
+          ? <ReviewQueue listings={activeReviewListings} />
+          : (
+            <div className="py-16 text-center text-sm text-gray-400">
+              <ClipboardCheck className="h-8 w-8 mx-auto mb-2 opacity-30" />
+              No properties pending review
             </div>
-            <div className="p-5">
-              {recentJobs.length === 0 ? (
-                <p className="text-sm text-gray-400 py-4 text-center">No scraper jobs yet</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left">
-                        <th className="table-header">Source</th>
-                        <th className="table-header">Category</th>
-                        <th className="table-header">Status</th>
-                        <th className="table-header">Found</th>
-                        <th className="table-header">Saved</th>
-                        <th className="table-header">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentJobs
-                        .filter(job =>
-                          categoryView === "all" ||
-                          (categoryView === "resi"       && job.category !== "COMMERCIAL") ||
-                          (categoryView === "commercial" && job.category === "COMMERCIAL")
-                        )
-                        .map(job => (
-                          <tr key={job.id} className="table-row border-b last:border-0">
-                            <td className="table-cell">
-                              <Badge className={SRC_COLORS[job.source] || ""}>{job.source}</Badge>
-                            </td>
-                            <td className="table-cell">
-                              <span className="flex items-center gap-1 text-xs text-gray-500">
-                                {job.category === "COMMERCIAL"
-                                  ? <><Building2 className="h-3 w-3" /> Commercial</>
-                                  : <><Home className="h-3 w-3" /> Residential</>
-                                }
-                              </span>
-                            </td>
-                            <td className="table-cell">
-                              <Badge className={STATUS_COLORS[job.status] || ""}>{job.status}</Badge>
-                            </td>
-                            <td className="table-cell">{job.totalFound}</td>
-                            <td className="table-cell text-green-600">{job.successful}</td>
-                            <td className="table-cell text-gray-400" suppressHydrationWarning>
-                              {new Date(job.createdAt).toLocaleDateString()} {fmt12h(new Date(job.createdAt))}
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+          )
+      ) : (
+        <PropertiesTable refreshKey={tableRefreshKey} lockedCategory={tableLockedCategory} />
+      )}
     </div>
   )
 }
