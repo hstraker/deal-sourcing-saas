@@ -14,6 +14,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
+import { Prisma } from "@prisma/client"
 import { batchEnrichNewListings } from "@/lib/scrapers/batch-enricher"
 
 export async function POST(request: Request) {
@@ -32,15 +33,12 @@ export async function POST(request: Request) {
     // no body — use default
   }
 
-  // Pick up listings with a full UK postcode that haven't been enriched yet
-  // (propertyDataAnalysis is null) or were enriched more than 7 days ago.
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-
+  // Pick up listings that have never been enriched (propertyDataAnalysis IS NULL in the DB).
+  // Prisma requires Prisma.DbNull to match SQL NULL on a Json? column —
+  // using plain `null` or `{ equals: null }` matches JSON literal null, not SQL NULL.
   const listings = await prisma.propertyListing.findMany({
     where: {
-      OR: [
-        { propertyDataAnalysis: { equals: null } },
-      ],
+      propertyDataAnalysis: { equals: Prisma.DbNull },
     },
     select: { id: true },
     orderBy: { scrapedAt: "desc" },
