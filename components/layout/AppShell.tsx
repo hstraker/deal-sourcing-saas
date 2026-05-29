@@ -1,6 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { usePathname } from "next/navigation"
+import Link from "next/link"
+import { Settings } from "lucide-react"
 import { useSidebar } from "@/context/SidebarContext"
 import DualSidebar, { UserAccountMenu } from "./DualSidebar"
 import { NotificationBell }             from "./NotificationBell"
@@ -8,6 +11,10 @@ import { NotificationBell }             from "./NotificationBell"
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { secondaryOpen } = useSidebar()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const pathname = usePathname()
+
+  // Show a contextual settings shortcut in the header for the finder page
+  const finderSettingsVisible = pathname === "/dashboard/finder"
 
   return (
     <div className="min-h-screen bg-[#F4F5F7]">
@@ -27,6 +34,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           secondaryOpen ? "md:left-[316px]" : "md:left-14"
         }`}
       >
+        {finderSettingsVisible && (
+          <Link
+            href="/dashboard/settings/finder"
+            title="Finder Settings"
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 ring-2 ring-gray-200 hover:ring-blue-400 transition-all text-gray-600"
+          >
+            <Settings className="w-4 h-4" />
+          </Link>
+        )}
         <NotificationBell />
         <UserAccountMenu />
       </header>

@@ -349,10 +349,10 @@ export function UnifiedFinder({
   return (
     <div className="space-y-3">
 
-      {/* ══ Single toolbar: filters · stats · run · settings (one row, no wrap) ══ */}
+      {/* ══ Single control bar: tabs left · portals + stats + run right (Option B) ══ */}
       <div className="flex items-center gap-2 min-w-0">
 
-        {/* Pill group: category tabs + review toggle */}
+        {/* LEFT — Category tabs + review toggle */}
         <div className="flex items-center gap-0.5 p-0.5 bg-gray-100 rounded-lg flex-shrink-0">
           {([
             { id: "all",        label: "All",   Icon: Layers,    count: allStats.totalListings },
@@ -375,15 +375,11 @@ export function UnifiedFinder({
               </span>
             </button>
           ))}
-
           <span className="w-px h-4 bg-gray-300 mx-0.5" />
-
           <button
             onClick={() => setViewMode(v => v === "review" ? "properties" : "review")}
             className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-              viewMode === "review"
-                ? "bg-white shadow-sm text-gray-900"
-                : "text-gray-500 hover:text-gray-700"
+              viewMode === "review" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"
             }`}
           >
             <ClipboardCheck className="h-3 w-3" />
@@ -396,10 +392,40 @@ export function UnifiedFinder({
           </button>
         </div>
 
-        {/* Flexible gap */}
+        {/* Flexible spacer */}
         <div className="flex-1" />
 
-        {/* Compact stat badges — ✓ approved · ⚠ ambiguous (total is already in tabs) */}
+        {/* RIGHT — Portal status chips (hidden on small screens) */}
+        <div className="hidden xl:flex items-center gap-3 flex-shrink-0">
+          {SOURCES.map(s => {
+            const lastJob  = lastJobBySource[s.key]
+            const cfg      = CHIP_CFG[s.key]
+            const resiJob  = runningJobs[`RESIDENTIAL_${s.key}`]
+            const commJob  = runningJobs[`COMMERCIAL_${s.key}`]
+            const anyRun   = (resiJob?.status === "QUEUED" || resiJob?.status === "RUNNING") ||
+                             (commJob?.status === "QUEUED" || commJob?.status === "RUNNING")
+            const isEnabled = !!(resiSettings as any)?.[s.settingsKey] || !!(commercialSettings as any)?.[s.settingsKey]
+            const dotCls   = !isEnabled ? "bg-gray-300" : anyRun ? `${cfg.dot} animate-pulse` : "bg-green-400"
+
+            return (
+              <span key={s.key} className="flex items-center gap-1 flex-shrink-0">
+                <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${dotCls}`} />
+                <span className={`text-[11px] font-medium ${cfg.text}`}>{s.label}</span>
+                <span className="text-[10px] text-gray-400">
+                  {anyRun
+                    ? <span className="text-emerald-600">running</span>
+                    : <LastRun at={lastJob?.completedAt ?? null} />
+                  }
+                </span>
+              </span>
+            )
+          })}
+        </div>
+
+        {/* Separator */}
+        <div className="hidden xl:block h-4 w-px bg-gray-200 flex-shrink-0" />
+
+        {/* Stat badges */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {activeStats.approvedCount > 0 && (
             <span className="flex items-center gap-1 tabular-nums text-[11px] font-medium text-green-700 bg-green-50 border border-green-100 rounded px-1.5 py-0.5">
@@ -415,59 +441,10 @@ export function UnifiedFinder({
           )}
         </div>
 
-      </div>
+        {/* Separator */}
+        <div className="h-4 w-px bg-gray-200 flex-shrink-0" />
 
-      {/* ══ ROW 2: Portal strip + run buttons (single row) ══ */}
-      <div className="flex items-center gap-1.5">
-        {/* Portal cards */}
-        {SOURCES.map(s => {
-          const lastJob   = lastJobBySource[s.key]
-          const cfg       = CHIP_CFG[s.key]
-          const resiJob   = runningJobs[`RESIDENTIAL_${s.key}`]
-          const commJob   = runningJobs[`COMMERCIAL_${s.key}`]
-          const resiRun   = resiJob?.status === "QUEUED" || resiJob?.status === "RUNNING"
-          const commRun   = commJob?.status === "QUEUED" || commJob?.status === "RUNNING"
-          const anyRun    = resiRun || commRun
-          const isEnabled = !!(resiSettings as any)?.[s.settingsKey] || !!(commercialSettings as any)?.[s.settingsKey]
-          const dotCls    = !isEnabled ? "bg-gray-300" : anyRun ? `${cfg.dot} animate-pulse` : "bg-green-400"
-          const showResi  = categoryView !== "commercial"
-          const showComm  = categoryView !== "resi"
-
-          return (
-            <div key={s.key} className="flex-1 flex items-center gap-1.5 bg-white border border-gray-100 rounded-lg px-2.5 py-1 min-w-0">
-              <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${dotCls}`} />
-              <span className={`text-xs font-semibold flex-shrink-0 ${cfg.text}`}>{s.label}</span>
-              <span className="text-[10px] text-gray-400 flex items-center gap-0.5 flex-1 min-w-0 truncate">
-                {anyRun ? (
-                  <span className="text-emerald-600">
-                    {(resiJob?.totalFound ?? 0) + (commJob?.totalFound ?? 0)} found · {(resiJob?.successful ?? 0) + (commJob?.successful ?? 0)} saved
-                  </span>
-                ) : (
-                  <><Clock className="h-2 w-2 flex-shrink-0" /><LastRun at={lastJob?.completedAt ?? null} /></>
-                )}
-              </span>
-              <div className="flex items-center gap-0.5 flex-shrink-0">
-                {showResi && (
-                  <button onClick={() => triggerScrape("RESIDENTIAL", s.key)} disabled={!resiReady || resiRun} title="Run Residential"
-                    className={`rounded border px-1 py-0.5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center ${cfg.btn}`}>
-                    {resiRun ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Home className="h-2.5 w-2.5" />}
-                  </button>
-                )}
-                {showComm && (
-                  <button onClick={() => triggerScrape("COMMERCIAL", s.key)} disabled={!commReady || commRun} title="Run Commercial"
-                    className={`rounded border px-1 py-0.5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center ${cfg.btn}`}>
-                    {commRun ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Building2 className="h-2.5 w-2.5" />}
-                  </button>
-                )}
-              </div>
-            </div>
-          )
-        })}
-
-        {/* Divider */}
-        <div className="h-6 w-px bg-gray-200 flex-shrink-0" />
-
-        {/* Run all buttons — same row as portals */}
+        {/* Run buttons */}
         <div className="flex items-center gap-1 flex-shrink-0">
           {categoryView === "all" ? (
             <>

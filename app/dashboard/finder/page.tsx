@@ -2,8 +2,6 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { Prisma } from "@prisma/client"
-import Link from "next/link"
-import { Settings } from "lucide-react"
 import { UnifiedFinder } from "@/components/scraper/unified-finder"
 import { PageHeader } from "@/components/ui/page-header"
 import { toPropertyListingForClient } from "@/types/property-listing"
@@ -95,21 +93,10 @@ export default async function PropertyFinderPage() {
 
   return (
     <div className="space-y-5">
-      {/* Page header with settings icon top-right (same visual row as notification bell) */}
-      <div className="flex items-start justify-between gap-4">
-        <PageHeader
-          title="Property Finder"
-          subtitle="Scan Rightmove, Zoopla, OnTheMarket and PrimeLocation for residential & commercial properties"
-        />
-        <Link
-          href="/dashboard/settings/finder"
-          title="Finder Settings"
-          className="mt-1 flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300 transition-all flex-shrink-0 shadow-sm"
-        >
-          <Settings className="h-3.5 w-3.5" />
-          Settings
-        </Link>
-      </div>
+      <PageHeader
+        title="Property Finder"
+        subtitle="Scan Rightmove, Zoopla, OnTheMarket and PrimeLocation for residential & commercial properties"
+      />
       <UnifiedFinder
         resiSettings={fmt(resiSettings)}
         commercialSettings={fmt(commercialSettings)}
