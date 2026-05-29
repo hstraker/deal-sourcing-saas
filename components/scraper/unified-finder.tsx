@@ -408,15 +408,17 @@ export function UnifiedFinder({
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
 
-      {/* ── 1. Category switcher ── */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg">
+      {/* ══ ROW 1: Category tabs + inline stats + run buttons + settings ══ */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+
+        {/* Category pill tabs */}
+        <div className="flex items-center gap-0.5 p-0.5 bg-gray-100 rounded-lg">
           {([
-            { id: "all",        label: "All Properties",  Icon: Layers,    count: null },
-            { id: "resi",       label: "Residential",     Icon: Home,      count: resiStats.totalListings },
-            { id: "commercial", label: "Commercial",       Icon: Building2, count: commercialStats.totalListings },
+            { id: "all",        label: "All",         Icon: Layers,    count: null },
+            { id: "resi",       label: "Residential", Icon: Home,      count: resiStats.totalListings },
+            { id: "commercial", label: "Commercial",  Icon: Building2, count: commercialStats.totalListings },
           ] as const).map(({ id, label, Icon, count }) => (
             <button
               key={id}
@@ -430,7 +432,7 @@ export function UnifiedFinder({
               <Icon className="h-3.5 w-3.5" />
               {label}
               {count !== null && (
-                <span className={`text-xs tabular-nums ${categoryView === id ? "text-gray-500" : "text-gray-400"}`}>
+                <span className={`tabular-nums text-xs ${categoryView === id ? "text-gray-500" : "text-gray-400"}`}>
                   {count}
                 </span>
               )}
@@ -438,161 +440,193 @@ export function UnifiedFinder({
           ))}
         </div>
 
-        {/* Settings gear */}
-        <Link href="/dashboard/settings/finder">
-          <button className="flex items-center gap-1.5 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors">
-            <Settings className="h-3.5 w-3.5" />
-            Finder Settings
-          </button>
-        </Link>
-      </div>
+        {/* Right side: stats + run + settings */}
+        <div className="flex items-center gap-2">
 
-      {/* ── 2. Portal status + run bar ── */}
-      <div className="ds-card overflow-hidden">
-        <div className="flex items-center gap-0 divide-x divide-gray-100">
-
-          {/* Portal chips */}
-          <div className="flex items-center gap-0 divide-x divide-gray-100 flex-1 min-w-0">
-            {SOURCES.map(s => {
-              const lastJob   = lastJobBySource[s.key]
-              const cfg       = CHIP_CFG[s.key]
-              const resiJob   = runningJobs[`RESIDENTIAL_${s.key}`]
-              const commJob   = runningJobs[`COMMERCIAL_${s.key}`]
-              const resiRun   = resiJob?.status === "QUEUED" || resiJob?.status === "RUNNING"
-              const commRun   = commJob?.status === "QUEUED" || commJob?.status === "RUNNING"
-              const anyRun    = resiRun || commRun
-              const isEnabled = !!(resiSettings as any)?.[s.settingsKey] || !!(commercialSettings as any)?.[s.settingsKey]
-              const dotCls    = !isEnabled ? "bg-gray-300" : anyRun ? `${cfg.dot} animate-pulse` : "bg-green-500"
-
-              const showResi = categoryView !== "commercial"
-              const showComm = categoryView !== "resi"
-
-              return (
-                <div key={s.key} className="flex flex-col gap-1 px-3 py-2.5 flex-1 min-w-0">
-                  {/* Name + run buttons */}
-                  <div className="flex items-center justify-between gap-1">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className={`h-2 w-2 rounded-full flex-shrink-0 ${dotCls}`} />
-                      <span className={`text-xs font-semibold truncate ${cfg.text}`}>{s.label}</span>
-                    </div>
-                    <div className="flex items-center gap-0.5 flex-shrink-0">
-                      {showResi && (
-                        <button
-                          onClick={() => triggerScrape("RESIDENTIAL", s.key)}
-                          disabled={!resiReady || resiRun}
-                          title="Run Residential"
-                          className={`rounded border px-1.5 py-0.5 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-0.5 ${cfg.btn}`}
-                        >
-                          {resiRun ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Home className="h-2.5 w-2.5" />}
-                        </button>
-                      )}
-                      {showComm && (
-                        <button
-                          onClick={() => triggerScrape("COMMERCIAL", s.key)}
-                          disabled={!commReady || commRun}
-                          title="Run Commercial"
-                          className={`rounded border px-1.5 py-0.5 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-0.5 ${cfg.btn}`}
-                        >
-                          {commRun ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Building2 className="h-2.5 w-2.5" />}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Last run */}
-                  <div className="text-xs text-gray-400 flex items-center gap-1 h-3.5">
-                    {anyRun ? (
-                      <span className="text-emerald-600">
-                        {(resiJob?.totalFound ?? 0) + (commJob?.totalFound ?? 0)} found
-                        {" · "}{(resiJob?.successful ?? 0) + (commJob?.successful ?? 0)} saved
-                      </span>
-                    ) : (
-                      <>
-                        <Clock className="h-2.5 w-2.5" />
-                        <LastRun at={lastJob?.completedAt ?? null} />
-                      </>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Stats + run-all area */}
-          <div className="flex items-center gap-3 px-3 py-2.5 flex-shrink-0">
-            {/* Stat pills */}
-            <div className="flex items-center gap-3 text-xs">
-              {[
-                { label: "Total",     val: activeStats.totalListings,  cls: "text-blue-700" },
-                { label: "Pending",   val: activeStats.pendingReview,  cls: "text-amber-600" },
-                { label: "Approved",  val: activeStats.approvedCount,  cls: "text-green-600" },
-                { label: "Ambiguous", val: activeStats.ambiguousCount, cls: "text-red-600" },
-              ].map(({ label, val, cls }) => (
-                <div key={label} className="text-center">
-                  <div className={`font-bold leading-none ${cls}`}>{val}</div>
-                  <div className="text-gray-400 mt-0.5">{label}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="h-8 w-px bg-gray-100" />
-
-            {/* Run buttons */}
-            {categoryView === "all" ? (
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => triggerAll("RESIDENTIAL")}
-                  disabled={!resiReady || activeJobs.some(j => j.category === "RESIDENTIAL")}
-                  className="flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Home className="h-3 w-3" />
-                  Resi
-                </button>
-                <button
-                  onClick={() => triggerAll("COMMERCIAL")}
-                  disabled={!commReady || activeJobs.some(j => j.category === "COMMERCIAL")}
-                  className="flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Building2 className="h-3 w-3" />
-                  Comm
-                </button>
-                <button
-                  onClick={triggerBoth}
-                  disabled={(!resiReady && !commReady) || activeJobs.length > 0}
-                  className="flex items-center gap-1.5 rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  {activeJobs.length > 0
-                    ? <Loader2 className="h-3 w-3 animate-spin" />
-                    : <Play className="h-3 w-3" />
-                  }
-                  Both
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => triggerAll(categoryView === "commercial" ? "COMMERCIAL" : "RESIDENTIAL")}
-                disabled={categoryView === "commercial" ? !commReady : !resiReady}
-                className="flex items-center gap-1.5 rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                {activeJobs.length > 0
-                  ? <Loader2 className="h-3 w-3 animate-spin" />
-                  : <Play className="h-3 w-3" />
-                }
-                Run All
-              </button>
+          {/* Inline stats — hidden on small screens */}
+          <div className="hidden sm:flex items-center gap-2.5 text-xs">
+            <span className="tabular-nums">
+              <span className="font-semibold text-gray-800">{activeStats.totalListings}</span>
+              <span className="text-gray-400 ml-1">total</span>
+            </span>
+            <span className="text-gray-200">|</span>
+            <span className="tabular-nums">
+              <span className="font-semibold text-amber-600">{activeStats.pendingReview}</span>
+              <span className="text-gray-400 ml-1">pending</span>
+            </span>
+            <span className="text-gray-200">|</span>
+            <span className="tabular-nums">
+              <span className="font-semibold text-green-600">{activeStats.approvedCount}</span>
+              <span className="text-gray-400 ml-1">approved</span>
+            </span>
+            {activeStats.ambiguousCount > 0 && (
+              <>
+                <span className="text-gray-200">|</span>
+                <span className="tabular-nums">
+                  <span className="font-semibold text-red-600">{activeStats.ambiguousCount}</span>
+                  <span className="text-gray-400 ml-1">ambiguous</span>
+                </span>
+              </>
             )}
           </div>
+
+          <div className="hidden sm:block h-4 w-px bg-gray-200" />
+
+          {/* Run buttons */}
+          {categoryView === "all" ? (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => triggerAll("RESIDENTIAL")}
+                disabled={!resiReady || activeJobs.some(j => j.category === "RESIDENTIAL")}
+                className="flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <Home className="h-3 w-3" /> Resi
+              </button>
+              <button
+                onClick={() => triggerAll("COMMERCIAL")}
+                disabled={!commReady || activeJobs.some(j => j.category === "COMMERCIAL")}
+                className="flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <Building2 className="h-3 w-3" /> Comm
+              </button>
+              <button
+                onClick={triggerBoth}
+                disabled={(!resiReady && !commReady) || activeJobs.length > 0}
+                className="flex items-center gap-1.5 rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {activeJobs.length > 0 ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+                Both
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => triggerAll(categoryView === "commercial" ? "COMMERCIAL" : "RESIDENTIAL")}
+              disabled={categoryView === "commercial" ? !commReady : !resiReady}
+              className="flex items-center gap-1.5 rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {activeJobs.some(j => j.category === (categoryView === "commercial" ? "COMMERCIAL" : "RESIDENTIAL"))
+                ? <Loader2 className="h-3 w-3 animate-spin" />
+                : <Play className="h-3 w-3" />
+              }
+              Run All
+            </button>
+          )}
+
+          {/* Settings icon */}
+          <Link href="/dashboard/settings/finder">
+            <button title="Finder Settings" className="flex items-center justify-center rounded-md border border-gray-200 p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors">
+              <Settings className="h-3.5 w-3.5" />
+            </button>
+          </Link>
         </div>
       </div>
 
-      {/* ── 3. Criteria banners ── */}
-      <div className="space-y-2">
-        {categoryView !== "commercial" && (
-          <CriteriaBanner settings={resiSettings} label="Residential" />
-        )}
-        {categoryView !== "resi" && (
-          <CriteriaBanner settings={commercialSettings} label="Commercial" />
-        )}
+      {/* ══ ROW 2: Compact portal strip ══ */}
+      <div className="flex items-stretch gap-1.5">
+        {SOURCES.map(s => {
+          const lastJob   = lastJobBySource[s.key]
+          const cfg       = CHIP_CFG[s.key]
+          const resiJob   = runningJobs[`RESIDENTIAL_${s.key}`]
+          const commJob   = runningJobs[`COMMERCIAL_${s.key}`]
+          const resiRun   = resiJob?.status === "QUEUED" || resiJob?.status === "RUNNING"
+          const commRun   = commJob?.status === "QUEUED" || commJob?.status === "RUNNING"
+          const anyRun    = resiRun || commRun
+          const isEnabled = !!(resiSettings as any)?.[s.settingsKey] || !!(commercialSettings as any)?.[s.settingsKey]
+          const dotCls    = !isEnabled ? "bg-gray-300" : anyRun ? `${cfg.dot} animate-pulse` : "bg-green-500"
+          const showResi  = categoryView !== "commercial"
+          const showComm  = categoryView !== "resi"
+
+          return (
+            <div key={s.key} className="flex-1 flex items-center gap-2 bg-white border border-gray-100 rounded-lg px-2.5 py-2 min-w-0">
+              <span className={`h-2 w-2 rounded-full flex-shrink-0 ${dotCls}`} />
+              <div className="flex-1 min-w-0">
+                <div className={`text-xs font-semibold truncate ${cfg.text}`}>{s.label}</div>
+                <div className="text-[10px] text-gray-400 flex items-center gap-0.5 mt-0.5">
+                  {anyRun ? (
+                    <span className="text-emerald-600">
+                      {(resiJob?.totalFound ?? 0) + (commJob?.totalFound ?? 0)} found · {(resiJob?.successful ?? 0) + (commJob?.successful ?? 0)} saved
+                    </span>
+                  ) : (
+                    <><Clock className="h-2.5 w-2.5" /><LastRun at={lastJob?.completedAt ?? null} /></>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-0.5 flex-shrink-0">
+                {showResi && (
+                  <button
+                    onClick={() => triggerScrape("RESIDENTIAL", s.key)}
+                    disabled={!resiReady || resiRun}
+                    title="Run Residential"
+                    className={`rounded border px-1.5 py-0.5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center ${cfg.btn}`}
+                  >
+                    {resiRun ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Home className="h-2.5 w-2.5" />}
+                  </button>
+                )}
+                {showComm && (
+                  <button
+                    onClick={() => triggerScrape("COMMERCIAL", s.key)}
+                    disabled={!commReady || commRun}
+                    title="Run Commercial"
+                    className={`rounded border px-1.5 py-0.5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center ${cfg.btn}`}
+                  >
+                    {commRun ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Building2 className="h-2.5 w-2.5" />}
+                  </button>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* ══ ROW 3: Inline criteria / status line ══ */}
+      <div className="flex items-center gap-4 flex-wrap">
+        {categoryView !== "commercial" && (() => {
+          if (!resiSettings?.enabled) return (
+            <span className="flex items-center gap-1.5 text-xs text-amber-600">
+              <Home className="h-3 w-3 flex-shrink-0" />
+              <span>Residential: disabled —</span>
+              <Link href="/dashboard/settings/finder" className="font-medium underline underline-offset-2">enable in Finder Settings</Link>
+            </span>
+          )
+          if (!resiSettings?.searchCriteria?.locations?.length) return (
+            <span className="flex items-center gap-1.5 text-xs text-amber-600">
+              <Home className="h-3 w-3 flex-shrink-0" />
+              <span>Residential: no locations set —</span>
+              <Link href="/dashboard/settings/finder" className="font-medium underline underline-offset-2">configure locations</Link>
+            </span>
+          )
+          return (
+            <span className="flex items-center gap-1.5 text-xs text-gray-500">
+              <Home className="h-3 w-3 flex-shrink-0 text-gray-400" />
+              <span className="font-medium text-gray-600">Residential:</span>
+              <span className="text-gray-400">{criteriaSummary(resiSettings)}</span>
+            </span>
+          )
+        })()}
+
+        {categoryView !== "resi" && (() => {
+          if (!commercialSettings?.enabled) return (
+            <span className="flex items-center gap-1.5 text-xs text-amber-600">
+              <Building2 className="h-3 w-3 flex-shrink-0" />
+              <span>Commercial: disabled —</span>
+              <Link href="/dashboard/settings/finder" className="font-medium underline underline-offset-2">enable in Finder Settings</Link>
+            </span>
+          )
+          if (!commercialSettings?.searchCriteria?.locations?.length) return (
+            <span className="flex items-center gap-1.5 text-xs text-amber-600">
+              <Building2 className="h-3 w-3 flex-shrink-0" />
+              <span>Commercial: no locations set —</span>
+              <Link href="/dashboard/settings/finder" className="font-medium underline underline-offset-2">configure locations</Link>
+            </span>
+          )
+          return (
+            <span className="flex items-center gap-1.5 text-xs text-gray-500">
+              <Building2 className="h-3 w-3 flex-shrink-0 text-gray-400" />
+              <span className="font-medium text-gray-600">Commercial:</span>
+              <span className="text-gray-400">{criteriaSummary(commercialSettings)}</span>
+            </span>
+          )
+        })()}
       </div>
 
       {/* ── 4. Live progress ── */}

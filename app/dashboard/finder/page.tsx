@@ -38,8 +38,7 @@ export default async function PropertyFinderPage() {
     ambiguousAll,
     ambiguousResi,
     ambiguousComm,
-    resiSettings,
-    commercialSettings,
+    allScraperSettings,   // all rows — split in JS (JSONB NOT filter unreliable for missing keys)
     recentJobs,
     lastCompleted,
     reviewListings,
@@ -57,14 +56,8 @@ export default async function PropertyFinderPage() {
     prisma.propertyListing.count({ where: { isAmbiguous: true, reviewStatus: { in: ["PENDING", "AUTO_APPROVED"] } } }),
     prisma.propertyListing.count({ where: { category: "RESIDENTIAL", isAmbiguous: true, reviewStatus: { in: ["PENDING", "AUTO_APPROVED"] } } }),
     prisma.propertyListing.count({ where: { category: "COMMERCIAL",  isAmbiguous: true, reviewStatus: { in: ["PENDING", "AUTO_APPROVED"] } } }),
-    // Residential settings row (not commercial)
-    prisma.scraperSettings.findFirst({
-      where: { NOT: { searchCriteria: { path: ["category"], equals: "COMMERCIAL" } } },
-    }),
-    // Commercial settings row
-    prisma.scraperSettings.findFirst({
-      where: { searchCriteria: { path: ["category"], equals: "COMMERCIAL" } },
-    }),
+    // Load all settings rows and split in JS — JSONB NOT filter is unreliable when category key is absent
+    prisma.scraperSettings.findMany(),
     prisma.scraperJob.findMany({ orderBy: { createdAt: "desc" }, take: 30 }),
     prisma.scraperJob.findFirst({ where: { status: "COMPLETED" }, orderBy: { completedAt: "desc" }, select: { completedAt: true } }),
     prisma.propertyListing.findMany({
@@ -74,6 +67,10 @@ export default async function PropertyFinderPage() {
     }),
     prisma.propertyListing.count({ where: { NOT: { propertyDataAnalysis: { equals: Prisma.DbNull } } } }),
   ])
+
+  // Reliably separate residential vs commercial rows using JS comparison
+  const resiSettings       = allScraperSettings.find(s => (s.searchCriteria as any)?.category !== "COMMERCIAL") ?? null
+  const commercialSettings = allScraperSettings.find(s => (s.searchCriteria as any)?.category === "COMMERCIAL") ?? null
 
   const postcodeStats = await prisma.$queryRaw<Array<{ has_full: bigint; has_outcode: bigint; has_none: bigint }>>`
     SELECT
