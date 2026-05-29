@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import {
   Database, ClipboardCheck, TrendingUp,
   Play, Loader2, CheckCircle2, XCircle,
-  Settings, Clock, Home, Building2, Layers,
+  Settings, Clock, Home, Building2, Layers, Ban,
 } from "lucide-react"
 import { toast } from "sonner"
 import { ReviewQueue } from "@/components/scraper/review-queue"
@@ -382,6 +382,29 @@ export function UnifiedFinder({
     await triggerAll("COMMERCIAL")
   }
 
+  const cancelStuckJobs = async () => {
+    try {
+      const res = await fetch("/api/scraper/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(`Cancelled ${data.cancelled} stuck job(s)`)
+        setRunningJobs({})
+        router.refresh()
+      } else {
+        toast.error(data.error || "Failed to cancel jobs")
+      }
+    } catch {
+      toast.error("Failed to cancel jobs")
+    }
+  }
+
+  // Detect stale jobs: QUEUED/RUNNING jobs created more than 30 min ago (stuck after a server restart)
+  const thirtyMinAgo = Date.now() - 30 * 60 * 1000
+  const staleServerJobs = recentJobs.filter(j =>
+    (j.status === "QUEUED" || j.status === "RUNNING") &&
+    new Date(j.createdAt).getTime() < thirtyMinAgo
+  )
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -583,14 +606,34 @@ export function UnifiedFinder({
                 {job.category === "COMMERCIAL" ? <Building2 className="h-3 w-3" /> : <Home className="h-3 w-3" />}
                 {job.category === "COMMERCIAL" ? "Commercial" : "Residential"}
               </Badge>
-              <span className="text-blue-700">
+              <span className="text-blue-700 flex-1">
                 {job.status === "QUEUED"
                   ? "Queued…"
                   : `Running — ${job.totalFound} found, ${job.successful} saved`
                 }
               </span>
+              <button
+                onClick={() => cancelStuckJobs()}
+                title="Cancel this job"
+                className="ml-auto flex items-center gap-1 text-xs text-red-600 hover:text-red-800 border border-red-200 rounded px-2 py-0.5 hover:bg-red-50 transition-colors"
+              >
+                <Ban className="h-3 w-3" /> Cancel
+              </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── Stale job warning (server-side, always visible) ── */}
+      {staleServerJobs.length > 0 && activeJobs.length === 0 && (
+        <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+          <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+          <span>
+            {staleServerJobs.length} job{staleServerJobs.length > 1 ? "s are" : " is"} stuck in &ldquo;Running&rdquo; status (30+ min — likely caused by a server restart).{" "}
+            <button onClick={cancelStuckJobs} className="font-semibold underline hover:no-underline">
+              Cancel stuck jobs
+            </button>{" "}to clear them.
+          </span>
         </div>
       )}
 

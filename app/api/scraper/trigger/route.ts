@@ -59,9 +59,26 @@ export async function POST(request: NextRequest) {
         ? ["RIGHTMOVE", "ZOOPLA", "ONTHEMARKET", "PRIMELOCATION"]
         : [data.source]
 
+    // Auto-clean stale jobs: any job still QUEUED or RUNNING after 2 hours is stuck
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000)
+    const staleCount = await prisma.scraperJob.updateMany({
+      where: {
+        status: { in: ["QUEUED", "RUNNING"] },
+        createdAt: { lt: twoHoursAgo },
+      },
+      data: {
+        status: "FAILED",
+        completedAt: new Date(),
+        errors: [{ message: "Job timed out — auto-cancelled after 2 hours", timestamp: new Date().toISOString() }] as any,
+      },
+    })
+    if (staleCount.count > 0) {
+      console.log(`[Scraper Trigger] Auto-cancelled ${staleCount.count} stale job(s)`)
+    }
+
     // Check for already running jobs for any of the requested sources
     const existingRunning = await prisma.scraperJob.findFirst({
-      where: { source: { in: sources as any }, status: "RUNNING" },
+      where: { source: { in: sources as any }, status: { in: ["RUNNING", "QUEUED"] } },
     })
     if (existingRunning) {
       return NextResponse.json(

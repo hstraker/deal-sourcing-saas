@@ -140,6 +140,11 @@ export function PropertiesTable({ refreshKey = 0, lockedCategory }: PropertiesTa
   })
   const [newSinceYesterday, setNewSinceYesterday] = useState(0)
   const [debouncedSearch, setDebouncedSearch] = useState("")
+
+  // Sync lockedCategory prop → filters.category whenever the tab changes
+  useEffect(() => {
+    setFilters(prev => ({ ...prev, category: lockedCategory ?? "" }))
+  }, [lockedCategory])
   const [selectedListing, setSelectedListing] = useState<PropertyListingForClient | null>(null)
   const [submittingIds, setSubmittingIds] = useState<Set<string>>(new Set())
   const [isBulkActing, setIsBulkActing] = useState(false)
