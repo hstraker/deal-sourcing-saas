@@ -3,6 +3,11 @@
  *
  * Mirrors the exact scoring logic in bmv-detector.ts → calculateBmvScore()
  * so the UI can show "why this score" without re-running detection.
+ *
+ * Accepts an optional `enrichment` parameter carrying PropertyData signals
+ * (real BMV% from comparable sold prices, gross yield estimate) so those
+ * are reflected in the score for enriched listings, including commercial
+ * properties where keyword signals are typically absent.
  */
 
 import type { BmvIndicatorsData } from "@/types/property-listing"
@@ -18,6 +23,16 @@ export interface BmvBreakdownItem {
   points: number
   /** Whether this signal fired */
   active: boolean
+  /** Source of the signal — "keyword" (scraped text) or "propertydata" (API enrichment) */
+  source?: "keyword" | "propertydata"
+}
+
+/** Optional PropertyData enrichment context — passed from the modal when available. */
+export interface EnrichmentSignals {
+  bmvPercent?: number | null
+  grossYieldEstimate?: number | null
+  comparablesConfidence?: string | null
+  comparablesCount?: number | null
 }
 
 export interface BmvGrade {
@@ -75,10 +90,57 @@ export function bmvGrade(score: number): BmvGrade {
 
 /**
  * Build a per-signal breakdown matching calculateBmvScore() in bmv-detector.ts.
- * Returns items sorted: active first, then inactive.
+ *
+ * Pass `enrichment` (from `listing.propertyDataAnalysis`) to include
+ * PropertyData signals — real BMV% and gross yield.  These fire for all
+ * property types, including commercial where keyword signals are sparse.
+ *
+ * Returns items sorted: active first (highest points), then inactive.
  */
-export function buildBmvBreakdown(bmv: BmvIndicatorsData): BmvBreakdownItem[] {
+export function buildBmvBreakdown(
+  bmv: BmvIndicatorsData,
+  enrichment?: EnrichmentSignals,
+): BmvBreakdownItem[] {
   const items: BmvBreakdownItem[] = []
+
+  // ── PropertyData BMV% (real market signal — highest weight) ───────────────
+  // Tiered: 5–9% → +10, 10–19% → +20, 20–29% → +30, 30–39% → +40, 40%+ → +50
+  const pdBmv = enrichment?.bmvPercent
+  if (pdBmv !== undefined && pdBmv !== null && pdBmv > 0) {
+    let pts = 0
+    if      (pdBmv >= 40) pts = 50
+    else if (pdBmv >= 30) pts = 40
+    else if (pdBmv >= 20) pts = 30
+    else if (pdBmv >= 10) pts = 20
+    else if (pdBmv >= 5)  pts = 10
+
+    if (pts > 0) {
+      const conf  = enrichment?.comparablesConfidence
+      const cnt   = enrichment?.comparablesCount
+      const confStr = conf && cnt ? ` — ${cnt} comps (${conf} confidence)` : ""
+      items.push({
+        label:  "PropertyData BMV",
+        detail: `${pdBmv.toFixed(1)}% below comparable sold prices${confStr}`,
+        points: pts,
+        active: true,
+        source: "propertydata",
+      })
+    }
+  }
+
+  // ── High Gross Yield (PropertyData rental estimate) ────────────────────────
+  // 8–11% → +10, 12–15% → +18, 16%+ → +25
+  const pdYield = enrichment?.grossYieldEstimate
+  if (pdYield !== undefined && pdYield !== null && pdYield >= 8) {
+    const pts = pdYield >= 16 ? 25 : pdYield >= 12 ? 18 : 10
+    items.push({
+      label:  "High Gross Yield",
+      detail: `${pdYield.toFixed(1)}% estimated gross yield`,
+      points: pts,
+      active: true,
+      source: "propertydata",
+    })
+  }
 
   // ── Price reduction (up to 30 pts) ──────────────────────────────────────────
   if (bmv.hasReduction) {
@@ -95,9 +157,9 @@ export function buildBmvBreakdown(bmv: BmvIndicatorsData): BmvBreakdownItem[] {
       .filter(Boolean)
       .join(" — ")
 
-    items.push({ label: "Price Reduced", detail, points: pts, active: true })
+    items.push({ label: "Price Reduced", detail, points: pts, active: true, source: "keyword" })
   } else {
-    items.push({ label: "Price Reduced", detail: null, points: 0, active: false })
+    items.push({ label: "Price Reduced", detail: null, points: 0, active: false, source: "keyword" })
   }
 
   // ── Needs-work keywords (up to 25 pts, 5 each, max 5) ─────────────────────
@@ -111,9 +173,10 @@ export function buildBmvBreakdown(bmv: BmvIndicatorsData): BmvBreakdownItem[] {
       detail: `${kws}${extra} (${kwCount} keyword${kwCount > 1 ? "s" : ""})`,
       points: pts,
       active: true,
+      source: "keyword",
     })
   } else {
-    items.push({ label: "Needs Work", detail: null, points: 0, active: false })
+    items.push({ label: "Needs Work", detail: null, points: 0, active: false, source: "keyword" })
   }
 
   // ── Motivated-seller keywords (up to 20 pts, 5 each, max 4) ───────────────
@@ -127,16 +190,17 @@ export function buildBmvBreakdown(bmv: BmvIndicatorsData): BmvBreakdownItem[] {
       detail: `${kws}${extra} (${msCount} keyword${msCount > 1 ? "s" : ""})`,
       points: pts,
       active: true,
+      source: "keyword",
     })
   } else {
-    items.push({ label: "Motivated Seller", detail: null, points: 0, active: false })
+    items.push({ label: "Motivated Seller", detail: null, points: 0, active: false, source: "keyword" })
   }
 
   // ── Repossession (15 pts) ──────────────────────────────────────────────────
   if (bmv.isRepossession) {
-    items.push({ label: "Repossession", detail: "bank/lender sale", points: 15, active: true })
+    items.push({ label: "Repossession", detail: "bank/lender sale", points: 15, active: true, source: "keyword" })
   } else {
-    items.push({ label: "Repossession", detail: null, points: 0, active: false })
+    items.push({ label: "Repossession", detail: null, points: 0, active: false, source: "keyword" })
   }
 
   // ── Long time on market (up to 15 pts) ────────────────────────────────────
@@ -148,6 +212,7 @@ export function buildBmvBreakdown(bmv: BmvIndicatorsData): BmvBreakdownItem[] {
       detail: `${days} days (${days > 180 ? "6+ months" : days > 120 ? "4+ months" : "3+ months"})`,
       points: pts,
       active: true,
+      source: "keyword",
     })
   } else {
     const days = bmv.daysOnMarket ?? 0
@@ -156,31 +221,32 @@ export function buildBmvBreakdown(bmv: BmvIndicatorsData): BmvBreakdownItem[] {
       detail: days > 0 ? `${days} days` : null,
       points: 0,
       active: false,
+      source: "keyword",
     })
   }
 
   // ── Auction (10 pts) ───────────────────────────────────────────────────────
   if (bmv.isAuction) {
-    items.push({ label: "Auction Listing", detail: null, points: 10, active: true })
+    items.push({ label: "Auction Listing", detail: null, points: 10, active: true, source: "keyword" })
   } else {
-    items.push({ label: "Auction Listing", detail: null, points: 0, active: false })
+    items.push({ label: "Auction Listing", detail: null, points: 0, active: false, source: "keyword" })
   }
 
   // ── Probate (10 pts) ───────────────────────────────────────────────────────
   if (bmv.isProbate) {
-    items.push({ label: "Probate / Estate Sale", detail: null, points: 10, active: true })
+    items.push({ label: "Probate / Estate Sale", detail: null, points: 10, active: true, source: "keyword" })
   } else {
-    items.push({ label: "Probate / Estate Sale", detail: null, points: 0, active: false })
+    items.push({ label: "Probate / Estate Sale", detail: null, points: 0, active: false, source: "keyword" })
   }
 
   // ── Cash buyers only (5 pts) ───────────────────────────────────────────────
   if (bmv.isCashBuyersOnly) {
-    items.push({ label: "Cash Buyers Only", detail: "mortgage restrictions", points: 5, active: true })
+    items.push({ label: "Cash Buyers Only", detail: "mortgage restrictions", points: 5, active: true, source: "keyword" })
   } else {
-    items.push({ label: "Cash Buyers Only", detail: null, points: 0, active: false })
+    items.push({ label: "Cash Buyers Only", detail: null, points: 0, active: false, source: "keyword" })
   }
 
-  // Sort: active items first, then inactive
+  // Sort: active items first (highest points first), then inactive
   return [
     ...items.filter((i) => i.active).sort((a, b) => b.points - a.points),
     ...items.filter((i) => !i.active),

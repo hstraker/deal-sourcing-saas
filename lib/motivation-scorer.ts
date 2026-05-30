@@ -49,6 +49,10 @@ export interface MotivationScorerInput {
   keyFeatures:    string[]
   daysOnMarket:   number
   listedDate:     string | null | undefined
+  /** PropertyData real BMV% — if available, contributes a data-driven signal */
+  pdBmvPercent?:  number | null
+  /** PropertyData estimated gross yield % — high yields indicate strong deals */
+  pdGrossYield?:  number | null
 }
 
 export interface MotivationScorerResult {
@@ -184,6 +188,34 @@ export function computeMotivationScore(input: MotivationScorerInput): Motivation
   if (bmv.motivatedSellerKeywords.length > 0 || containsMotivatedKeyword(allText)) {
     signals.push({ name: "Motivated seller language", points: 20 })
     raw += 20
+  }
+
+  // ── 12. PropertyData real BMV% ──────────────────────────────────────────────
+  // Reflects how far below comparable sold prices the asking price sits.
+  // Works for all property types — especially important for commercial where
+  // keyword signals are sparse.
+  if (input.pdBmvPercent && input.pdBmvPercent > 0) {
+    const pct = input.pdBmvPercent
+    let pts = 0
+    if      (pct >= 40) pts = 40
+    else if (pct >= 30) pts = 30
+    else if (pct >= 20) pts = 20
+    else if (pct >= 10) pts = 10
+    else if (pct >= 5)  pts = 5
+    if (pts > 0) {
+      signals.push({ name: `${pct.toFixed(1)}% below market (PropertyData)`, points: pts })
+      raw += pts
+    }
+  }
+
+  // ── 13. High gross yield ────────────────────────────────────────────────────
+  // Yield ≥ 8% is above the UK average; anything ≥ 12% indicates a very
+  // motivated seller and/or underpriced asset.
+  if (input.pdGrossYield && input.pdGrossYield >= 8) {
+    const y = input.pdGrossYield
+    const pts = y >= 15 ? 20 : y >= 12 ? 15 : 10
+    signals.push({ name: `${y.toFixed(1)}% gross yield`, points: pts })
+    raw += pts
   }
 
   // ── Cap at 100 ──────────────────────────────────────────────────────────────

@@ -1592,6 +1592,228 @@ export async function fetchDetailedComparables(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Commercial Property API
+// Three endpoints: /rents-commercial (area averages), /valuation-commercial-sale
+// (capital value for a specific unit), /valuation-commercial-rent (rental value).
+//
+// Notes:
+//  • PropertyData acknowledges this is "relatively simplistic — great for a
+//    first view but may not suit all situations."
+//  • /rents-commercial can be shared across all listings of the same type in
+//    the same postcode (1 credit per postcode+type pair).
+//  • Valuation endpoints require internal_area and cost 1 credit each per listing.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** The five property types accepted by PropertyData's commercial endpoints. */
+export type CommercialPropertyType = "retail" | "offices" | "industrial" | "restaurants" | "pubs"
+
+export interface CommercialRentsResult {
+  pointsAnalysed: number
+  /** GIA = Gross Internal Area, NIA = Net Internal Area */
+  unitType: "GIA" | "NIA"
+  /** Annual quoting rent per sq ft (£/sqft/yr) */
+  avgRentPerSqft: number
+  /** Average unit size in sq ft */
+  avgSize: number
+  /** Average total annual quoting rent (£) */
+  avgAnnualRent: number
+  creditsUsed: number
+}
+
+export interface CommercialValuationResult {
+  /** Central estimate (£) */
+  estimate: number
+  /** +/- margin of error (£) */
+  margin: number
+  minValue: number
+  maxValue: number
+  creditsUsed: number
+}
+
+/**
+ * Map a scraped `propertyType` string to one of PropertyData's five
+ * commercial types.  Returns null for residential or unrecognised types.
+ */
+export function mapToCommercialType(propertyType: string): CommercialPropertyType | null {
+  const t = propertyType.toLowerCase().trim()
+  if (
+    t.includes("retail") || t.includes("shop") || t.includes("showroom") ||
+    t.includes("kiosk") || t.includes("store") || t.includes("high street")
+  ) return "retail"
+  if (
+    t.includes("office") || t.includes("co-working") || t.includes("coworking") ||
+    t.includes("serviced office") || t.includes("business park")
+  ) return "offices"
+  if (
+    t.includes("industrial") || t.includes("warehouse") || t.includes("storage") ||
+    t.includes("light industrial") || t.includes("trade counter") ||
+    t.includes("distribution") || t.includes("workshop")
+  ) return "industrial"
+  if (
+    t.includes("restaurant") || t.includes("cafe") || t.includes("café") ||
+    t.includes("takeaway") || t.includes("food") || t.includes("kitchen")
+  ) return "restaurants"
+  if (
+    t.includes("pub") || t.includes("bar") || t.includes("nightclub") ||
+    t.includes("inn") || t.includes("tavern")
+  ) return "pubs"
+  return null
+}
+
+/**
+ * Fetch commercial area quoting rents for a postcode + property type.
+ * Wraps /rents-commercial.  1 credit per (postcode, type) pair.
+ *
+ * Response gives avg_quoting_rent_per_sqft and avg_size so we can calculate
+ * an expected rent for any unit once we know its floor area.
+ */
+export async function fetchCommercialRents(
+  postcode: string,
+  type: CommercialPropertyType,
+): Promise<CommercialRentsResult | null> {
+  if (!PROPERTYDATA_API_KEY) return null
+
+  try {
+    const params = new URLSearchParams({ key: PROPERTYDATA_API_KEY, postcode, type })
+    const url = `${PROPERTYDATA_API_URL}/rents-commercial?${params}`
+    console.log(`[PropertyData] /rents-commercial: ${postcode} (${type})`)
+
+    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) })
+    if (!res.ok) {
+      console.warn(`[PropertyData] /rents-commercial ${res.status} for ${postcode} (${type})`)
+      return null
+    }
+
+    const data = await res.json()
+    if (data.status !== "success" || !data.result) {
+      console.warn(`[PropertyData] /rents-commercial non-success for ${postcode}:`, data.message ?? data.status)
+      return null
+    }
+
+    const r = data.result
+    return {
+      pointsAnalysed: Number(r.points_analysed ?? 0),
+      unitType: (r.unit_type ?? "GIA") as "GIA" | "NIA",
+      avgRentPerSqft: Number(r.avg_quoting_rent_per_sqft ?? 0),
+      avgSize: Number(r.avg_size ?? 0),
+      avgAnnualRent: Number(r.avg_quoting_rent ?? 0),
+      creditsUsed: data.api_calls_cost ?? 1,
+    }
+  } catch (err) {
+    console.error("[PropertyData] /rents-commercial error:", err)
+    return null
+  }
+}
+
+/**
+ * Fetch estimated capital value for a specific commercial unit.
+ * Wraps /valuation-commercial-sale.  Requires floor area.  1 credit per call.
+ *
+ * Calculated from local commercial quoting rents using standard
+ * capitalisation rates (i.e. not from registered commercial sales data).
+ */
+export async function fetchCommercialValuationSale(
+  postcode: string,
+  propertyType: CommercialPropertyType,
+  internalArea: number,
+  areaUnit: "sqft" | "sqm" = "sqft",
+): Promise<CommercialValuationResult | null> {
+  if (!PROPERTYDATA_API_KEY) return null
+
+  try {
+    const params = new URLSearchParams({
+      key: PROPERTYDATA_API_KEY,
+      postcode,
+      property_type: propertyType,
+      internal_area: Math.round(internalArea).toString(),
+      area_unit: areaUnit,
+    })
+    const url = `${PROPERTYDATA_API_URL}/valuation-commercial-sale?${params}`
+    console.log(`[PropertyData] /valuation-commercial-sale: ${postcode} (${propertyType}, ${internalArea}${areaUnit})`)
+
+    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) })
+    if (!res.ok) {
+      console.warn(`[PropertyData] /valuation-commercial-sale ${res.status} for ${postcode}`)
+      return null
+    }
+
+    const data = await res.json()
+    if (data.status !== "success" || !data.result) {
+      console.warn(`[PropertyData] /valuation-commercial-sale non-success:`, data.message ?? data.status)
+      return null
+    }
+
+    const r = data.result
+    // Field names are not fully documented — try both known variants
+    const estimate = Number(r.estimate ?? r.capital_value ?? r.value ?? 0)
+    const margin   = Number(r.margin ?? r.margin_of_error ?? 0)
+    return {
+      estimate,
+      margin,
+      minValue: estimate - margin,
+      maxValue: estimate + margin,
+      creditsUsed: data.api_calls_cost ?? 1,
+    }
+  } catch (err) {
+    console.error("[PropertyData] /valuation-commercial-sale error:", err)
+    return null
+  }
+}
+
+/**
+ * Fetch estimated rental value for a specific commercial unit.
+ * Wraps /valuation-commercial-rent.  Requires floor area.  1 credit per call.
+ *
+ * Returns an ANNUAL rental estimate (not monthly) with margin of error.
+ */
+export async function fetchCommercialValuationRent(
+  postcode: string,
+  propertyType: CommercialPropertyType,
+  internalArea: number,
+  areaUnit: "sqft" | "sqm" = "sqft",
+): Promise<CommercialValuationResult | null> {
+  if (!PROPERTYDATA_API_KEY) return null
+
+  try {
+    const params = new URLSearchParams({
+      key: PROPERTYDATA_API_KEY,
+      postcode,
+      property_type: propertyType,
+      internal_area: Math.round(internalArea).toString(),
+      area_unit: areaUnit,
+    })
+    const url = `${PROPERTYDATA_API_URL}/valuation-commercial-rent?${params}`
+    console.log(`[PropertyData] /valuation-commercial-rent: ${postcode} (${propertyType}, ${internalArea}${areaUnit})`)
+
+    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) })
+    if (!res.ok) {
+      console.warn(`[PropertyData] /valuation-commercial-rent ${res.status} for ${postcode}`)
+      return null
+    }
+
+    const data = await res.json()
+    if (data.status !== "success" || !data.result) {
+      console.warn(`[PropertyData] /valuation-commercial-rent non-success:`, data.message ?? data.status)
+      return null
+    }
+
+    const r = data.result
+    const estimate = Number(r.estimate ?? r.rental_value ?? r.value ?? 0)
+    const margin   = Number(r.margin ?? r.margin_of_error ?? 0)
+    return {
+      estimate,
+      margin,
+      minValue: estimate - margin,
+      maxValue: estimate + margin,
+      creditsUsed: data.api_calls_cost ?? 1,
+    }
+  } catch (err) {
+    console.error("[PropertyData] /valuation-commercial-rent error:", err)
+    return null
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Energy Efficiency (EPC) API
 // ─────────────────────────────────────────────────────────────────────────────
 

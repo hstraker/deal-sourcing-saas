@@ -49,7 +49,7 @@ import {
   Landmark,
 } from "lucide-react"
 import type { PropertyListingForClient, BmvIndicatorsData } from "@/types/property-listing"
-import { buildBmvBreakdown, bmvGrade } from "@/lib/scrapers/bmv-score-breakdown"
+import { buildBmvBreakdown, bmvGrade, type EnrichmentSignals } from "@/lib/scrapers/bmv-score-breakdown"
 
 /** Strip HTML tags and decode common HTML entities from a raw HTML string. */
 function stripHtml(html: string): string {
@@ -459,6 +459,129 @@ export function PropertyDetailModal({
           const pda = listing.propertyDataAnalysis as any
           if (!pda) return null
 
+          const isCommercial = listing.category === "COMMERCIAL"
+          const comm = pda.commercial as Record<string, any> | undefined
+
+          // ── Commercial-specific data ──────────────────────────────────────
+          if (isCommercial && comm) {
+            const capitalVal   = comm.capitalValuation as { estimate: number; margin: number; minValue: number; maxValue: number } | undefined
+            const rentVal      = comm.rentValuation    as { estimateAnnual: number; margin: number } | undefined
+            const areaRents    = comm.areaRents        as { pointsAnalysed: number; unitType: string; avgRentPerSqft: number; avgSize: number; avgAnnualRent: number } | undefined
+            const bmvPct: number | undefined    = comm.bmvPercent
+            const monthlyRent: number | undefined = comm.rentEstimateMonthly
+            const grossYield: number | undefined  = comm.grossYieldFromValuation ?? comm.grossYieldFromAreaRents
+            const hasBmv  = bmvPct !== undefined && capitalVal !== undefined
+            const hasRent = monthlyRent !== undefined
+
+            if (!hasBmv && !hasRent && !areaRents) return null
+
+            const bmvPositive = (bmvPct ?? 0) > 0
+            const bmvBig      = (bmvPct ?? 0) >= 15
+            const bmvBadge    = bmvPositive
+              ? bmvBig ? "bg-green-50 text-green-700 border-green-300" : "bg-emerald-50 text-emerald-700 border-emerald-200"
+              : "bg-red-50 text-red-600 border-red-200"
+
+            return (
+              <>
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <h4 className="font-semibold text-sm flex items-center gap-1.5">
+                      <TrendingUp className="h-3.5 w-3.5 text-violet-500" />
+                      Commercial Market Data
+                      <span className="text-[11px] font-normal text-gray-400">(PropertyData)</span>
+                    </h4>
+                    {hasBmv && (
+                      <span className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-sm font-bold ${bmvBadge}`}>
+                        {bmvPositive ? "▼" : "▲"} {Math.abs(bmvPct!).toFixed(1)}% {bmvPositive ? "below" : "above"} est. value
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs mb-3">
+                    {hasBmv && capitalVal && (
+                      <>
+                        <div>
+                          <span className="text-gray-400 block mb-0.5">Est. Capital Value</span>
+                          <span className="font-semibold text-gray-800">£{capitalVal.estimate.toLocaleString()}</span>
+                          {capitalVal.margin > 0 && (
+                            <span className="text-gray-400 block">±£{capitalVal.margin.toLocaleString()}</span>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-gray-400 block mb-0.5">Value Range</span>
+                          <span className="font-semibold text-gray-800 text-[11px]">
+                            £{capitalVal.minValue.toLocaleString()}–{capitalVal.maxValue.toLocaleString()}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                    {hasRent && (
+                      <>
+                        <div>
+                          <span className="text-gray-400 block mb-0.5">Est. Monthly Rent</span>
+                          <span className="font-semibold text-gray-800">£{monthlyRent!.toLocaleString()}</span>
+                          {rentVal && (
+                            <span className="text-gray-400 block text-[10px]">
+                              £{rentVal.estimateAnnual.toLocaleString()}/yr
+                            </span>
+                          )}
+                        </div>
+                        {grossYield !== undefined && (
+                          <div>
+                            <span className="text-gray-400 block mb-0.5">Gross Yield</span>
+                            <span className={`font-semibold ${grossYield >= 10 ? "text-green-700" : grossYield >= 7 ? "text-amber-700" : "text-gray-800"}`}>
+                              {grossYield.toFixed(1)}%
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {/* Area rents detail */}
+                  {areaRents && areaRents.avgRentPerSqft > 0 && (
+                    <div className="rounded-md bg-gray-50 border px-3 py-2 text-[11px] text-gray-600 grid grid-cols-3 gap-2">
+                      <div>
+                        <span className="text-gray-400 block">Area Avg Rent/sqft</span>
+                        <span className="font-semibold">£{areaRents.avgRentPerSqft.toFixed(2)}/sqft/yr</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 block">Avg Unit Size</span>
+                        <span className="font-semibold">{areaRents.avgSize.toLocaleString()} sqft</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 block">Data Points</span>
+                        <span className="font-semibold">{areaRents.pointsAnalysed} ({areaRents.unitType})</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show deferred notice if valuation was skipped due to cap */}
+                  {comm.valuationDeferred && (
+                    <p className="mt-2 text-[11px] text-amber-600">
+                      Capital valuation deferred — credit budget reached for this run. Click Enrich again to fetch.
+                    </p>
+                  )}
+
+                  {/* Show notice if no sqft for valuation */}
+                  {!comm.internalArea && !comm.valuationDeferred && (
+                    <div className="mt-2 flex items-start gap-1.5 text-[11px] text-amber-700">
+                      <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+                      <span>Floor area not available — capital and rental valuations require internal area (sq ft). Add it to the listing to enable.</span>
+                    </div>
+                  )}
+
+                  <p className="mt-2 text-[11px] text-gray-400 leading-relaxed">
+                    Capital value estimated from local commercial quoting rents using standard capitalisation rates.
+                    PropertyData commercial data is indicative — confirm with a specialist commercial surveyor.
+                  </p>
+                </div>
+                <div className="border-t border-[var(--ds-border)]" />
+              </>
+            )
+          }
+
+          // ── Residential data (original display) ───────────────────────────
           const bmvPct: number | undefined       = pda.bmvPercent
           const avgComp: number | undefined      = pda.avgComparablePrice
           const compCount: number | undefined    = pda.comparablesCount
@@ -466,7 +589,6 @@ export function PropertyDetailModal({
           const monthlyRent: number | undefined  = pda.monthlyRentEstimate
           const grossYield: number | undefined   = pda.grossYieldEstimate
           const epcSource: string | undefined    = pda.epcSource
-          const isCommercial = listing.category === "COMMERCIAL"
 
           const hasBmv   = bmvPct !== undefined && avgComp !== undefined
           const hasRent  = monthlyRent !== undefined
@@ -538,18 +660,6 @@ export function PropertyDetailModal({
                   )}
                 </div>
 
-                {/* Commercial warning — PropertyData sold prices are residential */}
-                {isCommercial && hasBmv && (
-                  <div className="mt-3 flex items-start gap-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-700">
-                    <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
-                    <span>
-                      <strong>Commercial caveat:</strong> PropertyData sold price comparables are drawn from residential transactions in this postcode.
-                      The {bmvPct?.toFixed(1)}% figure reflects residential market prices, not comparable commercial sales — treat with caution.
-                      True commercial BMV requires specialist valuation.
-                    </span>
-                  </div>
-                )}
-
                 {epcSource === "propertydata" && (
                   <p className="mt-2 text-[11px] text-gray-400">
                     EPC rating sourced from PropertyData energy efficiency register (not scraped from portal).
@@ -561,20 +671,37 @@ export function PropertyDetailModal({
           )
         })()}
 
-        {/* ── BMV Signal Score (keyword-based) ───────────────────────────────── */}
+        {/* ── BMV Signal Score ────────────────────────────────────────────────── */}
         <div>
           {(() => {
-            const breakdown = buildBmvBreakdown(bmv)
+            const pda = listing.propertyDataAnalysis as any
+            const enrichment: EnrichmentSignals = {
+              bmvPercent:          pda?.bmvPercent          ?? null,
+              grossYieldEstimate:  pda?.grossYieldEstimate  ?? null,
+              comparablesConfidence: pda?.comparablesConfidence ?? null,
+              comparablesCount:    pda?.comparablesCount    ?? null,
+            }
+            const hasEnrichment = enrichment.bmvPercent != null || enrichment.grossYieldEstimate != null
+
+            const breakdown = buildBmvBreakdown(bmv, enrichment)
             const activeItems = breakdown.filter((i) => i.active)
-            const computedPts = activeItems.reduce((s, i) => s + i.points, 0)
+            // Cap display at 100 — individual signals can stack beyond that
+            const rawPts = activeItems.reduce((s, i) => s + i.points, 0)
+            const computedPts = Math.min(100, rawPts)
             const grade = bmvGrade(computedPts)
+
+            const pdItems      = activeItems.filter((i) => i.source === "propertydata")
+            const keywordItems = activeItems.filter((i) => i.source !== "propertydata")
+
             return (
               <>
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <h4 className="font-semibold text-sm flex items-center gap-1.5">
                     <BarChart2 className="h-3.5 w-3.5 text-gray-400" />
                     BMV Signal Score
-                    <span className="text-[11px] font-normal text-gray-400">(keyword signals)</span>
+                    <span className="text-[11px] font-normal text-gray-400">
+                      {hasEnrichment ? "(enriched)" : "(keyword signals)"}
+                    </span>
                   </h4>
                   <div className="flex items-center gap-2">
                     <span className={`inline-flex items-center rounded-full text-xs font-semibold px-2.5 py-0.5 ring-1 ${grade.bgColor} ${grade.textColor} ${grade.ringColor}`}>
@@ -612,10 +739,22 @@ export function PropertyDetailModal({
                   </div>
                   {activeItems.length === 0 && (
                     <div className="px-3 py-3 text-center text-xs text-gray-400/70">
-                      No BMV signals detected in listing text
+                      No BMV signals detected — click Enrich to fetch PropertyData market analysis
                     </div>
                   )}
-                  {activeItems.map((item) => (
+                  {/* PropertyData signals shown first with a subtle violet tint */}
+                  {pdItems.map((item) => (
+                    <div key={item.label} className="flex items-start justify-between gap-2 px-3 py-1.5 border-t bg-violet-50/40">
+                      <span>
+                        <span className="font-medium text-violet-800">{item.label}</span>
+                        <span className="ml-1.5 text-[10px] text-violet-400 font-medium uppercase tracking-wide">API</span>
+                        {item.detail && <span className="text-gray-400 ml-1.5">— {item.detail}</span>}
+                      </span>
+                      <span className="font-semibold text-violet-600 tabular-nums flex-shrink-0">+{item.points}</span>
+                    </div>
+                  ))}
+                  {/* Keyword signals */}
+                  {keywordItems.map((item) => (
                     <div key={item.label} className="flex items-start justify-between gap-2 px-3 py-1.5 border-t">
                       <span>
                         <span className="font-medium text-gray-900">{item.label}</span>
@@ -625,11 +764,11 @@ export function PropertyDetailModal({
                     </div>
                   ))}
                   <div className="flex justify-between px-3 py-1.5 border-t bg-gray-100 font-semibold">
-                    <span>Total</span>
+                    <span>Total{rawPts > 100 ? ` (capped at 100)` : ""}</span>
                     <span className={grade.textColor}>{computedPts} / 100</span>
                   </div>
                 </div>
-                {computedPts !== bmv.bmvScore && (
+                {!hasEnrichment && computedPts !== bmv.bmvScore && (
                   <p className="mt-1.5 text-[11px] text-gray-400/70 leading-tight">
                     Originally scored {bmv.bmvScore} — re-scraping will refresh signals
                   </p>
@@ -670,10 +809,10 @@ export function PropertyDetailModal({
           })()}
 
           <p className="mt-3 text-[11px] text-gray-400 leading-relaxed">
-            Signal score uses listing text, price history and days on market.
+            Signal score combines listing keywords, price history and days on market
             {listing.propertyDataAnalysis
-              ? " Real market BMV% shown above from PropertyData comparable sold prices."
-              : " Click Enrich on the finder toolbar to fetch real market BMV% from comparable sold prices."}
+              ? " with PropertyData comparable sold prices and yield (shown in violet above)."
+              : ". Click Enrich on the finder toolbar to add real market BMV% and yield signals."}
           </p>
         </div>
 
