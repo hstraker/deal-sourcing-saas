@@ -310,7 +310,7 @@ export async function POST(
 
   try {
     const message = await client.messages.create({
-      model: "claude-3-5-haiku-20241022",
+      model: process.env.ANTHROPIC_MODEL || "claude-opus-4-5",
       max_tokens: 4000,
       messages: [{ role: "user", content: prompt }],
     })
