@@ -25,9 +25,105 @@ import {
   BriefcaseIcon,
   HomeModernIcon,
   BuildingStorefrontIcon,
+  CpuChipIcon,
+  StarIcon,
+  ClipboardDocumentCheckIcon,
+  DocumentMagnifyingGlassIcon,
+  ChatBubbleBottomCenterTextIcon,
+  CurrencyPoundIcon,
+  CameraIcon,
+  MapPinIcon,
+  WrenchIcon,
+  UserPlusIcon,
 } from "@heroicons/react/24/outline"
 
 export const NAV_SECTIONS = [
+
+  // ─────────────────────────────────────────────────────
+  // AI — first-class AI toolset section
+  // ─────────────────────────────────────────────────────
+  {
+    id: "ai",
+    label: "AI Tools",
+    icon: CpuChipIcon,
+    title: "AI Tools",
+    groups: [
+      {
+        label: "Deal Intelligence",
+        items: [
+          {
+            label: "Deal Scorer",
+            href: "/dashboard/ai/deal-scorer",
+            icon: StarIcon,
+            tooltip: "AI-powered 0–100 deal quality score across 9 signals: BMV, yield, flood risk, EPC, lease, motivation, photo condition, comparables and portal risk.",
+          },
+        ],
+      },
+      {
+        label: "Due Diligence",
+        items: [
+          {
+            label: "DD Checklist",
+            href: "/dashboard/ai/due-diligence",
+            icon: ClipboardDocumentCheckIcon,
+            tooltip: "AI generates a tailored due diligence checklist per deal — flags leasehold traps, flood zone actions, corporate ownership red flags, and EPC obligations.",
+          },
+          {
+            label: "Document Reader",
+            href: "/dashboard/ai/document-reader",
+            icon: DocumentMagnifyingGlassIcon,
+            tooltip: "Drop any property document — title register, lease, management pack, surveyor report — and Claude extracts key dates, covenants, red flags, and charges.",
+          },
+        ],
+      },
+      {
+        label: "Offer & Negotiation",
+        items: [
+          {
+            label: "Negotiation Coach",
+            href: "/dashboard/negotiate",
+            icon: ChatBubbleBottomCenterTextIcon,
+            tooltip: "AI negotiation command centre — Voss/Klaff/Dawson playbooks, objection handlers, round scripts, and Live Copilot. Paste the vendor's reply → get the exact response.",
+          },
+          {
+            label: "Offer Analysis",
+            href: "/dashboard/offer-analysis",
+            icon: CurrencyPoundIcon,
+            tooltip: "Goal-seek offer calculator — max purchase price for BRRR, BTL, and Flip strategies. Viability score, negotiation ladder, financial breakdown with bridging.",
+          },
+        ],
+      },
+      {
+        label: "Property Analysis",
+        items: [
+          {
+            label: "Refurb Estimator",
+            href: "/dashboard/ai/refurb-estimator",
+            icon: WrenchIcon,
+            tooltip: "Claude Vision analyses property photos and estimates refurb costs by room and category — kitchen, bathrooms, damp, structural, windows, EPC improvements.",
+          },
+          {
+            label: "Photo Analysis",
+            href: "/dashboard/ai/photo-analysis",
+            icon: CameraIcon,
+            tooltip: "AI condition scoring from property photos — kerb appeal, room-by-room condition, flags (damp, structural, finish quality), and overall condition score.",
+          },
+          {
+            label: "Area Intelligence",
+            href: "/dashboard/ai/area-intelligence",
+            icon: MapPinIcon,
+            tooltip: "AI-generated investor area brief — rental demand, regeneration signals, crime trend, school catchments, HMO licensing, and comparable market context.",
+          },
+          {
+            label: "Investor Matching",
+            href: "/dashboard/ai/investor-matching",
+            icon: UserPlusIcon,
+            tooltip: "AI ranks your investor database by fit for each deal and drafts personalised email and SMS pitches — edit before sending.",
+          },
+        ],
+      },
+    ],
+  },
 
   // ─────────────────────────────────────────────────────
   // INVEST
@@ -38,17 +134,6 @@ export const NAV_SECTIONS = [
     icon: ChartBarIcon,
     title: "Invest",
     groups: [
-      {
-        label: "🧠 AI Coach",
-        items: [
-          {
-            label: "Negotiation Coach",
-            href: "/dashboard/negotiate",
-            icon: SparklesIcon,
-            tooltip: "AI-powered negotiation command centre — scripts, objection handlers, and live copilot for every active deal. Powered by Voss, Klaff & Dawson frameworks.",
-          },
-        ],
-      },
       {
         label: "Pipeline",
         items: [
@@ -165,6 +250,10 @@ export const NAV_SECTIONS = [
 
 // Returns the NAV1 section id that owns the given pathname
 export function getSectionIdFromPath(pathname: string): string {
+  // Fast-path: /dashboard/ai/* always belongs to the AI section
+  if (pathname.startsWith("/dashboard/ai") || pathname === "/dashboard/negotiate" || pathname === "/dashboard/offer-analysis") {
+    return "ai"
+  }
   for (const section of NAV_SECTIONS) {
     for (const group of section.groups) {
       for (const item of group.items) {
@@ -174,5 +263,5 @@ export function getSectionIdFromPath(pathname: string): string {
       }
     }
   }
-  return NAV_SECTIONS[0].id // default: Invest
+  return NAV_SECTIONS[1].id // default: Invest (now index 1 since AI is 0)
 }

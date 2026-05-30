@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import {
   Building2, Search, Heart, TrendingUp, BedDouble, Percent,
-  PoundSterling, MapPin, Filter, X, Loader2, Sparkles, Star,
+  PoundSterling, MapPin, Filter, X, Loader2, Sparkles, Star, Bell,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -51,7 +51,9 @@ function scoreColor(score: number | null) {
 }
 
 function DealCard({ deal, onToggleFavorite }: { deal: Deal; onToggleFavorite: (id: string, favorited: boolean) => void }) {
-  const [toggling, setToggling] = useState(false)
+  const [toggling, setToggling]           = useState(false)
+  const [expressing, setExpressing]       = useState(false)
+  const [hasExpressed, setHasExpressed]   = useState(false)
 
   const handleFav = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -71,6 +73,25 @@ function DealCard({ deal, onToggleFavorite }: { deal: Deal; onToggleFavorite: (i
       toast.error("Failed to update favorite")
     } finally {
       setToggling(false)
+    }
+  }
+
+  const handleExpressInterest = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (expressing || hasExpressed || deal.isReserved) return
+    setExpressing(true)
+    try {
+      const res = await fetch(`/api/investor/deals/${deal.id}/express-interest`, { method: "POST" })
+      if (!res.ok) throw new Error("Failed")
+      setHasExpressed(true)
+      toast.success("Interest expressed!", {
+        description: "Our sourcing team has been notified and will be in touch shortly.",
+      })
+    } catch {
+      toast.error("Failed to express interest — please try again")
+    } finally {
+      setExpressing(false)
     }
   }
 
@@ -181,6 +202,31 @@ function DealCard({ deal, onToggleFavorite }: { deal: Deal; onToggleFavorite: (i
             <p className="text-xs text-gray-500 mt-2 text-center">
               Est. rent: <span className="font-semibold text-gray-700">{fmt(deal.estimatedMonthlyRent)}/mo</span>
             </p>
+          )}
+
+          {/* Express Interest */}
+          {!deal.isReserved && (
+            <button
+              onClick={handleExpressInterest}
+              disabled={expressing || hasExpressed}
+              className={cn(
+                "mt-3 w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-150",
+                hasExpressed
+                  ? "bg-green-100 text-green-700 cursor-default"
+                  : "bg-[#2563EB] text-white hover:bg-blue-700 active:scale-[0.98]"
+              )}
+            >
+              {expressing ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : hasExpressed ? (
+                <>✓ Interest Expressed</>
+              ) : (
+                <>
+                  <Bell className="h-3.5 w-3.5" />
+                  Express Interest
+                </>
+              )}
+            </button>
           )}
         </div>
       </div>
