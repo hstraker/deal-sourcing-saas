@@ -178,7 +178,7 @@ export function PropertiesTable({ refreshKey = 0, lockedCategory }: PropertiesTa
     search: "", source: "", reviewStatus: "", category: lockedCategory ?? "",
     favoritesOnly: false, signals: [], minMotivation: "", jurisdiction: "",
   })
-  const [newSinceYesterday, setNewSinceYesterday] = useState(0)
+  const toastedCountRef = useRef(0)  // prevent duplicate toasts on re-renders
   const [debouncedSearch, setDebouncedSearch] = useState("")
 
   // Sync lockedCategory prop → filters.category whenever the tab changes
@@ -217,13 +217,19 @@ export function PropertiesTable({ refreshKey = 0, lockedCategory }: PropertiesTa
         setListings(data.listings)
         setPagination({ page: pageNum, total: data.pagination.total, totalPages: data.pagination.totalPages })
         setSelectedIds(new Set())
-        // Alert banner: how many scraped in last 24 hours
+        // Toast: how many scraped in last 24 hours (fires once per unique count)
         if (pageNum === 1) {
           const yesterday = new Date(Date.now() - 86_400_000).toISOString()
           const newCount = (data.listings as PropertyListingForClient[]).filter(
             (l: PropertyListingForClient) => l.scrapedAt > yesterday
           ).length
-          setNewSinceYesterday(newCount)
+          if (newCount > 0 && newCount !== toastedCountRef.current) {
+            toastedCountRef.current = newCount
+            toast(`🆕 ${newCount} new ${newCount === 1 ? "property" : "properties"} scraped in the last 24 hours`, {
+              duration: 6000,
+              description: "Scroll to the top of the table to see the latest listings.",
+            })
+          }
         }
       }
     } catch {
@@ -518,23 +524,6 @@ export function PropertiesTable({ refreshKey = 0, lockedCategory }: PropertiesTa
             </Tip>
           </div>
         </div>
-
-      {/* ── Alert banner — new properties since yesterday ── */}
-      {newSinceYesterday > 0 && (
-        <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-indigo-50 border border-indigo-200 text-sm text-indigo-800">
-          <span className="text-lg">🆕</span>
-          <span>
-            <span className="font-semibold">{newSinceYesterday} new {newSinceYesterday === 1 ? "property" : "properties"}</span> scraped in the last 24 hours
-          </span>
-          <button
-            type="button"
-            className="ml-auto text-indigo-400 hover:text-indigo-600 transition-colors"
-            onClick={() => setNewSinceYesterday(0)}
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
 
       {/* ── Signal filter chips ── */}
       <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-none">

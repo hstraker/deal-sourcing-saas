@@ -347,17 +347,31 @@ export function UnifiedFinder({
   const triggerEnrichment = async () => {
     setEnriching(true)
     try {
-      const res = await fetch("/api/scraper/enrich", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ limit: 100 }),
-      })
+      const res = await fetch("/api/scraper/enrich", { method: "POST" })
       const data = await res.json()
       if (res.ok) {
-        toast.success(`Enrichment started for ${data.enriched} listing(s)`, {
-          description: "EPC ratings, comparable sold prices & BMV% are being fetched in the background. Refresh the table in ~30 seconds to see results.",
-          duration: 8000,
-        })
+        if (data.totalListings === 0) {
+          toast.info("All listings already enriched", {
+            description: "No unenriched listings found. Every property already has PropertyData analysis.",
+            duration: 6000,
+          })
+        } else if (data.deferredListings > 0) {
+          toast.success(
+            `Enriching ${data.enriched} listing${data.enriched === 1 ? "" : "s"} across ${data.processingPostcodes} postcode${data.processingPostcodes === 1 ? "" : "s"}`,
+            {
+              description: `${data.deferredListings} more listing${data.deferredListings === 1 ? "" : "s"} across ${data.deferredPostcodes} postcode${data.deferredPostcodes === 1 ? "" : "s"} remain — click Enrich again in ~30 s to continue.`,
+              duration: 12000,
+            }
+          )
+        } else {
+          toast.success(
+            `Enriching all ${data.enriched} listing${data.enriched === 1 ? "" : "s"}`,
+            {
+              description: "EPC ratings, comparable sold prices & BMV% are being fetched in the background. Refresh the table in ~30 s to see results.",
+              duration: 8000,
+            }
+          )
+        }
         // Refresh table after a delay to pick up enriched data
         setTimeout(() => setTableRefreshKey(k => k + 1), 35_000)
       } else {
@@ -502,7 +516,7 @@ export function UnifiedFinder({
         <div className="h-4 w-px bg-gray-200 flex-shrink-0" />
 
         {/* Enrich button — fetches EPC + sold comparables + BMV% from PropertyData */}
-        <Tip text="Enrich listings with real market data: EPC ratings, comparable sold prices and true BMV% from PropertyData API. Runs in background — refresh in ~30s to see results." side="bottom">
+        <Tip text="Enrich unenriched listings with real market data: EPC ratings, comparable sold prices and true BMV% from PropertyData API. Processes up to 15 postcodes per click to stay within credit limits — click again if listings remain." side="bottom">
           <button
             onClick={triggerEnrichment}
             disabled={enriching}
