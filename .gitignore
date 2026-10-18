@@ -45,3 +45,7 @@ next-env.d.ts
 
 .superpowers/
 push.sh
+
+# bundled tools, install separately
+/aws/
+*.deb
