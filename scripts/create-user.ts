@@ -5,7 +5,7 @@
  *   npx tsx scripts/create-user.ts <email> <password> <role>
  *   
  * Example:
- *   npx tsx scripts/create-user.ts henrystraker@gmail.com password123 admin
+ *   npx tsx scripts/create-user.ts john.smith@example.com password123 admin
  */
 
 import { PrismaClient, UserRole } from "@prisma/client"
@@ -20,7 +20,7 @@ async function createUser() {
 
   if (!email || !password) {
     console.error("Usage: npx tsx scripts/create-user.ts <email> <password> [role]")
-    console.error("Example: npx tsx scripts/create-user.ts henrystraker@gmail.com password123 admin")
+    console.error("Example: npx tsx scripts/create-user.ts john.smith@example.com password123 admin")
     process.exit(1)
   }
 

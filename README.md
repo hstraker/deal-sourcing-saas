@@ -1,139 +1,53 @@
-# DealStack - Property Deal Sourcing SaaS
+# DealStack
 
-A B2B SaaS platform for sourcing, analyzing, and selling property investment deals to investors.
+A property deal sourcing platform I built to find, analyse and package UK buy-to-let deals for investors. It pulls listings from the main property portals, scores each deal, and uses Claude to do the research a sourcer would normally do by hand.
 
-## Tech Stack
+I built it as a side project alongside my day job as a Principal SRE, partly to run my own property business and partly to get hands-on with LLM tooling in a real application.
 
-- **Frontend:** Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui
-- **Backend:** Next.js API Routes
-- **Database:** PostgreSQL with Prisma ORM
-- **Authentication:** NextAuth.js with JWT
-- **Storage:** AWS S3
-- **Payments:** Stripe (Phase 3)
+## What it does
 
-## Getting Started
+- **Finds deals.** Scheduled scrapers pull listings from Rightmove, Zoopla, OnTheMarket and PrimeLocation, and match them against sourcing alerts by area and strategy.
+- **Scores them.** Each deal is enriched with PropertyData, Land Registry price paid data and rental estimates, then scored on BMV, yield and cash flow. It handles stamp duty (SDLT) and picks up Welsh properties automatically, since the tax and tenancy rules are different there.
+- **Uses AI for the research.** Claude reviews listing photos and floorplans, checks street view and flood risk, summarises the area and property history, and drafts a due diligence report.
+- **Works the vendor side.** A vendor pipeline tracks motivated sellers, with an AI negotiation coach and an offer engine that builds a negotiation ladder. An AI SMS agent (Twilio) handles first contact with vendors.
+- **Sells to investors.** It generates investor packs and pitches, tracks investor interest and reservations, and keeps solicitors and contacts in one place.
 
-### Prerequisites
+## How the AI is wired in
 
-- Node.js 18.17.0 or higher (20.9.0+ recommended for Next.js 16)
-- PostgreSQL database
-- AWS account (for S3)
+- A small provider layer (`lib/vendor-pipeline/ai-provider.ts`) lets each feature run on Anthropic Claude or OpenAI, and tracks token usage and rate limits so a busy day doesn't hit the API limits.
+- Vision models handle the photo, floorplan and street view checks.
+- The agent roles (SMS agent, deal validator, offer engine, pipeline orchestrator) are written up in [`docs/agents`](docs/agents).
 
-### Installation
+## Stack
 
-1. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+| Area | Tools |
+|---|---|
+| App | Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui |
+| Data | PostgreSQL, Prisma ORM |
+| AI | Anthropic Claude API, OpenAI API |
+| Integrations | PropertyData API, HM Land Registry, Twilio, AWS S3 and SES, Facebook Lead Ads |
+| Auth | NextAuth.js (JWT) |
+| Hosting | Self-hosted Linux server behind Cloudflare Tunnel, run with pm2 |
+| CI/CD | GitHub Actions on a self-hosted runner |
 
-2. **Set up environment variables:**
-   ```bash
-   cp env.example .env
-   ```
-   
-   Then edit `.env` and fill in all required values:
-   - `DATABASE_URL` - PostgreSQL connection string
-   - `NEXTAUTH_SECRET` - Generate with: `openssl rand -base64 32`
-   - AWS credentials (for S3)
-   - Other service keys as needed
+## Deployment
 
-3. **Set up the database:**
-   ```bash
-   # Generate Prisma Client
-   npm run db:generate
+Pushes to `main` deploy through a GitHub Actions workflow on a self-hosted runner. The workflow installs dependencies, applies Prisma migrations, builds the app and does a zero-downtime reload with pm2. Production deploys wait for a manual approval in the GitHub `production` environment, and there is a separate manual path for urgent fixes. The server is not exposed to the internet directly; traffic comes in through a Cloudflare Tunnel.
 
-   # Push schema to database (or create migration)
-   npm run db:push
-   
-   # Or create a migration
-   npm run db:migrate
-   ```
+## Running it locally
 
-4. **Create initial admin user:**
-   
-   You'll need to create an admin user manually. You can do this by:
-   - Using Prisma Studio: `npm run db:studio`
-   - Creating a seed script (recommended)
-   - Using a database client
+You'll need Node.js 20+, a PostgreSQL database and API keys for the services you want to use.
 
-   Example SQL (you'll need to hash the password with bcrypt):
-   ```sql
-   INSERT INTO users (email, password_hash, role, first_name, last_name, is_active)
-   VALUES ('admin@example.com', '$2a$10$...hashedpassword...', 'admin', 'Admin', 'User', true);
-   ```
-
-5. **Run the development server:**
-   ```bash
-   npm run dev
-   ```
-
-   Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Project Structure
-
-```
-/
-├── app/                    # Next.js App Router
-│   ├── api/               # API routes
-│   ├── dashboard/         # Dashboard pages (protected)
-│   ├── login/             # Login page
-│   ├── layout.tsx         # Root layout
-│   └── page.tsx           # Home page
-├── components/            # React components
-│   ├── ui/                # shadcn/ui components
-│   └── dashboard/         # Dashboard-specific components
-├── lib/                   # Utility functions
-│   ├── auth.ts            # NextAuth configuration
-│   ├── db.ts              # Prisma client
-│   ├── s3.ts              # AWS S3 utilities
-│   └── utils.ts           # General utilities
-├── prisma/                # Database schema
-│   └── schema.prisma      # Prisma schema
-├── types/                 # TypeScript type definitions
-└── public/                # Static assets
+```bash
+npm install
+cp env.example .env      # then fill in the values
+npm run db:migrate
+npm run seed:admin
+npm run dev
 ```
 
-## Available Scripts
+The app runs on http://localhost:3000. More detail is in [SETUP.md](SETUP.md) and [ARCHITECTURE.md](ARCHITECTURE.md).
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run db:generate` - Generate Prisma Client
-- `npm run db:push` - Push schema changes to database
-- `npm run db:migrate` - Create and run migrations
-- `npm run db:studio` - Open Prisma Studio
+## Status
 
-## Development Phases
-
-### Phase 1: MVP (Current)
-- ✅ User authentication (admin, sourcer roles)
-- ✅ Database schema
-- ✅ Admin dashboard layout
-- ✅ AWS S3 integration setup
-- ⏳ Deal CRUD operations
-- ⏳ Photo upload
-- ⏳ Deal pipeline (Kanban board)
-
-### Phase 2: Deal Packaging
-- Investor pack generation (PDF)
-- Template system
-
-### Phase 3: Investor Portal
-- Investor signup/login
-- Deal marketplace
-- Stripe payments
-
-### Phase 4: CRM & Automation
-- Investor matching
-- Email alerts
-- Analytics dashboard
-
-## Environment Variables
-
-See `env.example` for all required environment variables.
-
-## License
-
-Private - All rights reserved
-
+This is a working personal project, not a commercial product. It's under active development, and the scrapers in particular need updating whenever the portals change their pages.

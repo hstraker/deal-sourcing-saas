@@ -72,7 +72,7 @@ export class AISMSAgent {
 
   /**
    * Normalise a UK phone number to E.164 format so Twilio accepts it.
-   * e.g. 07595354573 → +447595354573
+   * e.g. 07700900123 → +447700900123
    */
   private normalisePhone(phone: string): string {
     const cleaned = phone.replace(/[\s\-\(\)]/g, "")

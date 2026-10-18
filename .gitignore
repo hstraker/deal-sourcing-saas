@@ -49,3 +49,8 @@ push.sh
 # bundled tools, install separately
 /aws/
 *.deb
+
+# local debug output and editor settings
+/logs/*
+!/logs/.gitkeep
+.claude/settings.local.json
