@@ -7,10 +7,10 @@ curl -X POST http://localhost:3000/api/facebook-leads/webhook \
     "testScenario": "CLEAR_NEVER_LISTED",
     "field_data": [
       { "name": "full_name",         "values": ["Henry Smith"] },
-      { "name": "phone_number",      "values": ["+4407595354573"] },
+      { "name": "phone_number",      "values": ["+447700900123"] },
       { "name": "property_address",  "values": ["Victoria Road, Port Talbot"] },
       { "name": "property_postcode", "values": ["SA12 6AD"] },
-      { "name": "email",             "values": ["henrystraker@gmail.com"] },
+      { "name": "email",             "values": ["john.smith@example.com"] },
       { "name": "asking_price",      "values": ["195000"] },
       { "name": "property_type",     "values": ["Semi-Detached"] },
       { "name": "bedrooms",          "values": ["3"] },

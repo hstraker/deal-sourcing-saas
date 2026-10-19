@@ -116,19 +116,19 @@ SELECT COUNT(*) FROM vendor_leads;   -- Result: 3 records
 **Vendor Records**:
 | Phone | Deal ID | Status | Created |
 |-------|---------|--------|---------|
-| 07595354573 | 428298a8-... | contacted | 2025-12-27 |
+| 07700900123 | 428298a8-... | contacted | 2025-12-27 |
 | +447700900123 | 9fbca01c-... | contacted | 2025-12-25 |
 | +447700900456 | NULL | contacted | 2025-12-25 |
 
 **VendorLead Records**:
 | Phone | Deal ID | Pipeline Stage | Created |
 |-------|---------|---------------|---------|
-| 07595354573 | 428298a8-... | AI_CONVERSATION | 2025-12-27 |
-| 07595354573 | NULL | AI_CONVERSATION | 2025-12-27 |
+| 07700900123 | 428298a8-... | AI_CONVERSATION | 2025-12-27 |
+| 07700900123 | NULL | AI_CONVERSATION | 2025-12-27 |
 | +447700900123 | NULL | AI_CONVERSATION | 2025-12-26 |
 
 **Key Findings**:
-- ⚠️ **Overlap Detected**: Phone `07595354573` exists in BOTH tables
+- ⚠️ **Overlap Detected**: Phone `07700900123` exists in BOTH tables
 - ⚠️ **Same Deal**: Both models link to the same deal ID `428298a8-...`
 - ⚠️ **Duplicate VendorLead**: Same phone appears twice in VendorLead table
 - ✅ **Active Usage**: Both models are currently being used
@@ -156,7 +156,7 @@ SELECT COUNT(*) FROM vendor_leads;   -- Result: 3 records
 
 **Actions**:
 1. ✅ Document the dual-model architecture (done in VENDOR_MODEL_AUDIT.md)
-2. ⚠️ Fix duplicate VendorLead records (phone 07595354573 appears twice)
+2. ⚠️ Fix duplicate VendorLead records (phone 07700900123 appears twice)
 3. ⚠️ Add data validation to prevent future duplicates
 4. ⚠️ Document when to use Vendor vs VendorLead
 
@@ -192,7 +192,7 @@ SELECT COUNT(*) FROM vendor_leads;   -- Result: 3 records
 ## 🐛 Issues Found & Fixed
 
 ### 1. Duplicate VendorLead Records
-**Issue**: Phone `07595354573` appears twice in `vendor_leads` table
+**Issue**: Phone `07700900123` appears twice in `vendor_leads` table
 **Impact**: Data integrity issue, potential confusion
 **Fix Needed**:
 ```sql

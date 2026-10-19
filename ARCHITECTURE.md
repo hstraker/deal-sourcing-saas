@@ -1304,7 +1304,7 @@ Environment Variables (Required):
 │ TWILIO_ACCOUNT_SID=...                                 │
 │ TWILIO_AUTH_TOKEN=...                                  │
 │ ANTHROPIC_API_KEY=...                                  │
-│ (See ANALYSIS.md for full list)                       │
+│ (See docs/reports/ANALYSIS.md)                         │
 └────────────────────────────────────────────────────────┘
 
 Build & Deploy Process:
